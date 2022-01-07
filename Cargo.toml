@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 libp2p = "0.41.0"
 futures = "0.3.17"
+bls12_381 = "0.6.0"

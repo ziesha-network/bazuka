@@ -1,4 +1,4 @@
-mod net;
+//use bazuka::net;
 
 type Signature = u8;
 type Address = u8;
@@ -31,5 +31,5 @@ trait Blockchain {
 
 fn main() {
     println!("Hello Bazuka!");
-    net::init().unwrap();
+    //net::init().unwrap();
 }
