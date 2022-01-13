@@ -1,2 +1,3 @@
-mod p2p;
-pub use p2p::*;
+
+#[cfg(feature = "libp2p")]
+pub mod libp2p;

@@ -5,6 +5,7 @@ authors = ["Keyvan Kambakhsh <keyvankambakhsh@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-libp2p = "0.41.0"
+libp2p = { version = "0.41.0", optional = true }
 futures = "0.3.17"
-bls12_381 = "0.6.0"
+vrf = "0.2.3"
+bls-signatures = "0.11.1"
