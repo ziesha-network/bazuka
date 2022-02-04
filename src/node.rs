@@ -1,12 +1,58 @@
-use super::network::Interface;
+use tokio::time::{sleep, Duration};
+use tokio::try_join;
+use warp::Filter;
 
-pub struct Node;
+#[derive(Debug)]
+pub enum NodeError {
+    ClientError(reqwest::Error),
+}
+
+impl From<reqwest::Error> for NodeError {
+    fn from(e: reqwest::Error) -> Self {
+        Self::ClientError(e)
+    }
+}
+
+pub struct Node {
+    peers: Vec<String>,
+}
 
 impl Node {
     pub fn new() -> Node {
-        Node
+        Node { peers: Vec::new() }
     }
-    pub fn get_peers() -> Vec<Box<dyn Interface>> {
-        Vec::new()
+
+    async fn request_peers(&self, addr: &str) -> Result<Vec<String>, NodeError> {
+        let resp = reqwest::get(format!("{}/peers", addr))
+            .await?
+            .json::<Vec<String>>()
+            .await?;
+        Ok(resp)
+    }
+
+    async fn heartbeat(&self) -> Result<(), NodeError> {
+        loop {
+            println!("Lub dub!");
+            sleep(Duration::from_millis(1000)).await;
+            let peers = self.request_peers("http://127.0.0.1:3030").await?;
+            println!("Peers: {:?}", peers);
+        }
+    }
+
+    async fn server(&self) -> Result<(), NodeError> {
+        let peers = warp::path!("peers").map(|| warp::reply::json(&["a", "b", "c"]));
+
+        warp::serve(peers).run(([127, 0, 0, 1], 3030)).await;
+
+        Ok(())
+    }
+
+    pub async fn run(&self) -> Result<(), NodeError> {
+        let server_future = self.server();
+        let heartbeat_future = self.heartbeat();
+
+        try_join!(server_future, heartbeat_future)?;
+
+        Ok(())
     }
 }
