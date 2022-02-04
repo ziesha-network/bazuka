@@ -1,4 +1,4 @@
-use futures::join;
+use tokio::join;
 use tokio::time::{sleep, Duration};
 use warp::Filter;
 
@@ -10,11 +10,11 @@ async fn request_peers(addr: &str) -> Result<Vec<String>, reqwest::Error> {
     Ok(resp)
 }
 
-async fn heartbeat() {
+async fn heartbeat() -> Result<(), reqwest::Error> {
     loop {
         println!("Lub dub!");
         sleep(Duration::from_millis(1000)).await;
-        let peers = request_peers("http://127.0.0.1:3030").await.unwrap();
+        let peers = request_peers("http://127.0.0.1:3030").await?;
         println!("Peers: {:?}", peers);
     }
 }
