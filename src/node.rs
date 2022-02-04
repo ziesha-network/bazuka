@@ -1,10 +1,12 @@
-use std::marker::PhantomData;
+use super::network::Interface;
 
-pub struct Node<I>(PhantomData<I>);
+pub struct Node;
 
-impl<I> Node<I> {
-    pub fn new() -> Node<I> {
-        Node::<I>(PhantomData)
+impl Node {
+    pub fn new() -> Node {
+        Node
     }
-    pub fn get_peers() {}
+    pub fn get_peers() -> Vec<Box<dyn Interface>> {
+        Vec::new()
+    }
 }
