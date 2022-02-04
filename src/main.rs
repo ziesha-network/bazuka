@@ -1,5 +1,5 @@
-use tokio::join;
 use tokio::time::{sleep, Duration};
+use tokio::try_join;
 use warp::Filter;
 
 async fn request_peers(addr: &str) -> Result<Vec<String>, reqwest::Error> {
@@ -19,13 +19,20 @@ async fn heartbeat() -> Result<(), reqwest::Error> {
     }
 }
 
-#[tokio::main]
-async fn main() {
+async fn server() -> Result<(), reqwest::Error> {
     let peers = warp::path!("peers").map(|| warp::reply::json(&["a", "b", "c"]));
 
-    let http_future = warp::serve(peers).run(([127, 0, 0, 1], 3030));
+    warp::serve(peers).run(([127, 0, 0, 1], 3030)).await;
 
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() {
+    let server_future = server();
     let heartbeat_future = heartbeat();
 
-    join!(http_future, heartbeat_future);
+    if let Err(e) = try_join!(server_future, heartbeat_future) {
+        println!("Node crashed! Error: {}", e);
+    }
 }
