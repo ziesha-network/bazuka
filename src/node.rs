@@ -1,6 +1,12 @@
-pub struct Node;
+use std::marker::PhantomData;
 
-pub impl Node<I> {
-    pub fn new() -> Node<I>;
-    pub fn get_peers();
+pub struct Node<I>(PhantomData<I>);
+
+impl<I> Node<I> {
+    pub fn new() -> Node<I> {
+        Node::<I>(PhantomData)
+    }
+    pub fn get_peers() {
+
+    }
 }
