@@ -1,5 +1,6 @@
+use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tokio::time::{sleep, Duration};
 use tokio::try_join;
 use warp::Filter;
@@ -21,14 +22,38 @@ pub struct PeerInfo {
 }
 
 pub struct Node {
-    peers: Mutex<HashMap<PeerId, PeerInfo>>,
+    peers: Arc<Mutex<HashMap<PeerId, PeerInfo>>>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct PeerPostReq {
+    address: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct PeerPostResp {
+    ok: bool,
 }
 
 impl Node {
     pub fn new() -> Node {
         Node {
-            peers: Mutex::new(HashMap::new()),
+            peers: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+
+    async fn introduce(&self, addr: &str) -> Result<PeerPostResp, NodeError> {
+        let client = reqwest::Client::new();
+        let resp = client
+            .post(format!("{}/peers", addr))
+            .json(&PeerPostReq {
+                address: "hahaha".to_string(),
+            })
+            .send()
+            .await?
+            .json::<PeerPostResp>()
+            .await?;
+        Ok(resp)
     }
 
     async fn request_peers(&self, addr: &str) -> Result<Vec<String>, NodeError> {
@@ -45,13 +70,38 @@ impl Node {
             sleep(Duration::from_millis(1000)).await;
             let peers = self.request_peers("http://127.0.0.1:3030").await?;
             println!("Peers: {:?}", peers);
+            let result = self.introduce("http://127.0.0.1:3030").await?;
+            println!("Introduced! Result: {:?}", result);
         }
     }
 
-    async fn server(&self) -> Result<(), NodeError> {
-        let peers = warp::path!("peers").map(|| warp::reply::json(&["a", "b", "c"]));
+    async fn server(&'static self) -> Result<(), NodeError> {
+        let peers_arc_get = Arc::clone(&self.peers);
+        let peers_get = warp::path("peers").and(warp::get()).map(move || {
+            let peers = peers_arc_get
+                .lock()
+                .unwrap()
+                .keys()
+                .cloned()
+                .collect::<Vec<String>>();
+            warp::reply::json(&peers)
+        });
 
-        warp::serve(peers).run(([127, 0, 0, 1], 3030)).await;
+        let peers_arc_post = Arc::clone(&self.peers);
+        let peers_post = warp::path("peers")
+            .and(warp::post())
+            .and(warp::body::json())
+            .map(move |body: PeerPostReq| {
+                let mut peers = peers_arc_post.lock().unwrap();
+                peers
+                    .entry(body.address)
+                    .or_insert(PeerInfo { last_seen: 0 });
+
+                warp::reply::json(&PeerPostResp { ok: true })
+            });
+
+        let routes = peers_get.or(peers_post);
+        warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
 
         Ok(())
     }
