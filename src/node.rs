@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::sync::Mutex;
 use tokio::time::{sleep, Duration};
 use tokio::try_join;
 use warp::Filter;
@@ -13,13 +15,20 @@ impl From<reqwest::Error> for NodeError {
     }
 }
 
+pub type PeerId = String;
+pub struct PeerInfo {
+    pub last_seen: u64,
+}
+
 pub struct Node {
-    peers: Vec<String>,
+    peers: Mutex<HashMap<PeerId, PeerInfo>>,
 }
 
 impl Node {
     pub fn new() -> Node {
-        Node { peers: Vec::new() }
+        Node {
+            peers: Mutex::new(HashMap::new()),
+        }
     }
 
     async fn request_peers(&self, addr: &str) -> Result<Vec<String>, NodeError> {
@@ -47,7 +56,7 @@ impl Node {
         Ok(())
     }
 
-    pub async fn run(&self) -> Result<(), NodeError> {
+    pub async fn run(&'static self) -> Result<(), NodeError> {
         let server_future = self.server();
         let heartbeat_future = self.heartbeat();
 
