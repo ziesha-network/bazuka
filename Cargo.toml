@@ -14,3 +14,4 @@ serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
 leveldb = "0.8.6"
 home = "0.5.3"
+db-key = "0.0.5"
