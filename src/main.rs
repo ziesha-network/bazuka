@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
 
+use bazuka::blockchain::check_db;
 use bazuka::node::{Node, NodeError};
 
 lazy_static! {
@@ -9,6 +10,7 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() -> Result<(), NodeError> {
+    check_db();
     NODE.run().await?;
     Ok(())
 }

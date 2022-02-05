@@ -1,7 +1,7 @@
-type Signature = u8;
-type Address = u8;
-type Hash = u8;
-type Money = u8;
+pub type Signature = u8;
+pub type Address = u8;
+pub type Hash = u8;
+pub type Money = u8;
 
 pub enum Transaction {
     RegularSend {

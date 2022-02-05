@@ -1,4 +1,5 @@
 pub mod bank;
+pub mod blockchain;
 pub mod crypto;
 pub mod net;
 pub mod network;
