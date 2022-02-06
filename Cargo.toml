@@ -16,3 +16,4 @@ leveldb = "0.8.6"
 home = "0.5.3"
 db-key = "0.0.5"
 ff = { version = "0.11", features = ["derive"] }
+sha3 = "0.10.0"
