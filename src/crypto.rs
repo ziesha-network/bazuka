@@ -1,5 +1,6 @@
 use ff::{Field, PrimeField};
 use sha3::{Digest, Sha3_256};
+use std::convert::TryInto;
 use std::ops::*;
 
 pub trait SignatureScheme<Pub, Priv, Sig> {
@@ -47,9 +48,21 @@ pub struct MiMC {
 impl MiMC {
     pub fn new(seed: &[u8]) -> MiMC {
         let mut hasher = Sha3_256::new();
+        let mut params = Vec::new();
         hasher.update(seed);
-        let _result = hasher.finalize();
-        MiMC { params: Vec::new() }
+        for _ in 0..90 {
+            let result = hasher.finalize();
+            let mut elem = Fr::zero();
+            elem.0[0] = u64::from_le_bytes(result[..8].try_into().unwrap());
+            elem.0[1] = u64::from_le_bytes(result[8..16].try_into().unwrap());
+            elem.0[2] = u64::from_le_bytes(result[16..24].try_into().unwrap());
+            elem.0[3] = u64::from_le_bytes(result[24..32].try_into().unwrap());
+            params.push(elem);
+            hasher = Sha3_256::new();
+            hasher.update(result);
+        }
+
+        MiMC { params }
     }
     fn encrypt(&self, mut inp: Fr, k: &Fr) -> Fr {
         for c in self.params.iter() {
