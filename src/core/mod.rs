@@ -95,3 +95,9 @@ impl Block {
         Hash::generate(&bincode::serialize(&self).unwrap())
     }
 }
+
+pub mod block;
+pub mod crypto;
+pub mod hash;
+pub mod header;
+pub mod primitives;

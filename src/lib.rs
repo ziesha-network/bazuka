@@ -8,5 +8,9 @@ pub mod crypto;
 pub mod db;
 pub mod zk;
 
+pub mod consensus;
+pub mod keystore;
 #[cfg(feature = "node")]
 pub mod node;
+pub mod node;
+pub mod vrf;

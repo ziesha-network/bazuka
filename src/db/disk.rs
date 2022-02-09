@@ -25,16 +25,16 @@ impl KvStore for LevelDbKvStore {
             Err(_) => Err(KvStoreError::Failure),
         }
     }
-    fn set(&mut self, k: StringKey, v: Blob) -> Result<(), KvStoreError> {
+    fn del(&mut self, k: StringKey) -> Result<(), KvStoreError> {
         let write_opts = WriteOptions::new();
-        match self.0.put(write_opts, k, &v.0) {
+        match self.0.delete(write_opts, k) {
             Ok(_) => Ok(()),
             Err(_) => Err(KvStoreError::Failure),
         }
     }
-    fn del(&mut self, k: StringKey) -> Result<(), KvStoreError> {
+    fn set(&mut self, k: StringKey, v: Blob) -> Result<(), KvStoreError> {
         let write_opts = WriteOptions::new();
-        match self.0.delete(write_opts, k) {
+        match self.0.put(write_opts, k, &v.0) {
             Ok(_) => Ok(()),
             Err(_) => Err(KvStoreError::Failure),
         }

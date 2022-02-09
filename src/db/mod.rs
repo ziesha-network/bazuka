@@ -59,3 +59,6 @@ pub use ram::*;
 mod disk;
 #[cfg(feature = "node")]
 pub use disk::*;
+pub trait Backend<Hash, Num> {
+    fn lowest_common_ancestor() -> Option<(Hash, Num)>;
+}

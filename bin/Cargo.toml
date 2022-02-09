@@ -1,0 +1,11 @@
+[package]
+name = "bin"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+libp2p = "0.41.0"
+futures = "0.3.17"
+lazy_static = "1.4.0"
