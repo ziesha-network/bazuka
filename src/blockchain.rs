@@ -60,24 +60,34 @@ pub trait KvStore {
     fn batch(&self, ops: Vec<WriteOp>) -> Result<(), KvStoreError>;
 }
 
-impl KvStore for LevelDbChain {
+pub struct LevelDbKvStore(Database<StringKey>);
+impl LevelDbKvStore {
+    pub fn new(path: &Path) -> LevelDbKvStore {
+        fs::create_dir_all(&path).unwrap();
+        let mut options = Options::new();
+        options.create_if_missing = true;
+        LevelDbKvStore(Database::open(&path, options).unwrap())
+    }
+}
+
+impl KvStore for LevelDbKvStore {
     fn get(&self, k: StringKey) -> Result<Option<Vec<u8>>, KvStoreError> {
         let read_opts = ReadOptions::new();
-        match self.database.get(read_opts, k) {
+        match self.0.get(read_opts, k) {
             Ok(v) => Ok(v),
             Err(_) => Err(KvStoreError::Failure),
         }
     }
     fn set(&self, k: StringKey, v: Vec<u8>) -> Result<(), KvStoreError> {
         let write_opts = WriteOptions::new();
-        match self.database.put(write_opts, k, &v) {
+        match self.0.put(write_opts, k, &v) {
             Ok(_) => Ok(()),
             Err(_) => Err(KvStoreError::Failure),
         }
     }
     fn del(&self, k: StringKey) -> Result<(), KvStoreError> {
         let write_opts = WriteOptions::new();
-        match self.database.delete(write_opts, k) {
+        match self.0.delete(write_opts, k) {
             Ok(_) => Ok(()),
             Err(_) => Err(KvStoreError::Failure),
         }
@@ -91,30 +101,25 @@ impl KvStore for LevelDbChain {
                 WriteOp::Put(k, v) => batch.put(k, &v),
             }
         }
-        match self.database.write(write_opts, &batch) {
+        match self.0.write(write_opts, &batch) {
             Ok(_) => Ok(()),
             Err(_) => Err(KvStoreError::Failure),
         }
     }
 }
 
-pub struct LevelDbChain {
-    database: Database<StringKey>,
+pub struct KvStoreChain<K: KvStore> {
+    database: K,
 }
 
-impl LevelDbChain {
-    pub fn new(path: &Path) -> LevelDbChain {
-        fs::create_dir_all(&path).unwrap();
-        let mut options = Options::new();
-        options.create_if_missing = true;
-        LevelDbChain {
-            database: Database::open(&path, options).unwrap(),
-        }
+impl<K: KvStore> KvStoreChain<K> {
+    pub fn new(kv_store: K) -> KvStoreChain<K> {
+        KvStoreChain::<K> { database: kv_store }
     }
     fn apply_tx(tx: &Transaction) {}
 }
 
-impl Blockchain for LevelDbChain {
+impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_balance(&self, addr: Address) -> Money {
         unimplemented!();
     }
