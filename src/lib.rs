@@ -4,6 +4,7 @@ extern crate lazy_static;
 pub mod bank;
 pub mod blockchain;
 pub mod crypto;
+pub mod db;
 pub mod messages;
 pub mod net;
 pub mod network;

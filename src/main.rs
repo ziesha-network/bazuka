@@ -1,8 +1,9 @@
 #[macro_use]
 extern crate lazy_static;
 
-use bazuka::blockchain::{KvStoreChain, LevelDbKvStore};
+use bazuka::blockchain::KvStoreChain;
 use bazuka::crypto::{Fr, MiMC};
+use bazuka::db::LevelDbKvStore;
 use bazuka::node::{Node, NodeError};
 use ff::Field;
 use std::path::Path;
