@@ -1,4 +1,5 @@
-use serde_derive::{Deserialize, Serialize};
+use super::blockchain::Blockchain;
+use super::messages::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::time::{sleep, Duration};
@@ -16,42 +17,33 @@ impl From<reqwest::Error> for NodeError {
     }
 }
 
-pub type PeerId = String;
-pub struct PeerInfo {
-    pub last_seen: u64,
+pub struct Node<B: Blockchain> {
+    blockchain: B,
+    peers: Arc<Mutex<HashMap<PeerAddress, PeerInfo>>>,
 }
 
-pub struct Node {
-    peers: Arc<Mutex<HashMap<PeerId, PeerInfo>>>,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct PeerPostReq {
-    address: String,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct PeerPostResp {
-    ok: bool,
-}
-
-impl Node {
-    pub fn new() -> Node {
+impl<B: Blockchain> Node<B> {
+    pub fn new(blockchain: B) -> Node<B> {
         Node {
+            blockchain,
             peers: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
-    async fn introduce(&self, addr: &str) -> Result<PeerPostResp, NodeError> {
+    async fn introduce(&self, addr: &str) -> Result<PostPeerResponse, NodeError> {
         let client = reqwest::Client::new();
         let resp = client
             .post(format!("{}/peers", addr))
-            .json(&PeerPostReq {
+            .json(&PostPeerRequest {
                 address: "hahaha".to_string(),
+                info: PeerInfo {
+                    last_seen: 0,
+                    height: self.blockchain.get_height(),
+                },
             })
             .send()
             .await?
-            .json::<PeerPostResp>()
+            .json::<PostPeerResponse>()
             .await?;
         Ok(resp)
     }
@@ -91,13 +83,11 @@ impl Node {
         let peers_post = warp::path("peers")
             .and(warp::post())
             .and(warp::body::json())
-            .map(move |body: PeerPostReq| {
+            .map(move |body: PostPeerRequest| {
                 let mut peers = peers_arc_post.lock().unwrap();
-                peers
-                    .entry(body.address)
-                    .or_insert(PeerInfo { last_seen: 0 });
+                peers.entry(body.address).or_insert(body.info);
 
-                warp::reply::json(&PeerPostResp { ok: true })
+                warp::reply::json(&PostPeerResponse {})
             });
 
         let routes = peers_get.or(peers_post);

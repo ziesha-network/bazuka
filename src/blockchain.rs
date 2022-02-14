@@ -7,9 +7,10 @@ use leveldb::options::{Options, ReadOptions, WriteOptions};
 use std::fs;
 use std::path::Path;
 
-trait Blockchain {
+pub trait Blockchain {
     fn get_balance(&self, addr: Address) -> Money;
     fn extend(&mut self, blocks: &Vec<Block>);
+    fn get_height(&self) -> usize;
 }
 
 #[derive(Clone, Debug)]
@@ -47,5 +48,17 @@ impl LevelDbChain {
         let read_opts = ReadOptions::new();
         let res = self.database.get(read_opts, k.clone()).unwrap();
         println!("Data: {:?}", res);
+    }
+}
+
+impl Blockchain for LevelDbChain {
+    fn get_balance(&self, _addr: Address) -> Money {
+        unimplemented!();
+    }
+    fn extend(&mut self, _blocks: &Vec<Block>) {
+        unimplemented!();
+    }
+    fn get_height(&self) -> usize {
+        0
     }
 }

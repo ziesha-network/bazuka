@@ -8,7 +8,9 @@ use ff::Field;
 use std::path::Path;
 
 lazy_static! {
-    static ref NODE: Node = Node::new();
+    static ref NODE: Node<LevelDbChain> = Node::new(LevelDbChain::new(
+        &home::home_dir().unwrap().join(Path::new(".bazuka"))
+    ));
 }
 
 #[tokio::main]
@@ -18,10 +20,6 @@ async fn main() -> Result<(), NodeError> {
         "MiMC output: {:?}",
         hasher.hash(&vec![Fr::zero(), Fr::one()])
     );
-
-    let path = home::home_dir().unwrap().join(Path::new(".bazuka"));
-    let mut chain = LevelDbChain::new(&path);
-    chain.check();
 
     NODE.run().await?;
     Ok(())
