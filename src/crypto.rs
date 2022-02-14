@@ -21,7 +21,40 @@ pub trait VerifiableRandomFunction<Pub, Priv, Output, Proof> {
 #[PrimeFieldReprEndianness = "little"]
 pub struct Fr([u64; 4]);
 
+#[derive(Debug, Clone, PartialEq)]
 pub struct PointAffine(Fr, Fr);
+
+impl AddAssign for PointAffine {
+    fn add_assign(&mut self, other: Self) {
+        if *self == other {
+            self.double();
+            return;
+        }
+        let xx = (Fr::one() + *D * self.0 * other.0 * self.1 * other.1)
+            .invert()
+            .unwrap();
+        let yy = (Fr::one() - *D * self.0 * other.0 * self.1 * other.1)
+            .invert()
+            .unwrap();
+        *self = Self(
+            (self.0 * other.1 + self.1 * other.0) * xx,
+            (self.1 * other.1 - *A * self.0 * other.0) * yy,
+        );
+    }
+}
+
+impl PointAffine {
+    pub fn double(&mut self) {
+        let xx = (*A * self.0 * self.0 + self.1 * self.1).invert().unwrap();
+        let yy = (Fr::one() + Fr::one() - *A * self.0 * self.0 - self.1 * self.1)
+            .invert()
+            .unwrap();
+        *self = Self(
+            ((self.0 * self.1) * xx).double(),
+            (self.1 * self.1 - *A * self.0 * self.0) * yy,
+        )
+    }
+}
 
 lazy_static! {
     static ref A: Fr = Fr::one().neg();
@@ -29,7 +62,7 @@ lazy_static! {
         "12181644023421730124874158521699555681764249180949974110617291017600649128846"
     )
     .unwrap();
-    static ref BASE: PointAffine = PointAffine(
+    pub static ref BASE: PointAffine = PointAffine(
         Fr::from_str_vartime(
             "9671717474070082183213120605117400219616337014328744928644933853176787189663"
         )
@@ -79,5 +112,33 @@ impl MiMC {
             digest.add_assign(&self.encrypt(d.clone(), &digest));
         }
         digest
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_twisted_edwards_curve_ops() {
+        // ((2G) + G) + G
+        let mut a = BASE.clone();
+        a.double();
+        a.add_assign(BASE.clone());
+        a.add_assign(BASE.clone());
+
+        // 2(2G)
+        let mut b = BASE.clone();
+        b.double();
+        b.double();
+
+        assert_eq!(a, b);
+
+        // G + G + G + G
+        let mut c = BASE.clone();
+        c.add_assign(BASE.clone());
+        c.add_assign(BASE.clone());
+        c.add_assign(BASE.clone());
+
+        assert_eq!(b, c);
     }
 }
