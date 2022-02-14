@@ -44,6 +44,7 @@ impl Identifiable for Address {
     }
 }
 
+#[derive(Debug)]
 pub enum KvStoreError {
     Failure,
 }
@@ -121,7 +122,10 @@ impl<K: KvStore> KvStoreChain<K> {
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_balance(&self, addr: Address) -> Money {
-        unimplemented!();
+        match self.database.get(addr.get_key()).unwrap() {
+            Some(b) => Money::from_le_bytes([b[0]]),
+            None => 0,
+        }
     }
     fn extend(&mut self, _blocks: &Vec<Block>) {
         unimplemented!();
