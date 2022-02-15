@@ -8,12 +8,30 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
+#[derive(Debug)]
+pub enum KvStoreError {
+    Failure,
+    Corrupted,
+}
+
 #[derive(Clone, Debug)]
 pub struct StringKey(String);
 
 impl StringKey {
     pub fn new(s: &str) -> StringKey {
         StringKey(s.to_string())
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Blob(Vec<u8>);
+
+impl Blob {
+    pub fn as_u32(&self) -> Result<u32, KvStoreError> {
+        Ok(0)
+    }
+    pub fn as_usize(&self) -> Result<usize, KvStoreError> {
+        Ok(0)
     }
 }
 
@@ -27,20 +45,15 @@ impl Key for StringKey {
     }
 }
 
-#[derive(Debug)]
-pub enum KvStoreError {
-    Failure,
-}
-
 pub enum WriteOp {
     Remove(StringKey),
-    Put(StringKey, Vec<u8>),
+    Put(StringKey, Blob),
 }
 
 pub trait KvStore {
-    fn get(&self, k: StringKey) -> Result<Option<Vec<u8>>, KvStoreError>;
+    fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError>;
     fn del(&mut self, k: StringKey) -> Result<(), KvStoreError>;
-    fn set(&mut self, k: StringKey, v: Vec<u8>) -> Result<(), KvStoreError>;
+    fn set(&mut self, k: StringKey, v: Blob) -> Result<(), KvStoreError>;
     fn batch(&mut self, ops: Vec<WriteOp>) -> Result<(), KvStoreError>;
 }
 
@@ -55,16 +68,16 @@ impl LevelDbKvStore {
 }
 
 impl KvStore for LevelDbKvStore {
-    fn get(&self, k: StringKey) -> Result<Option<Vec<u8>>, KvStoreError> {
+    fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError> {
         let read_opts = ReadOptions::new();
         match self.0.get(read_opts, k) {
-            Ok(v) => Ok(v),
+            Ok(v) => Ok(v.map(|v| Blob(v))),
             Err(_) => Err(KvStoreError::Failure),
         }
     }
-    fn set(&mut self, k: StringKey, v: Vec<u8>) -> Result<(), KvStoreError> {
+    fn set(&mut self, k: StringKey, v: Blob) -> Result<(), KvStoreError> {
         let write_opts = WriteOptions::new();
-        match self.0.put(write_opts, k, &v) {
+        match self.0.put(write_opts, k, &v.0) {
             Ok(_) => Ok(()),
             Err(_) => Err(KvStoreError::Failure),
         }
@@ -82,7 +95,7 @@ impl KvStore for LevelDbKvStore {
         for op in ops.into_iter() {
             match op {
                 WriteOp::Remove(k) => batch.delete(k),
-                WriteOp::Put(k, v) => batch.put(k, &v),
+                WriteOp::Put(k, v) => batch.put(k, &v.0),
             }
         }
         match self.0.write(write_opts, &batch) {
@@ -100,11 +113,11 @@ impl RamKvStore {
 }
 
 impl KvStore for RamKvStore {
-    fn get(&self, k: StringKey) -> Result<Option<Vec<u8>>, KvStoreError> {
-        Ok(self.0.get(&k.0).cloned())
+    fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError> {
+        Ok(self.0.get(&k.0).cloned().map(|v| Blob(v)))
     }
-    fn set(&mut self, k: StringKey, v: Vec<u8>) -> Result<(), KvStoreError> {
-        self.0.insert(k.0, v);
+    fn set(&mut self, k: StringKey, v: Blob) -> Result<(), KvStoreError> {
+        self.0.insert(k.0, v.0);
         Ok(())
     }
     fn del(&mut self, k: StringKey) -> Result<(), KvStoreError> {
@@ -115,7 +128,7 @@ impl KvStore for RamKvStore {
         for op in ops.into_iter() {
             match op {
                 WriteOp::Remove(k) => self.0.remove(&k.0),
-                WriteOp::Put(k, v) => self.0.insert(k.0, v),
+                WriteOp::Put(k, v) => self.0.insert(k.0, v.0),
             };
         }
         Ok(())

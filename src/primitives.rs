@@ -13,7 +13,7 @@ impl U256 {
 
 pub type Signature = u8;
 pub type Hash = U256;
-pub type Money = u8;
+pub type Money = u32;
 
 impl Hash {
     pub fn generate(data: &Vec<u8>) -> Self {

@@ -42,7 +42,7 @@ impl<K: KvStore> KvStoreChain<K> {
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_balance(&self, addr: Address) -> Result<Money, BlockchainError> {
         Ok(match self.database.get(addr.get_key())? {
-            Some(b) => Money::from_le_bytes([b[0]]),
+            Some(b) => b.as_u32()?,
             None => 0,
         })
     }
@@ -50,6 +50,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         unimplemented!();
     }
     fn get_height(&self) -> Result<usize, BlockchainError> {
-        Ok(0)
+        Ok(match self.database.get(StringKey::new("height"))? {
+            Some(b) => b.as_usize()?,
+            None => 0,
+        })
     }
 }
