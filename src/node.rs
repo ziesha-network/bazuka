@@ -1,4 +1,4 @@
-use super::blockchain::Blockchain;
+use super::blockchain::{Blockchain, BlockchainError};
 use super::messages::*;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -9,11 +9,18 @@ use warp::Filter;
 #[derive(Debug)]
 pub enum NodeError {
     ClientError(reqwest::Error),
+    BlockchainError(BlockchainError),
 }
 
 impl From<reqwest::Error> for NodeError {
     fn from(e: reqwest::Error) -> Self {
         Self::ClientError(e)
+    }
+}
+
+impl From<BlockchainError> for NodeError {
+    fn from(e: BlockchainError) -> Self {
+        Self::BlockchainError(e)
     }
 }
 
@@ -38,7 +45,7 @@ impl<B: Blockchain> Node<B> {
                 address: "hahaha".to_string(),
                 info: PeerInfo {
                     last_seen: 0,
-                    height: self.blockchain.get_height(),
+                    height: self.blockchain.get_height()?,
                 },
             })
             .send()
