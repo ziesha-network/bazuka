@@ -16,6 +16,11 @@ lazy_static! {
 
 #[tokio::main]
 async fn main() -> Result<(), NodeError> {
+    println!(
+        "Genesis hash: {:?}",
+        bazuka::genesis::get_genesis_block().hash()
+    );
+
     let hasher = MiMC::new(b"mimc");
     println!(
         "MiMC output: {:?}",
