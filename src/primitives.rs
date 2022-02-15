@@ -1,3 +1,4 @@
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Sha3_256};
 use std::convert::TryInto;
@@ -8,6 +9,11 @@ pub struct U256([u8; 32]);
 impl U256 {
     pub fn empty() -> Self {
         Self([0u8; 32])
+    }
+    pub fn random<R: RngCore>(rng: &mut R) -> Self {
+        let mut data = [0u8; 32];
+        rng.fill_bytes(&mut data);
+        Self(data)
     }
 }
 
