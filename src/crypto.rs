@@ -1,4 +1,5 @@
-use ff::{Field, PrimeField};
+use super::primitives::U256;
+use ff::{Field, PrimeField, PrimeFieldBits};
 use sha3::{Digest, Sha3_256};
 use std::convert::TryInto;
 use std::ops::*;
@@ -21,7 +22,7 @@ pub trait VerifiableRandomFunction<Pub, Priv, Output, Proof> {
 #[PrimeFieldReprEndianness = "little"]
 pub struct Fr([u64; 4]);
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PointAffine(Fr, Fr);
 
 impl AddAssign for PointAffine {
@@ -44,6 +45,9 @@ impl AddAssign for PointAffine {
 }
 
 impl PointAffine {
+    pub fn zero() -> Self {
+        Self(Fr::zero(), Fr::one())
+    }
     pub fn double(&mut self) {
         let xx = (*A * self.0 * self.0 + self.1 * self.1).invert().unwrap();
         let yy = (Fr::one() + Fr::one() - *A * self.0 * self.0 - self.1 * self.1)
@@ -53,6 +57,16 @@ impl PointAffine {
             ((self.0 * self.1) * xx).double(),
             (self.1 * self.1 - *A * self.0 * self.0) * yy,
         )
+    }
+    pub fn multiply(&mut self, scalar: &Vec<bool>) {
+        let mut result = PointAffine::zero();
+        for bit in scalar.iter().rev() {
+            result.double();
+            if *bit {
+                result.add_assign(*self);
+            }
+        }
+        *self = result;
     }
 }
 
@@ -112,6 +126,59 @@ impl MiMC {
             digest.add_assign(&self.encrypt(d.clone(), &digest));
         }
         digest
+    }
+}
+
+pub struct EdDSA;
+
+pub struct PublicKey {
+    point: PointAffine,
+}
+pub struct PrivateKey {
+    randomness: U256,
+    scalar: U256,
+}
+
+pub fn bits_to_u8(bits: &Vec<bool>) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    for chunk in bits.chunks(8) {
+        let mut byte = 0u8;
+        for bit in chunk {
+            byte = byte << 1;
+            byte = byte + (if *bit { 1 } else { 0 });
+        }
+        bytes.push(byte);
+    }
+    bytes
+}
+
+impl EdDSA {
+    pub fn generate_keys(seed: &Vec<u8>) -> (PublicKey, PrivateKey) {
+        let (randomness, scalar) = U256::generate_two(seed);
+        let mut pk = BASE.clone();
+        pk.multiply(&scalar.to_bits().to_vec());
+        (PublicKey { point: pk }, PrivateKey { randomness, scalar })
+    }
+    pub fn sign(pk: PublicKey, sk: PrivateKey, message: &Vec<u8>) -> Vec<u8> {
+        // r=H(b,M)
+        let mut randomized_message = sk.randomness.to_bytes().to_vec();
+        randomized_message.extend(message);
+        let (r, _) = U256::generate_two(&randomized_message);
+
+        // R=rB
+        let mut rr = BASE.clone();
+        rr.multiply(&r.to_bits().to_vec());
+
+        // h=H(R,A,M)
+        let mut inp = Vec::new();
+        inp.extend(bits_to_u8(&rr.0.to_le_bits().into_iter().collect()));
+        inp.extend(bits_to_u8(&rr.1.to_le_bits().into_iter().collect()));
+        inp.extend(bits_to_u8(&pk.point.0.to_le_bits().into_iter().collect()));
+        inp.extend(bits_to_u8(&pk.point.1.to_le_bits().into_iter().collect()));
+        inp.extend(message);
+        let (h1, h2) = U256::generate_two(&inp);
+
+        Vec::new()
     }
 }
 

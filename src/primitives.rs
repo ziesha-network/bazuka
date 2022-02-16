@@ -15,6 +15,16 @@ impl U256 {
         rng.fill_bytes(&mut data);
         Self(data)
     }
+    pub fn to_bits(&self) -> [bool; 256] {
+        let mut ret = [false; 256];
+        for i in 0..256 {
+            ret[i] = ((self.0[i / 8] >> (i % 8)) & 1) == 1;
+        }
+        ret
+    }
+    pub fn to_bytes(&self) -> &[u8; 32] {
+        &self.0
+    }
 }
 
 pub type Signature = u8;
@@ -26,6 +36,21 @@ impl Hash {
         let mut hasher = Sha3_256::new();
         hasher.update(data);
         Self(hasher.finalize().try_into().unwrap())
+    }
+
+    // Dummy implementation of a 512-bit hash function, used for generating
+    // scalar and randomness of EdDSA signatures.
+    pub fn generate_two(data: &Vec<u8>) -> (Self, Self) {
+        let mut hasher = Sha3_256::new();
+        hasher.update(data);
+        let first: [u8; 32] = hasher.finalize().try_into().unwrap();
+
+        let mut hasher = Sha3_256::new();
+        hasher.update(data);
+        hasher.update(data);
+        let second: [u8; 32] = hasher.finalize().try_into().unwrap();
+
+        (Self(first), Self(second))
     }
 }
 
