@@ -1,21 +1,20 @@
 use super::blockchain::{Blockchain, BlockchainError};
 use super::messages::*;
+use hyper::service::{make_service_fn, service_fn};
+use hyper::{Body, Client, Method, Request, Response, Server, StatusCode};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::convert::Infallible;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 use tokio::try_join;
-use warp::Filter;
 
 #[derive(Debug)]
 pub enum NodeError {
-    ClientError(reqwest::Error),
     BlockchainError(BlockchainError),
-}
-
-impl From<reqwest::Error> for NodeError {
-    fn from(e: reqwest::Error) -> Self {
-        Self::ClientError(e)
-    }
+    ServerError(hyper::Error),
+    ClientError(hyper::http::Error),
 }
 
 impl From<BlockchainError> for NodeError {
@@ -23,44 +22,111 @@ impl From<BlockchainError> for NodeError {
         Self::BlockchainError(e)
     }
 }
-
-pub struct Node<B: Blockchain> {
-    blockchain: B,
-    peers: Arc<Mutex<HashMap<PeerAddress, PeerInfo>>>,
+impl From<hyper::Error> for NodeError {
+    fn from(e: hyper::Error) -> Self {
+        Self::ServerError(e)
+    }
+}
+impl From<hyper::http::Error> for NodeError {
+    fn from(e: hyper::http::Error) -> Self {
+        Self::ClientError(e)
+    }
 }
 
-impl<B: Blockchain> Node<B> {
+pub struct NodeContext<B: Blockchain> {
+    blockchain: B,
+    peers: HashMap<PeerAddress, PeerInfo>,
+}
+
+pub struct Node<B: Blockchain> {
+    context: Arc<Mutex<NodeContext<B>>>,
+}
+
+async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
+    addr: &str,
+    req: Req,
+) -> Result<Resp, NodeError> {
+    let client = Client::new();
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri(addr)
+        .header("content-type", "application/json")
+        .body(Body::from(serde_json::to_vec(&req).unwrap()))?;
+    let body = client.request(req).await?.into_body();
+    let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?).unwrap();
+    Ok(resp)
+}
+
+async fn json_get<Resp: serde::de::DeserializeOwned>(addr: &str) -> Result<Resp, NodeError> {
+    let client = Client::new();
+    let req = Request::builder()
+        .method(Method::GET)
+        .uri(addr)
+        .body(Body::empty())?;
+    let body = client.request(req).await?.into_body();
+    let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?).unwrap();
+    Ok(resp)
+}
+
+async fn node_service<B: Blockchain>(
+    context: Arc<Mutex<NodeContext<B>>>,
+    req: Request<Body>,
+) -> Result<Response<Body>, Infallible> {
+    let mut response = Response::new(Body::empty());
+    let mut context = context.lock().await;
+
+    match (req.method(), req.uri().path()) {
+        (&Method::GET, "/peers") => {
+            *response.body_mut() = Body::from(
+                serde_json::to_vec(&GetPeersResponse {
+                    peers: context.peers.clone(),
+                })
+                .unwrap(),
+            );
+        }
+        (&Method::POST, "/peers") => {
+            let body = req.into_body();
+            let req: PostPeerRequest =
+                serde_json::from_slice(&hyper::body::to_bytes(body).await.unwrap()).unwrap();
+            context.peers.insert(req.address, req.info);
+            *response.body_mut() = Body::from(serde_json::to_vec(&PostPeerResponse {}).unwrap());
+        }
+        _ => {
+            *response.status_mut() = StatusCode::NOT_FOUND;
+        }
+    };
+
+    Ok(response)
+}
+
+impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
     pub fn new(blockchain: B) -> Node<B> {
         Node {
-            blockchain,
-            peers: Arc::new(Mutex::new(HashMap::new())),
+            context: Arc::new(Mutex::new(NodeContext {
+                blockchain,
+                peers: HashMap::new(),
+            })),
         }
     }
 
     async fn introduce(&self, addr: &str) -> Result<PostPeerResponse, NodeError> {
-        let client = reqwest::Client::new();
-        let resp = client
-            .post(format!("{}/peers", addr))
-            .json(&PostPeerRequest {
+        let height = self.context.lock().await.blockchain.get_height()?;
+        json_post(
+            &format!("{}/peers", addr),
+            PostPeerRequest {
                 address: "hahaha".to_string(),
                 info: PeerInfo {
                     last_seen: 0,
-                    height: self.blockchain.get_height()?,
+                    height,
                 },
-            })
-            .send()
-            .await?
-            .json::<PostPeerResponse>()
-            .await?;
-        Ok(resp)
+            },
+        )
+        .await
     }
 
     async fn request_peers(&self, addr: &str) -> Result<Vec<String>, NodeError> {
-        let resp = reqwest::get(format!("{}/peers", addr))
-            .await?
-            .json::<Vec<String>>()
-            .await?;
-        Ok(resp)
+        let resp: GetPeersResponse = json_get(&format!("{}/peers", addr)).await?;
+        Ok(resp.peers.keys().cloned().collect())
     }
 
     async fn heartbeat(&self) -> Result<(), NodeError> {
@@ -75,30 +141,18 @@ impl<B: Blockchain> Node<B> {
     }
 
     async fn server(&'static self) -> Result<(), NodeError> {
-        let peers_arc_get = Arc::clone(&self.peers);
-        let peers_get = warp::path("peers").and(warp::get()).map(move || {
-            let peers = peers_arc_get
-                .lock()
-                .unwrap()
-                .keys()
-                .cloned()
-                .collect::<Vec<String>>();
-            warp::reply::json(&peers)
+        let addr = SocketAddr::from(([127, 0, 0, 1], 3030));
+        let node_context = self.context.clone();
+        let make_svc = make_service_fn(|_| {
+            let node_context = Arc::clone(&node_context);
+            async move {
+                Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
+                    let node_context = Arc::clone(&node_context);
+                    async move { node_service(node_context, req).await }
+                }))
+            }
         });
-
-        let peers_arc_post = Arc::clone(&self.peers);
-        let peers_post = warp::path("peers")
-            .and(warp::post())
-            .and(warp::body::json())
-            .map(move |body: PostPeerRequest| {
-                let mut peers = peers_arc_post.lock().unwrap();
-                peers.entry(body.address).or_insert(body.info);
-
-                warp::reply::json(&PostPeerResponse {})
-            });
-
-        let routes = peers_get.or(peers_post);
-        warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+        Server::bind(&addr).serve(make_svc).await?;
 
         Ok(())
     }

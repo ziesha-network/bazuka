@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 pub type PeerAddress = String;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct PeerInfo {
     pub last_seen: u64,
     pub height: usize,
@@ -23,7 +23,7 @@ pub struct GetPeersRequest {}
 
 #[derive(Deserialize, Serialize)]
 pub struct GetPeersResponse {
-    pub peers: HashMap<String, PeerInfo>,
+    pub peers: HashMap<PeerAddress, PeerInfo>,
 }
 
 #[derive(Deserialize, Serialize)]
