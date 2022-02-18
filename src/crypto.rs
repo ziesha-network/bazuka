@@ -134,6 +134,8 @@ pub struct EdDSA;
 pub struct PublicKey {
     point: PointAffine,
 }
+
+#[allow(unused)]
 pub struct PrivateKey {
     randomness: U256,
     scalar: U256,
@@ -176,9 +178,9 @@ impl EdDSA {
         inp.extend(bits_to_u8(&pk.point.0.to_le_bits().into_iter().collect()));
         inp.extend(bits_to_u8(&pk.point.1.to_le_bits().into_iter().collect()));
         inp.extend(message);
-        let (h1, h2) = U256::generate_two(&inp);
+        let (_h1, _h2) = U256::generate_two(&inp);
 
-        Vec::new()
+        unimplemented!();
     }
 }
 

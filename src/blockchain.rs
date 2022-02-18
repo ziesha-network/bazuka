@@ -1,4 +1,4 @@
-use super::db::{KvStore, KvStoreError, StringKey};
+use super::db::{KvStore, KvStoreError, StringKey, WriteOp};
 use super::primitives::{Address, Block, Money, Transaction};
 use thiserror::Error;
 
@@ -32,7 +32,16 @@ impl<K: KvStore> KvStoreChain<K> {
     pub fn new(kv_store: K) -> KvStoreChain<K> {
         KvStoreChain::<K> { database: kv_store }
     }
-    fn apply_tx(tx: &Transaction) {}
+    fn apply_tx(&self, _tx: &Transaction) -> Vec<WriteOp> {
+        unimplemented!();
+    }
+    fn apply_block(&self, block: &Block) -> Vec<WriteOp> {
+        let mut changes = Vec::new();
+        for tx in block.body.iter() {
+            changes.extend(self.apply_tx(tx))
+        }
+        changes
+    }
 }
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
@@ -42,7 +51,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             None => 0,
         })
     }
-    fn extend(&mut self, _blocks: &Vec<Block>) -> Result<(), BlockchainError> {
+    fn extend(&mut self, blocks: &Vec<Block>) -> Result<(), BlockchainError> {
+        for block in blocks.iter() {
+            let delta = self.apply_block(block);
+            self.database.batch(delta)?;
+        }
         unimplemented!();
     }
     fn get_height(&self) -> Result<usize, BlockchainError> {
