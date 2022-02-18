@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use thiserror::Error;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use tokio::time::{sleep, Duration};
 use tokio::try_join;
 
@@ -28,7 +28,7 @@ pub struct NodeContext<B: Blockchain> {
 }
 
 pub struct Node<B: Blockchain> {
-    context: Arc<Mutex<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
 }
 
 async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
@@ -58,11 +58,11 @@ async fn json_get<Resp: serde::de::DeserializeOwned>(addr: &str) -> Result<Resp,
 }
 
 async fn node_service<B: Blockchain>(
-    context: Arc<Mutex<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
     let mut response = Response::new(Body::empty());
-    let mut context = context.lock().await;
+    let mut context = context.write().await;
 
     match (req.method(), req.uri().path()) {
         (&Method::GET, "/peers") => {
@@ -87,7 +87,7 @@ async fn node_service<B: Blockchain>(
 impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
     pub fn new(blockchain: B) -> Node<B> {
         Node {
-            context: Arc::new(Mutex::new(NodeContext {
+            context: Arc::new(RwLock::new(NodeContext {
                 blockchain,
                 peers: HashMap::new(),
             })),
@@ -95,7 +95,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
     }
 
     async fn introduce(&self, addr: &str) -> Result<PostPeerResponse, NodeError> {
-        let height = self.context.lock().await.blockchain.get_height()?;
+        let height = self.context.read().await.blockchain.get_height()?;
         json_post(
             &format!("{}/peers", addr),
             PostPeerRequest {
