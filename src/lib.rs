@@ -7,7 +7,5 @@ pub mod crypto;
 pub mod db;
 pub mod genesis;
 pub mod messages;
-pub mod net;
-pub mod network;
 pub mod node;
 pub mod primitives;
