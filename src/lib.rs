@@ -7,5 +7,7 @@ pub mod crypto;
 pub mod db;
 pub mod genesis;
 pub mod messages;
-pub mod node;
 pub mod primitives;
+
+#[cfg(feature = "node")]
+pub mod node;
