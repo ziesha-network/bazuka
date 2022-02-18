@@ -1,8 +1,11 @@
 use crate::core::U256;
 use ff::{Field, PrimeField, PrimeFieldBits};
+use num_bigint::BigUint;
+use num_integer::Integer;
 use sha3::{Digest, Sha3_256};
 use std::convert::TryInto;
 use std::ops::*;
+use std::str::FromStr;
 
 pub trait SignatureScheme<Pub, Priv, Sig> {
     fn generate() -> (Pub, Priv);
@@ -86,6 +89,10 @@ lazy_static! {
         )
         .unwrap()
     );
+    static ref ORDER: BigUint = BigUint::from_str(
+        "2736030358979909402780800718157159386076813972158567259200215660948447373041"
+    )
+    .unwrap();
 }
 
 pub struct MiMC {
@@ -131,21 +138,28 @@ impl MiMC {
 
 pub struct EdDSA;
 
+#[derive(Clone)]
 pub struct PublicKey {
     point: PointAffine,
 }
 
-#[allow(unused)]
+#[derive(Clone)]
 pub struct PrivateKey {
     randomness: U256,
     scalar: U256,
+}
+
+#[derive(Clone)]
+pub struct Signature {
+    r: PointAffine,
+    s: U256,
 }
 
 pub fn bits_to_u8(bits: &Vec<bool>) -> Vec<u8> {
     let mut bytes = Vec::new();
     for chunk in bits.chunks(8) {
         let mut byte = 0u8;
-        for bit in chunk {
+        for bit in chunk.iter().rev() {
             byte = byte << 1;
             byte = byte + (if *bit { 1 } else { 0 });
         }
@@ -161,7 +175,7 @@ impl EdDSA {
         pk.multiply(&scalar.to_bits().to_vec());
         (PublicKey { point: pk }, PrivateKey { randomness, scalar })
     }
-    pub fn sign(pk: PublicKey, sk: PrivateKey, message: &Vec<u8>) -> Vec<u8> {
+    pub fn sign(pk: PublicKey, sk: PrivateKey, message: &Vec<u8>) -> Signature {
         // r=H(b,M)
         let mut randomized_message = sk.randomness.to_bytes().to_vec();
         randomized_message.extend(message);
@@ -178,9 +192,38 @@ impl EdDSA {
         inp.extend(bits_to_u8(&pk.point.0.to_le_bits().into_iter().collect()));
         inp.extend(bits_to_u8(&pk.point.1.to_le_bits().into_iter().collect()));
         inp.extend(message);
-        let (_h1, _h2) = U256::generate_two(&inp);
+        let (h, _) = U256::generate_two(&inp);
 
-        unimplemented!();
+        // s = (r + ha) mod ORDER
+        let mut s = BigUint::from_bytes_le(&r.0);
+        let mut ha = BigUint::from_bytes_le(&h.0);
+        ha.mul_assign(&BigUint::from_bytes_le(&sk.scalar.0));
+        s.add_assign(&ha);
+        s = s.mod_floor(&*ORDER);
+
+        Signature {
+            r: rr,
+            s: U256::from_bytes(&s.to_bytes_le()),
+        }
+    }
+    pub fn verify(pk: PublicKey, message: &Vec<u8>, sig: Signature) -> bool {
+        // h=H(R,A,M)
+        let mut inp = Vec::new();
+        inp.extend(bits_to_u8(&sig.r.0.to_le_bits().into_iter().collect()));
+        inp.extend(bits_to_u8(&sig.r.1.to_le_bits().into_iter().collect()));
+        inp.extend(bits_to_u8(&pk.point.0.to_le_bits().into_iter().collect()));
+        inp.extend(bits_to_u8(&pk.point.1.to_le_bits().into_iter().collect()));
+        inp.extend(message);
+        let (h, _) = U256::generate_two(&inp);
+
+        let mut sb = BASE.clone();
+        sb.multiply(&sig.s.to_bits().to_vec());
+
+        let mut r_plus_ha = pk.point.clone();
+        r_plus_ha.multiply(&h.to_bits().to_vec());
+        r_plus_ha.add_assign(sig.r);
+
+        r_plus_ha == sb
     }
 }
 

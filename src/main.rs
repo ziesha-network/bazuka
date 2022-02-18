@@ -42,4 +42,13 @@ fn main() {
         "MiMC output: {:?}",
         hasher.hash(&vec![Fr::zero(), Fr::one()])
     );
+
+    let (pk, sk) = bazuka::crypto::EdDSA::generate_keys(&b"SEED".to_vec());
+
+    let msg = &b"Hi this a transaction!".to_vec();
+    let sig = bazuka::crypto::EdDSA::sign(pk.clone(), sk, &msg);
+    println!(
+        "Verify signature: {}",
+        bazuka::crypto::EdDSA::verify(pk, &msg, sig)
+    );
 }

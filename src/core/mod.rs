@@ -3,12 +3,17 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Sha3_256};
 use std::convert::TryInto;
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
-pub struct U256([u8; 32]);
+#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
+pub struct U256(pub [u8; 32]);
 
 impl U256 {
     pub fn empty() -> Self {
         Self([0u8; 32])
+    }
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        let mut data = [0u8; 32];
+        data.copy_from_slice(bytes);
+        Self(data)
     }
     pub fn random<R: RngCore>(rng: &mut R) -> Self {
         let mut data = [0u8; 32];
