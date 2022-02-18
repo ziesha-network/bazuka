@@ -3,34 +3,23 @@ use super::messages::*;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Client, Method, Request, Response, Server, StatusCode};
 use std::collections::HashMap;
-use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use thiserror::Error;
 use tokio::sync::Mutex;
 use tokio::time::{sleep, Duration};
 use tokio::try_join;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum NodeError {
-    BlockchainError(BlockchainError),
-    ServerError(hyper::Error),
-    ClientError(hyper::http::Error),
-}
-
-impl From<BlockchainError> for NodeError {
-    fn from(e: BlockchainError) -> Self {
-        Self::BlockchainError(e)
-    }
-}
-impl From<hyper::Error> for NodeError {
-    fn from(e: hyper::Error) -> Self {
-        Self::ServerError(e)
-    }
-}
-impl From<hyper::http::Error> for NodeError {
-    fn from(e: hyper::http::Error) -> Self {
-        Self::ClientError(e)
-    }
+    #[error("blockchain error happened")]
+    BlockchainError(#[from] BlockchainError),
+    #[error("server error happened")]
+    ServerError(#[from] hyper::Error),
+    #[error("client error happened")]
+    ClientError(#[from] hyper::http::Error),
+    #[error("serde error happened")]
+    SerdeError(#[from] serde_json::Error),
 }
 
 pub struct NodeContext<B: Blockchain> {
@@ -51,9 +40,9 @@ async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
         .method(Method::POST)
         .uri(addr)
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_vec(&req).unwrap()))?;
+        .body(Body::from(serde_json::to_vec(&req)?))?;
     let body = client.request(req).await?.into_body();
-    let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?).unwrap();
+    let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
     Ok(resp)
 }
 
@@ -64,32 +53,28 @@ async fn json_get<Resp: serde::de::DeserializeOwned>(addr: &str) -> Result<Resp,
         .uri(addr)
         .body(Body::empty())?;
     let body = client.request(req).await?.into_body();
-    let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?).unwrap();
+    let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
     Ok(resp)
 }
 
 async fn node_service<B: Blockchain>(
     context: Arc<Mutex<NodeContext<B>>>,
     req: Request<Body>,
-) -> Result<Response<Body>, Infallible> {
+) -> Result<Response<Body>, NodeError> {
     let mut response = Response::new(Body::empty());
     let mut context = context.lock().await;
 
     match (req.method(), req.uri().path()) {
         (&Method::GET, "/peers") => {
-            *response.body_mut() = Body::from(
-                serde_json::to_vec(&GetPeersResponse {
-                    peers: context.peers.clone(),
-                })
-                .unwrap(),
-            );
+            *response.body_mut() = Body::from(serde_json::to_vec(&GetPeersResponse {
+                peers: context.peers.clone(),
+            })?);
         }
         (&Method::POST, "/peers") => {
             let body = req.into_body();
-            let req: PostPeerRequest =
-                serde_json::from_slice(&hyper::body::to_bytes(body).await.unwrap()).unwrap();
+            let req: PostPeerRequest = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
             context.peers.insert(req.address, req.info);
-            *response.body_mut() = Body::from(serde_json::to_vec(&PostPeerResponse {}).unwrap());
+            *response.body_mut() = Body::from(serde_json::to_vec(&PostPeerResponse {})?);
         }
         _ => {
             *response.status_mut() = StatusCode::NOT_FOUND;
@@ -146,7 +131,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
         let make_svc = make_service_fn(|_| {
             let node_context = Arc::clone(&node_context);
             async move {
-                Ok::<_, Infallible>(service_fn(move |req: Request<Body>| {
+                Ok::<_, NodeError>(service_fn(move |req: Request<Body>| {
                     let node_context = Arc::clone(&node_context);
                     async move { node_service(node_context, req).await }
                 }))

@@ -1,15 +1,11 @@
 use super::db::{KvStore, KvStoreError, StringKey};
 use super::primitives::{Address, Block, Money, Transaction};
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum BlockchainError {
-    KvStoreError(KvStoreError),
-}
-
-impl From<KvStoreError> for BlockchainError {
-    fn from(e: KvStoreError) -> Self {
-        Self::KvStoreError(e)
-    }
+    #[error("kvstore error happened")]
+    KvStoreError(#[from] KvStoreError),
 }
 
 pub trait Blockchain {

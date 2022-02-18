@@ -19,3 +19,4 @@ ff = { version = "0.11", features = ["derive"] }
 sha3 = "0.10.0"
 bincode = "1.3.3"
 rand = "0.8.5"
+thiserror = "1.0"

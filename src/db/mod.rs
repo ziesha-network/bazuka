@@ -7,10 +7,13 @@ use leveldb::options::{Options, ReadOptions, WriteOptions};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use thiserror::Error;
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum KvStoreError {
+    #[error("kvstore failure")]
     Failure,
+    #[error("kvstore data corrupted")]
     Corrupted,
 }
 
