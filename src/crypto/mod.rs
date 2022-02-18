@@ -1,4 +1,4 @@
-use super::primitives::U256;
+use crate::core::U256;
 use ff::{Field, PrimeField, PrimeFieldBits};
 use sha3::{Digest, Sha3_256};
 use std::convert::TryInto;

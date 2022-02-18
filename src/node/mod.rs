@@ -1,7 +1,9 @@
-use super::blockchain::{Blockchain, BlockchainError};
-use super::messages::*;
+mod messages;
+
+use crate::blockchain::{Blockchain, BlockchainError};
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Client, Method, Request, Response, Server, StatusCode};
+use messages::*;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;

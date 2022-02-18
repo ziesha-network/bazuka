@@ -1,5 +1,5 @@
-use super::db::{KvStore, KvStoreError, StringKey, WriteOp};
-use super::primitives::{Address, Block, Money, Transaction};
+use crate::core::{Address, Block, Money, Transaction};
+use crate::db::{KvStore, KvStoreError, StringKey, WriteOp};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

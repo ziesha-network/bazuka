@@ -1,13 +1,12 @@
 #[macro_use]
 extern crate lazy_static;
 
-pub mod bank;
 pub mod blockchain;
+pub mod config;
+pub mod core;
 pub mod crypto;
 pub mod db;
-pub mod genesis;
-pub mod messages;
-pub mod primitives;
+pub mod zk;
 
 #[cfg(feature = "node")]
 pub mod node;

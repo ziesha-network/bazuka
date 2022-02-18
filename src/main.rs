@@ -34,7 +34,7 @@ async fn main() -> Result<(), NodeError> {
 fn main() {
     println!(
         "Genesis hash: {:?}",
-        bazuka::genesis::get_genesis_block().hash()
+        bazuka::config::genesis::get_genesis_block().hash()
     );
 
     let hasher = MiMC::new(b"mimc");

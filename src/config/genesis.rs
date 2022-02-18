@@ -1,4 +1,4 @@
-use super::primitives::{Address, Block, BlockHeader, Hash, Transaction};
+use crate::core::{Address, Block, BlockHeader, Hash, Transaction};
 
 pub fn get_genesis_block() -> Block {
     let mut b = Block {
