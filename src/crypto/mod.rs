@@ -207,9 +207,27 @@ impl MiMC {
 
 pub struct EdDSA;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PublicKey {
     point: PointAffine,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct CompactPublicKey(Fr);
+
+impl PublicKey {
+    pub fn from_compact(compact: &CompactPublicKey) -> Self {
+        let y = ((Fr::one() - *D * compact.0.square()).invert().unwrap()
+            * (Fr::one() - *A * compact.0.square()))
+        .sqrt()
+        .unwrap();
+        Self {
+            point: PointAffine(compact.0.clone(), y),
+        }
+    }
+    pub fn to_compact(&self) -> CompactPublicKey {
+        CompactPublicKey(self.point.0)
+    }
 }
 
 #[derive(Clone)]
@@ -315,6 +333,14 @@ impl SignatureScheme for EdDSA {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_compact_public_key() {
+        let (pk1, _) = bazuka::crypto::EdDSA::generate_keys(&b"ABC".to_vec());
+        let pk2 = bazuka::crypto::PublicKey::from_compact(&pk.to_compact());
+        assert_eq!(pk1, pk2);
+    }
+
     #[test]
     fn test_twisted_edwards_curve_ops() {
         // ((2G) + G) + G

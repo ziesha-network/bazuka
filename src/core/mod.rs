@@ -12,7 +12,7 @@ impl U256 {
     }
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let mut data = [0u8; 32];
-        data.copy_from_slice(bytes);
+        data[..bytes.len()].copy_from_slice(bytes);
         Self(data)
     }
     pub fn random<R: RngCore>(rng: &mut R) -> Self {
