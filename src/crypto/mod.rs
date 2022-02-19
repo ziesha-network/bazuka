@@ -378,7 +378,9 @@ mod tests {
     fn test_signature_verification() {
         let (pk, sk) = EdDSA::generate_keys(&b"ABC".to_vec());
         let msg = &b"Hi this a transaction!".to_vec();
+        let fake_msg = &b"Hi this a fake transaction!".to_vec();
         let sig = EdDSA::sign(&sk, &msg);
         assert!(EdDSA::verify(&pk, &msg, &sig));
+        assert!(!EdDSA::verify(&pk, &fake_msg, &sig));
     }
 }
