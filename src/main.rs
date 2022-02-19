@@ -8,7 +8,7 @@ use {
 
 #[cfg(not(feature = "node"))]
 use {
-    bazuka::crypto::{Fr, MiMC, SignatureScheme},
+    bazuka::crypto::{Fr, MiMC, SignatureScheme, BASE},
     ff::Field,
 };
 

@@ -31,6 +31,9 @@ pub struct Fr([u64; 4]);
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PointAffine(Fr, Fr);
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PointProjective(Fr, Fr, Fr);
+
 impl AddAssign for PointAffine {
     fn add_assign(&mut self, other: Self) {
         if *self == other {
@@ -65,14 +68,73 @@ impl PointAffine {
         )
     }
     pub fn multiply(&mut self, scalar: &U256) {
-        let mut result = PointAffine::zero();
+        let mut result = PointProjective::zero();
+        let self_proj = self.to_projective();
         for bit in scalar.to_bits().iter().rev() {
-            result.double();
+            result = result.double();
             if *bit {
-                result.add_assign(*self);
+                result.add_assign(&self_proj);
             }
         }
-        *self = result;
+        *self = result.to_affine();
+    }
+    pub fn to_projective(&self) -> PointProjective {
+        PointProjective(self.0, self.1, Fr::one())
+    }
+}
+
+impl AddAssign<&PointProjective> for PointProjective {
+    fn add_assign(&mut self, other: &PointProjective) {
+        if self.is_zero() {
+            *self = *other;
+            return;
+        }
+        if other.is_zero() {
+            return;
+        }
+        if self.to_affine() == other.to_affine() {
+            *self = self.double();
+            return;
+        }
+        let a = self.2 * other.2; // A = Z1 * Z2
+        let b = a.square(); // B = A^2
+        let c = self.0 * other.0; // C = X1 * X2
+        let d = self.1 * other.1; // D = Y1 * Y2
+        let e = *D * c * d; // E = dC · D
+        let f = b - e; // F = B − E
+        let g = b + e; // G = B + E
+        self.0 = a * f * ((self.0 + self.1) * (other.0 + other.1) - c - d);
+        self.1 = a * g * (d - *A * c);
+        self.2 = f * g;
+    }
+}
+
+impl PointProjective {
+    pub fn zero() -> Self {
+        PointProjective(Fr::zero(), Fr::one(), Fr::zero())
+    }
+    pub fn is_zero(&self) -> bool {
+        self.2.is_zero().into()
+    }
+    pub fn double(&mut self) -> PointProjective {
+        if self.is_zero() {
+            return PointProjective::zero();
+        }
+        let b = (self.0 + self.1).square();
+        let c = self.0.square();
+        let d = self.1.square();
+        let e = *A * c;
+        let f = e + d;
+        let h = self.2.square();
+        let j = f - h.double();
+        PointProjective((b - c - d) * j, f * (e - d), f * j)
+    }
+    pub fn to_affine(&self) -> PointAffine {
+        if self.is_zero() {
+            return PointAffine::zero();
+        }
+        let zinv = self.2.invert().unwrap();
+        PointAffine(self.0 * zinv, self.1 * zinv)
     }
 }
 
@@ -271,5 +333,15 @@ mod tests {
         c.add_assign(BASE.clone());
 
         assert_eq!(b, c);
+
+        // Check if projective points are working
+        let mut pnt1 = BASE.clone().to_projective().double().double();
+        pnt1.add_assign(&BASE.clone().to_projective());
+        let mut pnt2 = BASE.clone();
+        pnt2.double();
+        pnt2.double();
+        pnt2.add_assign(BASE.clone());
+
+        assert_eq!(pnt1.to_affine(), pnt2);
     }
 }
