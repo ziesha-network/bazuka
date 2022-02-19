@@ -1,5 +1,5 @@
 use crate::core::U256;
-use ff::{Field, PrimeField, PrimeFieldBits};
+use ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use num_integer::Integer;
 use sha3::{Digest, Sha3_256};
@@ -277,10 +277,10 @@ impl SignatureScheme for EdDSA {
 
         // h=H(R,A,M)
         let mut inp = Vec::new();
-        inp.extend(&rr.0.to_repr().as_ref().to_vec());
-        inp.extend(&rr.1.to_repr().as_ref().to_vec());
-        inp.extend(&sk.public_key.point.0.to_repr().as_ref().to_vec());
-        inp.extend(&sk.public_key.point.1.to_repr().as_ref().to_vec());
+        inp.extend_from_slice(rr.0.to_repr().as_ref());
+        inp.extend_from_slice(rr.1.to_repr().as_ref());
+        inp.extend_from_slice(sk.public_key.point.0.to_repr().as_ref());
+        inp.extend_from_slice(sk.public_key.point.1.to_repr().as_ref());
         inp.extend(message);
         let (h, _) = U256::generate_two(&inp);
 
@@ -299,10 +299,10 @@ impl SignatureScheme for EdDSA {
     fn verify(pk: &PublicKey, message: &Vec<u8>, sig: &Signature) -> bool {
         // h=H(R,A,M)
         let mut inp = Vec::new();
-        inp.extend(&sig.r.0.to_repr().as_ref().to_vec());
-        inp.extend(&sig.r.1.to_repr().as_ref().to_vec());
-        inp.extend(&pk.point.0.to_repr().as_ref().to_vec());
-        inp.extend(&pk.point.1.to_repr().as_ref().to_vec());
+        inp.extend_from_slice(sig.r.0.to_repr().as_ref());
+        inp.extend_from_slice(sig.r.1.to_repr().as_ref());
+        inp.extend_from_slice(pk.point.0.to_repr().as_ref());
+        inp.extend_from_slice(pk.point.1.to_repr().as_ref());
         inp.extend(message);
         let (h, _) = U256::generate_two(&inp);
 
