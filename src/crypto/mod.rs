@@ -221,7 +221,8 @@ impl PublicKey {
             * (Fr::one() - *A * compact.0.square()))
         .sqrt()
         .unwrap();
-        if compact.1 != y.is_odd().into() {
+        let is_odd: bool = y.is_odd().into();
+        if compact.1 != is_odd {
             y = y.neg();
         }
         Self {
@@ -339,8 +340,8 @@ mod tests {
 
     #[test]
     fn test_compact_public_key() {
-        let (pk1, _) = bazuka::crypto::EdDSA::generate_keys(&b"ABC".to_vec());
-        let pk2 = bazuka::crypto::PublicKey::from_compact(&pk.to_compact());
+        let (pk1, _) = EdDSA::generate_keys(&b"ABC".to_vec());
+        let pk2 = PublicKey::from_compact(&pk1.to_compact());
         assert_eq!(pk1, pk2);
     }
 
@@ -371,5 +372,13 @@ mod tests {
         pnt2.add_assign(&BASE);
 
         assert_eq!(pnt1.to_affine(), pnt2);
+    }
+
+    #[test]
+    fn test_signature_verification() {
+        let (pk, sk) = EdDSA::generate_keys(&b"ABC".to_vec());
+        let msg = &b"Hi this a transaction!".to_vec();
+        let sig = EdDSA::sign(&sk, &msg);
+        assert!(EdDSA::verify(&pk, &msg, &sig));
     }
 }
