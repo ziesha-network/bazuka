@@ -247,19 +247,6 @@ pub struct Signature {
     s: U256,
 }
 
-pub fn bits_to_u8(bits: &Vec<bool>) -> Vec<u8> {
-    let mut bytes = Vec::new();
-    for chunk in bits.chunks(8) {
-        let mut byte = 0u8;
-        for bit in chunk.iter().rev() {
-            byte = byte << 1;
-            byte = byte + (if *bit { 1 } else { 0 });
-        }
-        bytes.push(byte);
-    }
-    bytes
-}
-
 impl SignatureScheme for EdDSA {
     type Pub = PublicKey;
     type Priv = PrivateKey;
@@ -290,14 +277,10 @@ impl SignatureScheme for EdDSA {
 
         // h=H(R,A,M)
         let mut inp = Vec::new();
-        inp.extend(bits_to_u8(&rr.0.to_le_bits().into_iter().collect()));
-        inp.extend(bits_to_u8(&rr.1.to_le_bits().into_iter().collect()));
-        inp.extend(bits_to_u8(
-            &sk.public_key.point.0.to_le_bits().into_iter().collect(),
-        ));
-        inp.extend(bits_to_u8(
-            &sk.public_key.point.1.to_le_bits().into_iter().collect(),
-        ));
+        inp.extend(&rr.0.to_repr().as_ref().to_vec());
+        inp.extend(&rr.1.to_repr().as_ref().to_vec());
+        inp.extend(&sk.public_key.point.0.to_repr().as_ref().to_vec());
+        inp.extend(&sk.public_key.point.1.to_repr().as_ref().to_vec());
         inp.extend(message);
         let (h, _) = U256::generate_two(&inp);
 
@@ -316,10 +299,10 @@ impl SignatureScheme for EdDSA {
     fn verify(pk: &PublicKey, message: &Vec<u8>, sig: &Signature) -> bool {
         // h=H(R,A,M)
         let mut inp = Vec::new();
-        inp.extend(bits_to_u8(&sig.r.0.to_le_bits().into_iter().collect()));
-        inp.extend(bits_to_u8(&sig.r.1.to_le_bits().into_iter().collect()));
-        inp.extend(bits_to_u8(&pk.point.0.to_le_bits().into_iter().collect()));
-        inp.extend(bits_to_u8(&pk.point.1.to_le_bits().into_iter().collect()));
+        inp.extend(&sig.r.0.to_repr().as_ref().to_vec());
+        inp.extend(&sig.r.1.to_repr().as_ref().to_vec());
+        inp.extend(&pk.point.0.to_repr().as_ref().to_vec());
+        inp.extend(&pk.point.1.to_repr().as_ref().to_vec());
         inp.extend(message);
         let (h, _) = U256::generate_two(&inp);
 
