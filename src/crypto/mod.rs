@@ -34,10 +34,10 @@ pub struct PointAffine(Fr, Fr);
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PointProjective(Fr, Fr, Fr);
 
-impl AddAssign for PointAffine {
-    fn add_assign(&mut self, other: Self) {
-        if *self == other {
-            self.double();
+impl AddAssign<&PointAffine> for PointAffine {
+    fn add_assign(&mut self, other: &PointAffine) {
+        if *self == *other {
+            *self = self.double();
             return;
         }
         let xx = (Fr::one() + *D * self.0 * other.0 * self.1 * other.1)
@@ -57,15 +57,15 @@ impl PointAffine {
     pub fn zero() -> Self {
         Self(Fr::zero(), Fr::one())
     }
-    pub fn double(&mut self) {
+    pub fn double(&self) -> Self {
         let xx = (*A * self.0 * self.0 + self.1 * self.1).invert().unwrap();
         let yy = (Fr::one() + Fr::one() - *A * self.0 * self.0 - self.1 * self.1)
             .invert()
             .unwrap();
-        *self = Self(
+        return Self(
             ((self.0 * self.1) * xx).double(),
             (self.1 * self.1 - *A * self.0 * self.0) * yy,
-        )
+        );
     }
     pub fn multiply(&mut self, scalar: &U256) {
         let mut result = PointProjective::zero();
@@ -116,7 +116,7 @@ impl PointProjective {
     pub fn is_zero(&self) -> bool {
         self.2.is_zero().into()
     }
-    pub fn double(&mut self) -> PointProjective {
+    pub fn double(&self) -> PointProjective {
         if self.is_zero() {
             return PointProjective::zero();
         }
@@ -302,7 +302,7 @@ impl SignatureScheme for EdDSA {
 
         let mut r_plus_ha = pk.point.clone();
         r_plus_ha.multiply(&h);
-        r_plus_ha.add_assign(sig.r);
+        r_plus_ha.add_assign(&sig.r);
 
         r_plus_ha == sb
     }
@@ -314,33 +314,28 @@ mod tests {
     #[test]
     fn test_twisted_edwards_curve_ops() {
         // ((2G) + G) + G
-        let mut a = BASE.clone();
-        a.double();
-        a.add_assign(BASE.clone());
-        a.add_assign(BASE.clone());
+        let mut a = BASE.double();
+        a.add_assign(&BASE);
+        a.add_assign(&BASE);
 
         // 2(2G)
-        let mut b = BASE.clone();
-        b.double();
-        b.double();
+        let b = BASE.double().double();
 
         assert_eq!(a, b);
 
         // G + G + G + G
         let mut c = BASE.clone();
-        c.add_assign(BASE.clone());
-        c.add_assign(BASE.clone());
-        c.add_assign(BASE.clone());
+        c.add_assign(&BASE);
+        c.add_assign(&BASE);
+        c.add_assign(&BASE);
 
         assert_eq!(b, c);
 
         // Check if projective points are working
-        let mut pnt1 = BASE.clone().to_projective().double().double();
-        pnt1.add_assign(&BASE.clone().to_projective());
-        let mut pnt2 = BASE.clone();
-        pnt2.double();
-        pnt2.double();
-        pnt2.add_assign(BASE.clone());
+        let mut pnt1 = BASE.to_projective().double().double();
+        pnt1.add_assign(&BASE.to_projective());
+        let mut pnt2 = BASE.double().double();
+        pnt2.add_assign(&BASE);
 
         assert_eq!(pnt1.to_affine(), pnt2);
     }
