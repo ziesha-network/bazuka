@@ -7,10 +7,13 @@ use std::convert::TryInto;
 use std::ops::*;
 use std::str::FromStr;
 
-pub trait SignatureScheme<Pub, Priv, Sig> {
-    fn generate() -> (Pub, Priv);
-    fn sign(sk: Priv, msg: Vec<u8>) -> Sig;
-    fn verify(pk: Pub, msg: Vec<u8>, sig: Sig) -> bool;
+pub trait SignatureScheme {
+    type Pub;
+    type Priv;
+    type Sig;
+    fn generate_keys(seed: &Vec<u8>) -> (Self::Pub, Self::Priv);
+    fn sign(sk: Self::Priv, msg: &Vec<u8>) -> Self::Sig;
+    fn verify(pk: Self::Pub, msg: &Vec<u8>, sig: Self::Sig) -> bool;
 }
 
 pub trait VerifiableRandomFunction<Pub, Priv, Output, Proof> {
@@ -61,9 +64,9 @@ impl PointAffine {
             (self.1 * self.1 - *A * self.0 * self.0) * yy,
         )
     }
-    pub fn multiply(&mut self, scalar: &Vec<bool>) {
+    pub fn multiply(&mut self, scalar: &U256) {
         let mut result = PointAffine::zero();
-        for bit in scalar.iter().rev() {
+        for bit in scalar.to_bits().iter().rev() {
             result.double();
             if *bit {
                 result.add_assign(*self);
@@ -145,6 +148,7 @@ pub struct PublicKey {
 
 #[derive(Clone)]
 pub struct PrivateKey {
+    public_key: PublicKey,
     randomness: U256,
     scalar: U256,
 }
@@ -168,14 +172,25 @@ pub fn bits_to_u8(bits: &Vec<bool>) -> Vec<u8> {
     bytes
 }
 
-impl EdDSA {
-    pub fn generate_keys(seed: &Vec<u8>) -> (PublicKey, PrivateKey) {
+impl SignatureScheme for EdDSA {
+    type Pub = PublicKey;
+    type Priv = PrivateKey;
+    type Sig = Signature;
+    fn generate_keys(seed: &Vec<u8>) -> (PublicKey, PrivateKey) {
         let (randomness, scalar) = U256::generate_two(seed);
-        let mut pk = BASE.clone();
-        pk.multiply(&scalar.to_bits().to_vec());
-        (PublicKey { point: pk }, PrivateKey { randomness, scalar })
+        let mut point = BASE.clone();
+        point.multiply(&scalar);
+        let pk = PublicKey { point };
+        (
+            pk.clone(),
+            PrivateKey {
+                public_key: pk,
+                randomness,
+                scalar,
+            },
+        )
     }
-    pub fn sign(pk: PublicKey, sk: PrivateKey, message: &Vec<u8>) -> Signature {
+    fn sign(sk: PrivateKey, message: &Vec<u8>) -> Signature {
         // r=H(b,M)
         let mut randomized_message = sk.randomness.to_bytes().to_vec();
         randomized_message.extend(message);
@@ -183,14 +198,18 @@ impl EdDSA {
 
         // R=rB
         let mut rr = BASE.clone();
-        rr.multiply(&r.to_bits().to_vec());
+        rr.multiply(&r);
 
         // h=H(R,A,M)
         let mut inp = Vec::new();
         inp.extend(bits_to_u8(&rr.0.to_le_bits().into_iter().collect()));
         inp.extend(bits_to_u8(&rr.1.to_le_bits().into_iter().collect()));
-        inp.extend(bits_to_u8(&pk.point.0.to_le_bits().into_iter().collect()));
-        inp.extend(bits_to_u8(&pk.point.1.to_le_bits().into_iter().collect()));
+        inp.extend(bits_to_u8(
+            &sk.public_key.point.0.to_le_bits().into_iter().collect(),
+        ));
+        inp.extend(bits_to_u8(
+            &sk.public_key.point.1.to_le_bits().into_iter().collect(),
+        ));
         inp.extend(message);
         let (h, _) = U256::generate_two(&inp);
 
@@ -206,7 +225,7 @@ impl EdDSA {
             s: U256::from_bytes(&s.to_bytes_le()),
         }
     }
-    pub fn verify(pk: PublicKey, message: &Vec<u8>, sig: Signature) -> bool {
+    fn verify(pk: PublicKey, message: &Vec<u8>, sig: Signature) -> bool {
         // h=H(R,A,M)
         let mut inp = Vec::new();
         inp.extend(bits_to_u8(&sig.r.0.to_le_bits().into_iter().collect()));
@@ -217,10 +236,10 @@ impl EdDSA {
         let (h, _) = U256::generate_two(&inp);
 
         let mut sb = BASE.clone();
-        sb.multiply(&sig.s.to_bits().to_vec());
+        sb.multiply(&sig.s);
 
         let mut r_plus_ha = pk.point.clone();
-        r_plus_ha.multiply(&h.to_bits().to_vec());
+        r_plus_ha.multiply(&h);
         r_plus_ha.add_assign(sig.r);
 
         r_plus_ha == sb

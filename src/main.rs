@@ -8,7 +8,7 @@ use {
 
 #[cfg(not(feature = "node"))]
 use {
-    bazuka::crypto::{Fr, MiMC},
+    bazuka::crypto::{Fr, MiMC, SignatureScheme},
     ff::Field,
 };
 
@@ -46,7 +46,7 @@ fn main() {
     let (pk, sk) = bazuka::crypto::EdDSA::generate_keys(&b"SEED".to_vec());
 
     let msg = &b"Hi this a transaction!".to_vec();
-    let sig = bazuka::crypto::EdDSA::sign(pk.clone(), sk, &msg);
+    let sig = bazuka::crypto::EdDSA::sign(sk, &msg);
     println!(
         "Verify signature: {}",
         bazuka::crypto::EdDSA::verify(pk, &msg, sig)
