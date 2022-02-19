@@ -213,20 +213,23 @@ pub struct PublicKey {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct CompactPublicKey(Fr);
+pub struct CompactPublicKey(Fr, bool);
 
 impl PublicKey {
     pub fn from_compact(compact: &CompactPublicKey) -> Self {
-        let y = ((Fr::one() - *D * compact.0.square()).invert().unwrap()
+        let mut y = ((Fr::one() - *D * compact.0.square()).invert().unwrap()
             * (Fr::one() - *A * compact.0.square()))
         .sqrt()
         .unwrap();
+        if compact.1 != y.is_odd().into() {
+            y = y.neg();
+        }
         Self {
             point: PointAffine(compact.0.clone(), y),
         }
     }
     pub fn to_compact(&self) -> CompactPublicKey {
-        CompactPublicKey(self.point.0)
+        CompactPublicKey(self.point.0, self.point.1.is_odd().into())
     }
 }
 
