@@ -12,14 +12,18 @@ pub trait SignatureScheme {
     type Priv;
     type Sig;
     fn generate_keys(seed: &Vec<u8>) -> (Self::Pub, Self::Priv);
-    fn sign(sk: Self::Priv, msg: &Vec<u8>) -> Self::Sig;
-    fn verify(pk: Self::Pub, msg: &Vec<u8>, sig: Self::Sig) -> bool;
+    fn sign(sk: &Self::Priv, msg: &Vec<u8>) -> Self::Sig;
+    fn verify(pk: &Self::Pub, msg: &Vec<u8>, sig: &Self::Sig) -> bool;
 }
 
-pub trait VerifiableRandomFunction<Pub, Priv, Output, Proof> {
-    fn generate() -> (Pub, Priv);
-    fn evaluate(sk: Priv, input: Vec<u8>) -> (Output, Proof);
-    fn verify(pk: Pub, input: Vec<u8>, output: Output, proof: Proof) -> bool;
+pub trait VerifiableRandomFunction {
+    type Pub;
+    type Priv;
+    type Output;
+    type Proof;
+    fn generate(seed: &Vec<u8>) -> (Self::Pub, Self::Priv);
+    fn evaluate(sk: &Self::Priv, input: &Vec<u8>) -> (Self::Output, Self::Proof);
+    fn verify(pk: &Self::Pub, input: &Vec<u8>, output: &Self::Output, proof: &Self::Proof) -> bool;
 }
 
 #[derive(PrimeField)]
@@ -252,7 +256,7 @@ impl SignatureScheme for EdDSA {
             },
         )
     }
-    fn sign(sk: PrivateKey, message: &Vec<u8>) -> Signature {
+    fn sign(sk: &PrivateKey, message: &Vec<u8>) -> Signature {
         // r=H(b,M)
         let mut randomized_message = sk.randomness.to_bytes().to_vec();
         randomized_message.extend(message);
@@ -287,7 +291,7 @@ impl SignatureScheme for EdDSA {
             s: U256::from_bytes(&s.to_bytes_le()),
         }
     }
-    fn verify(pk: PublicKey, message: &Vec<u8>, sig: Signature) -> bool {
+    fn verify(pk: &PublicKey, message: &Vec<u8>, sig: &Signature) -> bool {
         // h=H(R,A,M)
         let mut inp = Vec::new();
         inp.extend(bits_to_u8(&sig.r.0.to_le_bits().into_iter().collect()));
