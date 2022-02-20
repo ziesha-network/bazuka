@@ -33,6 +33,9 @@ pub trait VerifiableRandomFunction {
 pub struct Fr([u64; 4]);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PointCompressed(Fr, bool);
+
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PointAffine(Fr, Fr);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -84,6 +87,23 @@ impl PointAffine {
     }
     pub fn to_projective(&self) -> PointProjective {
         PointProjective(self.0, self.1, Fr::one())
+    }
+    pub fn compress(&self) -> PointCompressed {
+        PointCompressed(self.0, self.1.is_odd().into())
+    }
+}
+
+impl PointCompressed {
+    pub fn decompress(&self) -> PointAffine {
+        let mut y = ((Fr::one() - *D * self.0.square()).invert().unwrap()
+            * (Fr::one() - *A * self.0.square()))
+        .sqrt()
+        .unwrap();
+        let is_odd: bool = y.is_odd().into();
+        if self.1 != is_odd {
+            y = y.neg();
+        }
+        PointAffine(self.0.clone(), y)
     }
 }
 
@@ -208,35 +228,11 @@ impl MiMC {
 pub struct EdDSA;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct PublicKey {
-    point: PointAffine,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct CompactPublicKey(Fr, bool);
-
-impl PublicKey {
-    pub fn from_compact(compact: &CompactPublicKey) -> Self {
-        let mut y = ((Fr::one() - *D * compact.0.square()).invert().unwrap()
-            * (Fr::one() - *A * compact.0.square()))
-        .sqrt()
-        .unwrap();
-        let is_odd: bool = y.is_odd().into();
-        if compact.1 != is_odd {
-            y = y.neg();
-        }
-        Self {
-            point: PointAffine(compact.0.clone(), y),
-        }
-    }
-    pub fn to_compact(&self) -> CompactPublicKey {
-        CompactPublicKey(self.point.0, self.point.1.is_odd().into())
-    }
-}
+pub struct PublicKey(PointCompressed);
 
 #[derive(Clone)]
 pub struct PrivateKey {
-    public_key: PublicKey,
+    public_key: PointAffine,
     randomness: U256,
     scalar: U256,
 }
@@ -255,11 +251,11 @@ impl SignatureScheme for EdDSA {
         let (randomness, scalar) = U256::generate_two(seed);
         let mut point = BASE.clone();
         point.multiply(&scalar);
-        let pk = PublicKey { point };
+        let pk = PublicKey(point.compress());
         (
             pk.clone(),
             PrivateKey {
-                public_key: pk,
+                public_key: point,
                 randomness,
                 scalar,
             },
@@ -279,8 +275,8 @@ impl SignatureScheme for EdDSA {
         let mut inp = Vec::new();
         inp.extend_from_slice(rr.0.to_repr().as_ref());
         inp.extend_from_slice(rr.1.to_repr().as_ref());
-        inp.extend_from_slice(sk.public_key.point.0.to_repr().as_ref());
-        inp.extend_from_slice(sk.public_key.point.1.to_repr().as_ref());
+        inp.extend_from_slice(sk.public_key.0.to_repr().as_ref());
+        inp.extend_from_slice(sk.public_key.1.to_repr().as_ref());
         inp.extend(message);
         let (h, _) = U256::generate_two(&inp);
 
@@ -297,19 +293,21 @@ impl SignatureScheme for EdDSA {
         }
     }
     fn verify(pk: &PublicKey, message: &Vec<u8>, sig: &Signature) -> bool {
+        let pk = pk.0.decompress();
+
         // h=H(R,A,M)
         let mut inp = Vec::new();
         inp.extend_from_slice(sig.r.0.to_repr().as_ref());
         inp.extend_from_slice(sig.r.1.to_repr().as_ref());
-        inp.extend_from_slice(pk.point.0.to_repr().as_ref());
-        inp.extend_from_slice(pk.point.1.to_repr().as_ref());
+        inp.extend_from_slice(pk.0.to_repr().as_ref());
+        inp.extend_from_slice(pk.1.to_repr().as_ref());
         inp.extend(message);
         let (h, _) = U256::generate_two(&inp);
 
         let mut sb = BASE.clone();
         sb.multiply(&sig.s);
 
-        let mut r_plus_ha = pk.point.clone();
+        let mut r_plus_ha = pk.clone();
         r_plus_ha.multiply(&h);
         r_plus_ha.add_assign(&sig.r);
 
@@ -322,10 +320,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_compact_public_key() {
-        let (pk1, _) = EdDSA::generate_keys(&b"ABC".to_vec());
-        let pk2 = PublicKey::from_compact(&pk1.to_compact());
-        assert_eq!(pk1, pk2);
+    fn test_t_public_key() {
+        let scalar = U256::generate(&b"hi".to_vec());
+        let mut p1 = BASE.clone();
+        p1.multiply(&scalar);
+
+        let p2 = p1.compress().decompress();
+
+        assert_eq!(p1, p2);
     }
 
     #[test]
