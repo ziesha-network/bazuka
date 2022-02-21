@@ -1,11 +1,13 @@
-use crate::core::U256;
+use std::convert::TryInto;
+use std::ops::*;
+use std::str::FromStr;
+
 use ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use num_integer::Integer;
 use sha3::{Digest, Sha3_256};
-use std::convert::TryInto;
-use std::ops::*;
-use std::str::FromStr;
+
+use crate::core::number::U256;
 
 pub trait SignatureScheme {
     type Pub;
