@@ -32,6 +32,7 @@ impl<K: KvStore> KvStoreChain<K> {
     pub fn new(kv_store: K) -> KvStoreChain<K> {
         KvStoreChain::<K> { database: kv_store }
     }
+
     fn apply_tx(&self, _tx: &Transaction) -> Vec<WriteOp> {
         unimplemented!();
     }
