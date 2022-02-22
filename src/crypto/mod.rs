@@ -291,7 +291,7 @@ impl SignatureScheme for EdDSA {
 
         Signature {
             r: rr,
-            s: U256::from_bytes(&s.to_bytes_le()),
+            s: U256::from_le_bytes(&s.to_bytes_le()),
         }
     }
     fn verify(pk: &PublicKey, message: &Vec<u8>, sig: &Signature) -> bool {

@@ -1,14 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-use crate::core::hash::Sha3Hasher;
-use crate::core::header::Header;
-use crate::core::number::U256;
+use crate::core::Transaction;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Block {
+pub struct Block<Header> {
     // @todo export Sha3 and U256 as generic
-    pub header: Header<Sha3Hasher, U256>,
-    pub body: Vec<u8>,
+    pub header: Header,
+    pub body: Vec<Transaction>,
 }
 
-impl Block {}
+impl<Header> Block<Header> {}

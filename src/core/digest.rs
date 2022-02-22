@@ -39,9 +39,26 @@ impl Digests {
 #[serde(tag = "t", content = "c")] // short for output
 pub enum Digest {
     /// consensus to runtime
-    PreRuntime(Vec<u8>),
+    PreRuntime(PreDigest),
     /// runtime to consensus
-    Consensus(Vec<u8>),
+    Consensus(BabeConsensusLog),
+}
+
+/// @TODO: WIP
+/// #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PreDigest {
+    Primary,
+    SecondaryPlain,
+    SecondaryVRF,
+}
+
+/// @TODO: WIP
+/// A consensus log item for BABE.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BabeConsensusLog {
+    NextEpochData,
+    OnDisable,
+    NextConfigData,
 }
 
 #[cfg(test)]

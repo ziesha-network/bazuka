@@ -20,13 +20,11 @@ impl Hash for Sha3Hasher {
 
 #[cfg(test)]
 mod tests {
-    use sha3::Sha3_256;
-
     use crate::core::hash::Sha3Hasher;
     use crate::core::Hash;
 
     #[test]
-    fn test_sha3() {
-        let output1 = Sha3Hasher::hash(b"123");
+    fn test_sha3_works() {
+        let _ = Sha3Hasher::hash(b"123");
     }
 }

@@ -1,5 +1,4 @@
-use crate::core::blocks::Block;
-use crate::core::{Address, Money, Transaction};
+use crate::core::{Address, Block, Money, Transaction};
 use crate::db::{KvStore, KvStoreError, StringKey, WriteOp};
 use thiserror::Error;
 
@@ -34,7 +33,7 @@ impl<K: KvStore> KvStoreChain<K> {
         KvStoreChain::<K> { database: kv_store }
     }
 
-    fn apply_tx(&self, _tx: &u8) -> Vec<WriteOp> {
+    fn apply_tx(&self, _tx: &Transaction) -> Vec<WriteOp> {
         unimplemented!();
     }
     fn apply_block(&self, block: &Block) -> Vec<WriteOp> {
