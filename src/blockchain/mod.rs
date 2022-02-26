@@ -48,7 +48,7 @@ impl<K: KvStore> KvStoreChain<K> {
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_balance(&self, addr: Address) -> Result<Money, BlockchainError> {
         Ok(match self.database.get(addr.get_key())? {
-            Some(b) => b.as_u32()?,
+            Some(b) => b.as_u64()?,
             None => 0,
         })
     }

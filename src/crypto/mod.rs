@@ -5,6 +5,7 @@ use std::str::FromStr;
 use ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use num_integer::Integer;
+use serde::{Deserialize, Serialize};
 use sha3::{Digest, Sha3_256};
 
 use crate::core::number::U256;
@@ -28,16 +29,16 @@ pub trait VerifiableRandomFunction {
     fn verify(pk: &Self::Pub, input: &[u8], output: &Self::Output, proof: &Self::Proof) -> bool;
 }
 
-#[derive(PrimeField)]
+#[derive(PrimeField, Serialize, Deserialize)]
 #[PrimeFieldModulus = "21888242871839275222246405745257275088548364400416034343698204186575808495617"]
 #[PrimeFieldGenerator = "7"]
 #[PrimeFieldReprEndianness = "little"]
 pub struct Fr([u64; 4]);
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PointCompressed(Fr, bool);
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PointAffine(Fr, Fr);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -229,7 +230,7 @@ impl MiMC {
 
 pub struct EdDSA;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PublicKey(PointCompressed);
 
 #[derive(Clone)]
@@ -239,7 +240,7 @@ pub struct PrivateKey {
     scalar: U256,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Signature {
     r: PointAffine,
     s: U256,

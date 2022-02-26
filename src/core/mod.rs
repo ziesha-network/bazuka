@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use crate::core::number::U256;
+use crate::crypto;
 
 pub mod blocks;
 pub mod digest;
@@ -62,13 +63,18 @@ pub trait Hash: Debug + Clone {
     fn hash(s: &[u8]) -> Self::Output;
 }
 
-pub type Signature = u8;
-pub type Money = u32;
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub enum Signature {
+    Unsigned,
+    Signed(crypto::Signature),
+}
+
+pub type Money = u64;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum Address {
     Nowhere,
-    PublicKey(u8),
+    PublicKey(crypto::PublicKey),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]

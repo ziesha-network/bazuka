@@ -25,6 +25,9 @@ impl Blob {
     pub fn as_u32(&self) -> Result<u32, KvStoreError> {
         Ok(0)
     }
+    pub fn as_u64(&self) -> Result<u64, KvStoreError> {
+        Ok(0)
+    }
     pub fn as_usize(&self) -> Result<usize, KvStoreError> {
         Ok(0)
     }
