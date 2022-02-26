@@ -34,7 +34,7 @@ impl Digests {
     }
 }
 
-/// Digest prevent code and state duplication  
+/// Digest prevent code and state duplication
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "t", content = "c")] // short for output
 pub enum Digest {
@@ -45,7 +45,7 @@ pub enum Digest {
 }
 
 /// @TODO: WIP
-/// #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PreDigest {
     Primary,
     SecondaryPlain,
@@ -54,7 +54,7 @@ pub enum PreDigest {
 
 /// @TODO: WIP
 /// A consensus log item for BABE.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BabeConsensusLog {
     NextEpochData,
     OnDisable,

@@ -6,12 +6,6 @@ use {
     std::path::Path,
 };
 
-#[cfg(not(feature = "node"))]
-use {
-    bazuka::crypto::{Fr, MiMC},
-    ff::Field,
-};
-
 #[cfg(feature = "node")]
 #[macro_use]
 extern crate lazy_static;
@@ -32,14 +26,5 @@ async fn main() -> Result<(), NodeError> {
 
 #[cfg(not(feature = "node"))]
 fn main() {
-    println!(
-        "Genesis hash: {:?}",
-        bazuka::config::genesis::get_genesis_block().hash()
-    );
-
-    let hasher = MiMC::new(b"mimc");
-    println!(
-        "MiMC output: {:?}",
-        hasher.hash(&vec![Fr::zero(), Fr::one()])
-    );
+    println!("Bazuka!");
 }

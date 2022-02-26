@@ -76,7 +76,7 @@ impl PointAffine {
             (self.1 * self.1 - *A * self.0 * self.0) * yy,
         );
     }
-    pub fn multiply(&mut self, scalar: &U256) {
+    pub fn multiply(&self, scalar: &U256) -> Self {
         let mut result = PointProjective::zero();
         let self_proj = self.to_projective();
         for bit in scalar.to_bits().iter().rev() {
@@ -85,7 +85,7 @@ impl PointAffine {
                 result.add_assign(&self_proj);
             }
         }
-        *self = result.to_affine();
+        result.to_affine()
     }
     pub fn to_projective(&self) -> PointProjective {
         PointProjective(self.0, self.1, Fr::one())
@@ -251,8 +251,7 @@ impl SignatureScheme for EdDSA {
     type Sig = Signature;
     fn generate_keys(seed: &Vec<u8>) -> (PublicKey, PrivateKey) {
         let (randomness, scalar) = U256::generate_two(seed);
-        let mut point = BASE.clone();
-        point.multiply(&scalar);
+        let point = BASE.multiply(&scalar);
         let pk = PublicKey(point.compress());
         (
             pk.clone(),
@@ -270,8 +269,7 @@ impl SignatureScheme for EdDSA {
         let (r, _) = U256::generate_two(&randomized_message);
 
         // R=rB
-        let mut rr = BASE.clone();
-        rr.multiply(&r);
+        let rr = BASE.multiply(&r);
 
         // h=H(R,A,M)
         let mut inp = Vec::new();
@@ -306,11 +304,9 @@ impl SignatureScheme for EdDSA {
         inp.extend(message);
         let (h, _) = U256::generate_two(&inp);
 
-        let mut sb = BASE.clone();
-        sb.multiply(&sig.s);
+        let sb = BASE.multiply(&sig.s);
 
-        let mut r_plus_ha = pk.clone();
-        r_plus_ha.multiply(&h);
+        let mut r_plus_ha = pk.multiply(&h);
         r_plus_ha.add_assign(&sig.r);
 
         r_plus_ha == sb
@@ -322,10 +318,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_t_public_key() {
+    fn test_public_key_compression() {
         let scalar = U256::generate(&b"hi".to_vec());
-        let mut p1 = BASE.clone();
-        p1.multiply(&scalar);
+        let p1 = BASE.multiply(&scalar);
 
         let p2 = p1.compress().decompress();
 
