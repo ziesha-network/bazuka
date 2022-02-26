@@ -13,9 +13,9 @@ pub trait SignatureScheme {
     type Pub;
     type Priv;
     type Sig;
-    fn generate_keys(seed: &Vec<u8>) -> (Self::Pub, Self::Priv);
-    fn sign(sk: &Self::Priv, msg: &Vec<u8>) -> Self::Sig;
-    fn verify(pk: &Self::Pub, msg: &Vec<u8>, sig: &Self::Sig) -> bool;
+    fn generate_keys(seed: &[u8]) -> (Self::Pub, Self::Priv);
+    fn sign(sk: &Self::Priv, msg: &[u8]) -> Self::Sig;
+    fn verify(pk: &Self::Pub, msg: &[u8], sig: &Self::Sig) -> bool;
 }
 
 pub trait VerifiableRandomFunction {
@@ -23,9 +23,9 @@ pub trait VerifiableRandomFunction {
     type Priv;
     type Output;
     type Proof;
-    fn generate(seed: &Vec<u8>) -> (Self::Pub, Self::Priv);
-    fn evaluate(sk: &Self::Priv, input: &Vec<u8>) -> (Self::Output, Self::Proof);
-    fn verify(pk: &Self::Pub, input: &Vec<u8>, output: &Self::Output, proof: &Self::Proof) -> bool;
+    fn generate(seed: &[u8]) -> (Self::Pub, Self::Priv);
+    fn evaluate(sk: &Self::Priv, input: &[u8]) -> (Self::Output, Self::Proof);
+    fn verify(pk: &Self::Pub, input: &[u8], output: &Self::Output, proof: &Self::Proof) -> bool;
 }
 
 #[derive(PrimeField)]
@@ -249,7 +249,7 @@ impl SignatureScheme for EdDSA {
     type Pub = PublicKey;
     type Priv = PrivateKey;
     type Sig = Signature;
-    fn generate_keys(seed: &Vec<u8>) -> (PublicKey, PrivateKey) {
+    fn generate_keys(seed: &[u8]) -> (PublicKey, PrivateKey) {
         let (randomness, scalar) = U256::generate_two(seed);
         let point = BASE.multiply(&scalar);
         let pk = PublicKey(point.compress());
@@ -262,7 +262,7 @@ impl SignatureScheme for EdDSA {
             },
         )
     }
-    fn sign(sk: &PrivateKey, message: &Vec<u8>) -> Signature {
+    fn sign(sk: &PrivateKey, message: &[u8]) -> Signature {
         // r=H(b,M)
         let mut randomized_message = sk.randomness.to_bytes().to_vec();
         randomized_message.extend(message);
@@ -292,7 +292,7 @@ impl SignatureScheme for EdDSA {
             s: U256::from_le_bytes(&s.to_bytes_le()),
         }
     }
-    fn verify(pk: &PublicKey, message: &Vec<u8>, sig: &Signature) -> bool {
+    fn verify(pk: &PublicKey, message: &[u8], sig: &Signature) -> bool {
         let pk = pk.0.decompress();
 
         // h=H(R,A,M)
@@ -319,7 +319,7 @@ mod tests {
 
     #[test]
     fn test_public_key_compression() {
-        let scalar = U256::generate(&b"hi".to_vec());
+        let scalar = U256::generate(b"hi");
         let p1 = BASE.multiply(&scalar);
 
         let p2 = p1.compress().decompress();
@@ -358,11 +358,11 @@ mod tests {
 
     #[test]
     fn test_signature_verification() {
-        let (pk, sk) = EdDSA::generate_keys(&b"ABC".to_vec());
-        let msg = &b"Hi this a transaction!".to_vec();
-        let fake_msg = &b"Hi this a fake transaction!".to_vec();
-        let sig = EdDSA::sign(&sk, &msg);
-        assert!(EdDSA::verify(&pk, &msg, &sig));
-        assert!(!EdDSA::verify(&pk, &fake_msg, &sig));
+        let (pk, sk) = EdDSA::generate_keys(b"ABC");
+        let msg = b"Hi this a transaction!";
+        let fake_msg = b"Hi this a fake transaction!";
+        let sig = EdDSA::sign(&sk, msg);
+        assert!(EdDSA::verify(&pk, msg, &sig));
+        assert!(!EdDSA::verify(&pk, fake_msg, &sig));
     }
 }

@@ -68,7 +68,7 @@ impl U256 {
         &self.0
     }
 
-    pub fn generate(data: &Vec<u8>) -> Self {
+    pub fn generate(data: &[u8]) -> Self {
         let mut hasher = Sha3_256::new();
         hasher.update(data);
         Self(hasher.finalize().try_into().unwrap())
@@ -76,7 +76,7 @@ impl U256 {
 
     // Dummy implementation of a 512-bit hash function, used for generating
     // scalar and randomness of EdDSA signatures.
-    pub fn generate_two(data: &Vec<u8>) -> (Self, Self) {
+    pub fn generate_two(data: &[u8]) -> (Self, Self) {
         let mut hasher = Sha3_256::new();
         hasher.update(data);
         let first: [u8; 32] = hasher.finalize().try_into().unwrap();
