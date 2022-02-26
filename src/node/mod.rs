@@ -21,7 +21,7 @@ use tokio::try_join;
 
 pub type PeerAddress = String;
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PeerInfo {
     pub last_seen: u64,
     pub height: usize,
@@ -38,12 +38,13 @@ async fn node_service<B: Blockchain>(
     let mut response = Response::new(Body::empty());
     let method = req.method().clone();
     let path = req.uri().path().to_string();
+    let qs = req.uri().query().unwrap_or("").to_string();
     let body = req.into_body();
 
     match (method, &path[..]) {
         (Method::GET, "/peers") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::get_peers(Arc::clone(&context)).await?,
+                &api::get_peers(Arc::clone(&context), serde_qs::from_str(&qs).unwrap()).await?,
             )?);
         }
         (Method::POST, "/peers") => {
@@ -89,7 +90,8 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
     }
 
     async fn request_peers(&self, addr: &str) -> Result<Vec<String>, NodeError> {
-        let resp: GetPeersResponse = http::json_get(&format!("{}/peers", addr)).await?;
+        let resp: GetPeersResponse =
+            http::json_get(&format!("{}/peers", addr), GetPeersRequest {}).await?;
         Ok(resp.peers.keys().cloned().collect())
     }
 

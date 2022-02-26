@@ -9,6 +9,8 @@ pub enum NodeError {
     ServerError(#[from] hyper::Error),
     #[error("client error happened")]
     ClientError(#[from] hyper::http::Error),
-    #[error("serde error happened")]
-    SerdeError(#[from] serde_json::Error),
+    #[error("serde json error happened")]
+    JsonError(#[from] serde_json::Error),
+    #[error("serde qs error happened")]
+    QueryStringError(#[from] serde_qs::Error),
 }
