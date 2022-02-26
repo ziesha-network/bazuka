@@ -7,7 +7,7 @@ ENV RUSTFLAGS="$RUSTFLAGS -L /usr/lib/"
 RUN cargo new bazuka
 WORKDIR /bazuka
 COPY ./Cargo.toml ./Cargo.toml
-RUN cargo build --release
+RUN cargo build --release --features node
 RUN rm src/*.rs
 RUN rm ./target/release/deps/bazuka*
 
