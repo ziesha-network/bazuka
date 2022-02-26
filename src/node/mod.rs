@@ -1,62 +1,34 @@
-mod messages;
+mod api;
+mod context;
+mod errors;
+mod http;
+use context::NodeContext;
+pub use errors::NodeError;
 
-use crate::blockchain::{Blockchain, BlockchainError};
+use crate::blockchain::Blockchain;
+use api::messages::*;
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Client, Method, Request, Response, Server, StatusCode};
-use messages::*;
+use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use thiserror::Error;
+
+use serde_derive::{Deserialize, Serialize};
+
 use tokio::sync::RwLock;
 use tokio::time::{sleep, Duration};
 use tokio::try_join;
 
-#[derive(Error, Debug)]
-pub enum NodeError {
-    #[error("blockchain error happened")]
-    BlockchainError(#[from] BlockchainError),
-    #[error("server error happened")]
-    ServerError(#[from] hyper::Error),
-    #[error("client error happened")]
-    ClientError(#[from] hyper::http::Error),
-    #[error("serde error happened")]
-    SerdeError(#[from] serde_json::Error),
-}
+pub type PeerAddress = String;
 
-pub struct NodeContext<B: Blockchain> {
-    blockchain: B,
-    peers: HashMap<PeerAddress, PeerInfo>,
+#[derive(Deserialize, Serialize, Clone)]
+pub struct PeerInfo {
+    pub last_seen: u64,
+    pub height: usize,
 }
 
 pub struct Node<B: Blockchain> {
     context: Arc<RwLock<NodeContext<B>>>,
-}
-
-async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
-    addr: &str,
-    req: Req,
-) -> Result<Resp, NodeError> {
-    let client = Client::new();
-    let req = Request::builder()
-        .method(Method::POST)
-        .uri(addr)
-        .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_vec(&req)?))?;
-    let body = client.request(req).await?.into_body();
-    let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
-    Ok(resp)
-}
-
-async fn json_get<Resp: serde::de::DeserializeOwned>(addr: &str) -> Result<Resp, NodeError> {
-    let client = Client::new();
-    let req = Request::builder()
-        .method(Method::GET)
-        .uri(addr)
-        .body(Body::empty())?;
-    let body = client.request(req).await?.into_body();
-    let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
-    Ok(resp)
 }
 
 async fn node_service<B: Blockchain>(
@@ -64,19 +36,24 @@ async fn node_service<B: Blockchain>(
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
     let mut response = Response::new(Body::empty());
-    let mut context = context.write().await;
+    let method = req.method().clone();
+    let path = req.uri().path().to_string();
+    let body = req.into_body();
 
-    match (req.method(), req.uri().path()) {
-        (&Method::GET, "/peers") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(&GetPeersResponse {
-                peers: context.peers.clone(),
-            })?);
+    match (method, &path[..]) {
+        (Method::GET, "/peers") => {
+            *response.body_mut() = Body::from(serde_json::to_vec(
+                &api::get_peers(Arc::clone(&context)).await?,
+            )?);
         }
-        (&Method::POST, "/peers") => {
-            let body = req.into_body();
-            let req: PostPeerRequest = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
-            context.peers.insert(req.address, req.info);
-            *response.body_mut() = Body::from(serde_json::to_vec(&PostPeerResponse {})?);
+        (Method::POST, "/peers") => {
+            *response.body_mut() = Body::from(serde_json::to_vec(
+                &api::post_peer(
+                    Arc::clone(&context),
+                    serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
+                )
+                .await?,
+            )?);
         }
         _ => {
             *response.status_mut() = StatusCode::NOT_FOUND;
@@ -98,7 +75,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
 
     async fn introduce(&self, addr: &str) -> Result<PostPeerResponse, NodeError> {
         let height = self.context.read().await.blockchain.get_height()?;
-        json_post(
+        Ok(http::json_post(
             &format!("{}/peers", addr),
             PostPeerRequest {
                 address: "hahaha".to_string(),
@@ -108,11 +85,11 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                 },
             },
         )
-        .await
+        .await?)
     }
 
     async fn request_peers(&self, addr: &str) -> Result<Vec<String>, NodeError> {
-        let resp: GetPeersResponse = json_get(&format!("{}/peers", addr)).await?;
+        let resp: GetPeersResponse = http::json_get(&format!("{}/peers", addr)).await?;
         Ok(resp.peers.keys().cloned().collect())
     }
 

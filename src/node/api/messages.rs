@@ -1,13 +1,6 @@
+use super::{PeerAddress, PeerInfo};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-pub type PeerAddress = String;
-
-#[derive(Deserialize, Serialize, Clone)]
-pub struct PeerInfo {
-    pub last_seen: u64,
-    pub height: usize,
-}
 
 #[derive(Deserialize, Serialize)]
 pub struct PostPeerRequest {
