@@ -6,6 +6,7 @@ pub mod config;
 pub mod core;
 pub mod crypto;
 pub mod db;
+pub mod wallet;
 pub mod zk;
 
 #[cfg(feature = "node")]

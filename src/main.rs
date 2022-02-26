@@ -6,6 +6,9 @@ use {
     std::path::Path,
 };
 
+#[cfg(not(feature = "node"))]
+use {bazuka::core::Address, bazuka::wallet::Wallet};
+
 #[cfg(feature = "node")]
 #[macro_use]
 extern crate lazy_static;
@@ -27,4 +30,8 @@ async fn main() -> Result<(), NodeError> {
 #[cfg(not(feature = "node"))]
 fn main() {
     println!("Bazuka!");
+    let wallet = Wallet::new(b"random seed".to_vec());
+    println!("Your address is: {:?}", wallet.get_address());
+    let tx = wallet.create_transaction(Address::Nowhere, 123);
+    println!("Verify tx signature: {}", tx.verify_signature());
 }

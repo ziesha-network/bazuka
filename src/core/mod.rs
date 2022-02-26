@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use crate::core::number::U256;
 use crate::crypto;
+use crate::crypto::SignatureScheme;
 
 pub mod blocks;
 pub mod digest;
@@ -78,13 +79,32 @@ pub enum Address {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub enum Transaction {
-    RegularSend {
-        src: Address,
-        dst: Address,
-        amount: Money,
-        sig: Signature,
-    },
+pub enum TransactionData {
+    RegularSend { dst: Address, amount: Money },
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct Transaction {
+    pub src: Address,
+    pub data: TransactionData,
+    pub sig: Signature,
+}
+
+impl Transaction {
+    pub fn verify_signature(&self) -> bool {
+        match &self.src {
+            Address::Nowhere => true,
+            Address::PublicKey(pk) => match &self.sig {
+                Signature::Unsigned => false,
+                Signature::Signed(sig) => {
+                    let mut unsigned = self.clone();
+                    unsigned.sig = Signature::Unsigned;
+                    let bytes = bincode::serialize(&unsigned).unwrap();
+                    crypto::EdDSA::verify(&pk, &bytes, &sig)
+                }
+            },
+        }
+    }
 }
 
 #[cfg(test)]
