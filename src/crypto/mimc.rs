@@ -1,5 +1,6 @@
 use std::ops::*;
 
+use crate::core::number::U256;
 use ff::Field;
 use sha3::{Digest, Sha3_256};
 
@@ -16,12 +17,7 @@ impl MiMC {
         hasher.update(seed);
         for _ in 0..90 {
             let result = hasher.finalize();
-            let elem = Fr::zero();
-            // elem.0[0] = u64::from_le_bytes(result[..8].try_into().unwrap());
-            // elem.0[1] = u64::from_le_bytes(result[8..16].try_into().unwrap());
-            // elem.0[2] = u64::from_le_bytes(result[16..24].try_into().unwrap());
-            // elem.0[3] = u64::from_le_bytes(result[24..32].try_into().unwrap());
-            params.push(elem);
+            params.push(Fr::from_u256(&U256::from_le_bytes(&result)));
             hasher = Sha3_256::new();
             hasher.update(result);
         }
