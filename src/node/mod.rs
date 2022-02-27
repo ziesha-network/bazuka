@@ -97,7 +97,8 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
 
     async fn heartbeat(&self) -> Result<(), NodeError> {
         loop {
-            println!("Lub dub!");
+            let height = self.context.read().await.blockchain.get_height()?;
+            println!("Lub dub! (Height: {})", height);
             sleep(Duration::from_millis(1000)).await;
             let peers = self.request_peers("http://127.0.0.1:3030").await?;
             println!("Peers: {:?}", peers);

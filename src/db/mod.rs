@@ -6,7 +6,7 @@ pub enum KvStoreError {
     #[error("kvstore failure")]
     Failure,
     #[error("kvstore data corrupted")]
-    Corrupted,
+    Corrupted(#[from] bincode::Error),
 }
 
 #[derive(Clone, Debug)]
@@ -21,15 +21,24 @@ impl StringKey {
 #[derive(Clone, Debug)]
 pub struct Blob(Vec<u8>);
 
-impl Blob {
-    pub fn as_u32(&self) -> Result<u32, KvStoreError> {
-        Ok(0)
-    }
-    pub fn as_u64(&self) -> Result<u64, KvStoreError> {
-        Ok(0)
-    }
-    pub fn as_usize(&self) -> Result<usize, KvStoreError> {
-        Ok(0)
+macro_rules! gen_try_into {
+    ( $( $x:ty ),* ) => {
+        $(
+            impl TryInto<$x> for Blob {
+                type Error = KvStoreError;
+                fn try_into(self) -> Result<$x, Self::Error> {
+                    Ok(bincode::deserialize(&self.0)?)
+                }
+            }
+        )*
+    };
+}
+
+gen_try_into!(u32, u64, usize);
+
+impl<T: serde::Serialize> From<T> for Blob {
+    fn from(n: T) -> Self {
+        Self(bincode::serialize(&n).unwrap())
     }
 }
 
