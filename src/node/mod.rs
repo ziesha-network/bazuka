@@ -6,6 +6,7 @@ use context::NodeContext;
 pub use errors::NodeError;
 
 use crate::blockchain::Blockchain;
+use crate::utils;
 use api::messages::*;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
@@ -94,12 +95,8 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
             let ctx = self.context.read().await;
             let timestamp = ctx.timestamp();
             let info = ctx.get_info()?;
-            let height = ctx.blockchain.get_height()?;
             let peer_addresses = ctx.peers.keys().cloned().collect::<Vec<PeerAddress>>();
             drop(ctx);
-
-            println!("Lub dub! (Height: {})", height);
-            sleep(Duration::from_millis(1000)).await;
 
             let peer_responses: Vec<PostPeerResponse> = join_all(
                 peer_addresses
@@ -122,7 +119,23 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
             .filter_map(|resp| resp.ok())
             .collect();
 
-            println!("Peer responses: {:?}", peer_responses);
+            // Set timestamp_offset according to median timestamp of the network
+            let median_timestamp =
+                utils::median(&peer_responses.iter().map(|r| r.timestamp).collect());
+            let mut ctx = self.context.write().await;
+            ctx.timestamp_offset = median_timestamp as i64 - utils::timestamp() as i64;
+            drop(ctx);
+
+            let ctx = self.context.read().await;
+            let active_peers = ctx.peers.iter().filter(|(_, v)| v.is_some()).count();
+            println!(
+                "Lub dub! (Height: {}, Timestamp: {}, Peers: {})",
+                ctx.blockchain.get_height()?,
+                ctx.timestamp(),
+                active_peers
+            );
+
+            sleep(Duration::from_millis(1000)).await;
         }
     }
 
