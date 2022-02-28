@@ -9,17 +9,24 @@ use crate::blockchain::Blockchain;
 use api::messages::*;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
 use serde_derive::{Deserialize, Serialize};
 
+use futures::future::join_all;
 use tokio::sync::RwLock;
 use tokio::time::{sleep, Duration};
 use tokio::try_join;
 
-pub type PeerAddress = String;
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PeerAddress(pub String, pub u16); // ip, port
+
+impl std::fmt::Display for PeerAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "http://{}:{}", self.0, self.1)
+    }
+}
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PeerInfo {
@@ -71,54 +78,56 @@ async fn node_service<B: Blockchain>(
 }
 
 impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
-    pub fn new(address: PeerAddress, blockchain: B) -> Node<B> {
+    pub fn new(address: PeerAddress, bootstrap: Vec<PeerAddress>, blockchain: B) -> Node<B> {
         Node {
             address,
             context: Arc::new(RwLock::new(NodeContext {
                 blockchain,
-                peers: HashMap::new(),
+                peers: bootstrap.into_iter().map(|addr| (addr, None)).collect(),
                 timestamp_offset: 0,
             })),
         }
     }
 
-    async fn introduce(&self, addr: &str) -> Result<PostPeerResponse, NodeError> {
-        let ctx = self.context.read().await;
-        let timestamp = ctx.timestamp();
-        let info = ctx.get_info()?;
-        drop(ctx);
-
-        Ok(http::json_post(
-            &format!("{}/peers", addr),
-            PostPeerRequest {
-                address: self.address.clone(),
-                timestamp,
-                info,
-            },
-        )
-        .await?)
-    }
-
-    async fn request_peers(&self, addr: &str) -> Result<Vec<String>, NodeError> {
-        let resp: GetPeersResponse =
-            http::json_get(&format!("{}/peers", addr), GetPeersRequest {}).await?;
-        Ok(resp.peers.keys().cloned().collect())
-    }
-
     async fn heartbeat(&self) -> Result<(), NodeError> {
         loop {
-            let height = self.context.read().await.blockchain.get_height()?;
+            let ctx = self.context.read().await;
+            let timestamp = ctx.timestamp();
+            let info = ctx.get_info()?;
+            let height = ctx.blockchain.get_height()?;
+            let peer_addresses = ctx.peers.keys().cloned().collect::<Vec<PeerAddress>>();
+            drop(ctx);
+
             println!("Lub dub! (Height: {})", height);
             sleep(Duration::from_millis(1000)).await;
-            let peers = self.request_peers("http://127.0.0.1:3030").await?;
-            println!("Peers: {:?}", peers);
-            let result = self.introduce("http://127.0.0.1:3030").await?;
-            println!("Introduced! Result: {:?}", result);
+
+            let peer_responses: Vec<PostPeerResponse> = join_all(
+                peer_addresses
+                    .iter()
+                    .cloned()
+                    .map(|peer| {
+                        http::json_post::<PostPeerRequest, PostPeerResponse>(
+                            format!("{}/peers", peer).to_string(),
+                            PostPeerRequest {
+                                address: self.address.clone(),
+                                timestamp,
+                                info: info.clone(),
+                            },
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .await
+            .into_iter()
+            .filter_map(|resp| resp.ok())
+            .collect();
+
+            println!("Peer responses: {:?}", peer_responses);
         }
     }
 
     async fn server(&'static self) -> Result<(), NodeError> {
-        let addr = SocketAddr::from(([127, 0, 0, 1], 3030));
+        let addr = SocketAddr::from(([127, 0, 0, 1], self.address.1));
         let node_context = self.context.clone();
         let make_svc = make_service_fn(|_| {
             let node_context = Arc::clone(&node_context);

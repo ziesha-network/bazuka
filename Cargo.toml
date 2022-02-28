@@ -7,7 +7,9 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1", features = ["full"], optional = true }
 hyper = { version = "0.14", features = ["full"], optional = true }
+futures = { version = "0.3", optional = true}
 leveldb = { version = "0.8.6", optional = true }
+structopt = { version = "0.3", default-features = false, optional = true }
 lazy_static = "1.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
@@ -24,4 +26,4 @@ num-bigint = "0.4"
 num-integer = "0.1"
 
 [features]
-node = ["tokio", "hyper", "leveldb"]
+node = ["tokio", "hyper", "leveldb", "futures", "structopt"]

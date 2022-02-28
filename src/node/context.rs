@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 pub struct NodeContext<B: Blockchain> {
     pub blockchain: B,
-    pub peers: HashMap<PeerAddress, PeerStats>,
+    pub peers: HashMap<PeerAddress, Option<PeerStats>>,
     pub timestamp_offset: i64,
 }
 

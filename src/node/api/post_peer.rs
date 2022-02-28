@@ -12,10 +12,10 @@ pub async fn post_peer<B: Blockchain>(
     let now = context.timestamp();
     context.peers.insert(
         req.address,
-        PeerStats {
+        Some(PeerStats {
             info: req.info,
             last_seen: now,
-        },
+        }),
     );
     Ok(PostPeerResponse {
         info: context.get_info()?,

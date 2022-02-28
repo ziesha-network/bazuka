@@ -2,13 +2,13 @@ use super::NodeError;
 use hyper::{Body, Client, Method, Request};
 
 pub async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
-    addr: &str,
+    addr: String,
     req: Req,
 ) -> Result<Resp, NodeError> {
     let client = Client::new();
     let req = Request::builder()
         .method(Method::POST)
-        .uri(addr)
+        .uri(&addr)
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&req)?))?;
     let body = client.request(req).await?.into_body();
@@ -17,7 +17,7 @@ pub async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>
 }
 
 pub async fn json_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
-    addr: &str,
+    addr: String,
     req: Req,
 ) -> Result<Resp, NodeError> {
     let client = Client::new();
