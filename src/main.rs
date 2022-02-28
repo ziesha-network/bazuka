@@ -16,6 +16,7 @@ extern crate lazy_static;
 #[cfg(feature = "node")]
 lazy_static! {
     static ref NODE: Node<KvStoreChain<LevelDbKvStore>> = Node::new(
+        "http://127.0.0.1:3030".to_string(),
         KvStoreChain::new(LevelDbKvStore::new(
             &home::home_dir().unwrap().join(Path::new(".bazuka"))
         ))

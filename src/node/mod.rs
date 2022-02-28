@@ -23,11 +23,17 @@ pub type PeerAddress = String;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PeerInfo {
-    pub last_seen: u64,
     pub height: usize,
 }
 
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct PeerStats {
+    pub last_seen: u64,
+    pub info: PeerInfo,
+}
+
 pub struct Node<B: Blockchain> {
+    address: PeerAddress,
     context: Arc<RwLock<NodeContext<B>>>,
 }
 
@@ -65,25 +71,29 @@ async fn node_service<B: Blockchain>(
 }
 
 impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
-    pub fn new(blockchain: B) -> Node<B> {
+    pub fn new(address: PeerAddress, blockchain: B) -> Node<B> {
         Node {
+            address,
             context: Arc::new(RwLock::new(NodeContext {
                 blockchain,
                 peers: HashMap::new(),
+                timestamp_offset: 0,
             })),
         }
     }
 
     async fn introduce(&self, addr: &str) -> Result<PostPeerResponse, NodeError> {
-        let height = self.context.read().await.blockchain.get_height()?;
+        let ctx = self.context.read().await;
+        let timestamp = ctx.timestamp();
+        let info = ctx.get_info()?;
+        drop(ctx);
+
         Ok(http::json_post(
             &format!("{}/peers", addr),
             PostPeerRequest {
-                address: "hahaha".to_string(),
-                info: PeerInfo {
-                    last_seen: 0,
-                    height,
-                },
+                address: self.address.clone(),
+                timestamp,
+                info,
             },
         )
         .await?)
