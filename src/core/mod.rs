@@ -6,6 +6,7 @@ use crate::core::number::U256;
 use crate::crypto;
 use crate::crypto::SignatureScheme;
 
+pub mod bip39;
 pub mod blocks;
 pub mod digest;
 pub mod hash;
