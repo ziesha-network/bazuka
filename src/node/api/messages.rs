@@ -1,3 +1,5 @@
+use crate::core::{Address, Money, Transaction};
+
 use super::{PeerAddress, PeerInfo, PeerStats};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -36,3 +38,21 @@ pub struct GetBlockRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GetBlockResponse {}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct GetBalanceRequest {
+    pub addr: Address,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct GetBalanceResponse {
+    pub amount: Money,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TransactRequest {
+    pub tx: Transaction,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TransactResponse {}
