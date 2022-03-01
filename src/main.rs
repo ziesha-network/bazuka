@@ -33,7 +33,10 @@ lazy_static! {
         let opts = OPTS.clone();
         Node::new(
             PeerAddress(
-                opts.host.unwrap_or("127.0.0.1".to_string()),
+                opts.host
+                    .unwrap_or("127.0.0.1".to_string())
+                    .parse()
+                    .unwrap(),
                 opts.port.unwrap_or(3030),
             ),
             bazuka::config::bootstrap::debug_bootstrap_nodes(),

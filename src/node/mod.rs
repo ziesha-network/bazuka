@@ -10,7 +10,7 @@ use crate::utils;
 use api::messages::*;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
 use crate::config::punish;
@@ -18,6 +18,7 @@ use crate::config::punish;
 use serde_derive::{Deserialize, Serialize};
 
 use futures::future::join_all;
+use hyper::server::conn::AddrStream;
 use tokio::sync::RwLock;
 use tokio::time::{sleep, Duration};
 use tokio::try_join;
@@ -25,7 +26,7 @@ use tokio::try_join;
 pub type Timestamp = u64;
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PeerAddress(pub String, pub u16); // ip, port
+pub struct PeerAddress(pub IpAddr, pub u16); // ip, port
 
 impl std::fmt::Display for PeerAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -70,9 +71,12 @@ pub struct Node<B: Blockchain> {
 }
 
 async fn node_service<B: Blockchain>(
+    client: SocketAddr,
     context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
+    println!("Got request from: {}", client);
+
     let mut response = Response::new(Body::empty());
     let method = req.method().clone();
     let path = req.uri().path().to_string();
@@ -213,12 +217,14 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
     async fn server(&'static self) -> Result<(), NodeError> {
         let addr = SocketAddr::from(([127, 0, 0, 1], self.address.1));
         let node_context = self.context.clone();
-        let make_svc = make_service_fn(|_| {
+        let make_svc = make_service_fn(|conn: &AddrStream| {
+            let client = conn.remote_addr().clone();
             let node_context = Arc::clone(&node_context);
             async move {
                 Ok::<_, NodeError>(service_fn(move |req: Request<Body>| {
                     let node_context = Arc::clone(&node_context);
-                    async move { node_service(node_context, req).await }
+                    let client = client.clone();
+                    async move { node_service(client, node_context, req).await }
                 }))
             }
         });
