@@ -86,7 +86,7 @@ async fn node_service<B: Blockchain>(
     match (method, &path[..]) {
         (Method::GET, "/peers") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::get_peers(Arc::clone(&context), serde_qs::from_str(&qs).unwrap()).await?,
+                &api::get_peers(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
             )?);
         }
         (Method::POST, "/peers") => {
