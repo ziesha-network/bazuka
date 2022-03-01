@@ -13,12 +13,16 @@ use hyper::{Body, Method, Request, Response, Server, StatusCode};
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use crate::config::punish;
+
 use serde_derive::{Deserialize, Serialize};
 
 use futures::future::join_all;
 use tokio::sync::RwLock;
 use tokio::time::{sleep, Duration};
 use tokio::try_join;
+
+pub type Timestamp = u64;
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerAddress(pub String, pub u16); // ip, port
@@ -36,8 +40,28 @@ pub struct PeerInfo {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PeerStats {
-    pub last_seen: u64,
-    pub info: PeerInfo,
+    pub punished_til: Option<Timestamp>,
+    pub info: Option<PeerInfo>,
+}
+
+impl PeerStats {
+    pub fn is_punished(&mut self) -> bool {
+        let punished = match self.punished_til {
+            Some(til) => utils::local_timestamp() < til,
+            None => false,
+        };
+        if !punished {
+            self.punished_til = None;
+        }
+        punished
+    }
+    pub fn punish(&mut self, millis: u64) {
+        let now = utils::local_timestamp();
+        self.punished_til = match self.punished_til {
+            Some(curr) => Some(curr + millis),
+            None => Some(now + millis),
+        };
+    }
 }
 
 pub struct Node<B: Blockchain> {
@@ -84,54 +108,101 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
             address,
             context: Arc::new(RwLock::new(NodeContext {
                 blockchain,
-                peers: bootstrap.into_iter().map(|addr| (addr, None)).collect(),
+                peers: bootstrap
+                    .into_iter()
+                    .map(|addr| {
+                        (
+                            addr,
+                            PeerStats {
+                                punished_til: None,
+                                info: None,
+                            },
+                        )
+                    })
+                    .collect(),
                 timestamp_offset: 0,
             })),
         }
     }
 
+    async fn group_request<F, R>(
+        &self,
+        peers: &Vec<PeerAddress>,
+        f: F,
+    ) -> Vec<(PeerAddress, <R as futures::Future>::Output)>
+    where
+        F: Fn(PeerAddress) -> R,
+        R: futures::Future,
+    {
+        peers
+            .iter()
+            .cloned()
+            .zip(
+                join_all(
+                    peers
+                        .iter()
+                        .cloned()
+                        .map(|peer| f(peer))
+                        .collect::<Vec<_>>(),
+                )
+                .await
+                .into_iter(),
+            )
+            .collect()
+    }
+
     async fn heartbeat(&self) -> Result<(), NodeError> {
         loop {
             let ctx = self.context.read().await;
-            let timestamp = ctx.timestamp();
+            let timestamp = ctx.network_timestamp();
             let info = ctx.get_info()?;
             let peer_addresses = ctx.peers.keys().cloned().collect::<Vec<PeerAddress>>();
             drop(ctx);
 
-            let peer_responses: Vec<PostPeerResponse> = join_all(
-                peer_addresses
+            let peer_responses: Vec<(PeerAddress, Result<PostPeerResponse, NodeError>)> = self
+                .group_request(&peer_addresses, |peer| {
+                    http::json_post::<PostPeerRequest, PostPeerResponse>(
+                        format!("{}/peers", peer).to_string(),
+                        PostPeerRequest {
+                            address: self.address.clone(),
+                            timestamp,
+                            info: info.clone(),
+                        },
+                    )
+                })
+                .await;
+
+            {
+                let mut ctx = self.context.write().await;
+                for bad_peer in peer_responses
                     .iter()
-                    .cloned()
-                    .map(|peer| {
-                        http::json_post::<PostPeerRequest, PostPeerResponse>(
-                            format!("{}/peers", peer).to_string(),
-                            PostPeerRequest {
-                                address: self.address.clone(),
-                                timestamp,
-                                info: info.clone(),
-                            },
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .await
-            .into_iter()
-            .filter_map(|resp| resp.ok())
-            .collect();
+                    .filter(|(_, resp)| resp.is_err())
+                    .map(|(p, _)| p)
+                {
+                    ctx.peers
+                        .entry(bad_peer.clone())
+                        .and_modify(|stats| stats.punish(punish::NO_RESPONSE_PUNISH));
+                }
+            }
 
             // Set timestamp_offset according to median timestamp of the network
-            let median_timestamp =
-                utils::median(&peer_responses.iter().map(|r| r.timestamp).collect());
+            let median_timestamp = utils::median(
+                &peer_responses
+                    .iter()
+                    .filter_map(|r| r.1.as_ref().ok())
+                    .map(|r| r.timestamp)
+                    .collect(),
+            );
             let mut ctx = self.context.write().await;
-            ctx.timestamp_offset = median_timestamp as i64 - utils::timestamp() as i64;
+            ctx.timestamp_offset = median_timestamp as i64 - utils::local_timestamp() as i64;
             drop(ctx);
 
-            let ctx = self.context.read().await;
-            let active_peers = ctx.peers.iter().filter(|(_, v)| v.is_some()).count();
+            let mut ctx = self.context.write().await;
+            let active_peers = ctx.active_peers().len();
             println!(
-                "Lub dub! (Height: {}, Timestamp: {}, Peers: {})",
+                "Lub dub! (Height: {}, Network Timestamp: {}, Peers: {})",
                 ctx.blockchain.get_height()?,
-                ctx.timestamp(),
+                ctx.network_timestamp(),
                 active_peers
             );
 

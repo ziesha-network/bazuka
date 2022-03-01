@@ -9,16 +9,15 @@ pub async fn post_peer<B: Blockchain>(
     req: PostPeerRequest,
 ) -> Result<PostPeerResponse, NodeError> {
     let mut context = context.write().await;
-    let now = context.timestamp();
     context.peers.insert(
         req.address,
-        Some(PeerStats {
-            info: req.info,
-            last_seen: now,
-        }),
+        PeerStats {
+            info: Some(req.info),
+            punished_til: None,
+        },
     );
     Ok(PostPeerResponse {
         info: context.get_info()?,
-        timestamp: now,
+        timestamp: context.network_timestamp(),
     })
 }

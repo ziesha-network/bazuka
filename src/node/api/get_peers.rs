@@ -10,11 +10,6 @@ pub async fn get_peers<B: Blockchain>(
 ) -> Result<GetPeersResponse, NodeError> {
     let context = context.read().await;
     Ok(GetPeersResponse {
-        peers: context
-            .peers
-            .clone()
-            .into_iter()
-            .filter_map(|(k, v)| if let Some(v) = v { Some((k, v)) } else { None })
-            .collect(),
+        peers: context.peers.clone(),
     })
 }
