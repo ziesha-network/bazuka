@@ -7,6 +7,10 @@ use thiserror::Error;
 pub enum BlockchainError {
     #[error("kvstore error happened")]
     KvStoreError(#[from] KvStoreError),
+    #[error("transaction signature is invalid")]
+    SignatureError,
+    #[error("balance insufficient")]
+    BalanceInsufficient
 }
 
 pub trait Blockchain {
