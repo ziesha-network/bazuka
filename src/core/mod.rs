@@ -74,7 +74,7 @@ pub type Money = u64;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum Address {
-    Nowhere,
+    Treasury,
     PublicKey(crypto::PublicKey),
 }
 
@@ -93,7 +93,7 @@ pub struct Transaction {
 impl Transaction {
     pub fn verify_signature(&self) -> bool {
         match &self.src {
-            Address::Nowhere => true,
+            Address::Treasury => true,
             Address::PublicKey(pk) => match &self.sig {
                 Signature::Unsigned => false,
                 Signature::Signed(sig) => {

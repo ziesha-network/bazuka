@@ -4,9 +4,9 @@ pub fn get_genesis_block() -> Block {
     Block {
         header: Default::default(),
         body: vec![Transaction {
-            src: Address::Nowhere,
+            src: Address::Treasury,
             data: TransactionData::RegularSend {
-                dst: Address::Nowhere,
+                dst: Address::Treasury,
                 amount: 123,
             },
             sig: Signature::Unsigned,
