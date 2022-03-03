@@ -72,12 +72,17 @@ pub enum Signature {
 
 pub type Money = u64;
 
+// All of the Zeeka's supply exists in Treasury account when the blockchain begins.
+// Validator/Miner fees are collected from the Treasury account. This simplifies
+// the process of money creation.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum Address {
     Treasury,
     PublicKey(crypto::PublicKey),
 }
 
+// A transaction could be as simple as sending some funds, or as complicated as
+// creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum TransactionData {
     RegularSend { dst: Address, amount: Money },

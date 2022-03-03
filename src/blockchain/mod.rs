@@ -10,7 +10,7 @@ pub enum BlockchainError {
     #[error("transaction signature is invalid")]
     SignatureError,
     #[error("balance insufficient")]
-    BalanceInsufficient
+    BalanceInsufficient,
 }
 
 pub trait Blockchain {
