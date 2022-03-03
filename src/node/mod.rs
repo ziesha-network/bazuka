@@ -216,7 +216,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
     }
 
     async fn server(&'static self) -> Result<(), NodeError> {
-        let addr = SocketAddr::from(([127, 0, 0, 1], self.address.1));
+        let addr = SocketAddr::from(([0, 0, 0, 0], self.address.1));
         let node_context = self.context.clone();
         let make_svc = make_service_fn(|conn: &AddrStream| {
             let client = conn.remote_addr().clone();
