@@ -1,4 +1,5 @@
 use db_key::Key;
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -62,6 +63,46 @@ pub trait KvStore {
     fn del(&mut self, k: StringKey) -> Result<(), KvStoreError>;
     fn set(&mut self, k: StringKey, v: Blob) -> Result<(), KvStoreError>;
     fn batch(&mut self, ops: Vec<WriteOp>) -> Result<(), KvStoreError>;
+}
+
+pub struct RamMirrorKvStore<'a, K: KvStore> {
+    store: &'a K,
+    overwrite: HashMap<String, Option<Blob>>,
+}
+impl<'a, K: KvStore> RamMirrorKvStore<'a, K> {
+    pub fn new(store: &'a K) -> Self {
+        Self {
+            store,
+            overwrite: HashMap::new(),
+        }
+    }
+}
+
+impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
+    fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError> {
+        if self.overwrite.contains_key(&k.0) {
+            Ok(self.overwrite.get(&k.0).cloned().unwrap())
+        } else {
+            self.store.get(k)
+        }
+    }
+    fn set(&mut self, k: StringKey, v: Blob) -> Result<(), KvStoreError> {
+        self.overwrite.insert(k.0, Some(v));
+        Ok(())
+    }
+    fn del(&mut self, k: StringKey) -> Result<(), KvStoreError> {
+        self.overwrite.insert(k.0, None);
+        Ok(())
+    }
+    fn batch(&mut self, ops: Vec<WriteOp>) -> Result<(), KvStoreError> {
+        for op in ops.into_iter() {
+            match op {
+                WriteOp::Remove(k) => self.overwrite.insert(k.0, None),
+                WriteOp::Put(k, v) => self.overwrite.insert(k.0, Some(v)),
+            };
+        }
+        Ok(())
+    }
 }
 
 mod ram;
