@@ -2,6 +2,7 @@ mod api;
 mod context;
 mod errors;
 mod http;
+pub mod upnp;
 use context::NodeContext;
 pub use errors::NodeError;
 

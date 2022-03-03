@@ -53,6 +53,11 @@ lazy_static! {
 #[cfg(feature = "node")]
 #[tokio::main]
 async fn main() -> Result<(), NodeError> {
+    println!(
+        "Public Ip: {:?}",
+        bazuka::node::upnp::get_public_ip().await.ok()
+    );
+
     NODE.run().await?;
     Ok(())
 }
