@@ -1,6 +1,6 @@
 use crate::config::genesis;
 use crate::core::{Address, Block, Money, Transaction};
-use crate::db::{KvStore, KvStoreError, StringKey, WriteOp};
+use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -39,6 +39,11 @@ impl<K: KvStore> KvStoreChain<K> {
         chain.initialize()?;
         Ok(chain)
     }
+
+    fn fork<'a>(&'a self) -> Result<KvStoreChain<RamMirrorKvStore<'a, K>>, BlockchainError> {
+        KvStoreChain::new(RamMirrorKvStore::new(&self.database))
+    }
+
     fn initialize(&mut self) -> Result<(), BlockchainError> {
         if self.get_height()? == 0 {
             self.apply_block(&genesis::get_genesis_block())?;
