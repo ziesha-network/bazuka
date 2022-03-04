@@ -3,11 +3,12 @@ use crate::crypto::{EdDSA, SignatureScheme};
 
 pub struct Wallet {
     seed: Vec<u8>,
+    nonce: u32,
 }
 
 impl Wallet {
     pub fn new(seed: Vec<u8>) -> Self {
-        Self { seed }
+        Self { seed, nonce: 0 }
     }
     pub fn get_address(&self) -> Address {
         let (pk, _) = EdDSA::generate_keys(&self.seed);
@@ -18,6 +19,7 @@ impl Wallet {
         let mut tx = Transaction {
             src: self.get_address(),
             data: TransactionData::RegularSend { dst, amount },
+            nonce: self.nonce,
             sig: Signature::Unsigned,
         };
         let bytes = bincode::serialize(&tx).unwrap();

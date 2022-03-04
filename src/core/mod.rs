@@ -115,6 +115,7 @@ pub enum TransactionData {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct Transaction {
     pub src: Address,
+    pub nonce: u32,
     pub data: TransactionData,
     pub sig: Signature,
 }

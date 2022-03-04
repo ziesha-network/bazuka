@@ -9,6 +9,7 @@ pub fn get_genesis_block() -> Block {
                 dst: Address::Treasury,
                 amount: 123,
             },
+            nonce: 0,
             sig: Signature::Unsigned,
         }],
     }
