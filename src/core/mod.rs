@@ -1,4 +1,6 @@
 use std::fmt::Debug;
+use std::str::FromStr;
+use thiserror::Error;
 
 use crate::core::number::U256;
 use crate::crypto;
@@ -79,6 +81,28 @@ pub type Money = u64;
 pub enum Address {
     Treasury,
     PublicKey(crypto::PublicKey),
+}
+
+#[derive(Error, Debug)]
+pub enum ParseAddressError {
+    #[error("address invalid")]
+    Invalid,
+}
+
+impl std::fmt::Display for Address {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Address::Treasury => write!(f, "Treasury"),
+            Address::PublicKey(pk) => write!(f, "{}", pk),
+        }
+    }
+}
+
+impl FromStr for Address {
+    type Err = ParseAddressError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Address::PublicKey(crypto::PublicKey::from_str(s).unwrap()))
+    }
 }
 
 // A transaction could be as simple as sending some funds, or as complicated as

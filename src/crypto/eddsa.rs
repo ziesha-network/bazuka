@@ -1,18 +1,63 @@
 use std::ops::*;
 
-use ff::PrimeField;
+use ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use num_integer::Integer;
 use serde::{Deserialize, Serialize};
 
 use super::curve::*;
+use super::field::Fr;
 use super::SignatureScheme;
 use crate::core::number::U256;
 
+use std::str::FromStr;
+use thiserror::Error;
+
 pub struct EdDSA;
+
+#[derive(Error, Debug)]
+pub enum ParsePublicKeyError {
+    #[error("public key invalid")]
+    Invalid,
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PublicKey(pub PointCompressed);
+
+impl std::fmt::Display for PublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "0x{}", if self.0 .1 { 3 } else { 2 })?;
+        for byte in self.0 .0.to_repr().as_ref().iter().rev() {
+            write!(f, "{:02x}", byte)?;
+        }
+        Ok(())
+    }
+}
+
+impl FromStr for PublicKey {
+    type Err = ParsePublicKeyError;
+    fn from_str(mut s: &str) -> Result<Self, Self::Err> {
+        let oddity = if s.starts_with("0x3") {
+            true
+        } else if s.starts_with("0x2") {
+            false
+        } else {
+            return Err(ParsePublicKeyError::Invalid);
+        };
+        s = &s[3..];
+        let bytes = (0..32)
+            .map(|i| u8::from_str_radix(&s[2 * i..2 * i + 2], 16))
+            .rev()
+            .collect::<Result<Vec<u8>, std::num::ParseIntError>>()
+            .unwrap();
+        let mut repr = Fr::zero().to_repr();
+        repr.as_mut().clone_from_slice(&bytes);
+        Ok(PublicKey(PointCompressed(
+            Fr::from_repr(repr).unwrap(),
+            oddity,
+        )))
+    }
+}
 
 #[derive(Clone)]
 pub struct PrivateKey {

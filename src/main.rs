@@ -66,7 +66,7 @@ async fn main() -> Result<(), NodeError> {
 fn main() {
     println!("Bazuka!");
     let wallet = Wallet::new(b"random seed".to_vec());
-    println!("Your address is: {:?}", wallet.get_address());
+    println!("Your address is: {}", wallet.get_address());
     let tx = wallet.create_transaction(Address::Treasury, 123);
     println!("Verify tx signature: {}", tx.verify_signature());
 }
