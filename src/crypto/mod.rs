@@ -1,5 +1,6 @@
 use std::hash::Hash;
 
+use generic_array::{ArrayLength, GenericArray};
 use rand_core::{OsRng, RngCore};
 
 pub use eddsa::*;
@@ -60,31 +61,25 @@ pub trait PublicT:
     fn to_public(&self) -> CryptoIdWithPublic;
 }
 
-pub trait CanBeTranscript {
-    fn as_merlin_transcript(&self) -> merlin::Transcript;
-}
-
 pub trait VRFPublic: PublicT {
     type VRFPair: VRFPair;
 
     fn vrf_verify(
         &self,
-        data: <<Self as VRFPublic>::VRFPair as VRFPair>::VRFData,
-        sig: <<Self as VRFPublic>::VRFPair as VRFPair>::VRFSignature,
-    ) -> Result<schnorrkel::vrf::VRFInOut, Error>;
-}
-
-pub trait VRFSignature {
-    fn output(&self) -> &schnorrkel::vrf::VRFOutput;
-    fn proof(&self) -> &schnorrkel::vrf::VRFProof;
+        data: VRFTranscriptData,
+        sig: VRFSignature<
+            <<Self as VRFPublic>::VRFPair as VRFPair>::OutputLen,
+            <<Self as VRFPublic>::VRFPair as VRFPair>::ProofLen,
+        >,
+    ) -> Result<Vec<u8>, Error>;
 }
 
 pub trait VRFPair: PairT {
-    type VRFData: CanBeTranscript;
-    type VRFSignature: VRFSignature + AsRef<[u8]>;
+    type OutputLen: ArrayLength<u8>;
+    type ProofLen: ArrayLength<u8>;
     type VRFPublic: PublicT + Hash + VRFPublic;
 
-    fn vrf_sign(&self, data: Self::VRFData) -> Self::VRFSignature;
+    fn vrf_sign(&self, data: VRFTranscriptData) -> VRFSignature<Self::OutputLen, Self::ProofLen>;
 }
 
 pub trait PairT: CryptoCorrelation + Sized + Clone + Send + Sync + 'static {
@@ -114,6 +109,26 @@ pub trait PairT: CryptoCorrelation + Sized + Clone + Send + Sync + 'static {
     fn sign(&self, message: &[u8]) -> Self::Signature;
 
     fn verify<M: AsRef<[u8]>>(sig: &Self::Signature, message: M, pubkey: &Self::Public) -> bool;
+}
+
+///
+pub struct VRFSignature<O: ArrayLength<u8>, P: ArrayLength<u8>> {
+    pub output: GenericArray<u8, O>,
+    pub proof: GenericArray<u8, P>,
+}
+
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub enum VRFTranscriptValue {
+    /// Value is an array of bytes
+    Bytes(Vec<u8>),
+    /// Value is a u64 integer
+    U64(u64),
+}
+
+#[derive(Clone)]
+pub struct VRFTranscriptData {
+    pub label: &'static [u8],
+    pub items: Vec<(&'static str, VRFTranscriptValue)>,
 }
 
 #[derive(

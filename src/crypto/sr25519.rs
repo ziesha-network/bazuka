@@ -3,38 +3,54 @@ use std::ops::Deref;
 use bip39::{Language, Mnemonic, MnemonicType};
 use merlin::Transcript;
 use schnorrkel::keys::{MINI_SECRET_KEY_LENGTH, SECRET_KEY_LENGTH};
-use schnorrkel::vrf::{VRFInOut, VRFOutput, VRFProof, VRF_PROOF_LENGTH};
+use schnorrkel::vrf::VRF_PROOF_LENGTH;
 use schnorrkel::{
     signing_context, ExpansionMode, MiniSecretKey, PublicKey, SecretKey, PUBLIC_KEY_LENGTH,
 };
+use typenum::{Unsigned, U32, U64};
 
 use crate::core::bip39::mini_secret_from_entropy;
 use crate::crypto::{
-    CanBeTranscript, CryptoCorrelation, CryptoIdWithPublic, PairT, PublicT, VRFPair, VRFPublic,
+    CryptoCorrelation, CryptoIdWithPublic, PairT, PublicT, VRFPair, VRFPublic, VRFSignature,
+    VRFTranscriptData, VRFTranscriptValue,
 };
 use crate::crypto::{CryptoId, Error};
 
 const SIGNING_CTX: &[u8] = b"sr25_123_0990";
+const SR25519_OUTPUT_LEN: usize = PUBLIC_KEY_LENGTH;
+const SR25519_PROOF_LEN: usize = VRF_PROOF_LENGTH;
+
 pub const CRYPTO_ID: CryptoId = CryptoId(*b"sr25");
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
-pub struct Public(pub [u8; 32]);
+pub struct Public(pub [u8; PUBLIC_KEY_LENGTH]);
 
 impl VRFPublic for Public {
     type VRFPair = Pair;
 
     fn vrf_verify(
         &self,
-        data: <<Self as VRFPublic>::VRFPair as VRFPair>::VRFData,
-        sig: <<Self as VRFPublic>::VRFPair as VRFPair>::VRFSignature,
-    ) -> Result<VRFInOut, Error> {
+        data: VRFTranscriptData,
+        sig: VRFSignature<
+            <<Self as VRFPublic>::VRFPair as VRFPair>::OutputLen,
+            <<Self as VRFPublic>::VRFPair as VRFPair>::ProofLen,
+        >,
+    ) -> Result<Vec<u8>, Error> {
         let transcript = make_transcript(&data);
-        let public =
-            schnorrkel::PublicKey::from_bytes(&self.0).map_err(|e| Error::VRFSignatureError(e))?;
-        let (inout, _) = public
-            .vrf_verify(transcript, &sig.output, &sig.proof)
+        let output = schnorrkel::vrf::VRFOutput(
+            sig.output
+                .as_slice()
+                .try_into()
+                .expect("VRFOutput with incorrect length"),
+        );
+        let proof = schnorrkel::vrf::VRFProof::from_bytes(&sig.proof)
             .map_err(|e| Error::VRFSignatureError(e))?;
-        Ok(inout)
+        let public_key =
+            schnorrkel::PublicKey::from_bytes(&self.0).map_err(|e| Error::VRFSignatureError(e))?;
+        let (inout, _) = public_key
+            .vrf_verify(transcript, &output, &proof)
+            .map_err(|e| Error::VRFSignatureError(e))?;
+        Ok(inout.to_output().to_bytes().to_vec())
     }
 }
 
@@ -50,15 +66,9 @@ impl PublicT for Public {
     }
 }
 
-impl AsRef<[u8; 32]> for Public {
-    fn as_ref(&self) -> &[u8; 32] {
-        &self.0
-    }
-}
-
 impl AsRef<[u8]> for Public {
     fn as_ref(&self) -> &[u8] {
-        &self.0[..]
+        &self.0
     }
 }
 
@@ -69,7 +79,7 @@ impl AsMut<[u8]> for Public {
 }
 
 impl Deref for Public {
-    type Target = [u8];
+    type Target = [u8; 32];
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -100,16 +110,24 @@ impl core::convert::TryFrom<&[u8]> for Public {
 pub struct Pair(schnorrkel::Keypair);
 
 impl VRFPair for Pair {
-    type VRFData = VRFTranscriptData;
-    type VRFSignature = VRFSignature;
+    type OutputLen = U32;
+    type ProofLen = U64;
     type VRFPublic = Public;
 
-    fn vrf_sign(&self, data: Self::VRFData) -> Self::VRFSignature {
+    fn vrf_sign(&self, data: VRFTranscriptData) -> VRFSignature<Self::OutputLen, Self::ProofLen> {
         let transcript = make_transcript(&data);
         let (inout, proof, _) = self.0.vrf_sign(transcript);
+
         VRFSignature {
-            output: inout.to_output(),
-            proof,
+            output: inout
+                .to_output()
+                .to_bytes()
+                .try_into()
+                .expect("SR25519 vrfout is a 32 length array"),
+            proof: proof
+                .to_bytes()
+                .try_into()
+                .expect("SR25519 proof is a 64 length array"),
         }
     }
 }
@@ -339,54 +357,6 @@ impl CryptoCorrelation for Public {
 
 impl CryptoCorrelation for Signature {
     type Pair = Pair;
-}
-
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub enum VRFTranscriptValue {
-    /// Value is an array of bytes
-    Bytes(Vec<u8>),
-    /// Value is a u64 integer
-    U64(u64),
-}
-
-#[derive(Clone)]
-pub struct VRFTranscriptData {
-    pub label: &'static [u8],
-    pub items: Vec<(&'static str, VRFTranscriptValue)>,
-}
-
-impl CanBeTranscript for VRFTranscriptData {
-    fn as_merlin_transcript(&self) -> Transcript {
-        make_transcript(&self)
-    }
-}
-
-pub struct VRFSignature {
-    /// The VRFOutput serialized
-    pub output: VRFOutput,
-    /// The calculated VRFProof
-    pub proof: VRFProof,
-}
-
-impl AsRef<[u8]> for VRFSignature {
-    // @TODO: unsafe or some better way
-    fn as_ref(&self) -> &[u8] {
-        let mut misk = vec![0u8; PUBLIC_KEY_LENGTH + VRF_PROOF_LENGTH];
-        let (prefix, suffifx) = misk.split_at_mut(PUBLIC_KEY_LENGTH);
-        prefix.copy_from_slice(&self.output.0);
-        suffifx.copy_from_slice(&self.proof.to_bytes());
-        misk.leak()
-    }
-}
-
-impl crate::crypto::VRFSignature for VRFSignature {
-    fn output(&self) -> &VRFOutput {
-        &self.output
-    }
-
-    fn proof(&self) -> &VRFProof {
-        &self.proof
-    }
 }
 
 /// convert to `merlin Transcript`
