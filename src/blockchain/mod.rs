@@ -1,5 +1,5 @@
-use crate::config::genesis;
-use crate::core::{Address, Block, Money, Transaction};
+use crate::config::{genesis, TOTAL_SUPPLY};
+use crate::core::{Account, Address, Block, Transaction, TransactionData};
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use thiserror::Error;
 
@@ -14,19 +14,9 @@ pub enum BlockchainError {
 }
 
 pub trait Blockchain {
-    fn get_balance(&self, addr: Address) -> Result<Money, BlockchainError>;
+    fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn extend(&mut self, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
     fn get_height(&self) -> Result<usize, BlockchainError>;
-}
-
-pub trait Identifiable {
-    fn get_key(&self) -> StringKey;
-}
-
-impl Identifiable for Address {
-    fn get_key(&self) -> StringKey {
-        StringKey::new(&format!("addr_{:?}", self))
-    }
 }
 
 pub struct KvStoreChain<K: KvStore> {
@@ -51,8 +41,39 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(())
     }
 
-    fn apply_tx(&self, _tx: &Transaction) -> Result<Vec<WriteOp>, BlockchainError> {
-        Ok(Vec::new())
+    fn apply_tx(&self, tx: &Transaction) -> Result<Vec<WriteOp>, BlockchainError> {
+        let mut ops = Vec::new();
+        if !tx.verify_signature() {
+            return Err(BlockchainError::SignatureError);
+        }
+        match &tx.data {
+            TransactionData::RegularSend { dst, amount } => {
+                // WARN: Fails when dst == src
+
+                let mut acc_src = self.get_account(tx.src.clone())?;
+
+                if acc_src.balance < amount + tx.fee {
+                    return Err(BlockchainError::BalanceInsufficient);
+                }
+
+                acc_src.balance -= amount + tx.fee;
+
+                ops.push(WriteOp::Put(
+                    StringKey::new(&format!("account_{}", tx.src)),
+                    acc_src.into(),
+                ));
+
+                let mut acc_dst = self.get_account(dst.clone())?;
+                acc_dst.balance += amount;
+                acc_dst.nonce += 1;
+
+                ops.push(WriteOp::Put(
+                    StringKey::new(&format!("account_{}", dst)),
+                    acc_dst.into(),
+                ));
+            }
+        }
+        Ok(ops)
     }
 
     fn apply_block(&mut self, block: &Block) -> Result<(), BlockchainError> {
@@ -71,10 +92,18 @@ impl<K: KvStore> KvStoreChain<K> {
 }
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
-    fn get_balance(&self, addr: Address) -> Result<Money, BlockchainError> {
-        Ok(match self.database.get(addr.get_key())? {
+    fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {
+        let k = StringKey::new(&format!("account_{}", addr));
+        Ok(match self.database.get(k)? {
             Some(b) => b.try_into()?,
-            None => 0,
+            None => Account {
+                balance: if addr == Address::Treasury {
+                    TOTAL_SUPPLY
+                } else {
+                    0
+                },
+                nonce: 0,
+            },
         })
     }
     fn extend(&mut self, blocks: &Vec<Block>) -> Result<(), BlockchainError> {

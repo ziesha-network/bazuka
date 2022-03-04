@@ -1,3 +1,4 @@
+use crate::core::Account;
 use db_key::Key;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -35,7 +36,7 @@ macro_rules! gen_try_into {
     };
 }
 
-gen_try_into!(u32, u64, usize);
+gen_try_into!(u32, u64, usize, Account);
 
 impl<T: serde::Serialize> From<T> for Blob {
     fn from(n: T) -> Self {
@@ -53,6 +54,7 @@ impl Key for StringKey {
     }
 }
 
+#[derive(Clone, Debug)]
 pub enum WriteOp {
     Remove(StringKey),
     Put(StringKey, Blob),

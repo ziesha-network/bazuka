@@ -10,6 +10,7 @@ pub fn get_genesis_block() -> Block {
                 amount: 123,
             },
             nonce: 0,
+            fee: 0,
             sig: Signature::Unsigned,
         }],
     }

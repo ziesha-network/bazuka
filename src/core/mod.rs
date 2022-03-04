@@ -117,7 +117,14 @@ pub struct Transaction {
     pub src: Address,
     pub nonce: u32,
     pub data: TransactionData,
+    pub fee: Money,
     pub sig: Signature,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct Account {
+    pub balance: Money,
+    pub nonce: u32,
 }
 
 impl Transaction {
