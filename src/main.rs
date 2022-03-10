@@ -8,7 +8,10 @@ use {
 };
 
 #[cfg(not(feature = "node"))]
-use {bazuka::core::Address, bazuka::wallet::Wallet};
+use {
+    bazuka::blockchain::Blockchain, bazuka::blockchain::KvStoreChain, bazuka::core::Address,
+    bazuka::db::RamKvStore, bazuka::wallet::Wallet,
+};
 
 #[cfg(feature = "node")]
 #[macro_use]
@@ -64,6 +67,13 @@ async fn main() -> Result<(), NodeError> {
 
 #[cfg(not(feature = "node"))]
 fn main() {
+    let chain = KvStoreChain::new(RamKvStore::new()).unwrap();
+    println!(
+        "{}: {:?}",
+        Address::Treasury,
+        chain.get_account(Address::Treasury).unwrap()
+    );
+
     println!("Bazuka!");
     let wallet = Wallet::new(b"random seed".to_vec());
     println!("Your address is: {}", wallet.get_address());

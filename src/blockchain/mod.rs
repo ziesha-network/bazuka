@@ -48,29 +48,29 @@ impl<K: KvStore> KvStoreChain<K> {
         }
         match &tx.data {
             TransactionData::RegularSend { dst, amount } => {
-                // WARN: Fails when dst == src
-
                 let mut acc_src = self.get_account(tx.src.clone())?;
 
                 if acc_src.balance < amount + tx.fee {
                     return Err(BlockchainError::BalanceInsufficient);
                 }
 
-                acc_src.balance -= amount + tx.fee;
+                acc_src.balance -= if *dst != tx.src { *amount } else { 0 } + tx.fee;
+                acc_src.nonce += 1;
 
                 ops.push(WriteOp::Put(
                     StringKey::new(&format!("account_{}", tx.src)),
                     acc_src.into(),
                 ));
 
-                let mut acc_dst = self.get_account(dst.clone())?;
-                acc_dst.balance += amount;
-                acc_dst.nonce += 1;
+                if *dst != tx.src {
+                    let mut acc_dst = self.get_account(dst.clone())?;
+                    acc_dst.balance += amount;
 
-                ops.push(WriteOp::Put(
-                    StringKey::new(&format!("account_{}", dst)),
-                    acc_dst.into(),
-                ));
+                    ops.push(WriteOp::Put(
+                        StringKey::new(&format!("account_{}", dst)),
+                        acc_dst.into(),
+                    ));
+                }
             }
         }
         Ok(ops)
