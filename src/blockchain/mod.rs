@@ -11,6 +11,8 @@ pub enum BlockchainError {
     SignatureError,
     #[error("balance insufficient")]
     BalanceInsufficient,
+    #[error("inconsistency error")]
+    Inconsistency,
 }
 
 pub trait Blockchain {
@@ -39,6 +41,10 @@ impl<K: KvStore> KvStoreChain<K> {
             self.apply_block(&genesis::get_genesis_block())?;
         }
         Ok(())
+    }
+
+    fn revert_tx(&self, tx: &Transaction) -> Result<Vec<WriteOp>, BlockchainError> {
+        unimplemented!();
     }
 
     fn apply_tx(&self, tx: &Transaction) -> Result<Vec<WriteOp>, BlockchainError> {
@@ -74,6 +80,26 @@ impl<K: KvStore> KvStoreChain<K> {
             }
         }
         Ok(ops)
+    }
+
+    pub fn revert_block(&mut self) -> Result<(), BlockchainError> {
+        let height = self.get_height()?;
+        let k = format!("block_{}", height - 1).into();
+        let last_block: Block = match self.database.get(k)? {
+            Some(b) => b.try_into()?,
+            None => {
+                return Err(BlockchainError::Inconsistency);
+            }
+        };
+
+        let mut changes = Vec::new();
+        for tx in last_block.body.iter() {
+            changes.extend(self.revert_tx(tx)?);
+        }
+        changes.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
+        changes.push(WriteOp::Put("height".into(), (height - 1).into()));
+        self.database.batch(changes)?;
+        Ok(())
     }
 
     fn apply_block(&mut self, block: &Block) -> Result<(), BlockchainError> {

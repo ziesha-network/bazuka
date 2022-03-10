@@ -1,4 +1,4 @@
-use crate::core::Account;
+use crate::core::{Account, Block};
 use db_key::Key;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -36,7 +36,7 @@ macro_rules! gen_try_into {
     };
 }
 
-gen_try_into!(u32, u64, usize, Account);
+gen_try_into!(u32, u64, usize, Account, Block);
 
 impl<T: serde::Serialize> From<T> for Blob {
     fn from(n: T) -> Self {
