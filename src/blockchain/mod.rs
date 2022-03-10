@@ -1,6 +1,6 @@
 use crate::config::{genesis, TOTAL_SUPPLY};
 use crate::core::{Account, Address, Block, Transaction, TransactionData};
-use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
+use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, WriteOp};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -58,7 +58,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 acc_src.nonce += 1;
 
                 ops.push(WriteOp::Put(
-                    StringKey::new(&format!("account_{}", tx.src)),
+                    format!("account_{}", tx.src).into(),
                     acc_src.into(),
                 ));
 
@@ -67,7 +67,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     acc_dst.balance += amount;
 
                     ops.push(WriteOp::Put(
-                        StringKey::new(&format!("account_{}", dst)),
+                        format!("account_{}", dst).into(),
                         acc_dst.into(),
                     ));
                 }
@@ -83,9 +83,10 @@ impl<K: KvStore> KvStoreChain<K> {
             changes.extend(self.apply_tx(tx)?);
         }
         changes.push(WriteOp::Put(
-            StringKey::new("height"),
-            (curr_height + 1).into(),
+            format!("block_{:010}", block.header.number).into(),
+            block.into(),
         ));
+        changes.push(WriteOp::Put("height".into(), (curr_height + 1).into()));
         self.database.batch(changes)?;
         Ok(())
     }
@@ -93,7 +94,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {
-        let k = StringKey::new(&format!("account_{}", addr));
+        let k = format!("account_{}", addr).into();
         Ok(match self.database.get(k)? {
             Some(b) => b.try_into()?,
             None => Account {
@@ -114,7 +115,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         unimplemented!();
     }
     fn get_height(&self) -> Result<usize, BlockchainError> {
-        Ok(match self.database.get(StringKey::new("height"))? {
+        Ok(match self.database.get("height".into())? {
             Some(b) => b.try_into()?,
             None => 0,
         })

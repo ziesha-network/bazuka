@@ -54,6 +54,17 @@ impl Key for StringKey {
     }
 }
 
+impl From<String> for StringKey {
+    fn from(s: String) -> Self {
+        Self::new(&s)
+    }
+}
+impl From<&str> for StringKey {
+    fn from(s: &str) -> Self {
+        Self::new(s)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum WriteOp {
     Remove(StringKey),
