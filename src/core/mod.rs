@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 use std::str::FromStr;
+
+use num_traits::{One, Zero};
 use thiserror::Error;
 
 use crate::core::number::U256;
@@ -37,7 +39,7 @@ auto_trait!(
     trait AutoSerialize: serde::ser::Serialize;
 
     /// A type that implements Deserialize in node runtime
-    trait AutoDeserialize: serde::de::DeserializeOwned, serde::ser::Serialize;
+    trait AutoDeserialize: serde::de::DeserializeOwned;
     /// A type that implements Hash in node runtime
     trait AutoHash: core::hash::Hash;
     /// A type that implements Display in runtime
@@ -50,7 +52,7 @@ auto_trait!(
 pub trait MemberBound: Send + Sync + Sized + Debug + Clone + Eq + PartialEq + 'static {}
 impl<T: Send + Sync + Sized + Debug + Clone + Eq + PartialEq + 'static> MemberBound for T {}
 
-pub trait Hash: Debug + Clone {
+pub trait Hash: Debug + Clone + 'static {
     /// The length in bytes of the Hasher output
     const LENGTH: usize;
 
@@ -65,6 +67,10 @@ pub trait Hash: Debug + Clone {
 
     fn hash(s: &[u8]) -> Self::Output;
 }
+
+/// Number as a type in Header
+pub trait BlockNumber: Default + Copy + Into<U256> + TryFrom<U256> + Eq + Zero + One {}
+impl BlockNumber for BlockNumU64 {}
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum Signature {

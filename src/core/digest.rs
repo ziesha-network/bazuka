@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+use crate::consensus::digest::{BabeConsensusLog, PreDigest};
+
 /// Generic Header Digests
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Digests {
     logs: Vec<Digest>,
 }
@@ -35,30 +37,12 @@ impl Digests {
 }
 
 /// Digest prevent code and state duplication
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "t", content = "c")] // short for output
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Digest {
     /// consensus to runtime
-    PreRuntime(PreDigest),
+    PreDigest(PreDigest),
     /// runtime to consensus
     Consensus(BabeConsensusLog),
-}
-
-/// @TODO: WIP
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PreDigest {
-    Primary,
-    SecondaryPlain,
-    SecondaryVRF,
-}
-
-/// @TODO: WIP
-/// A consensus log item for BABE.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BabeConsensusLog {
-    NextEpochData,
-    OnDisable,
-    NextConfigData,
 }
 
 #[cfg(test)]

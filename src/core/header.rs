@@ -1,8 +1,8 @@
-use crate::core::digest::Digests;
-use crate::core::{Hash, U256};
+use crate::core::digest::{Digest, Digests};
+use crate::core::{AutoSerialize, BlockNumber, Hash};
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
-pub struct Header<H: Hash, N: Default + Copy + Into<U256> + TryFrom<U256>> {
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+pub struct Header<H: Hash, N: BlockNumber + AutoSerialize> {
     /// the parent hash
     pub parent_hash: H::Output,
     /// block number or block height
@@ -15,7 +15,11 @@ pub struct Header<H: Hash, N: Default + Copy + Into<U256> + TryFrom<U256>> {
     pub digests: Digests,
 }
 
-impl<H: Hash, N: Default + Copy + Into<U256> + TryFrom<U256>> Default for Header<H, N> {
+impl<H, N> Default for Header<H, N>
+where
+    H: Hash,
+    N: BlockNumber + AutoSerialize,
+{
     fn default() -> Self {
         Header {
             parent_hash: H::Output::default(),
@@ -27,7 +31,11 @@ impl<H: Hash, N: Default + Copy + Into<U256> + TryFrom<U256>> Default for Header
     }
 }
 
-impl<H: Hash, N: Default + Copy + Into<U256> + TryFrom<U256>> Header<H, N> {
+impl<H, N> Header<H, N>
+where
+    H: Hash,
+    N: BlockNumber + AutoSerialize,
+{
     pub fn new(
         number: N,
         block_root: H::Output,
@@ -42,5 +50,13 @@ impl<H: Hash, N: Default + Copy + Into<U256> + TryFrom<U256>> Header<H, N> {
             block_root,
             digests,
         }
+    }
+
+    pub fn hash(&self) -> H::Output {
+        H::hash(&serde_json::to_vec(&self).expect("convert header to json format"))
+    }
+
+    pub fn logs(&self) -> &[Digest] {
+        self.digests.logs()
     }
 }

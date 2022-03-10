@@ -7,9 +7,10 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1", features = ["full"], optional = true }
 hyper = { version = "0.14", features = ["full"], optional = true }
-futures = { version = "0.3", optional = true}
+futures = { version = "0.3", optional = true }
 leveldb = { version = "0.8.6", optional = true }
 structopt = { version = "0.3", default-features = false, optional = true }
+log = "0.4"
 lazy_static = "1.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_derive = "1.0"
@@ -24,6 +25,16 @@ rand = "0.8.5"
 thiserror = "1.0"
 num-bigint = "0.4"
 num-integer = "0.1"
+num-traits = "0.2"
+futures-timer = "3.0"
+async-trait = "0.1.52"
+schnorrkel = { version = "0.9.1", features = [
+    "preaudit_deprecated",
+    "u64_backend",
+    "getrandom",
+    "rand",
+    "std"
+], default-features = false }
 
 [features]
 node = ["tokio", "hyper", "leveldb", "futures", "structopt"]
