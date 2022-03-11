@@ -188,29 +188,23 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                         .entry(bad_peer.clone())
                         .and_modify(|stats| stats.punish(punish::NO_RESPONSE_PUNISH));
                 }
+                // Set timestamp_offset according to median timestamp of the network
+                let median_timestamp = utils::median(
+                    &peer_responses
+                        .iter()
+                        .filter_map(|r| r.1.as_ref().ok())
+                        .map(|r| r.timestamp)
+                        .collect(),
+                );
+                ctx.timestamp_offset = median_timestamp as i64 - utils::local_timestamp() as i64;
+                let active_peers = ctx.active_peers().len();
+                println!(
+                    "Lub dub! (Height: {}, Network Timestamp: {}, Peers: {})",
+                    ctx.blockchain.get_height()?,
+                    ctx.network_timestamp(),
+                    active_peers
+                );
             }
-
-            // Set timestamp_offset according to median timestamp of the network
-            let median_timestamp = utils::median(
-                &peer_responses
-                    .iter()
-                    .filter_map(|r| r.1.as_ref().ok())
-                    .map(|r| r.timestamp)
-                    .collect(),
-            );
-            let mut ctx = self.context.write().await;
-            ctx.timestamp_offset = median_timestamp as i64 - utils::local_timestamp() as i64;
-            drop(ctx);
-
-            let mut ctx = self.context.write().await;
-            let active_peers = ctx.active_peers().len();
-            println!(
-                "Lub dub! (Height: {}, Network Timestamp: {}, Peers: {})",
-                ctx.blockchain.get_height()?,
-                ctx.network_timestamp(),
-                active_peers
-            );
-            drop(ctx);
 
             sleep(Duration::from_millis(1000)).await;
         }
