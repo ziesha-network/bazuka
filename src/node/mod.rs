@@ -210,6 +210,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                 ctx.network_timestamp(),
                 active_peers
             );
+            drop(ctx);
 
             sleep(Duration::from_millis(1000)).await;
         }
