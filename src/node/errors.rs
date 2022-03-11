@@ -13,6 +13,8 @@ pub enum NodeError {
     JsonError(#[from] serde_json::Error),
     #[error("serde qs error happened")]
     QueryStringError(#[from] serde_qs::Error),
+    #[error("bincode error happened")]
+    BincodeError(#[from] bincode::Error),
     #[error("utf8 error happened")]
     Utf8Error(#[from] std::str::Utf8Error),
     #[error("addr parse error happened")]

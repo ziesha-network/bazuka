@@ -1,6 +1,21 @@
 use super::NodeError;
 use hyper::{Body, Client, Method, Request};
 
+pub async fn bincode_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
+    addr: String,
+    req: Req,
+) -> Result<Resp, NodeError> {
+    let client = Client::new();
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri(&addr)
+        .header("content-type", "application/octet-stream")
+        .body(Body::from(bincode::serialize(&req)?))?;
+    let body = client.request(req).await?.into_body();
+    let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
+    Ok(resp)
+}
+
 pub async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
     addr: String,
     req: Req,

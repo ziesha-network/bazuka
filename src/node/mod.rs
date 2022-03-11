@@ -99,6 +99,15 @@ async fn node_service<B: Blockchain>(
                 .await?,
             )?);
         }
+        (Method::POST, "/blocks") => {
+            *response.body_mut() = Body::from(bincode::serialize(
+                &api::post_block(
+                    Arc::clone(&context),
+                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
+                )
+                .await?,
+            )?);
+        }
         _ => {
             *response.status_mut() = StatusCode::NOT_FOUND;
         }
