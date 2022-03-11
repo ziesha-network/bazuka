@@ -57,11 +57,11 @@ impl PeerStats {
         }
         punished
     }
-    pub fn punish(&mut self, millis: u64) {
+    pub fn punish(&mut self, secs: u64) {
         let now = utils::local_timestamp();
         self.punished_til = match self.punished_til {
-            Some(curr) => Some(curr + millis),
-            None => Some(now + millis),
+            Some(curr) => Some(std::cmp::min(curr + secs, now + punish::MAX_PUNISH)),
+            None => Some(now + secs),
         };
     }
 }

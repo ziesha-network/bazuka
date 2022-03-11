@@ -18,12 +18,12 @@ impl<B: Blockchain> NodeContext<B> {
             height: self.blockchain.get_height()?,
         })
     }
-    pub fn active_peers(&mut self) -> Vec<PeerAddress> {
+    pub fn active_peers(&mut self) -> HashMap<PeerAddress, PeerStats> {
         self.peers
             .iter_mut()
             .filter_map(|(k, v)| {
                 if v.info.is_some() && !v.is_punished() {
-                    Some(k.clone())
+                    Some((k.clone(), v.clone()))
                 } else {
                     None
                 }
