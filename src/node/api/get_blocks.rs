@@ -6,7 +6,10 @@ use tokio::sync::RwLock;
 
 pub async fn get_blocks<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
-    _req: GetBlocksRequest,
+    req: GetBlocksRequest,
 ) -> Result<GetBlocksResponse, NodeError> {
-    unimplemented!();
+    let context = context.read().await;
+    Ok(GetBlocksResponse {
+        blocks: context.blockchain.get_blocks(req.since, req.until)?,
+    })
 }

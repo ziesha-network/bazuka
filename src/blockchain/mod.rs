@@ -19,6 +19,8 @@ pub trait Blockchain {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn extend(&mut self, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
     fn get_height(&self) -> Result<usize, BlockchainError>;
+    fn get_blocks(&self, since: usize, until: Option<usize>)
+        -> Result<Vec<Block>, BlockchainError>;
 }
 
 pub struct KvStoreChain<K: KvStore> {
@@ -145,5 +147,25 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             Some(b) => b.try_into()?,
             None => 0,
         })
+    }
+    fn get_blocks(
+        &self,
+        since: usize,
+        until: Option<usize>,
+    ) -> Result<Vec<Block>, BlockchainError> {
+        let mut blks: Vec<Block> = Vec::new();
+        let height = self.get_height()?;
+        for i in since..until.unwrap_or(height) {
+            if i >= height {
+                break;
+            }
+            blks.push(
+                self.database
+                    .get(format!("block_{:010}", i).into())?
+                    .ok_or(BlockchainError::Inconsistency)?
+                    .try_into()?,
+            );
+        }
+        Ok(blks)
     }
 }

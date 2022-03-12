@@ -17,7 +17,7 @@ pub async fn post_peer<B: Blockchain>(
         })
         .or_insert(PeerStats {
             info: Some(req.info),
-            punished_til: None,
+            punished_until: None,
         });
     Ok(PostPeerResponse {
         info: context.get_info()?,

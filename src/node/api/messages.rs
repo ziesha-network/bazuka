@@ -36,7 +36,7 @@ pub struct PostBlockResponse {}
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GetBlocksRequest {
     pub since: usize,
-    pub til: Option<usize>,
+    pub until: Option<usize>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

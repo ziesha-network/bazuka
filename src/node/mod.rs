@@ -42,24 +42,24 @@ pub struct PeerInfo {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PeerStats {
-    pub punished_til: Option<Timestamp>,
+    pub punished_until: Option<Timestamp>,
     pub info: Option<PeerInfo>,
 }
 
 impl PeerStats {
     pub fn is_punished(&mut self) -> bool {
-        let punished = match self.punished_til {
-            Some(til) => utils::local_timestamp() < til,
+        let punished = match self.punished_until {
+            Some(until) => utils::local_timestamp() < until,
             None => false,
         };
         if !punished {
-            self.punished_til = None;
+            self.punished_until = None;
         }
         punished
     }
     pub fn punish(&mut self, secs: u64) {
         let now = utils::local_timestamp();
-        self.punished_til = match self.punished_til {
+        self.punished_until = match self.punished_until {
             Some(curr) => Some(std::cmp::min(curr + secs, now + punish::MAX_PUNISH)),
             None => Some(now + secs),
         };
@@ -99,6 +99,11 @@ async fn node_service<B: Blockchain>(
                 .await?,
             )?);
         }
+        (Method::GET, "/blocks") => {
+            *response.body_mut() = Body::from(bincode::serialize(
+                &api::get_blocks(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+            )?);
+        }
         (Method::POST, "/blocks") => {
             *response.body_mut() = Body::from(bincode::serialize(
                 &api::post_block(
@@ -128,7 +133,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                         (
                             addr,
                             PeerStats {
-                                punished_til: None,
+                                punished_until: None,
                                 info: None,
                             },
                         )
@@ -214,6 +219,15 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                     active_peers
                 );
             }
+
+            let blocks = http::bincode_get::<GetBlocksRequest, GetBlocksResponse>(
+                "http://127.0.0.1:3030/blocks".to_string(),
+                GetBlocksRequest {
+                    since: 0,
+                    until: None,
+                },
+            )
+            .await?;
 
             sleep(Duration::from_millis(1000)).await;
         }
