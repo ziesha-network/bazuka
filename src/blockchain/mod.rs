@@ -1,5 +1,5 @@
 use crate::config::{genesis, TOTAL_SUPPLY};
-use crate::core::{Account, Address, Block, Transaction, TransactionData};
+use crate::core::{Account, Address, Block, Header, Transaction, TransactionData};
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, WriteOp};
 use thiserror::Error;
 
@@ -19,6 +19,11 @@ pub trait Blockchain {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn extend(&mut self, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
     fn get_height(&self) -> Result<usize, BlockchainError>;
+    fn get_headers(
+        &self,
+        since: usize,
+        until: Option<usize>,
+    ) -> Result<Vec<Header>, BlockchainError>;
     fn get_blocks(&self, since: usize, until: Option<usize>)
         -> Result<Vec<Block>, BlockchainError>;
 }
@@ -147,6 +152,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             Some(b) => b.try_into()?,
             None => 0,
         })
+    }
+    fn get_headers(
+        &self,
+        since: usize,
+        until: Option<usize>,
+    ) -> Result<Vec<Header>, BlockchainError> {
+        Ok(self
+            .get_blocks(since, until)?
+            .into_iter()
+            .map(|b| b.header)
+            .collect())
     }
     fn get_blocks(
         &self,

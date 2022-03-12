@@ -10,3 +10,5 @@ mod post_block;
 pub use post_block::*;
 mod get_blocks;
 pub use get_blocks::*;
+mod get_headers;
+pub use get_headers::*;

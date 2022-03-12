@@ -99,6 +99,11 @@ async fn node_service<B: Blockchain>(
                 .await?,
             )?);
         }
+        (Method::GET, "/headers") => {
+            *response.body_mut() = Body::from(bincode::serialize(
+                &api::get_headers(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+            )?);
+        }
         (Method::GET, "/blocks") => {
             *response.body_mut() = Body::from(bincode::serialize(
                 &api::get_blocks(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
@@ -172,10 +177,15 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
 
     async fn heartbeat(&self) -> Result<(), NodeError> {
         loop {
-            let ctx = self.context.read().await;
+            let mut ctx = self.context.write().await;
             let timestamp = ctx.network_timestamp();
             let info = ctx.get_info()?;
-            let peer_addresses = ctx.peers.keys().cloned().collect::<Vec<PeerAddress>>();
+            let height = ctx.blockchain.get_height()?;
+            let peer_addresses = ctx
+                .active_peers()
+                .keys()
+                .cloned()
+                .collect::<Vec<PeerAddress>>();
             drop(ctx);
 
             let peer_responses: Vec<(PeerAddress, Result<PostPeerResponse, NodeError>)> = self
@@ -214,20 +224,51 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                 let active_peers = ctx.active_peers().len();
                 println!(
                     "Lub dub! (Height: {}, Network Timestamp: {}, Peers: {})",
-                    ctx.blockchain.get_height()?,
+                    height,
                     ctx.network_timestamp(),
                     active_peers
                 );
             }
 
-            let blocks = http::bincode_get::<GetBlocksRequest, GetBlocksResponse>(
-                "http://127.0.0.1:3030/blocks".to_string(),
-                GetBlocksRequest {
-                    since: 0,
-                    until: None,
-                },
-            )
-            .await?;
+            let header_responses: Vec<(PeerAddress, Result<GetHeadersResponse, NodeError>)> = self
+                .group_request(&peer_addresses, |peer| {
+                    http::bincode_get::<GetHeadersRequest, GetHeadersResponse>(
+                        format!("{}/headers", peer).to_string(),
+                        GetHeadersRequest {
+                            since: height,
+                            until: None,
+                        },
+                    )
+                })
+                .await;
+
+            {
+                let mut ctx = self.context.write().await;
+                for bad_peer in header_responses
+                    .iter()
+                    .filter(|(_, resp)| resp.is_err())
+                    .map(|(p, _)| p)
+                {
+                    ctx.peers
+                        .entry(bad_peer.clone())
+                        .and_modify(|stats| stats.punish(punish::NO_RESPONSE_PUNISH));
+                }
+                let resps = header_responses
+                    .into_iter()
+                    .filter_map(|r| {
+                        if r.1.as_ref().is_ok() {
+                            Some((r.0.clone(), r.1.unwrap()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<(PeerAddress, GetHeadersResponse)>>();
+                for (peer, resp) in resps.iter() {
+                    if !resp.headers.is_empty() {
+                        println!("{} claims a longer chain!", peer);
+                    }
+                }
+            }
 
             sleep(Duration::from_millis(1000)).await;
         }

@@ -1,4 +1,4 @@
-use crate::core::{Address, Block, Money, Transaction};
+use crate::core::{Address, Block, Header, Money, Transaction};
 
 use super::{PeerAddress, PeerInfo, PeerStats};
 use serde_derive::{Deserialize, Serialize};
@@ -42,6 +42,17 @@ pub struct GetBlocksRequest {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GetBlocksResponse {
     pub blocks: Vec<Block>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct GetHeadersRequest {
+    pub since: usize,
+    pub until: Option<usize>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct GetHeadersResponse {
+    pub headers: Vec<Header>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -22,7 +22,7 @@ impl<B: Blockchain> NodeContext<B> {
         self.peers
             .iter_mut()
             .filter_map(|(k, v)| {
-                if v.info.is_some() && !v.is_punished() {
+                if !v.is_punished() {
                     Some((k.clone(), v.clone()))
                 } else {
                     None
