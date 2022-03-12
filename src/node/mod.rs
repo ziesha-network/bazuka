@@ -72,12 +72,10 @@ pub struct Node<B: Blockchain> {
 }
 
 async fn node_service<B: Blockchain>(
-    client: SocketAddr,
+    _client: SocketAddr,
     context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
-    println!("Got request from: {}", client);
-
     let mut response = Response::new(Body::empty());
     let method = req.method().clone();
     let path = req.uri().path().to_string();
