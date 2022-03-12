@@ -68,15 +68,15 @@ async fn main() -> Result<(), NodeError> {
 #[cfg(not(feature = "node"))]
 fn main() {
     let chain = KvStoreChain::new(RamKvStore::new()).unwrap();
-    println!(
-        "{}: {:?}",
-        Address::Treasury,
-        chain.get_account(Address::Treasury).unwrap()
-    );
 
     println!("Bazuka!");
     let wallet = Wallet::new(b"random seed".to_vec());
     println!("Your address is: {}", wallet.get_address());
+    println!(
+        "Balance: {:?}",
+        chain.get_account(wallet.get_address()).unwrap()
+    );
+
     let tx = wallet.create_transaction(Address::Treasury, 123, 0);
     println!("Verify tx signature: {}", tx.verify_signature());
 }
