@@ -111,11 +111,73 @@ impl FromStr for Address {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct ContractId {}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct HashOutput {}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct EntryExit {
+    src: Address,
+    amount: Money,
+    sig: Signature,
+    fee: Money,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct ZkProof {
+    proof: u8,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct ZkVerifyingKey {}
+
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum TransactionData {
-    RegularSend { dst: Address, amount: Money },
+    RegularSend {
+        dst: Address,
+        amount: Money,
+    },
+    RegisterValidator {
+        vrf_stuff: u8,
+        amount: Money,
+    },
+
+    // Create a Zero-Contract. The creator can consider multiple ways (Circuits) of updating
+    // the state. But there should be only one circuit for entering and exiting the contract.
+    CreateContract {
+        entry_circuit: ZkVerifyingKey,
+        update_circuits: Vec<ZkVerifyingKey>,
+        exit_circuit: ZkVerifyingKey,
+        initial_state: HashOutput,
+    },
+    // Proof for EntryCircuit(curr_state, next_state, entries, extra_params)
+    ProcessEntries {
+        contract_id: ContractId,
+        entries: Vec<EntryExit>,
+        next_state: HashOutput,
+        extra_params: HashOutput,
+        proof: ZkProof,
+    },
+    // Proof for UpdateCircuit[circuit_index](curr_state, next_state, extra_params)
+    Update {
+        contract_id: ContractId,
+        circuit_index: u32,
+        next_state: HashOutput,
+        extra_params: HashOutput,
+        proof: ZkProof,
+    },
+    // Proof for ExitCircuit(curr_state, next_state, entries, extra_params)
+    ProcessExits {
+        contract_id: ContractId,
+        exits: Vec<EntryExit>,
+        next_state: HashOutput,
+        extra_params: HashOutput,
+        proof: ZkProof,
+    },
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]

@@ -85,6 +85,9 @@ impl<K: KvStore> KvStoreChain<K> {
                     ));
                 }
             }
+            _ => {
+                unimplemented!();
+            }
         }
         Ok(ops)
     }
