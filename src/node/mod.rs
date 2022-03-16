@@ -3,7 +3,7 @@ mod context;
 mod errors;
 mod http;
 pub mod upnp;
-use context::NodeContext;
+use context::{NodeContext, TransactionStats};
 pub use errors::NodeError;
 
 use crate::blockchain::Blockchain;
@@ -11,6 +11,7 @@ use crate::utils;
 use api::messages::*;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 
@@ -97,17 +98,26 @@ async fn node_service<B: Blockchain>(
                 .await?,
             )?);
         }
-        (Method::GET, "/headers") => {
+        (Method::POST, "/bincode/transact") => {
+            *response.body_mut() = Body::from(serde_json::to_vec(
+                &api::transact(
+                    Arc::clone(&context),
+                    serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
+                )
+                .await?,
+            )?);
+        }
+        (Method::GET, "/bincode/headers") => {
             *response.body_mut() = Body::from(bincode::serialize(
                 &api::get_headers(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
             )?);
         }
-        (Method::GET, "/blocks") => {
+        (Method::GET, "/bincode/blocks") => {
             *response.body_mut() = Body::from(bincode::serialize(
                 &api::get_blocks(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
             )?);
         }
-        (Method::POST, "/blocks") => {
+        (Method::POST, "/bincode/blocks") => {
             *response.body_mut() = Body::from(bincode::serialize(
                 &api::post_block(
                     Arc::clone(&context),
@@ -130,6 +140,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
             address,
             context: Arc::new(RwLock::new(NodeContext {
                 blockchain,
+                mempool: HashMap::new(),
                 peers: bootstrap
                     .into_iter()
                     .map(|addr| {
@@ -231,7 +242,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
             let header_responses: Vec<(PeerAddress, Result<GetHeadersResponse, NodeError>)> = self
                 .group_request(&peer_addresses, |peer| {
                     http::bincode_get::<GetHeadersRequest, GetHeadersResponse>(
-                        format!("{}/headers", peer).to_string(),
+                        format!("{}/bincode/headers", peer).to_string(),
                         GetHeadersRequest {
                             since: height,
                             until: None,

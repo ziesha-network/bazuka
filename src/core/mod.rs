@@ -182,6 +182,17 @@ impl Transaction {
     }
 }
 
+impl Eq for Transaction {}
+impl std::hash::Hash for Transaction {
+    fn hash<H>(&self, state: &mut H)
+    where
+        H: std::hash::Hasher,
+    {
+        state.write(&bincode::serialize(self).unwrap());
+        state.finish();
+    }
+}
+
 #[cfg(test)]
 mod tests {
 

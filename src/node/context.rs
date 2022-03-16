@@ -1,10 +1,17 @@
 use super::{PeerAddress, PeerInfo, PeerStats};
 use crate::blockchain::{Blockchain, BlockchainError};
+use crate::core::Transaction;
 use crate::utils;
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
+pub struct TransactionStats {
+    pub first_seen: u64,
+}
+
 pub struct NodeContext<B: Blockchain> {
     pub blockchain: B,
+    pub mempool: HashMap<Transaction, TransactionStats>,
     pub peers: HashMap<PeerAddress, PeerStats>,
     pub timestamp_offset: i64,
 }

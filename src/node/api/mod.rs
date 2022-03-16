@@ -1,4 +1,4 @@
-use super::{NodeContext, NodeError, PeerAddress, PeerInfo, PeerStats};
+use super::{NodeContext, NodeError, PeerAddress, PeerInfo, PeerStats, TransactionStats};
 
 pub mod messages;
 
@@ -12,3 +12,5 @@ mod get_blocks;
 pub use get_blocks::*;
 mod get_headers;
 pub use get_headers::*;
+mod transact;
+pub use transact::*;
