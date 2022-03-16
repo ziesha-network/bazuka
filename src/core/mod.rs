@@ -154,28 +154,25 @@ pub enum TransactionData {
         exit_circuit: ZkVerifyingKey,
         initial_state: HashOutput,
     },
-    // Proof for EntryCircuit(curr_state, next_state, entries, extra_params)
+    // Proof for EntryCircuit(curr_state, next_state, hash(entries))
     ProcessEntries {
         contract_id: ContractId,
         entries: Vec<EntryExit>,
         next_state: HashOutput,
-        extra_params: HashOutput,
         proof: ZkProof,
     },
-    // Proof for UpdateCircuit[circuit_index](curr_state, next_state, extra_params)
+    // Proof for UpdateCircuit[circuit_index](curr_state, next_state)
     Update {
         contract_id: ContractId,
         circuit_index: u32,
         next_state: HashOutput,
-        extra_params: HashOutput,
         proof: ZkProof,
     },
-    // Proof for ExitCircuit(curr_state, next_state, entries, extra_params)
+    // Proof for ExitCircuit(curr_state, next_state, hash(entries))
     ProcessExits {
         contract_id: ContractId,
         exits: Vec<EntryExit>,
         next_state: HashOutput,
-        extra_params: HashOutput,
         proof: ZkProof,
     },
 }
