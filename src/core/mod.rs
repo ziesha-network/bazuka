@@ -9,6 +9,7 @@ use crate::crypto;
 use crate::crypto::SignatureScheme;
 
 pub mod blocks;
+pub mod contract;
 pub mod digest;
 pub mod hash;
 pub mod header;
@@ -18,6 +19,8 @@ pub type BlockNumU64 = u64;
 pub type Sha3_256 = crate::core::hash::Sha3Hasher;
 pub type Header = crate::core::header::Header<Sha3_256, BlockNumU64>;
 pub type Block = crate::core::blocks::Block<Header>;
+
+pub use contract::{Circuit, CircuitProof, ContractId, ContractPayment, ContractState};
 
 macro_rules! auto_trait {
     (
@@ -111,28 +114,6 @@ impl FromStr for Address {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct ContractId {}
-
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct HashOutput {}
-
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct EntryExit {
-    src: Address,
-    amount: Money,
-    sig: Signature,
-    fee: Money,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct ZkProof {
-    proof: u8,
-}
-
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct ZkVerifyingKey {}
-
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
@@ -149,31 +130,23 @@ pub enum TransactionData {
     // Create a Zero-Contract. The creator can consider multiple ways (Circuits) of updating
     // the state. But there should be only one circuit for entering and exiting the contract.
     CreateContract {
-        entry_circuit: ZkVerifyingKey,
-        update_circuits: Vec<ZkVerifyingKey>,
-        exit_circuit: ZkVerifyingKey,
-        initial_state: HashOutput,
+        deposit_withdraw_circuit: Circuit,
+        update_circuits: Vec<Circuit>,
+        initial_state: ContractState,
     },
-    // Proof for EntryCircuit(curr_state, next_state, hash(entries))
-    ProcessEntries {
+    // Proof for DepositWithdrawCircuit(curr_state, next_state, hash(entries))
+    DepositWithdraw {
         contract_id: ContractId,
-        entries: Vec<EntryExit>,
-        next_state: HashOutput,
-        proof: ZkProof,
+        deposit_withdraws: Vec<ContractPayment>,
+        next_state: ContractState,
+        proof: CircuitProof,
     },
     // Proof for UpdateCircuit[circuit_index](curr_state, next_state)
     Update {
         contract_id: ContractId,
         circuit_index: u32,
-        next_state: HashOutput,
-        proof: ZkProof,
-    },
-    // Proof for ExitCircuit(curr_state, next_state, hash(entries))
-    ProcessExits {
-        contract_id: ContractId,
-        exits: Vec<EntryExit>,
-        next_state: HashOutput,
-        proof: ZkProof,
+        next_state: ContractState,
+        proof: CircuitProof,
     },
 }
 
