@@ -6,8 +6,9 @@ pub mod upnp;
 use context::{NodeContext, TransactionStats};
 pub use errors::NodeError;
 
-use crate::blockchain::Blockchain;
+use crate::blockchain::{Blockchain, BlockchainError};
 use crate::utils;
+use crate::wallet::Wallet;
 use api::messages::*;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Method, Request, Response, Server, StatusCode};
@@ -70,6 +71,7 @@ impl PeerStats {
 pub struct Node<B: Blockchain> {
     address: PeerAddress,
     context: Arc<RwLock<NodeContext<B>>>,
+    wallet: Option<Wallet>,
 }
 
 async fn node_service<B: Blockchain>(
@@ -135,7 +137,12 @@ async fn node_service<B: Blockchain>(
 }
 
 impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
-    pub fn new(address: PeerAddress, bootstrap: Vec<PeerAddress>, blockchain: B) -> Node<B> {
+    pub fn new(
+        address: PeerAddress,
+        bootstrap: Vec<PeerAddress>,
+        blockchain: B,
+        wallet: Option<Wallet>,
+    ) -> Node<B> {
         Node {
             address,
             context: Arc::new(RwLock::new(NodeContext {
@@ -155,6 +162,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                     .collect(),
                 timestamp_offset: 0,
             })),
+            wallet,
         }
     }
 
@@ -276,6 +284,15 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                     if !resp.headers.is_empty() {
                         println!("{} claims a longer chain!", peer);
                     }
+                }
+            }
+
+            if let Some(wallet) = &self.wallet {
+                let mut ctx = self.context.write().await;
+                let mempool = ctx.mempool.keys().cloned().collect();
+                let blk = ctx.blockchain.generate_block(&mempool, &wallet)?;
+                if blk.is_some() {
+                    println!("Won a new block!");
                 }
             }
 

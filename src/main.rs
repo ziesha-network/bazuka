@@ -1,8 +1,12 @@
+#[macro_use]
+extern crate lazy_static;
+
 #[cfg(feature = "node")]
 use {
     bazuka::blockchain::KvStoreChain,
     bazuka::db::LevelDbKvStore,
     bazuka::node::{Node, NodeError, PeerAddress},
+    bazuka::wallet::Wallet,
     std::path::{Path, PathBuf},
     structopt::StructOpt,
 };
@@ -14,10 +18,6 @@ use {
 };
 
 #[cfg(feature = "node")]
-#[macro_use]
-extern crate lazy_static;
-
-#[cfg(feature = "node")]
 #[derive(Debug, Clone, StructOpt)]
 #[structopt(name = "Options", about = "Bazuka node software options")]
 struct NodeOptions {
@@ -27,6 +27,10 @@ struct NodeOptions {
     port: Option<u16>,
     #[structopt(long, parse(from_os_str))]
     db: Option<PathBuf>,
+}
+
+lazy_static! {
+    static ref WALLET: Wallet = Wallet::new(b"random seed".to_vec());
 }
 
 #[cfg(feature = "node")]
@@ -49,6 +53,7 @@ lazy_static! {
                     .unwrap_or(home::home_dir().unwrap().join(Path::new(".bazuka"))),
             ))
             .unwrap(),
+            Some(WALLET.clone()),
         )
     };
 }
@@ -70,13 +75,12 @@ fn main() {
     let chain = KvStoreChain::new(RamKvStore::new()).unwrap();
 
     println!("Bazuka!");
-    let wallet = Wallet::new(b"random seed".to_vec());
-    println!("Your address is: {}", wallet.get_address());
+    println!("Your address is: {}", WALLET.get_address());
     println!(
         "Balance: {:?}",
-        chain.get_account(wallet.get_address()).unwrap()
+        chain.get_account(WALLET.get_address()).unwrap()
     );
 
-    let tx = wallet.create_transaction(Address::Treasury, 123, 0);
+    let tx = WALLET.create_transaction(Address::Treasury, 123, 0);
     println!("Verify tx signature: {}", tx.verify_signature());
 }

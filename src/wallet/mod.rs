@@ -1,6 +1,7 @@
 use crate::core::{Address, Money, Signature, Transaction, TransactionData};
 use crate::crypto::{EdDSA, SignatureScheme};
 
+#[derive(Debug, Clone)]
 pub struct Wallet {
     seed: Vec<u8>,
     nonce: u32,
