@@ -13,8 +13,12 @@ use {
 
 #[cfg(not(feature = "node"))]
 use {
-    bazuka::blockchain::Blockchain, bazuka::blockchain::KvStoreChain, bazuka::core::Address,
-    bazuka::db::RamKvStore, bazuka::wallet::Wallet,
+    bazuka::blockchain::Blockchain,
+    bazuka::blockchain::KvStoreChain,
+    bazuka::core::Address,
+    bazuka::core::{Signature, Transaction, TransactionData},
+    bazuka::db::RamKvStore,
+    bazuka::wallet::Wallet,
 };
 
 #[cfg(feature = "node")]
@@ -72,10 +76,29 @@ async fn main() -> Result<(), NodeError> {
 
 #[cfg(not(feature = "node"))]
 fn main() {
-    let chain = KvStoreChain::new(RamKvStore::new()).unwrap();
+    let mut chain = KvStoreChain::new(RamKvStore::new()).unwrap();
 
     println!("Bazuka!");
     println!("Your address is: {}", WALLET.get_address());
+    chain
+        .generate_block(
+            &vec![Transaction {
+                src: Address::Treasury,
+                data: TransactionData::RegularSend {
+                    dst: "0x215d9af3a1bfa2a87929b6e8265e95c61c36f91493f3dbd702215255f68742552"
+                        .parse()
+                        .unwrap(),
+                    amount: 123,
+                },
+                nonce: 0,
+                fee: 0,
+                sig: Signature::Unsigned,
+            }],
+            &WALLET,
+        )
+        .unwrap();
+
+    chain.rollback_block().unwrap();
     println!(
         "Balance: {:?}",
         chain.get_account(WALLET.get_address()).unwrap()

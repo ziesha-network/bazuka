@@ -103,7 +103,10 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::Inconsistency);
             }
         };
-        rollback.push(WriteOp::Remove(rollback_key));
+        rollback.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
+        rollback.push(WriteOp::Remove(
+            format!("rollback_{:010}", height - 1).into(),
+        ));
         self.database.batch(rollback)?;
         Ok(())
     }
@@ -114,15 +117,15 @@ impl<K: KvStore> KvStoreChain<K> {
         for tx in block.body.iter() {
             changes.extend(self.apply_tx(tx)?);
         }
-        changes.push(WriteOp::Put(
-            format!("block_{:010}", block.header.number).into(),
-            block.into(),
-        ));
         changes.push(WriteOp::Put("height".into(), (curr_height + 1).into()));
 
         changes.push(WriteOp::Put(
             format!("rollback_{:010}", block.header.number).into(),
             self.database.gen_rollback(&changes)?.into(),
+        ));
+        changes.push(WriteOp::Put(
+            format!("block_{:010}", block.header.number).into(),
+            block.into(),
         ));
 
         self.database.batch(changes)?;
@@ -150,7 +153,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         for block in blocks.iter() {
             self.apply_block(block)?;
         }
-        unimplemented!();
+        Ok(())
     }
     fn get_height(&self) -> Result<usize, BlockchainError> {
         Ok(match self.database.get("height".into())? {
@@ -191,9 +194,15 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
     fn generate_block(
         &mut self,
-        _mempool: &Vec<Transaction>,
+        mempool: &Vec<Transaction>,
         _wallet: &Wallet,
     ) -> Result<Option<Block>, BlockchainError> {
-        Ok(None)
+        let mut blk = Block {
+            header: Default::default(),
+            body: mempool.clone(),
+        };
+        blk.header.number = self.get_height()? as u64;
+        self.extend(&vec![blk.clone()]);
+        Ok(Some(blk))
     }
 }
