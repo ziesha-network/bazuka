@@ -1,6 +1,6 @@
 use crate::config::{genesis, TOTAL_SUPPLY};
 use crate::core::{Account, Address, Block, Header, Transaction, TransactionData};
-use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, WriteOp};
+use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::wallet::Wallet;
 use thiserror::Error;
 
@@ -56,10 +56,6 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(())
     }
 
-    fn revert_tx(&self, tx: &Transaction) -> Result<Vec<WriteOp>, BlockchainError> {
-        unimplemented!();
-    }
-
     fn apply_tx(&self, tx: &Transaction) -> Result<Vec<WriteOp>, BlockchainError> {
         let mut ops = Vec::new();
         if !tx.verify_signature() {
@@ -98,23 +94,17 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(ops)
     }
 
-    pub fn revert_block(&mut self) -> Result<(), BlockchainError> {
+    pub fn rollback_block(&mut self) -> Result<(), BlockchainError> {
         let height = self.get_height()?;
-        let k = format!("block_{}", height - 1).into();
-        let last_block: Block = match self.database.get(k)? {
+        let rollback_key: StringKey = format!("rollback_{:010}", height - 1).into();
+        let mut rollback: Vec<WriteOp> = match self.database.get(rollback_key.clone())? {
             Some(b) => b.try_into()?,
             None => {
                 return Err(BlockchainError::Inconsistency);
             }
         };
-
-        let mut changes = Vec::new();
-        for tx in last_block.body.iter() {
-            changes.extend(self.revert_tx(tx)?);
-        }
-        changes.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
-        changes.push(WriteOp::Put("height".into(), (height - 1).into()));
-        self.database.batch(changes)?;
+        rollback.push(WriteOp::Remove(rollback_key));
+        self.database.batch(rollback)?;
         Ok(())
     }
 
@@ -129,6 +119,12 @@ impl<K: KvStore> KvStoreChain<K> {
             block.into(),
         ));
         changes.push(WriteOp::Put("height".into(), (curr_height + 1).into()));
+
+        changes.push(WriteOp::Put(
+            format!("rollback_{:010}", block.header.number).into(),
+            self.database.gen_rollback(&changes)?.into(),
+        ));
+
         self.database.batch(changes)?;
         Ok(())
     }

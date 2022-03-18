@@ -1,5 +1,6 @@
 use crate::core::{Account, Block};
 use db_key::Key;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
 
@@ -11,7 +12,7 @@ pub enum KvStoreError {
     Corrupted(#[from] bincode::Error),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct StringKey(String);
 
 impl StringKey {
@@ -20,7 +21,7 @@ impl StringKey {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Blob(Vec<u8>);
 
 macro_rules! gen_try_into {
@@ -36,13 +37,20 @@ macro_rules! gen_try_into {
     };
 }
 
-gen_try_into!(u32, u64, usize, Account, Block);
-
-impl<T: serde::Serialize> From<T> for Blob {
-    fn from(n: T) -> Self {
-        Self(bincode::serialize(&n).unwrap())
-    }
+macro_rules! gen_from {
+    ( $( $x:ty ),* ) => {
+        $(
+            impl From<$x> for Blob {
+                fn from(n: $x) -> Self {
+                    Self(bincode::serialize(&n).unwrap())
+                }
+            }
+        )*
+    };
 }
+
+gen_try_into!(u32, u64, usize, Account, Block, Vec<WriteOp>);
+gen_from!(u32, u64, usize, Account, &Block, Vec<WriteOp>);
 
 impl Key for StringKey {
     fn from_u8(key: &[u8]) -> StringKey {
@@ -65,7 +73,7 @@ impl From<&str> for StringKey {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum WriteOp {
     Remove(StringKey),
     Put(StringKey, Blob),
@@ -76,6 +84,21 @@ pub trait KvStore {
     fn del(&mut self, k: StringKey) -> Result<(), KvStoreError>;
     fn set(&mut self, k: StringKey, v: Blob) -> Result<(), KvStoreError>;
     fn batch(&mut self, ops: Vec<WriteOp>) -> Result<(), KvStoreError>;
+    fn gen_rollback(&self, ops: &Vec<WriteOp>) -> Result<Vec<WriteOp>, KvStoreError> {
+        let mut rollback = Vec::new();
+        for op in ops.iter() {
+            let key = match op {
+                WriteOp::Put(k, _) => k,
+                WriteOp::Remove(k) => k,
+            }
+            .clone();
+            rollback.push(match self.get(key.clone())? {
+                Some(b) => WriteOp::Put(key, b.clone()),
+                None => WriteOp::Remove(key),
+            })
+        }
+        Ok(rollback)
+    }
 }
 
 pub struct RamMirrorKvStore<'a, K: KvStore> {
