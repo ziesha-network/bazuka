@@ -83,7 +83,7 @@ pub trait KvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError>;
     fn del(&mut self, k: StringKey) -> Result<(), KvStoreError>;
     fn set(&mut self, k: StringKey, v: Blob) -> Result<(), KvStoreError>;
-    fn batch(&mut self, ops: Vec<WriteOp>) -> Result<(), KvStoreError>;
+    fn batch(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError>;
     fn gen_rollback(&self, ops: &Vec<WriteOp>) -> Result<Vec<WriteOp>, KvStoreError> {
         let mut rollback = Vec::new();
         for op in ops.iter() {
@@ -130,11 +130,11 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
         self.overwrite.insert(k.0, None);
         Ok(())
     }
-    fn batch(&mut self, ops: Vec<WriteOp>) -> Result<(), KvStoreError> {
+    fn batch(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
         for op in ops.into_iter() {
             match op {
-                WriteOp::Remove(k) => self.overwrite.insert(k.0, None),
-                WriteOp::Put(k, v) => self.overwrite.insert(k.0, Some(v)),
+                WriteOp::Remove(k) => self.overwrite.insert(k.0.clone(), None),
+                WriteOp::Put(k, v) => self.overwrite.insert(k.0.clone(), Some(v.clone())),
             };
         }
         Ok(())

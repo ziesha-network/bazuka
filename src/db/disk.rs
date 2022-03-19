@@ -39,13 +39,13 @@ impl KvStore for LevelDbKvStore {
             Err(_) => Err(KvStoreError::Failure),
         }
     }
-    fn batch(&mut self, ops: Vec<WriteOp>) -> Result<(), KvStoreError> {
+    fn batch(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
         let write_opts = WriteOptions::new();
         let mut batch = Writebatch::new();
-        for op in ops.into_iter() {
+        for op in ops.iter() {
             match op {
-                WriteOp::Remove(k) => batch.delete(k),
-                WriteOp::Put(k, v) => batch.put(k, &v.0),
+                WriteOp::Remove(k) => batch.delete(k.clone()),
+                WriteOp::Put(k, v) => batch.put(k.clone(), &v.0),
             }
         }
         match self.0.write(write_opts, &batch) {

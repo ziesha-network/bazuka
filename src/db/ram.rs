@@ -20,11 +20,11 @@ impl KvStore for RamKvStore {
         self.0.remove(&k.0);
         Ok(())
     }
-    fn batch(&mut self, ops: Vec<WriteOp>) -> Result<(), KvStoreError> {
-        for op in ops.into_iter() {
+    fn batch(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
+        for op in ops.iter() {
             match op {
                 WriteOp::Remove(k) => self.0.remove(&k.0),
-                WriteOp::Put(k, v) => self.0.insert(k.0, v),
+                WriteOp::Put(k, v) => self.0.insert(k.0.clone(), v.clone()),
             };
         }
         Ok(())

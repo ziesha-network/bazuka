@@ -15,6 +15,7 @@ pub async fn bincode_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwne
     Ok(resp)
 }
 
+#[allow(dead_code)]
 pub async fn bincode_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
     addr: String,
     req: Req,
@@ -45,6 +46,7 @@ pub async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>
     Ok(resp)
 }
 
+#[allow(dead_code)]
 pub async fn json_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
     addr: String,
     req: Req,

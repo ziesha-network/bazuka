@@ -45,6 +45,7 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(chain)
     }
 
+    #[allow(dead_code)]
     fn fork<'a>(&'a self) -> Result<KvStoreChain<RamMirrorKvStore<'a, K>>, BlockchainError> {
         KvStoreChain::new(RamMirrorKvStore::new(&self.database))
     }
@@ -107,7 +108,7 @@ impl<K: KvStore> KvStoreChain<K> {
         rollback.push(WriteOp::Remove(
             format!("rollback_{:010}", height - 1).into(),
         ));
-        self.database.batch(rollback)?;
+        self.database.batch(&rollback)?;
         Ok(())
     }
 
@@ -128,7 +129,7 @@ impl<K: KvStore> KvStoreChain<K> {
             block.into(),
         ));
 
-        self.database.batch(changes)?;
+        self.database.batch(&changes)?;
         Ok(())
     }
 }
@@ -202,7 +203,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             body: mempool.clone(),
         };
         blk.header.number = self.get_height()? as u64;
-        self.extend(&vec![blk.clone()]);
-        Ok(Some(blk))
+        //self.extend(&vec![blk.clone()])?;
+        Ok(None)
     }
 }

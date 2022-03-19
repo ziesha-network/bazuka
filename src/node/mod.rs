@@ -6,7 +6,7 @@ pub mod upnp;
 use context::{NodeContext, TransactionStats};
 pub use errors::NodeError;
 
-use crate::blockchain::{Blockchain, BlockchainError};
+use crate::blockchain::Blockchain;
 use crate::utils;
 use crate::wallet::Wallet;
 use api::messages::*;
