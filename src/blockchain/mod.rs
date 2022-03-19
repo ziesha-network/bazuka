@@ -153,6 +153,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError> {
+        self.initialize()?;
         let curr_height = self.get_height()?;
 
         if from == 0 {
@@ -167,7 +168,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             forked.rollback_block()?;
         }
 
-        forked.initialize()?;
         for block in blocks.iter() {
             forked.apply_block(block)?;
         }
