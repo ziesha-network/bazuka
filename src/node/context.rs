@@ -2,6 +2,7 @@ use super::{PeerAddress, PeerInfo, PeerStats};
 use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::Transaction;
 use crate::utils;
+use crate::wallet::Wallet;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -11,6 +12,7 @@ pub struct TransactionStats {
 
 pub struct NodeContext<B: Blockchain> {
     pub blockchain: B,
+    pub wallet: Option<Wallet>,
     pub mempool: HashMap<Transaction, TransactionStats>,
     pub peers: HashMap<PeerAddress, PeerStats>,
     pub timestamp_offset: i64,

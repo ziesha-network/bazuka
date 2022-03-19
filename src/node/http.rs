@@ -1,4 +1,5 @@
-use super::NodeError;
+use super::{NodeError, PeerAddress};
+use futures::future::join_all;
 use hyper::{Body, Client, Method, Request};
 
 pub async fn bincode_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
@@ -59,4 +60,29 @@ pub async fn json_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
     let body = client.request(req).await?.into_body();
     let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
     Ok(resp)
+}
+
+pub async fn group_request<F, R>(
+    peers: &Vec<PeerAddress>,
+    f: F,
+) -> Vec<(PeerAddress, <R as futures::Future>::Output)>
+where
+    F: Fn(PeerAddress) -> R,
+    R: futures::Future,
+{
+    peers
+        .iter()
+        .cloned()
+        .zip(
+            join_all(
+                peers
+                    .iter()
+                    .cloned()
+                    .map(|peer| f(peer))
+                    .collect::<Vec<_>>(),
+            )
+            .await
+            .into_iter(),
+        )
+        .collect()
 }
