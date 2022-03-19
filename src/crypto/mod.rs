@@ -1,6 +1,7 @@
 mod curve;
 mod eddsa;
 mod field;
+pub mod merkle;
 mod mimc;
 pub use eddsa::*;
 pub use mimc::*;
