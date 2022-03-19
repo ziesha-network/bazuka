@@ -25,7 +25,7 @@ impl KvStore for LevelDbKvStore {
             Err(_) => Err(KvStoreError::Failure),
         }
     }
-    fn batch(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
+    fn update(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
         let write_opts = WriteOptions::new();
         let mut batch = Writebatch::new();
         for op in ops.iter() {

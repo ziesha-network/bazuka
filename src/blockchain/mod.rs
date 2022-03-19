@@ -108,7 +108,7 @@ impl<K: KvStore> KvStoreChain<K> {
         rollback.push(WriteOp::Remove(
             format!("rollback_{:010}", height - 1).into(),
         ));
-        self.database.batch(&rollback)?;
+        self.database.update(&rollback)?;
         Ok(())
     }
 
@@ -129,7 +129,7 @@ impl<K: KvStore> KvStoreChain<K> {
             block.into(),
         ));
 
-        self.database.batch(&changes)?;
+        self.database.update(&changes)?;
         Ok(())
     }
 }
