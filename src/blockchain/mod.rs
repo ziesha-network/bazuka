@@ -122,7 +122,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
         changes.push(WriteOp::Put(
             format!("rollback_{:010}", block.header.number).into(),
-            self.database.gen_rollback(&changes)?.into(),
+            self.database.rollback_of(&changes)?.into(),
         ));
         changes.push(WriteOp::Put(
             format!("block_{:010}", block.header.number).into(),
