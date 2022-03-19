@@ -45,8 +45,7 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(chain)
     }
 
-    #[allow(dead_code)]
-    fn fork<'a>(&'a self) -> Result<KvStoreChain<RamMirrorKvStore<'a, K>>, BlockchainError> {
+    fn fork_on_ram<'a>(&'a self) -> Result<KvStoreChain<RamMirrorKvStore<'a, K>>, BlockchainError> {
         KvStoreChain::new(RamMirrorKvStore::new(&self.database))
     }
 
@@ -151,9 +150,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
     fn extend(&mut self, blocks: &Vec<Block>) -> Result<(), BlockchainError> {
         self.initialize()?;
+        let mut forked = self.fork_on_ram()?;
         for block in blocks.iter() {
-            self.apply_block(block)?;
+            forked.apply_block(block)?;
         }
+        let ops = forked.database.to_ops();
+        self.database.update(&ops)?;
         Ok(())
     }
     fn get_height(&self) -> Result<usize, BlockchainError> {
