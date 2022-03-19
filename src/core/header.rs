@@ -9,7 +9,7 @@ pub struct Header<H: Hash, N: BlockNumber + AutoSerialize> {
     pub number: N,
     /// the root of state tired merkle tree
     pub state_root: H::Output,
-    /// the merkle root of current block  
+    /// the merkle root of current block
     pub block_root: H::Output,
     /// aux data for consensus
     pub digests: Digests,
@@ -53,7 +53,7 @@ where
     }
 
     pub fn hash(&self) -> H::Output {
-        H::hash(&serde_json::to_vec(&self).expect("convert header to json format"))
+        H::hash(&bincode::serialize(&self).expect("convert header to bincode format"))
     }
 
     pub fn logs(&self) -> &[Digest] {
