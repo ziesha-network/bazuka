@@ -14,11 +14,15 @@ pub enum BlockchainError {
     BalanceInsufficient,
     #[error("inconsistency error")]
     Inconsistency,
+    #[error("cannot extend from the genesis block")]
+    ExtendFromGenesis,
+    #[error("cannot extend from very future blocks")]
+    ExtendFromFuture,
 }
 
 pub trait Blockchain {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
-    fn extend(&mut self, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
+    fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
     fn generate_block(
         &mut self,
         mempool: &Vec<Transaction>,
@@ -148,13 +152,27 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             },
         })
     }
-    fn extend(&mut self, blocks: &Vec<Block>) -> Result<(), BlockchainError> {
-        self.initialize()?;
+    fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError> {
+        let curr_height = self.get_height()?;
+
+        if from == 0 {
+            return Err(BlockchainError::ExtendFromGenesis);
+        } else if from > curr_height {
+            return Err(BlockchainError::ExtendFromFuture);
+        }
+
         let mut forked = self.fork_on_ram()?;
+
+        while forked.get_height()? > from {
+            forked.rollback_block()?;
+        }
+
+        forked.initialize()?;
         for block in blocks.iter() {
             forked.apply_block(block)?;
         }
         let ops = forked.database.to_ops();
+
         self.database.update(&ops)?;
         Ok(())
     }
