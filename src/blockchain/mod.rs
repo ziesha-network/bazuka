@@ -18,6 +18,10 @@ pub enum BlockchainError {
     ExtendFromGenesis,
     #[error("cannot extend from very future blocks")]
     ExtendFromFuture,
+    #[error("block number invalid")]
+    InvalidBlockNumber,
+    #[error("parent hash invalid")]
+    InvalidParentHash,
 }
 
 pub trait Blockchain {
@@ -58,6 +62,16 @@ impl<K: KvStore> KvStoreChain<K> {
             self.apply_block(&genesis::get_genesis_block())?;
         }
         Ok(())
+    }
+
+    fn get_block(&self, index: usize) -> Result<Block, BlockchainError> {
+        let block_key: StringKey = format!("block_{:010}", index).into();
+        Ok(match self.database.get(block_key.clone())? {
+            Some(b) => b.try_into()?,
+            None => {
+                return Err(BlockchainError::Inconsistency);
+            }
+        })
     }
 
     fn apply_tx(&self, tx: &Transaction) -> Result<Vec<WriteOp>, BlockchainError> {
@@ -117,6 +131,19 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn apply_block(&mut self, block: &Block) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
+
+        if curr_height > 0 {
+            let last_block = self.get_block(curr_height - 1)?;
+
+            if block.header.number as usize != curr_height {
+                return Err(BlockchainError::InvalidBlockNumber);
+            }
+
+            if block.header.parent_hash != last_block.header.hash() {
+                return Err(BlockchainError::InvalidParentHash);
+            }
+        }
+
         let mut changes = Vec::new();
         for tx in block.body.iter() {
             changes.extend(self.apply_tx(tx)?);
@@ -218,12 +245,15 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         mempool: &Vec<Transaction>,
         _wallet: &Wallet,
     ) -> Result<Option<Block>, BlockchainError> {
+        let height = self.get_height()?;
+        let last_block = self.get_block(height - 1)?;
         let mut blk = Block {
             header: Default::default(),
             body: mempool.clone(),
         };
-        blk.header.number = self.get_height()? as u64;
-        //self.extend(&vec![blk.clone()])?;
+        blk.header.number = height as u64;
+        blk.header.parent_hash = last_block.header.hash();
+        //self.extend(height, &vec![blk.clone()])?;
         Ok(None)
     }
 }
