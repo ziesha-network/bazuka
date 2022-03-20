@@ -167,6 +167,9 @@ pub struct Account {
 }
 
 impl Transaction {
+    pub fn hash<H: Hash>(&self) -> H::Output {
+        H::hash(&bincode::serialize(self).unwrap())
+    }
     pub fn verify_signature(&self) -> bool {
         match &self.src {
             Address::Treasury => true,

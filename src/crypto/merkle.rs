@@ -20,7 +20,12 @@ fn merge_hash<H: Hash>(mut a: &H::Output, mut b: &H::Output) -> H::Output {
 
 impl<H: Hash> MerkleTree<H> {
     pub fn depth(&self) -> u32 {
-        self.data.len().next_power_of_two().trailing_zeros() - 1
+        let len = self.data.len();
+        if len == 1 {
+            0
+        } else {
+            len.next_power_of_two().trailing_zeros() - 1
+        }
     }
 
     pub fn num_leaves(&self) -> usize {
@@ -36,11 +41,11 @@ impl<H: Hash> MerkleTree<H> {
         let dep = self.depth();
         let lower_start = (1 << dep) - 1;
         let lower_leaves = len - lower_start;
-        let upper_start = (1 << (dep - 1)) - 1;
-        let upper_offset = lower_leaves >> 1;
         return if lower_start + i < len {
             lower_start + i
         } else {
+            let upper_start = (1 << (dep - 1)) - 1;
+            let upper_offset = lower_leaves >> 1;
             upper_start - upper_offset + i
         };
     }
