@@ -66,7 +66,8 @@ pub trait Hash: Debug + Clone + 'static {
         + AsRef<[u8]>
         + AsMut<[u8]>
         + Default
-        + Copy;
+        + Copy
+        + PartialOrd;
 
     fn hash(s: &[u8]) -> Self::Output;
 }

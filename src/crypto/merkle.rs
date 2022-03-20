@@ -6,9 +6,15 @@ pub struct MerkleTree<H: Hash> {
     data: Vec<H::Output>,
 }
 
-fn merge_hash<H: Hash>(a: &H::Output, b: &H::Output) -> H::Output {
-    let mut inp = a.as_ref().to_vec();
-    inp.extend(b.as_ref());
+fn merge_hash<H: Hash>(mut a: &H::Output, mut b: &H::Output) -> H::Output {
+    let mut inp = Vec::new();
+    if a < b {
+        inp.extend(a.as_ref());
+        inp.extend(b.as_ref());
+    } else {
+        inp.extend(b.as_ref());
+        inp.extend(a.as_ref());
+    }
     H::hash(&inp)
 }
 
