@@ -11,10 +11,10 @@ impl<H: Hash> MerkleTree<H> {
     pub fn num_leaves(&self) -> usize {
         (self.data.len() + 1) >> 1
     }
-    pub fn parent_map(&self, i: usize) -> usize {
+    fn parent_map(&self, i: usize) -> usize {
         i >> 1
     }
-    pub fn leaf_map(&self, i: usize) -> usize {
+    fn leaf_map(&self, i: usize) -> usize {
         let len = self.data.len();
         let dep = self.depth();
         let lower_start = (1 << dep) - 1;
@@ -27,18 +27,11 @@ impl<H: Hash> MerkleTree<H> {
             upper_start - upper_offset + i
         };
     }
-    pub fn get(&self, i: usize) -> H::Output {
-        self.data[self.leaf_map(i)]
-    }
-    pub fn set(&mut self, i: usize, val: H::Output) {
-        let mapped = self.leaf_map(i);
-        self.data[mapped] = val;
-    }
     fn merge(&self, a: &H::Output, _b: &H::Output) -> H::Output {
         // TODO: Merge hashes
         a.clone()
     }
-    pub fn make_parents(&mut self) {
+    fn make_parents(&mut self) {
         let total = self.data.len();
         for d in (1..self.depth() + 1).rev() {
             let start = (1 << d) - 1;
@@ -54,6 +47,13 @@ impl<H: Hash> MerkleTree<H> {
                 self.data[parent] = merged;
             }
         }
+    }
+    pub fn get(&self, i: usize) -> H::Output {
+        self.data[self.leaf_map(i)]
+    }
+    pub fn set(&mut self, i: usize, val: H::Output) {
+        let mapped = self.leaf_map(i);
+        self.data[mapped] = val;
     }
     pub fn from_leaves(leaves: Vec<H::Output>) -> MerkleTree<H> {
         let data = vec![H::Output::default(); leaves.len() * 2 - 1];
