@@ -1,19 +1,30 @@
-use crate::core::{Hash, Transaction};
+use crate::core::Hash;
+use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct MerkleTree<H: Hash> {
     data: Vec<H::Output>,
+}
+
+fn merge_hash<H: Hash>(a: &H::Output, b: &H::Output) -> H::Output {
+    let mut inp = a.as_ref().to_vec();
+    inp.extend(b.as_ref());
+    H::hash(&inp)
 }
 
 impl<H: Hash> MerkleTree<H> {
     pub fn depth(&self) -> u32 {
         self.data.len().next_power_of_two().trailing_zeros() - 1
     }
+
     pub fn num_leaves(&self) -> usize {
         (self.data.len() + 1) >> 1
     }
+
     fn parent_map(&self, i: usize) -> usize {
         i >> 1
     }
+
     fn leaf_map(&self, i: usize) -> usize {
         let len = self.data.len();
         let dep = self.depth();
@@ -27,10 +38,7 @@ impl<H: Hash> MerkleTree<H> {
             upper_start - upper_offset + i
         };
     }
-    fn merge(&self, a: &H::Output, _b: &H::Output) -> H::Output {
-        // TODO: Merge hashes
-        a.clone()
-    }
+
     fn make_parents(&mut self) {
         let total = self.data.len();
         for d in (1..self.depth() + 1).rev() {
@@ -42,30 +50,26 @@ impl<H: Hash> MerkleTree<H> {
                 if i >= total {
                     break;
                 }
-                let merged = self.merge(&self.data[i], &self.data[j]);
+                let merged = merge_hash::<H>(&self.data[i], &self.data[j]);
                 let parent = self.parent_map(i);
                 self.data[parent] = merged;
             }
         }
     }
-    pub fn get(&self, i: usize) -> H::Output {
-        self.data[self.leaf_map(i)]
+
+    pub fn root(&self) -> H::Output {
+        self.data[0].clone()
     }
-    pub fn set(&mut self, i: usize, val: H::Output) {
-        let mapped = self.leaf_map(i);
-        self.data[mapped] = val;
-    }
-    pub fn from_leaves(leaves: Vec<H::Output>) -> MerkleTree<H> {
-        let data = vec![H::Output::default(); leaves.len() * 2 - 1];
-        let mut tree = MerkleTree::new(data);
+
+    pub fn new(leaves: Vec<H::Output>) -> MerkleTree<H> {
+        let mut tree = MerkleTree::<H> {
+            data: vec![H::Output::default(); leaves.len() * 2 - 1],
+        };
         for (i, val) in leaves.iter().enumerate() {
-            tree.set(i, *val);
+            let mapped = tree.leaf_map(i);
+            tree.data[mapped] = *val;
         }
         tree.make_parents();
         tree
-    }
-
-    pub fn new(data: Vec<H::Output>) -> MerkleTree<H> {
-        MerkleTree::<H> { data }
     }
 }
