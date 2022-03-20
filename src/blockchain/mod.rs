@@ -23,6 +23,8 @@ pub enum BlockchainError {
     InvalidBlockNumber,
     #[error("parent hash invalid")]
     InvalidParentHash,
+    #[error("merkle root invalid")]
+    InvalidMerkleRoot,
 }
 
 pub trait Blockchain {
@@ -142,6 +144,14 @@ impl<K: KvStore> KvStoreChain<K> {
 
             if block.header.parent_hash != last_block.header.hash() {
                 return Err(BlockchainError::InvalidParentHash);
+            }
+
+            let expected_root = MerkleTree::<Sha3_256>::new(
+                block.body.iter().map(|tx| tx.hash::<Sha3_256>()).collect(),
+            )
+            .root();
+            if block.header.block_root != expected_root {
+                return Err(BlockchainError::InvalidMerkleRoot);
             }
         }
 

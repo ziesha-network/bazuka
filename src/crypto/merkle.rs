@@ -73,6 +73,11 @@ impl<H: Hash> MerkleTree<H> {
     }
 
     pub fn new(leaves: Vec<H::Output>) -> MerkleTree<H> {
+        if leaves.is_empty() {
+            return MerkleTree::<H> {
+                data: vec![H::Output::default()],
+            };
+        }
         let mut tree = MerkleTree::<H> {
             data: vec![H::Output::default(); leaves.len() * 2 - 1],
         };
