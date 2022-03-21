@@ -1,14 +1,19 @@
+use std::fmt::{Debug, Display};
+use std::str::FromStr;
+
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+
+pub use eddsa::*;
+pub use eddsa::*;
+pub use mimc::*;
+pub use mimc::*;
+
 mod curve;
 mod eddsa;
 mod field;
 pub mod merkle;
 mod mimc;
-pub use eddsa::*;
-pub use mimc::*;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
-use std::fmt::{Debug, Display};
-use std::str::FromStr;
 
 pub trait SignatureScheme: Clone + Serialize {
     type Pub: Clone + Debug + PartialEq + Serialize + DeserializeOwned + FromStr + Display;
@@ -28,3 +33,5 @@ pub trait VerifiableRandomFunction {
     fn evaluate(sk: &Self::Priv, input: &[u8]) -> (Self::Output, Self::Proof);
     fn verify(pk: &Self::Pub, input: &[u8], output: &Self::Output, proof: &Self::Proof) -> bool;
 }
+
+pub trait PublicKeyT: AsRef<[u8]> {}

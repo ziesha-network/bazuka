@@ -1,8 +1,11 @@
 use crate::consensus::slots::Slot;
 use crate::core::Header;
 
-pub mod digest;
+mod babe;
+mod epoch;
 mod slots;
+
+pub mod digest;
 
 pub type Result<T> = core::result::Result<T, Error>;
 
@@ -14,6 +17,10 @@ pub enum Error {
     MultiplePreDigests,
     #[error("the quantity of pre-digests in header can't be zero")]
     NoPreDigest,
+    #[error("earlier than the best finalized block")]
+    EarlierThanBestFinalized,
+    #[error("block had been imported already")]
+    BlockHadBeenImported,
 }
 
 #[async_trait::async_trait]
