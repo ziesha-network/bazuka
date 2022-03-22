@@ -1,10 +1,8 @@
 use std::fmt::Debug;
 use std::str::FromStr;
 
-use num_traits::{One, Zero};
 use thiserror::Error;
 
-use crate::core::number::U256;
 use crate::crypto;
 use crate::crypto::SignatureScheme;
 
@@ -15,10 +13,9 @@ pub mod hash;
 pub mod header;
 pub mod number;
 
-pub type BlockNumU64 = u64;
 pub type Sha3_256 = crate::core::hash::Sha3Hasher;
-pub type Header = crate::core::header::Header<Sha3_256, BlockNumU64>;
-pub type Block = crate::core::blocks::Block<Header>;
+pub type Header = crate::core::header::Header<Sha3_256>;
+pub type Block = crate::core::blocks::Block<Sha3_256>;
 
 pub use contract::{Circuit, CircuitProof, ContractId, ContractPayment, ContractState};
 
@@ -71,10 +68,6 @@ pub trait Hash: Debug + Clone + 'static {
 
     fn hash(s: &[u8]) -> Self::Output;
 }
-
-/// Number as a type in Header
-pub trait BlockNumber: Default + Copy + Into<U256> + TryFrom<U256> + Eq + Zero + One {}
-impl BlockNumber for BlockNumU64 {}
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum Signature {
