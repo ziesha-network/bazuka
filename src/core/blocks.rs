@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
+use super::hash::Hash;
 use super::header::Header;
-use super::{Hash, Transaction};
+use super::Transaction;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Block<H: Hash> {

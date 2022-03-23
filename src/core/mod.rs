@@ -1,32 +1,16 @@
-pub mod address;
-pub mod blocks;
-pub mod contract;
+mod address;
+mod blocks;
+mod contract;
+mod header;
+mod transaction;
+
 pub mod digest;
 pub mod hash;
-pub mod header;
 pub mod number;
-pub mod transaction;
 
 use std::fmt::Debug;
 
 use crate::crypto;
-
-pub trait Hash: Debug + Clone + 'static {
-    /// The length in bytes of the Hasher output
-    const LENGTH: usize;
-
-    type Output: MemberBound
-        + AutoSerialize
-        + AutoDeserialize
-        + AutoHash
-        + AsRef<[u8]>
-        + AsMut<[u8]>
-        + Default
-        + Copy
-        + PartialOrd;
-
-    fn hash(s: &[u8]) -> Self::Output;
-}
 
 pub type Money = u64;
 pub type Sha3_256 = crate::core::hash::Sha3Hasher;

@@ -1,6 +1,7 @@
 use super::address::{Address, Signature};
 use super::contract::{Circuit, CircuitProof, ContractId, ContractPayment, ContractState};
-use super::{Hash, Money};
+use super::hash::Hash;
+use super::Money;
 use crate::crypto::SignatureScheme;
 
 // A transaction could be as simple as sending some funds, or as complicated as

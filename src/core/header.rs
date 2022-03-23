@@ -1,5 +1,5 @@
 use super::digest::{Digest, Digests};
-use super::Hash;
+use super::hash::Hash;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Header<H: Hash> {

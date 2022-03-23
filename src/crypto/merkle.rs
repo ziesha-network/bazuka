@@ -1,4 +1,4 @@
-use crate::core::Hash;
+use crate::core::hash::Hash;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
