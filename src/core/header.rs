@@ -1,44 +1,44 @@
 use crate::core::digest::{Digest, Digests};
-use crate::core::Hash;
+use crate::core::{Config, Hash};
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-pub struct Header<H: Hash> {
+pub struct Header<C: Config> {
     /// the parent hash
-    pub parent_hash: H::Output,
+    pub parent_hash: <C::Hasher as Hash>::Output,
     /// block number or block height
     pub number: u64,
     /// the root of state tired merkle tree
-    pub state_root: H::Output,
+    pub state_root: <C::Hasher as Hash>::Output,
     /// the merkle root of current block
-    pub block_root: H::Output,
+    pub block_root: <C::Hasher as Hash>::Output,
     /// aux data for consensus
     pub digests: Digests,
 }
 
-impl<H> Default for Header<H>
+impl<C> Default for Header<C>
 where
-    H: Hash,
+    C: Config,
 {
     fn default() -> Self {
         Header {
-            parent_hash: H::Output::default(),
+            parent_hash: <C::Hasher as Hash>::Output::default(),
             number: 0,
-            state_root: H::Output::default(),
-            block_root: H::Output::default(),
+            state_root: <C::Hasher as Hash>::Output::default(),
+            block_root: <C::Hasher as Hash>::Output::default(),
             digests: Default::default(),
         }
     }
 }
 
-impl<H> Header<H>
+impl<C> Header<C>
 where
-    H: Hash,
+    C: Config,
 {
     pub fn new(
         number: u64,
-        block_root: H::Output,
-        state_root: H::Output,
-        parent_hash: H::Output,
+        block_root: <C::Hasher as Hash>::Output,
+        state_root: <C::Hasher as Hash>::Output,
+        parent_hash: <C::Hasher as Hash>::Output,
         digests: Digests,
     ) -> Self {
         Self {
@@ -50,8 +50,8 @@ where
         }
     }
 
-    pub fn hash(&self) -> H::Output {
-        H::hash(&bincode::serialize(&self).expect("convert header to bincode format"))
+    pub fn hash(&self) -> <C::Hasher as Hash>::Output {
+        C::Hasher::hash(&bincode::serialize(&self).expect("convert header to bincode format"))
     }
 
     pub fn logs(&self) -> &[Digest] {

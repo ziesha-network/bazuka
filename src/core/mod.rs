@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::str::FromStr;
 
@@ -13,9 +14,21 @@ pub mod hash;
 pub mod header;
 pub mod number;
 
+pub trait Config {
+    type Hasher: Hash;
+    type Sig: SignatureScheme;
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Zeeka;
+impl Config for Zeeka {
+    type Hasher = hash::Sha3Hasher;
+    type Sig = crypto::EdDSA;
+}
+
 pub type Sha3_256 = crate::core::hash::Sha3Hasher;
-pub type Header = crate::core::header::Header<Sha3_256>;
-pub type Block = crate::core::blocks::Block<Sha3_256>;
+pub type Header = crate::core::header::Header<Zeeka>;
+pub type Block = crate::core::blocks::Block<Zeeka>;
 
 pub use contract::{Circuit, CircuitProof, ContractId, ContractPayment, ContractState};
 
