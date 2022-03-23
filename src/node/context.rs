@@ -3,6 +3,8 @@ use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::Transaction;
 use crate::utils;
 use crate::wallet::Wallet;
+use rand::seq::IteratorRandom;
+use rand::RngCore;
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
@@ -26,6 +28,18 @@ impl<B: Blockchain> NodeContext<B> {
         Ok(PeerInfo {
             height: self.blockchain.get_height()?,
         })
+    }
+    pub fn random_peers<R: RngCore>(
+        &mut self,
+        rng: &mut R,
+        count: usize,
+    ) -> HashMap<PeerAddress, PeerStats> {
+        self.active_peers()
+            .clone()
+            .into_iter()
+            .choose_multiple(rng, count)
+            .into_iter()
+            .collect()
     }
     pub fn active_peers(&mut self) -> HashMap<PeerAddress, PeerStats> {
         self.peers

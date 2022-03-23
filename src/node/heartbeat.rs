@@ -7,6 +7,8 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::time::{sleep, Duration};
 
+const NUM_PEERS: usize = 8;
+
 pub async fn heartbeat<B: Blockchain>(
     address: PeerAddress,
     context: Arc<RwLock<NodeContext<B>>>,
@@ -17,7 +19,7 @@ pub async fn heartbeat<B: Blockchain>(
         let info = ctx.get_info()?;
         let height = ctx.blockchain.get_height()?;
         let peer_addresses = ctx
-            .active_peers()
+            .random_peers(&mut rand::thread_rng(), NUM_PEERS)
             .keys()
             .cloned()
             .collect::<Vec<PeerAddress>>();
