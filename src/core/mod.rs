@@ -19,7 +19,7 @@ pub type Signature = address::Signature<crypto::EdDSA>;
 pub type Transaction = transaction::Transaction<crypto::EdDSA>;
 pub type TransactionData = transaction::TransactionData<crypto::EdDSA>;
 pub type Header = header::Header<Sha3_256>;
-pub type Block = blocks::Block<Sha3_256>;
+pub type Block = blocks::Block<Sha3_256, crypto::EdDSA>;
 
 macro_rules! auto_trait {
     (
