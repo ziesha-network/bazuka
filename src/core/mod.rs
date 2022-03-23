@@ -13,7 +13,7 @@ use std::fmt::Debug;
 use crate::crypto;
 
 pub type Money = u64;
-pub type Sha3_256 = crate::core::hash::Sha3Hasher;
+pub type Sha3_256 = hash::Sha3Hasher;
 pub type Address = address::Address<crypto::EdDSA>;
 pub type Signature = address::Signature<crypto::EdDSA>;
 pub type Transaction = transaction::Transaction<crypto::EdDSA>;
