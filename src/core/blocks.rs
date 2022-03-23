@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
 
 use super::header::Header;
-use crate::core::{Config, Transaction};
+use super::{Hash, Transaction};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Block<C: Config> {
-    pub header: Header<C>,
+pub struct Block<H: Hash> {
+    pub header: Header<H>,
     pub body: Vec<Transaction>,
 }
 
-impl<C: Config> Block<C> {}
+impl<H: Hash> Block<H> {}
