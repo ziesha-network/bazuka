@@ -14,6 +14,8 @@ pub enum BlockchainError {
     BalanceInsufficient,
     #[error("inconsistency error")]
     Inconsistency,
+    #[error("block not found")]
+    BlockNotFound,
     #[error("cannot extend from the genesis block")]
     ExtendFromGenesis,
     #[error("cannot extend from very future blocks")]
@@ -67,6 +69,9 @@ impl<K: KvStore> KvStoreChain<K> {
     }
 
     fn get_block(&self, index: usize) -> Result<Block, BlockchainError> {
+        if index >= self.get_height()? {
+            return Err(BlockchainError::BlockNotFound);
+        }
         let block_key: StringKey = format!("block_{:010}", index).into();
         Ok(match self.database.get(block_key.clone())? {
             Some(b) => b.try_into()?,
