@@ -124,6 +124,7 @@ impl<K: KvStore> KvStoreChain<K> {
             }
         };
         rollback.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
+        rollback.push(WriteOp::Remove(format!("merkle_{:010}", height - 1).into()));
         rollback.push(WriteOp::Remove(
             format!("rollback_{:010}", height - 1).into(),
         ));
@@ -163,6 +164,10 @@ impl<K: KvStore> KvStoreChain<K> {
         changes.push(WriteOp::Put(
             format!("block_{:010}", block.header.number).into(),
             block.into(),
+        ));
+        changes.push(WriteOp::Put(
+            format!("merkle_{:010}", block.header.number).into(),
+            block.merkle_tree().into(),
         ));
 
         self.database.update(&changes)?;

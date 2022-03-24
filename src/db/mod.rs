@@ -1,4 +1,5 @@
-use crate::core::{Account, Block};
+use crate::core::{Account, Block, Hasher};
+use crate::crypto::merkle::MerkleTree;
 use db_key::Key;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -49,8 +50,24 @@ macro_rules! gen_from {
     };
 }
 
-gen_try_into!(u32, u64, usize, Account, Block, Vec<WriteOp>);
-gen_from!(u32, u64, usize, Account, &Block, Vec<WriteOp>);
+gen_try_into!(
+    u32,
+    u64,
+    usize,
+    Account,
+    Block,
+    Vec<WriteOp>,
+    MerkleTree<Hasher>
+);
+gen_from!(
+    u32,
+    u64,
+    usize,
+    Account,
+    &Block,
+    Vec<WriteOp>,
+    MerkleTree<Hasher>
+);
 
 impl Key for StringKey {
     fn from_u8(key: &[u8]) -> StringKey {
