@@ -1,6 +1,7 @@
 use crate::crypto::SignatureScheme;
 use std::str::FromStr;
 use thiserror::Error;
+use super::Money;
 
 // All of the Zeeka's supply exists in Treasury account when the blockchain begins.
 // Validator/Miner fees are collected from the Treasury account. This simplifies
@@ -40,4 +41,10 @@ where
 pub enum Signature<S: SignatureScheme> {
     Unsigned,
     Signed(S::Sig),
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct Account {
+    pub balance: Money,
+    pub nonce: u32,
 }

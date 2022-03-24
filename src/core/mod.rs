@@ -13,13 +13,15 @@ use std::fmt::Debug;
 use crate::crypto;
 
 pub type Money = u64;
-pub type Sha3_256 = hash::Sha3Hasher;
-pub type Address = address::Address<crypto::EdDSA>;
-pub type Signature = address::Signature<crypto::EdDSA>;
-pub type Transaction = transaction::Transaction<crypto::EdDSA>;
-pub type TransactionData = transaction::TransactionData<crypto::EdDSA>;
-pub type Header = header::Header<Sha3_256>;
-pub type Block = blocks::Block<Sha3_256, crypto::EdDSA>;
+pub type Signer = crypto::EdDSA;
+pub type Hasher = hash::Sha3Hasher;
+pub type Address = address::Address<Signer>;
+pub type Account = address::Account;
+pub type Signature = address::Signature<Signer>;
+pub type Transaction = transaction::Transaction<Signer>;
+pub type TransactionData = transaction::TransactionData<Signer>;
+pub type Header = header::Header<Hasher>;
+pub type Block = blocks::Block<Hasher, Signer>;
 
 macro_rules! auto_trait {
     (
@@ -53,18 +55,3 @@ auto_trait!(
 /// A type that can be used at runtime
 pub trait MemberBound: Send + Sync + Sized + Debug + Clone + Eq + PartialEq + 'static {}
 impl<T: Send + Sync + Sized + Debug + Clone + Eq + PartialEq + 'static> MemberBound for T {}
-
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct Account {
-    pub balance: Money,
-    pub nonce: u32,
-}
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn it_works() {
-        assert_eq!(1, 1)
-    }
-}

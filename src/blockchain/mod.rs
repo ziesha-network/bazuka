@@ -1,6 +1,5 @@
 use crate::config::{genesis, TOTAL_SUPPLY};
 use crate::core::{Account, Address, Block, Header, Transaction, TransactionData};
-use crate::crypto::merkle::MerkleTree;
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::wallet::Wallet;
 use thiserror::Error;
