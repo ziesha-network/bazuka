@@ -1,12 +1,12 @@
 use crate::consensus::babe;
 use crate::consensus::babe::Authority;
 use crate::consensus::slots::Slot;
-use crate::crypto::{PublicKey, PublicKeyT};
+use crate::crypto::{EdDSAPublicKey, PublicKey};
 
 const RANDOMNESS_LEN: usize = 32;
 
 /// Epoch Information
-pub struct Epoch<P: PublicKeyT> {
+pub struct Epoch<P: PublicKey> {
     pub index: u64,
 
     pub start_slot_number: Slot,
@@ -22,7 +22,7 @@ pub struct Epoch<P: PublicKeyT> {
     pub allow_slots: AllowSlot,
 }
 
-impl<P: PublicKeyT> Epoch<P> {
+impl<P: PublicKey> Epoch<P> {
     pub fn increment(&self, desc: NextEpochDescriptor<P>, config: EpochConfiguration) -> Self {
         Epoch {
             index: self.index + 1,
@@ -52,7 +52,7 @@ pub enum AllowSlot {
 }
 
 #[derive(Debug, Clone)]
-pub struct NextEpochDescriptor<P: PublicKeyT> {
+pub struct NextEpochDescriptor<P: PublicKey> {
     pub authorities: Vec<Authority<P>>,
     pub randomness: [u8; RANDOMNESS_LEN],
 }

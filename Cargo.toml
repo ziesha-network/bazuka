@@ -25,7 +25,8 @@ rand = "0.8.5"
 thiserror = "1.0"
 num-bigint = "0.4"
 num-integer = "0.1"
-num-traits = "0.2"
+num-rational = "0.4.0"
+num-traits = "0.2.8"
 futures-timer = "3.0"
 async-trait = "0.1.52"
 schnorrkel = { version = "0.9.1", features = [
@@ -35,6 +36,8 @@ schnorrkel = { version = "0.9.1", features = [
     "rand",
     "std"
 ], default-features = false }
+merlin = { version = "2.0.0", default-features = false }
+hex = "0.4.3"
 
 [features]
 node = ["tokio", "hyper", "leveldb", "futures", "structopt"]

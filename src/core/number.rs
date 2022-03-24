@@ -50,6 +50,16 @@ impl U256 {
         Self(data)
     }
 
+    pub fn from_be_bytes(bytes: &[u8]) -> Self {
+        let mut data = [0u8; 32];
+        data[..bytes.len()].copy_from_slice(bytes);
+        let mut ret = [0; 32];
+        for i in 0..32 {
+            ret[32 - i - 1] = data[i];
+        }
+        Self(ret)
+    }
+
     pub fn random<R: RngCore>(rng: &mut R) -> Self {
         let mut data = [0u8; 32];
         rng.fill_bytes(&mut data);

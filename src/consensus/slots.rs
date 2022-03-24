@@ -207,7 +207,7 @@ where
 }
 
 #[derive(Debug, Clone, Copy, Eq, Default, Ord, serde::Serialize, serde::Deserialize)]
-pub struct Slot(u64);
+pub struct Slot(pub u64);
 
 impl<T: Into<u64> + Copy> PartialEq<T> for Slot {
     fn eq(&self, other: &T) -> bool {

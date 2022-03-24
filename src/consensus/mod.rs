@@ -1,5 +1,7 @@
+use crate::consensus::epoch::Epoch;
 use crate::consensus::slots::Slot;
 use crate::core::Header;
+use crate::crypto::PublicKey;
 
 mod babe;
 mod epoch;
@@ -44,4 +46,8 @@ pub trait SlotAuxData: Sync + Send {
 #[async_trait::async_trait]
 pub trait ChainSelector: Sync + Send + Clone {
     async fn best_chain(&self) -> Result<Header>;
+}
+
+pub trait EpochBuilder {
+    fn best_epoch<P: PublicKey>(&self, header: &Header, slot: Slot) -> Result<Epoch<P>>;
 }

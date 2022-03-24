@@ -23,9 +23,9 @@ pub enum ParsePublicKeyError {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct PublicKey(pub PointCompressed);
+pub struct EdDSAPublicKey(pub PointCompressed);
 
-impl std::fmt::Display for PublicKey {
+impl std::fmt::Display for EdDSAPublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "0x{}", if self.0 .1 { 3 } else { 2 })?;
         for byte in self.0 .0.to_repr().as_ref().iter().rev() {
@@ -35,7 +35,7 @@ impl std::fmt::Display for PublicKey {
     }
 }
 
-impl FromStr for PublicKey {
+impl FromStr for EdDSAPublicKey {
     type Err = ParsePublicKeyError;
     fn from_str(mut s: &str) -> Result<Self, Self::Err> {
         let oddity = if s.starts_with("0x3") {
@@ -53,7 +53,7 @@ impl FromStr for PublicKey {
             .unwrap();
         let mut repr = Fr::zero().to_repr();
         repr.as_mut().clone_from_slice(&bytes);
-        Ok(PublicKey(PointCompressed(
+        Ok(EdDSAPublicKey(PointCompressed(
             Fr::from_repr(repr).unwrap(),
             oddity,
         )))
@@ -74,13 +74,13 @@ pub struct Signature {
 }
 
 impl SignatureScheme for EdDSA {
-    type Pub = PublicKey;
+    type Pub = EdDSAPublicKey;
     type Priv = PrivateKey;
     type Sig = Signature;
-    fn generate_keys(seed: &[u8]) -> (PublicKey, PrivateKey) {
+    fn generate_keys(seed: &[u8]) -> (EdDSAPublicKey, PrivateKey) {
         let (randomness, scalar) = U256::generate_two(seed);
         let point = BASE.multiply(&scalar);
-        let pk = PublicKey(point.compress());
+        let pk = EdDSAPublicKey(point.compress());
         (
             pk.clone(),
             PrivateKey {
@@ -120,7 +120,7 @@ impl SignatureScheme for EdDSA {
             s: U256::from_le_bytes(&s.to_bytes_le()),
         }
     }
-    fn verify(pk: &PublicKey, message: &[u8], sig: &Signature) -> bool {
+    fn verify(pk: &EdDSAPublicKey, message: &[u8], sig: &Signature) -> bool {
         let pk = pk.0.decompress();
 
         // h=H(R,A,M)

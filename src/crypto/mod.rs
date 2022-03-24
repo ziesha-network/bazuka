@@ -7,13 +7,14 @@ use serde::Serialize;
 pub use eddsa::*;
 pub use eddsa::*;
 pub use mimc::*;
-pub use mimc::*;
+pub use vrf::*;
 
 mod curve;
 mod eddsa;
 mod field;
 pub mod merkle;
 mod mimc;
+mod vrf;
 
 pub trait SignatureScheme: Clone + Serialize {
     type Pub: Clone + Debug + PartialEq + Serialize + DeserializeOwned + FromStr + Display;
@@ -29,9 +30,11 @@ pub trait VerifiableRandomFunction {
     type Priv;
     type Output;
     type Proof;
-    fn generate(seed: &[u8]) -> (Self::Pub, Self::Priv);
-    fn evaluate(sk: &Self::Priv, input: &[u8]) -> (Self::Output, Self::Proof);
+    fn generate() -> Self;
+    fn evaluate(&self, input: &[u8]) -> (Self::Output, Self::Proof);
     fn verify(pk: &Self::Pub, input: &[u8], output: &Self::Output, proof: &Self::Proof) -> bool;
 }
 
-pub trait PublicKeyT: AsRef<[u8]> {}
+pub trait PublicKey: AsRef<[u8]> + Display {}
+
+impl<T: AsRef<[u8]> + Display> PublicKey for T {}
