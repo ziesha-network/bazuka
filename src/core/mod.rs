@@ -1,26 +1,25 @@
-use std::fmt::Debug;
-use std::str::FromStr;
+mod address;
+mod blocks;
+mod contract;
+mod header;
+mod transaction;
 
-use num_traits::{One, Zero};
-use thiserror::Error;
-
-use crate::core::number::U256;
-use crate::crypto;
-use crate::crypto::SignatureScheme;
-
-pub mod blocks;
-pub mod contract;
 pub mod digest;
 pub mod hash;
-pub mod header;
 pub mod number;
 
-pub type BlockNumU64 = u64;
-pub type Sha3_256 = crate::core::hash::Sha3Hasher;
-pub type Header = crate::core::header::Header<Sha3_256, BlockNumU64>;
-pub type Block = crate::core::blocks::Block<Header>;
+use std::fmt::Debug;
 
-pub use contract::{Circuit, CircuitProof, ContractId, ContractPayment, ContractState};
+use crate::crypto;
+
+pub type Money = u64;
+pub type Sha3_256 = hash::Sha3Hasher;
+pub type Address = address::Address<crypto::EdDSA>;
+pub type Signature = address::Signature<crypto::EdDSA>;
+pub type Transaction = transaction::Transaction<crypto::EdDSA>;
+pub type TransactionData = transaction::TransactionData<crypto::EdDSA>;
+pub type Header = header::Header<Sha3_256>;
+pub type Block = blocks::Block<Sha3_256, crypto::EdDSA>;
 
 macro_rules! auto_trait {
     (
@@ -55,146 +54,10 @@ auto_trait!(
 pub trait MemberBound: Send + Sync + Sized + Debug + Clone + Eq + PartialEq + 'static {}
 impl<T: Send + Sync + Sized + Debug + Clone + Eq + PartialEq + 'static> MemberBound for T {}
 
-pub trait Hash: Debug + Clone + 'static {
-    /// The length in bytes of the Hasher output
-    const LENGTH: usize;
-
-    type Output: MemberBound
-        + AutoSerialize
-        + AutoDeserialize
-        + AutoHash
-        + AsRef<[u8]>
-        + AsMut<[u8]>
-        + Default
-        + Copy
-        + PartialOrd;
-
-    fn hash(s: &[u8]) -> Self::Output;
-}
-
-/// Number as a type in Header
-pub trait BlockNumber: Default + Copy + Into<U256> + TryFrom<U256> + Eq + Zero + One {}
-impl BlockNumber for BlockNumU64 {}
-
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub enum Signature {
-    Unsigned,
-    Signed(crypto::Signature),
-}
-
-pub type Money = u64;
-
-// All of the Zeeka's supply exists in Treasury account when the blockchain begins.
-// Validator/Miner fees are collected from the Treasury account. This simplifies
-// the process of money creation.
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub enum Address {
-    Treasury,
-    PublicKey(crypto::PublicKey),
-}
-
-#[derive(Error, Debug)]
-pub enum ParseAddressError {
-    #[error("address invalid")]
-    Invalid,
-}
-
-impl std::fmt::Display for Address {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Address::Treasury => write!(f, "Treasury"),
-            Address::PublicKey(pk) => write!(f, "{}", pk),
-        }
-    }
-}
-
-impl FromStr for Address {
-    type Err = ParseAddressError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Address::PublicKey(crypto::PublicKey::from_str(s).unwrap()))
-    }
-}
-
-// A transaction could be as simple as sending some funds, or as complicated as
-// creating a smart-contract.
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub enum TransactionData {
-    RegularSend {
-        dst: Address,
-        amount: Money,
-    },
-    RegisterValidator {
-        vrf_stuff: u8,
-        amount: Money,
-    },
-
-    // Create a Zero-Contract. The creator can consider multiple ways (Circuits) of updating
-    // the state. But there should be only one circuit for entering and exiting the contract.
-    CreateContract {
-        deposit_withdraw_circuit: Circuit,
-        update_circuits: Vec<Circuit>,
-        initial_state: ContractState,
-    },
-    // Proof for DepositWithdrawCircuit(curr_state, next_state, hash(entries))
-    DepositWithdraw {
-        contract_id: ContractId,
-        deposit_withdraws: Vec<ContractPayment>,
-        next_state: ContractState,
-        proof: CircuitProof,
-    },
-    // Proof for UpdateCircuit[circuit_index](curr_state, next_state)
-    Update {
-        contract_id: ContractId,
-        circuit_index: u32,
-        next_state: ContractState,
-        proof: CircuitProof,
-    },
-}
-
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct Transaction {
-    pub src: Address,
-    pub nonce: u32,
-    pub data: TransactionData,
-    pub fee: Money,
-    pub sig: Signature,
-}
-
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct Account {
     pub balance: Money,
     pub nonce: u32,
-}
-
-impl Transaction {
-    pub fn hash<H: Hash>(&self) -> H::Output {
-        H::hash(&bincode::serialize(self).unwrap())
-    }
-    pub fn verify_signature(&self) -> bool {
-        match &self.src {
-            Address::Treasury => true,
-            Address::PublicKey(pk) => match &self.sig {
-                Signature::Unsigned => false,
-                Signature::Signed(sig) => {
-                    let mut unsigned = self.clone();
-                    unsigned.sig = Signature::Unsigned;
-                    let bytes = bincode::serialize(&unsigned).unwrap();
-                    crypto::EdDSA::verify(&pk, &bytes, &sig)
-                }
-            },
-        }
-    }
-}
-
-impl Eq for Transaction {}
-impl std::hash::Hash for Transaction {
-    fn hash<H>(&self, state: &mut H)
-    where
-        H: std::hash::Hasher,
-    {
-        state.write(&bincode::serialize(self).unwrap());
-        state.finish();
-    }
 }
 
 #[cfg(test)]

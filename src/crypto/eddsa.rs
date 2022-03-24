@@ -13,6 +13,7 @@ use crate::core::number::U256;
 use std::str::FromStr;
 use thiserror::Error;
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct EdDSA;
 
 #[derive(Error, Debug)]

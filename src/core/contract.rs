@@ -1,4 +1,6 @@
-use super::{Address, Money, Signature};
+use super::address::{Address, Signature};
+use super::Money;
+use crate::crypto::SignatureScheme;
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct ContractId {}
@@ -16,14 +18,14 @@ pub enum PaymentDirection {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct ContractPayment {
-    initiator: Address,
+pub struct ContractPayment<S: SignatureScheme> {
+    initiator: Address<S>,
     contract_id: ContractId, // Makes sure the payment can only run on this contract.
     nonce: usize,            // Makes sure a contract payment cannot be replayed on this contract.
     amount: Money,
     fee: Money,
     direction: PaymentDirection,
-    sig: Signature,
+    sig: Signature<S>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]

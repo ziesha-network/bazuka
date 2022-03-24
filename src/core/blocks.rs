@@ -1,11 +1,15 @@
 use serde::{Deserialize, Serialize};
 
-use crate::core::Transaction;
+use crate::crypto::SignatureScheme;
+
+use super::hash::Hash;
+use super::header::Header;
+use super::transaction::Transaction;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Block<Header> {
-    pub header: Header,
-    pub body: Vec<Transaction>,
+pub struct Block<H: Hash, S: SignatureScheme> {
+    pub header: Header<H>,
+    pub body: Vec<Transaction<S>>,
 }
 
-impl<Header> Block<Header> {}
+impl<H: Hash, S: SignatureScheme> Block<H, S> {}
