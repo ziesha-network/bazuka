@@ -89,3 +89,42 @@ impl<H: Hash> MerkleTree<H> {
         tree
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::hash::Sha3Hasher;
+
+    #[test]
+    fn test_calculation() {
+        assert_eq!(MerkleTree::<Sha3Hasher>::new(Vec::new()).root(), [0u8; 32]);
+        assert_eq!(
+            MerkleTree::<Sha3Hasher>::new(vec![Sha3Hasher::hash(&[1])]).root(),
+            [
+                39, 103, 241, 92, 138, 242, 242, 199, 34, 93, 82, 115, 253, 214, 131, 237, 199, 20,
+                17, 10, 152, 125, 16, 84, 105, 124, 52, 138, 237, 78, 108, 199
+            ]
+        );
+        assert_eq!(
+            MerkleTree::<Sha3Hasher>::new((2..4).map(|i| Sha3Hasher::hash(&[i])).collect()).root(),
+            [
+                147, 148, 62, 236, 12, 170, 57, 157, 174, 243, 124, 220, 81, 74, 187, 99, 252, 243,
+                77, 85, 3, 93, 223, 166, 184, 93, 190, 149, 217, 73, 107, 7
+            ]
+        );
+        assert_eq!(
+            MerkleTree::<Sha3Hasher>::new((0..10).map(|i| Sha3Hasher::hash(&[i])).collect()).root(),
+            [
+                170, 152, 247, 242, 8, 76, 139, 70, 132, 168, 19, 116, 29, 8, 9, 42, 0, 85, 164,
+                237, 192, 106, 123, 174, 180, 217, 32, 126, 18, 38, 210, 79
+            ]
+        );
+        assert_eq!(
+            MerkleTree::<Sha3Hasher>::new((0..16).map(|i| Sha3Hasher::hash(&[i])).collect()).root(),
+            [
+                205, 127, 119, 130, 101, 244, 191, 81, 239, 175, 89, 0, 91, 183, 65, 61, 170, 6,
+                253, 155, 249, 90, 186, 20, 71, 105, 83, 24, 118, 68, 70, 119
+            ]
+        );
+    }
+}
