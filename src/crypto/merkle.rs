@@ -33,7 +33,15 @@ impl<H: Hash> MerkleTree<H> {
     }
 
     fn parent_map(&self, i: usize) -> usize {
-        i >> 1
+        (i - 1) >> 1
+    }
+
+    fn sibling_map(&self, i: usize) -> usize {
+        if i % 2 == 0 {
+            i - 1
+        } else {
+            i + 1
+        }
     }
 
     fn leaf_map(&self, i: usize) -> usize {
@@ -72,6 +80,16 @@ impl<H: Hash> MerkleTree<H> {
         self.data[0].clone()
     }
 
+    pub fn prove(&self, leaf: usize) -> Vec<H::Output> {
+        let mut proof = Vec::new();
+        let mut ind = self.leaf_map(leaf);
+        while ind != 0 {
+            proof.push(self.data[self.sibling_map(ind)]);
+            ind = self.parent_map(ind);
+        }
+        proof
+    }
+
     pub fn new(leaves: Vec<H::Output>) -> MerkleTree<H> {
         if leaves.is_empty() {
             return MerkleTree::<H> {
@@ -94,6 +112,20 @@ impl<H: Hash> MerkleTree<H> {
 mod tests {
     use super::*;
     use crate::core::hash::Sha3Hasher;
+
+    #[test]
+    fn test_merkle_proof() {
+        let tree = MerkleTree::<Sha3Hasher>::new((0..10).map(|i| Sha3Hasher::hash(&[i])).collect());
+        for i in 0..10 {
+            let proof = tree.prove(i);
+            let root = tree.root();
+            let mut curr = Sha3Hasher::hash(&[i as u8]);
+            for entry in proof {
+                curr = merge_hash::<Sha3Hasher>(&curr, &entry);
+            }
+            assert_eq!(curr, root);
+        }
+    }
 
     #[test]
     fn test_calculation() {
