@@ -1,5 +1,5 @@
 use crate::config::{genesis, TOTAL_SUPPLY};
-use crate::core::{Account, Address, Block, Header, Sha3_256, Transaction, TransactionData};
+use crate::core::{Account, Address, Block, Header, Transaction, TransactionData};
 use crate::crypto::merkle::MerkleTree;
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::wallet::Wallet;
@@ -146,11 +146,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InvalidParentHash);
             }
 
-            let expected_root = MerkleTree::<Sha3_256>::new(
-                block.body.iter().map(|tx| tx.hash::<Sha3_256>()).collect(),
-            )
-            .root();
-            if block.header.block_root != expected_root {
+            if block.header.block_root != block.merkle_tree().root() {
                 return Err(BlockchainError::InvalidMerkleRoot);
             }
         }
@@ -264,9 +260,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         };
         blk.header.number = height as u64;
         blk.header.parent_hash = last_block.header.hash();
-        blk.header.block_root =
-            MerkleTree::<Sha3_256>::new(mempool.iter().map(|tx| tx.hash::<Sha3_256>()).collect())
-                .root();
+        blk.header.block_root = blk.merkle_tree().root();
         //self.extend(height, &vec![blk.clone()])?;
         Ok(None)
     }

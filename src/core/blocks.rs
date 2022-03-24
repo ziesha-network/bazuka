@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::crypto::merkle::MerkleTree;
 use crate::crypto::SignatureScheme;
 
 use super::hash::Hash;
@@ -12,4 +13,8 @@ pub struct Block<H: Hash, S: SignatureScheme> {
     pub body: Vec<Transaction<S>>,
 }
 
-impl<H: Hash, S: SignatureScheme> Block<H, S> {}
+impl<H: Hash, S: SignatureScheme> Block<H, S> {
+    pub fn merkle_tree(&self) -> MerkleTree<H> {
+        MerkleTree::<H>::new(self.body.iter().map(|tx| tx.hash::<H>()).collect())
+    }
+}
