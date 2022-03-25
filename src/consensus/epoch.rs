@@ -1,7 +1,6 @@
-use crate::consensus::babe;
 use crate::consensus::babe::Authority;
 use crate::consensus::slots::Slot;
-use crate::crypto::{EdDSAPublicKey, PublicKey};
+use crate::crypto::PublicKey;
 
 const RANDOMNESS_LEN: usize = 32;
 

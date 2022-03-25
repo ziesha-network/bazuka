@@ -18,8 +18,7 @@ use crate::consensus::slots::{
 use crate::consensus::{ChainSelector, CreateSlotAuxProvider, EpochBuilder};
 use crate::consensus::{Error, Result};
 use crate::core::digest::*;
-use crate::core::number::U256;
-use crate::core::{Hash, Header, Sha3_256};
+use crate::core::Header;
 use crate::crypto::{PublicKey, VRFPair, VRFPublicKey, VRFTranscript, VRFTranscriptData};
 
 pub async fn start_babe_worker<ADP, CS, EPB>(
@@ -82,7 +81,7 @@ pub async fn start_babe_worker<ADP, CS, EPB>(
         };
         let mut logs = Digests::default();
         logs.push(Digest::PreDigest(claim));
-        // @TODO: propose log
+        // @TODO: propose log and use proposing_remaining as a deadline
     }
 }
 
@@ -186,7 +185,7 @@ fn claim_secondary_slot<P: PublicKey>(
     if authorities.is_empty() {
         return None;
     }
-    /// @TODO: this is a fake round robin
+    // @TODO: this is a fake round robin
     let r = (slot.0 / authorities.len() as u64) as usize;
     let transcript = make_vrf_transcript(*index, slot, randomness);
     pairs.get(&r).map(|pair| {

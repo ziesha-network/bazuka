@@ -8,8 +8,6 @@ pub mod digest;
 pub mod hash;
 pub mod number;
 
-use crate::core::number::U256;
-use num_traits::{One, Zero};
 use std::fmt::Debug;
 
 use crate::crypto;
@@ -57,7 +55,3 @@ auto_trait!(
 /// A type that can be used at runtime
 pub trait MemberBound: Send + Sync + Sized + Debug + Clone + Eq + PartialEq + 'static {}
 impl<T: Send + Sync + Sized + Debug + Clone + Eq + PartialEq + 'static> MemberBound for T {}
-
-/// Number as a type in Header
-pub trait BlockNumber: Default + Copy + Into<U256> + TryFrom<U256> + Eq + Zero + One {}
-impl BlockNumber for BlockNumU64 {}

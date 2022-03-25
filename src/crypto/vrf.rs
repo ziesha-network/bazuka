@@ -1,11 +1,8 @@
 use std::fmt::{Display, Formatter};
-use std::thread::sleep;
 
 use schnorrkel::keys::{MINI_SECRET_KEY_LENGTH, SECRET_KEY_LENGTH};
 use schnorrkel::vrf::{VRFInOut, VRFOutput, VRFProof};
 use schnorrkel::{ExpansionMode, MiniSecretKey, SecretKey, SignatureResult};
-
-use crate::crypto::{PublicKey, VerifiableRandomFunction};
 
 pub struct VRFPublicKey(pub schnorrkel::keys::PublicKey);
 
