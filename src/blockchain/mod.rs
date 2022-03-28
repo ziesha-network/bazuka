@@ -1,8 +1,9 @@
+use thiserror::Error;
+
 use crate::config::{genesis, TOTAL_SUPPLY};
 use crate::core::{Account, Address, Block, Header, Transaction, TransactionData};
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::wallet::Wallet;
-use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum BlockchainError {

@@ -1,8 +1,10 @@
 use std::fmt::{Display, Formatter};
 
 use schnorrkel::keys::{MINI_SECRET_KEY_LENGTH, SECRET_KEY_LENGTH};
-use schnorrkel::vrf::{VRFInOut, VRFOutput, VRFProof};
+use schnorrkel::vrf::{VRFInOut, VRFOutput, VRFProof, VRF_OUTPUT_LENGTH, VRF_PROOF_LENGTH};
 use schnorrkel::{ExpansionMode, MiniSecretKey, SecretKey, SignatureResult};
+
+use crate::crypto::{Error, VRFTranscript, VRFTranscriptData, VerifiableRandomFunction};
 
 pub struct VRFPublicKey(pub schnorrkel::keys::PublicKey);
 
@@ -22,13 +24,18 @@ impl VRFPublicKey {
     pub fn vrf_verify(
         &self,
         transcript: VRFTranscript,
-        signature: VRFSignature,
+        output: &[u8; VRF_OUTPUT_LENGTH],
+        proof: &[u8; VRF_PROOF_LENGTH],
     ) -> Result<Vec<u8>, Error> {
         let transcript = to_transcript(transcript);
+        let output = VRFOutput::from_bytes(output)
+            .map_err(|e| Error::VRFSignatureError(format!("{}", e)))?;
+        let proof =
+            VRFProof::from_bytes(proof).map_err(|e| Error::VRFSignatureError(format!("{}", e)))?;
         let (inout, _) = self
             .0
-            .vrf_verify(transcript, &signature.output, &signature.proof)
-            .map_err(|e| Error::VRFSignatureError(e))?;
+            .vrf_verify(transcript, &output, &proof)
+            .map_err(|e| Error::VRFSignatureError(format!("{}", e)))?;
         Ok(inout.to_output().to_bytes().to_vec())
     }
 }
@@ -43,35 +50,7 @@ impl VRFPair {
     }
 }
 
-pub struct VRFSignature {
-    pub output: VRFOutput,
-    pub proof: VRFProof,
-}
-
-impl VRFSignature {
-    pub fn attach_input_hash(
-        &self,
-        public_key: &VRFPublicKey,
-        transcript: VRFTranscript,
-    ) -> SignatureResult<VRFInOut> {
-        self.output
-            .attach_input_hash(&public_key.0, to_transcript(transcript))
-    }
-}
-
-#[derive(Clone)]
-pub enum VRFTranscriptData {
-    U64(u64),
-    Bytes(Vec<u8>),
-}
-
-#[derive(Clone)]
-pub struct VRFTranscript {
-    pub label: &'static [u8],
-    pub messages: Vec<(&'static [u8], VRFTranscriptData)>,
-}
-
-fn to_transcript(t: VRFTranscript) -> merlin::Transcript {
+pub fn to_transcript(t: VRFTranscript) -> merlin::Transcript {
     let mut transcript = merlin::Transcript::new(t.label);
     for (label, data) in t.messages.into_iter() {
         match data {
@@ -86,12 +65,12 @@ fn to_transcript(t: VRFTranscript) -> merlin::Transcript {
     transcript
 }
 
-impl VRFPair {
-    pub fn generate_random() -> Self {
-        Self(schnorrkel::Keypair::generate())
-    }
+impl VerifiableRandomFunction for VRFPair {
+    type Pub = VRFPublicKey;
+    type Output = [u8; VRF_OUTPUT_LENGTH];
+    type Proof = [u8; VRF_PROOF_LENGTH];
 
-    pub fn generate(seed: &[u8]) -> Result<Self, Error> {
+    fn generate(seed: &[u8]) -> Result<Self, Error> {
         match seed.len() {
             MINI_SECRET_KEY_LENGTH => Ok(VRFPair(
                 MiniSecretKey::from_bytes(seed)
@@ -107,34 +86,30 @@ impl VRFPair {
         }
     }
 
-    pub fn vrf_sign(&self, transcript: VRFTranscript) -> VRFSignature {
+    fn sign(&self, transcript: VRFTranscript) -> (Self::Output, Self::Proof) {
         let (inout, proof, _) = self.0.vrf_sign(to_transcript(transcript));
-        VRFSignature {
-            output: inout.to_output(),
-            proof,
-        }
+        (inout.to_output().to_bytes(), proof.to_bytes())
     }
-}
 
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("vrf error: {0}")]
-    VRFSignatureError(schnorrkel::errors::SignatureError),
-    #[error("the {0} has an invalid length")]
-    InvalidLength(String),
-    #[error("the seed is invalid")]
-    InvalidSeed,
+    fn verify(
+        public_key: &Self::Pub,
+        transcript: VRFTranscript,
+        output: Self::Output,
+        proof: Self::Proof,
+    ) -> Result<Vec<u8>, Error> {
+        public_key.vrf_verify(transcript, &output, &proof)
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::crypto::{VRFPair, VRFTranscript, VRFTranscriptData};
+    use crate::crypto::{VRFPair, VRFTranscript, VRFTranscriptData, VerifiableRandomFunction};
 
     #[test]
     fn vrf_test_ok() {
         let pair =
             VRFPair::generate(b"12345678901234567890123456789012").expect("create sr25519 pair");
-        let sig = pair.vrf_sign(VRFTranscript {
+        let sig = pair.sign(VRFTranscript {
             label: b"a label",
             messages: vec![
                 (b"one", VRFTranscriptData::U64(1)),
@@ -151,7 +126,8 @@ mod test {
                         (b"two", VRFTranscriptData::Bytes("two".as_bytes().to_vec())),
                     ],
                 },
-                sig,
+                &sig.0,
+                &sig.1,
             )
             .is_ok())
     }
@@ -160,7 +136,7 @@ mod test {
     fn vrf_test_not_ok() {
         let pair =
             VRFPair::generate(b"12345678901234567890123456789012").expect("create sr25519 pair");
-        let sig = pair.vrf_sign(VRFTranscript {
+        let sig = pair.sign(VRFTranscript {
             label: b"alice",
             messages: vec![
                 (b"one", VRFTranscriptData::U64(1)),
@@ -183,7 +159,8 @@ mod test {
                         ),
                     ],
                 },
-                sig,
+                &sig.0,
+                &sig.1,
             )
             .is_err())
     }

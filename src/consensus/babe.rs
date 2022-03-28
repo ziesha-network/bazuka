@@ -6,7 +6,7 @@ use futures_timer::Delay;
 use num_bigint::BigUint;
 use num_rational::BigRational;
 use num_traits::{One, Zero};
-use schnorrkel::vrf::VRFInOut;
+use schnorrkel::vrf::{VRFInOut, VRFOutput, VRFProof};
 
 use crate::consensus::digest::{
     PreDigest, PrimaryPreDigest, SecondaryPlainPreDigest, SecondaryVRFPreDigest,
@@ -19,7 +19,10 @@ use crate::consensus::{ChainSelector, CreateSlotAuxProvider, EpochBuilder};
 use crate::consensus::{Error, Result};
 use crate::core::digest::*;
 use crate::core::Header;
-use crate::crypto::{PublicKey, VRFPair, VRFPublicKey, VRFTranscript, VRFTranscriptData};
+use crate::crypto::{
+    to_transcript, PublicKey, VRFPair, VRFPublicKey, VRFTranscript, VRFTranscriptData,
+    VerifiableRandomFunction,
+};
 
 pub async fn start_babe_worker<ADP, CS, EPB>(
     slot_duration: Duration,
@@ -146,8 +149,18 @@ fn claim_primary_slot<P: PublicKey>(
             }
             Some(pair) => pair,
         };
-        let signature = pair.vrf_sign(transcript.clone());
-        let inout = match signature.attach_input_hash(&pair.to_public(), transcript.clone()) {
+
+        let signature = pair.sign(transcript.clone());
+        let inout = match VRFOutput::from_bytes(&signature.0) {
+            Ok(output) => {
+                output.attach_input_hash(&pair.to_public().0, to_transcript(transcript.clone()))
+            }
+            Err(e) => {
+                log::error!("an undesired vrf error: {}", e);
+                continue;
+            }
+        };
+        let inout = match inout {
             Ok(inout) => inout,
             Err(err) => {
                 log::error!(
@@ -161,8 +174,8 @@ fn claim_primary_slot<P: PublicKey>(
         if check_primary_threshold(&inout, threshold) {
             let pre_digest = PreDigest::Primary(PrimaryPreDigest {
                 slot,
-                vrf_output: signature.output,
-                vrf_proof: signature.proof,
+                vrf_output: signature.0,
+                vrf_proof: signature.1,
                 authority_index: idx as u32,
             });
             return Some(pre_digest);
@@ -189,11 +202,11 @@ fn claim_secondary_slot<P: PublicKey>(
     let r = (slot.0 / authorities.len() as u64) as usize;
     let transcript = make_vrf_transcript(*index, slot, randomness);
     pairs.get(&r).map(|pair| {
-        let signature = pair.vrf_sign(transcript.clone());
+        let signature = pair.sign(transcript.clone());
         PreDigest::SecondaryVRF(SecondaryVRFPreDigest {
             slot,
-            vrf_output: signature.output,
-            vrf_proof: signature.proof,
+            vrf_output: signature.0,
+            vrf_proof: signature.1,
             authority_index: r as u32,
         })
     })

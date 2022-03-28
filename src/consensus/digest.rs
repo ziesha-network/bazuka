@@ -1,15 +1,13 @@
 use std::fmt::Debug;
 
-use schnorrkel::vrf::{VRFOutput, VRFProof};
-use serde::de::Error;
 use serde::ser::SerializeTuple;
 use serde::{Deserializer, Serializer};
 
 use crate::consensus::slots::Slot;
 use crate::utils;
 
-const VRF_OUTPUT_LEN: usize = 32;
-const VRF_PROOF_LEN: usize = 64;
+const OUTPUT_LEN: usize = 32;
+const PROOF_LEN: usize = 64;
 
 /// A slot assignment pre-digest
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -34,17 +32,17 @@ pub struct PrimaryPreDigest {
     pub authority_index: u32,
     pub slot: Slot,
     #[serde(serialize_with = "se_vrf_output", deserialize_with = "der_vrf_output")]
-    pub vrf_output: VRFOutput,
+    pub vrf_output: [u8; OUTPUT_LEN],
     #[serde(serialize_with = "se_vrf_proof", deserialize_with = "der_vrf_proof")]
-    pub vrf_proof: VRFProof,
+    pub vrf_proof: [u8; PROOF_LEN],
 }
 
 impl PrimaryPreDigest {
     pub fn new(
         authority_index: u32,
         slot: Slot,
-        vrf_output: VRFOutput,
-        vrf_proof: VRFProof,
+        vrf_output: [u8; OUTPUT_LEN],
+        vrf_proof: [u8; PROOF_LEN],
     ) -> Self {
         Self {
             authority_index,
@@ -67,17 +65,17 @@ pub struct SecondaryVRFPreDigest {
     pub authority_index: u32,
     pub slot: Slot,
     #[serde(serialize_with = "se_vrf_output", deserialize_with = "der_vrf_output")]
-    pub vrf_output: VRFOutput,
+    pub vrf_output: [u8; OUTPUT_LEN],
     #[serde(serialize_with = "se_vrf_proof", deserialize_with = "der_vrf_proof")]
-    pub vrf_proof: VRFProof,
+    pub vrf_proof: [u8; PROOF_LEN],
 }
 
 impl SecondaryVRFPreDigest {
     pub fn new(
         authority_index: u32,
         slot: Slot,
-        vrf_output: VRFOutput,
-        vrf_proof: VRFProof,
+        vrf_output: [u8; OUTPUT_LEN],
+        vrf_proof: [u8; PROOF_LEN],
     ) -> Self {
         Self {
             authority_index,
@@ -88,45 +86,45 @@ impl SecondaryVRFPreDigest {
     }
 }
 
-fn se_vrf_output<S>(v: &VRFOutput, serializer: S) -> Result<S::Ok, S::Error>
+fn se_vrf_output<S>(v: &[u8; OUTPUT_LEN], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    let mut t = serializer.serialize_tuple(VRF_PROOF_LEN)?;
-    for b in v.as_bytes() {
+    let mut t = serializer.serialize_tuple(OUTPUT_LEN)?;
+    for b in v.into_iter() {
         t.serialize_element(b)?;
     }
     t.end()
 }
 
-fn der_vrf_output<'de, D>(deserializer: D) -> Result<VRFOutput, D::Error>
+fn der_vrf_output<'de, D>(deserializer: D) -> Result<[u8; OUTPUT_LEN], D::Error>
 where
     D: Deserializer<'de>,
 {
-    let output = deserializer.deserialize_tuple(VRF_OUTPUT_LEN, utils::ArrayVisitor::new())?;
-    Ok(VRFOutput(output))
+    let output = deserializer.deserialize_tuple(OUTPUT_LEN, utils::ArrayVisitor::new())?;
+    Ok(output)
 }
 
-fn se_vrf_proof<S>(v: &VRFProof, serializer: S) -> Result<S::Ok, S::Error>
+fn se_vrf_proof<S>(v: &[u8; PROOF_LEN], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
-    let mut t = serializer.serialize_tuple(VRF_PROOF_LEN)?;
-    for b in v.to_bytes().iter() {
+    let mut t = serializer.serialize_tuple(PROOF_LEN)?;
+    for b in v.into_iter() {
         t.serialize_element(b)?;
     }
     t.end()
 }
 
-fn der_vrf_proof<'de, D>(deserializer: D) -> Result<VRFProof, D::Error>
+fn der_vrf_proof<'de, D>(deserializer: D) -> Result<[u8; PROOF_LEN], D::Error>
 where
     D: Deserializer<'de>,
 {
-    let output: [u8; VRF_PROOF_LEN] =
-        deserializer.deserialize_tuple(VRF_PROOF_LEN, utils::ArrayVisitor::new())?;
-    let proof = VRFProof::from_bytes(&output)
-        .map_err(|err| D::Error::custom(format!("invalid VRF proof {}", err)))?;
-    Ok(proof)
+    let output: [u8; PROOF_LEN] =
+        deserializer.deserialize_tuple(PROOF_LEN, utils::ArrayVisitor::new())?;
+    // let proof = VRFProof::from_bytes(&output)
+    //     .map_err(|err| D::Error::custom(format!("invalid VRF proof {}", err)))?;
+    Ok(output)
 }
 
 /// A consensus log item for BABE.
@@ -154,7 +152,7 @@ mod tests {
             authority_index: 0,
             slot: 99.into(),
             vrf_output: Default::default(),
-            vrf_proof,
+            vrf_proof: vrf_proof.to_bytes(),
         };
 
         let se_res = serde_json::to_string(&origin);
