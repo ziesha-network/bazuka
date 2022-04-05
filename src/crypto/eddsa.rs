@@ -38,6 +38,9 @@ impl std::fmt::Display for EdDSAPublicKey {
 impl FromStr for EdDSAPublicKey {
     type Err = ParsePublicKeyError;
     fn from_str(mut s: &str) -> Result<Self, Self::Err> {
+        if s.len() != 67 {
+            return Err(ParsePublicKeyError::Invalid);
+        }
         let oddity = if s.starts_with("0x3") {
             true
         } else if s.starts_with("0x2") {
@@ -50,7 +53,7 @@ impl FromStr for EdDSAPublicKey {
             .map(|i| u8::from_str_radix(&s[2 * i..2 * i + 2], 16))
             .rev()
             .collect::<Result<Vec<u8>, std::num::ParseIntError>>()
-            .unwrap();
+            .map_err(|_| ParsePublicKeyError::Invalid)?;
         let mut repr = Fr::zero().to_repr();
         repr.as_mut().clone_from_slice(&bytes);
         Ok(EdDSAPublicKey(PointCompressed(

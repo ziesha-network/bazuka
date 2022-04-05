@@ -33,7 +33,9 @@ where
 {
     type Err = ParseAddressError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Address::<S>::PublicKey(S::Pub::from_str(s).unwrap()))
+        Ok(Address::<S>::PublicKey(
+            S::Pub::from_str(s).map_err(|_| ParseAddressError::Invalid)?,
+        ))
     }
 }
 
