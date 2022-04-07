@@ -102,7 +102,18 @@ pub async fn heartbeat<B: Blockchain>(
                 .collect::<Vec<(PeerAddress, GetHeadersResponse)>>();
             for (peer, resp) in resps.iter() {
                 if !resp.headers.is_empty() {
-                    println!("{} claims a longer chain!", peer);
+                    if ctx.blockchain.will_extend(&resp.headers)? {
+                        println!("{} has a longer chain!", peer);
+                        let resp = http::bincode_get::<GetBlocksRequest, GetBlocksResponse>(
+                            format!("{}/bincode/blocks", peer).to_string(),
+                            GetBlocksRequest {
+                                since: height,
+                                until: None,
+                            },
+                        )
+                        .await?;
+                        ctx.blockchain.extend(height, &resp.blocks)?;
+                    }
                 }
             }
         }

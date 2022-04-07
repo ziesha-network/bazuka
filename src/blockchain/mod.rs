@@ -31,6 +31,7 @@ pub enum BlockchainError {
 
 pub trait Blockchain {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
+    fn will_extend(&self, headers: &Vec<Header>) -> Result<bool, BlockchainError>;
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
     fn generate_block(
         &mut self,
@@ -195,6 +196,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 nonce: 0,
             },
         })
+    }
+    fn will_extend(&self, _headers: &Vec<Header>) -> Result<bool, BlockchainError> {
+        Ok(false)
     }
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError> {
         self.initialize()?;
