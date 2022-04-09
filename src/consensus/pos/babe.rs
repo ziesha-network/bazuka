@@ -8,15 +8,11 @@ use num_rational::BigRational;
 use num_traits::{One, Zero};
 use schnorrkel::vrf::{VRFInOut, VRFOutput, VRFProof};
 
-use crate::consensus::digest::{
-    PreDigest, PrimaryPreDigest, SecondaryPlainPreDigest, SecondaryVRFPreDigest,
-};
-use crate::consensus::epoch::Epoch;
-use crate::consensus::slots::{
-    proposing_remaining_duration, Slot, SlotLenienceType, SlotProportion, Ticker,
-};
-use crate::consensus::{ChainSelector, CreateSlotAuxProvider, EpochBuilder};
-use crate::consensus::{Error, Result};
+use super::digest::{PreDigest, PrimaryPreDigest, SecondaryPlainPreDigest, SecondaryVRFPreDigest};
+use super::epoch::Epoch;
+use super::slots::{proposing_remaining_duration, Slot, SlotLenienceType, SlotProportion, Ticker};
+use super::{ChainSelector, CreateSlotAuxProvider, EpochBuilder};
+use super::{Error, Result};
 use crate::core::digest::*;
 use crate::core::Header;
 use crate::crypto::{

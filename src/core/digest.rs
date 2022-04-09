@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::consensus::digest::{BabeConsensusLog, PreDigest};
+use crate::consensus::pos::digest::{BabeConsensusLog, PreDigest};
 
 /// Generic Header Digests
 #[derive(Debug, Clone, Serialize, Deserialize)]

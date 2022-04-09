@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use serde::ser::SerializeTuple;
 use serde::{Deserializer, Serializer};
 
-use crate::consensus::slots::Slot;
+use super::slots::Slot;
 use crate::utils;
 
 const OUTPUT_LEN: usize = 32;
@@ -139,7 +139,7 @@ pub enum BabeConsensusLog {
 mod tests {
     use schnorrkel::vrf::VRFProof;
 
-    use crate::consensus::digest::PrimaryPreDigest;
+    use super::digest::PrimaryPreDigest;
 
     #[test]
     fn test_primary_se_and_de() {

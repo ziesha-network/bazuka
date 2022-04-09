@@ -4,7 +4,9 @@ mod contract;
 mod header;
 mod transaction;
 
+#[cfg(feature = "pos")]
 pub mod digest;
+
 pub mod hash;
 pub mod number;
 

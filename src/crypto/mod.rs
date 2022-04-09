@@ -1,20 +1,22 @@
 use std::fmt::{Debug, Display};
 use std::str::FromStr;
 
-use schnorrkel::vrf::VRFProof;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 pub use eddsa::*;
 pub use mimc::*;
-pub use vrf::*;
 
 mod curve;
 mod eddsa;
 mod field;
 pub mod merkle;
 mod mimc;
+
+#[cfg(feature = "pos")]
 mod vrf;
+#[cfg(feature = "pos")]
+pub use vrf::*;
 
 pub trait SignatureScheme: Clone + Serialize {
     type Pub: Clone + Debug + PartialEq + Serialize + DeserializeOwned + FromStr + Display;

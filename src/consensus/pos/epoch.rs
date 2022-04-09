@@ -1,5 +1,5 @@
-use crate::consensus::babe::Authority;
-use crate::consensus::slots::Slot;
+use super::babe::Authority;
+use super::slots::Slot;
 use crate::crypto::PublicKey;
 
 const RANDOMNESS_LEN: usize = 32;

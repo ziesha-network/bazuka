@@ -4,7 +4,7 @@ use std::time::{Duration, Instant, SystemTime};
 use futures_timer::Delay;
 use num_traits::Zero;
 
-use crate::consensus::{ChainSelector, CreateSlotAuxProvider, SlotAuxData};
+use super::{ChainSelector, CreateSlotAuxProvider, SlotAuxData};
 use crate::core::Header;
 
 /// type wrapper to express the proportion of a duration between two slot.
@@ -152,7 +152,7 @@ where
         }
     }
 
-    pub async fn next_slot(&mut self) -> crate::consensus::Result<SlotInfo> {
+    pub async fn next_slot(&mut self) -> super::Result<SlotInfo> {
         loop {
             self.delay = match self.delay.take() {
                 None => Some(Delay::new(until_next_slot(self.slot_duration))),
