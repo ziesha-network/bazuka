@@ -139,7 +139,7 @@ pub enum BabeConsensusLog {
 mod tests {
     use schnorrkel::vrf::VRFProof;
 
-    use super::digest::PrimaryPreDigest;
+    use super::PrimaryPreDigest;
 
     #[test]
     fn test_primary_se_and_de() {
