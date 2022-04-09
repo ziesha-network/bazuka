@@ -5,11 +5,6 @@ authors = ["Keyvan Kambakhsh <keyvankambakhsh@gmail.com>"]
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1", features = ["full"], optional = true }
-hyper = { version = "0.14", features = ["full"], optional = true }
-futures = { version = "0.3", optional = true }
-leveldb = { version = "0.8.6", optional = true }
-structopt = { version = "0.3", default-features = false, optional = true }
 log = "0.4"
 lazy_static = "1.4"
 serde = { version = "1.0", features = ["derive"] }
@@ -25,6 +20,15 @@ rand = "0.8.5"
 thiserror = "1.0"
 num-bigint = "0.4"
 num-integer = "0.1"
+
+# Node related deps
+tokio = { version = "1", features = ["full"], optional = true }
+hyper = { version = "0.14", features = ["full"], optional = true }
+futures = { version = "0.3", optional = true }
+leveldb = { version = "0.8.6", optional = true }
+structopt = { version = "0.3", default-features = false, optional = true }
+
+# Proof-of-Stake related deps
 num-rational = { version = "0.4.0", optional = true }
 num-traits = { version = "0.2.8", optional = true }
 futures-timer = { version = "3.0", optional = true }
@@ -40,5 +44,6 @@ merlin = { version = "2.0.0", default-features = false, optional = true }
 hex = { version = "0.4.3", optional = true }
 
 [features]
+default = ["pos"]
 node = ["tokio", "hyper", "leveldb", "futures", "structopt"]
 pos = ["schnorrkel", "merlin", "futures-timer", "async-trait", "hex", "num-traits", "num-rational"]
