@@ -241,7 +241,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
             let mut new_power: u64 = self
                 .database
-                .get(format!("power_{:010}", from).into())?
+                .get(format!("power_{:010}", from - 1).into())?
                 .ok_or(BlockchainError::Inconsistency)?
                 .try_into()?;
             let mut last_header = self.get_block(from - 1)?.header;
