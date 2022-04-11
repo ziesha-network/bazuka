@@ -15,6 +15,7 @@ use {
 use {
     bazuka::blockchain::Blockchain,
     bazuka::blockchain::KvStoreChain,
+    bazuka::config::genesis,
     bazuka::core::Address,
     bazuka::core::{Signature, Transaction, TransactionData},
     bazuka::db::RamKvStore,
@@ -90,6 +91,14 @@ async fn main() -> Result<(), NodeError> {
 
 #[cfg(not(feature = "node"))]
 fn main() {
+    #[cfg(feature = "pow")]
+    {
+        println!(
+            "Power of genesis: {}",
+            genesis::get_genesis_block().header.power()
+        );
+    }
+
     let mut chain = KvStoreChain::new(RamKvStore::new()).unwrap();
 
     println!("Bazuka!");

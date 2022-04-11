@@ -17,6 +17,10 @@ pub struct Header<H: Hash> {
     /// aux data for Proof-of-Stake consensus
     #[cfg(feature = "pos")]
     pub digests: Digests,
+
+    /// proof-of-work nonce
+    #[cfg(feature = "pow")]
+    pub nonce: u32,
 }
 
 impl<H: Hash> Default for Header<H> {
@@ -29,6 +33,9 @@ impl<H: Hash> Default for Header<H> {
 
             #[cfg(feature = "pos")]
             digests: Default::default(),
+
+            #[cfg(feature = "pow")]
+            nonce: 0,
         }
     }
 }
@@ -36,6 +43,13 @@ impl<H: Hash> Default for Header<H> {
 impl<H: Hash> Header<H> {
     pub fn hash(&self) -> H::Output {
         H::hash(&bincode::serialize(&self).expect("convert header to bincode format"))
+    }
+
+    // Approximate number of hashes run in order to generate this block
+    #[cfg(feature = "pow")]
+    pub fn power(&self) -> u64 {
+        let bin = bincode::serialize(&self).expect("convert header to bincode format");
+        1u64 << crate::consensus::pow::leading_zeros(b"key", &bin)
     }
 
     #[cfg(feature = "pos")]
