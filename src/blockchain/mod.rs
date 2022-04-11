@@ -29,6 +29,8 @@ pub enum BlockchainError {
     InvalidMerkleRoot,
     #[error("transaction nonce invalid")]
     InvalidTransactionNonce,
+    #[error("unmet difficulty target")]
+    DifficultyTargetUnmet,
 }
 
 pub trait Blockchain {
@@ -168,6 +170,10 @@ impl<K: KvStore> KvStoreChain<K> {
         if curr_height > 0 {
             let last_block = self.get_block(curr_height - 1)?;
 
+            if !block.header.meets_target() {
+                return Err(BlockchainError::DifficultyTargetUnmet);
+            }
+
             if block.header.number as usize != curr_height {
                 return Err(BlockchainError::InvalidBlockNumber);
             }
@@ -246,6 +252,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 .try_into()?;
             let mut last_header = self.get_block(from - 1)?.header;
             for h in headers.iter() {
+                if !h.meets_target() {
+                    return Err(BlockchainError::DifficultyTargetUnmet);
+                }
+
                 if h.number != last_header.number + 1 {
                     return Err(BlockchainError::InvalidBlockNumber);
                 }
