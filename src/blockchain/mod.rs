@@ -33,7 +33,7 @@ pub enum BlockchainError {
 
 pub trait Blockchain {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
-    fn will_extend(&self, headers: &Vec<Header>) -> Result<bool, BlockchainError>;
+    fn will_extend(&self, from: usize, headers: &Vec<Header>) -> Result<bool, BlockchainError>;
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
     fn draft_block(
         &self,
@@ -191,7 +191,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
         #[cfg(feature = "pow")]
         changes.push(WriteOp::Put(
-            "power".into(),
+            format!("power_{:010}", block.header.number).into(),
             (block.header.power() + self.get_power()?).into(),
         ));
 
@@ -228,8 +228,41 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             },
         })
     }
-    fn will_extend(&self, _headers: &Vec<Header>) -> Result<bool, BlockchainError> {
-        Ok(false)
+    fn will_extend(&self, from: usize, headers: &Vec<Header>) -> Result<bool, BlockchainError> {
+        #[cfg(feature = "pow")]
+        {
+            let current_power = self.get_power()?;
+
+            if from == 0 {
+                return Err(BlockchainError::ExtendFromGenesis);
+            } else if from > self.get_height()? {
+                return Err(BlockchainError::ExtendFromFuture);
+            }
+
+            let mut new_power: u64 = self
+                .database
+                .get(format!("power_{:010}", from).into())?
+                .ok_or(BlockchainError::Inconsistency)?
+                .try_into()?;
+            let mut last_header = self.get_block(from - 1)?.header;
+            for h in headers.iter() {
+                if h.number != last_header.number + 1 {
+                    return Err(BlockchainError::InvalidBlockNumber);
+                }
+
+                if h.parent_hash != last_header.hash() {
+                    return Err(BlockchainError::InvalidParentHash);
+                }
+
+                last_header = h.clone();
+                new_power += h.power();
+            }
+
+            Ok(new_power > current_power)
+        }
+
+        #[cfg(feature = "pos")]
+        unimplemented!();
     }
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
@@ -310,9 +343,15 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
     #[cfg(feature = "pow")]
     fn get_power(&self) -> Result<u64, BlockchainError> {
-        Ok(match self.database.get("power".into())? {
-            Some(b) => b.try_into()?,
-            None => 0,
-        })
+        let height = self.get_height()?;
+        if height == 0 {
+            Ok(0)
+        } else {
+            Ok(self
+                .database
+                .get(format!("power_{:010}", height - 1).into())?
+                .ok_or(BlockchainError::Inconsistency)?
+                .try_into()?)
+        }
     }
 }
