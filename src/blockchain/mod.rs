@@ -48,6 +48,9 @@ pub trait Blockchain {
     ) -> Result<Vec<Header>, BlockchainError>;
     fn get_blocks(&self, since: usize, until: Option<usize>)
         -> Result<Vec<Block>, BlockchainError>;
+
+    #[cfg(feature = "pow")]
+    fn get_power(&self) -> Result<u64, BlockchainError>;
 }
 
 pub struct KvStoreChain<K: KvStore> {
@@ -185,6 +188,10 @@ impl<K: KvStore> KvStoreChain<K> {
         let mut changes = fork.database.to_ops();
 
         changes.push(WriteOp::Put("height".into(), (curr_height + 1).into()));
+        changes.push(WriteOp::Put(
+            "power".into(),
+            (block.header.power() + self.get_power()?).into(),
+        ));
 
         changes.push(WriteOp::Put(
             format!("rollback_{:010}", block.header.number).into(),
@@ -298,5 +305,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         blk.header.block_root = blk.merkle_tree().root();
         self.fork_on_ram().apply_block(&blk)?; // Check if everything is ok
         Ok(blk)
+    }
+    #[cfg(feature = "pow")]
+    fn get_power(&self) -> Result<u64, BlockchainError> {
+        Ok(match self.database.get("power".into())? {
+            Some(b) => b.try_into()?,
+            None => 0,
+        })
     }
 }
