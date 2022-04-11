@@ -188,6 +188,8 @@ impl<K: KvStore> KvStoreChain<K> {
         let mut changes = fork.database.to_ops();
 
         changes.push(WriteOp::Put("height".into(), (curr_height + 1).into()));
+
+        #[cfg(feature = "pow")]
         changes.push(WriteOp::Put(
             "power".into(),
             (block.header.power() + self.get_power()?).into(),
