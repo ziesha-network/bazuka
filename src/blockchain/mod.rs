@@ -36,7 +36,7 @@ pub trait Blockchain {
     fn will_extend(&self, headers: &Vec<Header>) -> Result<bool, BlockchainError>;
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
     fn draft_block(
-        &mut self,
+        &self,
         mempool: &Vec<Transaction>,
         wallet: &Wallet,
     ) -> Result<Block, BlockchainError>;
@@ -281,7 +281,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(blks)
     }
     fn draft_block(
-        &mut self,
+        &self,
         mempool: &Vec<Transaction>,
         _wallet: &Wallet,
     ) -> Result<Block, BlockchainError> {
