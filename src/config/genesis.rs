@@ -11,7 +11,7 @@ pub fn get_genesis_block() -> Block {
                     .unwrap(),
                 amount: 123,
             },
-            nonce: 0,
+            nonce: 1,
             fee: 0,
             sig: Signature::Unsigned,
         }],

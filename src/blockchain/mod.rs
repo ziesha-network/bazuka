@@ -27,6 +27,8 @@ pub enum BlockchainError {
     InvalidParentHash,
     #[error("merkle root invalid")]
     InvalidMerkleRoot,
+    #[error("transaction nonce invalid")]
+    InvalidTransactionNonce,
 }
 
 pub trait Blockchain {
@@ -91,6 +93,10 @@ impl<K: KvStore> KvStoreChain<K> {
         match &tx.data {
             TransactionData::RegularSend { dst, amount } => {
                 let mut acc_src = self.get_account(tx.src.clone())?;
+
+                if tx.nonce != acc_src.nonce + 1 {
+                    return Err(BlockchainError::InvalidTransactionNonce);
+                }
 
                 if acc_src.balance < amount + tx.fee {
                     return Err(BlockchainError::BalanceInsufficient);
