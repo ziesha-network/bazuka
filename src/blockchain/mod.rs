@@ -170,6 +170,7 @@ impl<K: KvStore> KvStoreChain<K> {
         if curr_height > 0 {
             let last_block = self.get_block(curr_height - 1)?;
 
+            #[cfg(feature = "pow")]
             if !block.header.meets_target() {
                 return Err(BlockchainError::DifficultyTargetUnmet);
             }
