@@ -19,6 +19,16 @@ pub use transact::*;
 use super::Miner;
 
 #[cfg(feature = "pow")]
-mod register_miner;
+mod post_miner;
 #[cfg(feature = "pow")]
-pub use register_miner::*;
+pub use post_miner::*;
+
+#[cfg(feature = "pow")]
+mod get_miner_puzzle;
+#[cfg(feature = "pow")]
+pub use get_miner_puzzle::*;
+
+#[cfg(feature = "pow")]
+mod post_miner_solution;
+#[cfg(feature = "pow")]
+pub use post_miner_solution::*;

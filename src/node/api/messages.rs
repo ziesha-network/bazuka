@@ -5,6 +5,22 @@ use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Debug)]
+pub struct PostMinerSolutionRequest {
+    pub nonce: u32,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct PostMinerSolutionResponse {}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct GetMinerPuzzleRequest {}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct GetMinerPuzzleResponse {
+    pub blob: String, // Blob encoded in hex
+}
+
+#[derive(Deserialize, Serialize, Debug)]
 pub struct RegisterMinerRequest {
     pub webhook: String,
 }

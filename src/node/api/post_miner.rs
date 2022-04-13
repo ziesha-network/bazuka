@@ -4,7 +4,7 @@ use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn register_miner<B: Blockchain>(
+pub async fn post_miner<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     req: RegisterMinerRequest,
 ) -> Result<RegisterMinerResponse, NodeError> {
