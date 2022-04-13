@@ -5,8 +5,17 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub async fn get_miner_puzzle<B: Blockchain>(
-    _context: Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
     _req: GetMinerPuzzleRequest,
 ) -> Result<GetMinerPuzzleResponse, NodeError> {
-    unimplemented!();
+    let context = context.read().await;
+    let wallet = context.wallet.clone().ok_or(NodeError::NoWalletError)?;
+    let txs = context.mempool.keys().cloned().collect();
+    let blk = context.blockchain.draft_block(&txs, &wallet)?;
+    Ok(GetMinerPuzzleResponse {
+        blob: hex::encode(bincode::serialize(&blk).unwrap()),
+        offset: 109,
+        size: 4,
+        target: blk.header.proof_of_work.target,
+    })
 }

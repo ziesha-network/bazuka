@@ -21,6 +21,7 @@ thiserror = "1.0"
 num-bigint = "0.4"
 num-integer = "0.1"
 lru = "0.7.5"
+hex = "0.4.3"
 
 # Node related deps
 tokio = { version = "1", features = ["full"], optional = true }
@@ -30,7 +31,7 @@ leveldb = { version = "0.8.6", optional = true }
 structopt = { version = "0.3", default-features = false, optional = true }
 
 # Proof-of-Work related deps
-rust-randomx = { version = "0.3.1", optional = true }
+rust-randomx = { version = "0.4.1", optional = true }
 
 # Proof-of-Stake related deps
 num-rational = { version = "0.4.0", optional = true }
@@ -45,10 +46,9 @@ schnorrkel = { version = "0.9.1", features = [
     "std"
 ], default-features = false, optional = true }
 merlin = { version = "2.0.0", default-features = false, optional = true }
-hex = { version = "0.4.3", optional = true }
 
 [features]
 default = ["pow"]
 node = ["tokio", "hyper", "leveldb", "futures", "structopt"]
 pow = ["rust-randomx"]
-pos = ["schnorrkel", "merlin", "futures-timer", "async-trait", "hex", "num-traits", "num-rational"]
+pos = ["schnorrkel", "merlin", "futures-timer", "async-trait", "num-traits", "num-rational"]

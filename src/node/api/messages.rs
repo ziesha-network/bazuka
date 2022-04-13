@@ -17,7 +17,10 @@ pub struct GetMinerPuzzleRequest {}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GetMinerPuzzleResponse {
-    pub blob: String, // Blob encoded in hex
+    pub blob: String,  // Blob encoded in hex
+    pub offset: usize, // From which byte the nonce starts?
+    pub size: usize,   // How big is the nonce? (Bytes)
+    pub target: u32,   // Difficulty target
 }
 
 #[derive(Deserialize, Serialize, Debug)]

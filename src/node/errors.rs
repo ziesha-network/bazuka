@@ -19,4 +19,6 @@ pub enum NodeError {
     Utf8Error(#[from] std::str::Utf8Error),
     #[error("addr parse error happened")]
     AddrParseError(#[from] std::net::AddrParseError),
+    #[error("no wallet available")]
+    NoWalletError,
 }

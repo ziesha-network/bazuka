@@ -1,17 +1,20 @@
 #[cfg(feature = "pos")]
 use super::digest::{Digest, Digests};
 
+#[cfg(feature = "pow")]
+use rust_randomx::{Difficulty, Output};
+
 use super::hash::Hash;
 
 #[cfg(feature = "pow")]
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct ProofOfWork {
     /// when the miner started mining this block
-    timestamp: u32,
-    /// desired number of leading zeros
-    target: u8,
+    pub timestamp: u32,
+    /// difficulty target
+    pub target: u32,
     /// arbitrary data
-    nonce: u32,
+    pub nonce: u32,
 }
 
 #[cfg(feature = "pow")]
@@ -68,9 +71,14 @@ impl<H: Hash> Header<H> {
     }
 
     #[cfg(feature = "pow")]
-    fn leading_zeros(&self) -> u8 {
+    fn pow_hash(&self) -> Output {
         let bin = bincode::serialize(&self).expect("convert header to bincode format");
-        crate::consensus::pow::leading_zeros(b"key", &bin) as u8
+        crate::consensus::pow::hash(b"key", &bin)
+    }
+
+    #[cfg(feature = "pow")]
+    fn leading_zeros(&self) -> u8 {
+        self.pow_hash().leading_zeros() as u8
     }
 
     // Approximate number of hashes run in order to generate this block
@@ -81,7 +89,8 @@ impl<H: Hash> Header<H> {
 
     #[cfg(feature = "pow")]
     pub fn meets_target(&self) -> bool {
-        self.leading_zeros() >= self.proof_of_work.target
+        self.pow_hash()
+            .meets_difficulty(Difficulty::new(self.proof_of_work.target))
     }
 
     #[cfg(feature = "pos")]
