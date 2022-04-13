@@ -86,6 +86,7 @@ async fn node_service<B: Blockchain>(
     let body = req.into_body();
 
     match (method, &path[..]) {
+        #[cfg(feature = "pow")]
         (Method::POST, "/miner/register") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
                 &api::register_miner(
