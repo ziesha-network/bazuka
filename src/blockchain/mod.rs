@@ -147,11 +147,13 @@ impl<K: KvStore> KvStoreChain<K> {
         &self,
         txs: &Vec<Transaction>,
     ) -> Result<Vec<Transaction>, BlockchainError> {
+        let mut sorted = txs.clone();
+        sorted.sort_by(|t1, t2| t1.nonce.cmp(&t2.nonce));
         let mut fork = self.fork_on_ram();
         let mut result = Vec::new();
-        for tx in txs.iter() {
-            if fork.apply_tx(tx).is_ok() {
-                result.push(tx.clone());
+        for tx in sorted.into_iter() {
+            if fork.apply_tx(&tx).is_ok() {
+                result.push(tx);
             }
         }
         Ok(result)
