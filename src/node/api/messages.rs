@@ -5,6 +5,14 @@ use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Debug)]
+pub struct RegisterMinerRequest {
+    pub webhook: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RegisterMinerResponse {}
+
+#[derive(Deserialize, Serialize, Debug)]
 pub struct PostPeerRequest {
     pub address: PeerAddress,
     pub info: PeerInfo,

@@ -12,12 +12,19 @@ pub struct TransactionStats {
     pub first_seen: u64,
 }
 
+#[cfg(feature = "pow")]
+pub struct Miner {
+    pub webhook: String,
+}
+
 pub struct NodeContext<B: Blockchain> {
     pub blockchain: B,
     pub wallet: Option<Wallet>,
     pub mempool: HashMap<Transaction, TransactionStats>,
     pub peers: HashMap<PeerAddress, PeerStats>,
     pub timestamp_offset: i64,
+    #[cfg(feature = "pow")]
+    pub miner: Option<Miner>,
 }
 
 impl<B: Blockchain> NodeContext<B> {

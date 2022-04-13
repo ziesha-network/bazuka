@@ -7,6 +7,9 @@ pub mod upnp;
 use context::{NodeContext, TransactionStats};
 pub use errors::NodeError;
 
+#[cfg(feature = "pow")]
+use context::Miner;
+
 use crate::blockchain::Blockchain;
 use crate::utils;
 use crate::wallet::Wallet;
@@ -83,6 +86,15 @@ async fn node_service<B: Blockchain>(
     let body = req.into_body();
 
     match (method, &path[..]) {
+        (Method::POST, "/miner/register") => {
+            *response.body_mut() = Body::from(serde_json::to_vec(
+                &api::register_miner(
+                    Arc::clone(&context),
+                    serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
+                )
+                .await?,
+            )?);
+        }
         (Method::GET, "/peers") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
                 &api::get_peers(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
@@ -159,6 +171,8 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                     })
                     .collect(),
                 timestamp_offset: 0,
+                #[cfg(feature = "pow")]
+                miner: None,
             })),
         }
     }

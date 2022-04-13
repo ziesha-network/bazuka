@@ -1,4 +1,4 @@
-use super::{NodeContext, NodeError, PeerAddress, PeerInfo, PeerStats, TransactionStats};
+use super::{Miner, NodeContext, NodeError, PeerAddress, PeerInfo, PeerStats, TransactionStats};
 
 pub mod messages;
 
@@ -14,3 +14,5 @@ mod get_headers;
 pub use get_headers::*;
 mod transact;
 pub use transact::*;
+mod register_miner;
+pub use register_miner::*;
