@@ -81,7 +81,7 @@ fn main() {
     println!("Bazuka!");
     println!("Your address is: {}", WALLET.get_address());
     chain
-        .generate_block(
+        .draft_block(
             &vec![Transaction {
                 src: Address::Treasury,
                 data: TransactionData::RegularSend {

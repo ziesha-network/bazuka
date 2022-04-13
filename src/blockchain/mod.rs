@@ -33,11 +33,11 @@ pub trait Blockchain {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn will_extend(&self, headers: &Vec<Header>) -> Result<bool, BlockchainError>;
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
-    fn generate_block(
+    fn draft_block(
         &mut self,
         mempool: &Vec<Transaction>,
         wallet: &Wallet,
-    ) -> Result<Option<Block>, BlockchainError>;
+    ) -> Result<Block, BlockchainError>;
     fn get_height(&self) -> Result<usize, BlockchainError>;
     fn get_headers(
         &self,
@@ -137,6 +137,20 @@ impl<K: KvStore> KvStoreChain<K> {
         ));
         self.database.update(&rollback)?;
         Ok(())
+    }
+
+    fn select_transactions(
+        &self,
+        txs: &Vec<Transaction>,
+    ) -> Result<Vec<Transaction>, BlockchainError> {
+        let mut fork = self.fork_on_ram()?;
+        let mut result = Vec::new();
+        for tx in txs.iter() {
+            if self.apply_tx(tx).is_ok() {
+                result.push(tx.clone());
+            }
+        }
+        Ok(result)
     }
 
     fn apply_block(&mut self, block: &Block) -> Result<(), BlockchainError> {
@@ -261,21 +275,21 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }
         Ok(blks)
     }
-    fn generate_block(
+    fn draft_block(
         &mut self,
         mempool: &Vec<Transaction>,
         _wallet: &Wallet,
-    ) -> Result<Option<Block>, BlockchainError> {
+    ) -> Result<Block, BlockchainError> {
         let height = self.get_height()?;
         let last_block = self.get_block(height - 1)?;
         let mut blk = Block {
             header: Default::default(),
-            body: mempool.clone(),
+            body: self.select_transactions(mempool)?,
         };
         blk.header.number = height as u64;
         blk.header.parent_hash = last_block.header.hash();
         blk.header.block_root = blk.merkle_tree().root();
-        //self.extend(height, &vec![blk.clone()])?;
-        Ok(None)
+        self.fork_on_ram()?.apply_block(&blk)?; // Check if everything is ok
+        Ok(blk)
     }
 }

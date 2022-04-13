@@ -118,17 +118,6 @@ pub async fn heartbeat<B: Blockchain>(
             }
         }
 
-        {
-            let mut ctx = context.write().await;
-            if let Some(wallet) = ctx.wallet.clone() {
-                let mempool = ctx.mempool.keys().cloned().collect();
-                let blk = ctx.blockchain.generate_block(&mempool, &wallet)?;
-                if blk.is_some() {
-                    println!("Won a new block!");
-                }
-            }
-        }
-
         sleep(Duration::from_millis(1000)).await;
     }
 }
