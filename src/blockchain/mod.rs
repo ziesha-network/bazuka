@@ -57,19 +57,16 @@ pub struct KvStoreChain<K: KvStore> {
 impl<K: KvStore> KvStoreChain<K> {
     pub fn new(kv_store: K) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> { database: kv_store };
-        chain.initialize()?;
+        if chain.get_height()? == 0 {
+            chain.apply_block(&genesis::get_genesis_block())?;
+        }
         Ok(chain)
     }
 
-    fn fork_on_ram<'a>(&'a self) -> Result<KvStoreChain<RamMirrorKvStore<'a, K>>, BlockchainError> {
-        KvStoreChain::new(RamMirrorKvStore::new(&self.database))
-    }
-
-    fn initialize(&mut self) -> Result<(), BlockchainError> {
-        if self.get_height()? == 0 {
-            self.apply_block(&genesis::get_genesis_block())?;
+    fn fork_on_ram<'a>(&'a self) -> KvStoreChain<RamMirrorKvStore<'a, K>> {
+        KvStoreChain {
+            database: RamMirrorKvStore::new(&self.database),
         }
-        Ok(())
     }
 
     fn get_block(&self, index: usize) -> Result<Block, BlockchainError> {
@@ -85,7 +82,7 @@ impl<K: KvStore> KvStoreChain<K> {
         })
     }
 
-    fn apply_tx(&self, tx: &Transaction) -> Result<Vec<WriteOp>, BlockchainError> {
+    fn apply_tx(&mut self, tx: &Transaction) -> Result<(), BlockchainError> {
         let mut ops = Vec::new();
         if !tx.verify_signature() {
             return Err(BlockchainError::SignatureError);
@@ -124,7 +121,8 @@ impl<K: KvStore> KvStoreChain<K> {
                 unimplemented!();
             }
         }
-        Ok(ops)
+        self.database.update(&ops)?;
+        Ok(())
     }
 
     pub fn rollback_block(&mut self) -> Result<(), BlockchainError> {
@@ -149,10 +147,10 @@ impl<K: KvStore> KvStoreChain<K> {
         &self,
         txs: &Vec<Transaction>,
     ) -> Result<Vec<Transaction>, BlockchainError> {
-        let mut fork = self.fork_on_ram()?;
+        let mut fork = self.fork_on_ram();
         let mut result = Vec::new();
         for tx in txs.iter() {
-            if self.apply_tx(tx).is_ok() {
+            if fork.apply_tx(tx).is_ok() {
                 result.push(tx.clone());
             }
         }
@@ -178,10 +176,12 @@ impl<K: KvStore> KvStoreChain<K> {
             }
         }
 
-        let mut changes = Vec::new();
+        let mut fork = self.fork_on_ram();
         for tx in block.body.iter() {
-            changes.extend(self.apply_tx(tx)?);
+            fork.apply_tx(tx)?;
         }
+        let mut changes = fork.database.to_ops();
+
         changes.push(WriteOp::Put("height".into(), (curr_height + 1).into()));
 
         changes.push(WriteOp::Put(
@@ -221,7 +221,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(false)
     }
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError> {
-        self.initialize()?;
         let curr_height = self.get_height()?;
 
         if from == 0 {
@@ -230,7 +229,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             return Err(BlockchainError::ExtendFromFuture);
         }
 
-        let mut forked = self.fork_on_ram()?;
+        let mut forked = self.fork_on_ram();
 
         while forked.get_height()? > from {
             forked.rollback_block()?;
@@ -295,7 +294,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         blk.header.number = height as u64;
         blk.header.parent_hash = last_block.header.hash();
         blk.header.block_root = blk.merkle_tree().root();
-        self.fork_on_ram()?.apply_block(&blk)?; // Check if everything is ok
+        self.fork_on_ram().apply_block(&blk)?; // Check if everything is ok
         Ok(blk)
     }
 }
