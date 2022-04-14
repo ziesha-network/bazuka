@@ -17,6 +17,7 @@ pub struct GetMinerPuzzleRequest {}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct GetMinerPuzzleResponse {
+    pub key: String,   // Puzzle key encoded in hex
     pub blob: String,  // Blob encoded in hex
     pub offset: usize, // From which byte the nonce starts?
     pub size: usize,   // How big is the nonce? (Bytes)
