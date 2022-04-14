@@ -14,7 +14,7 @@ pub async fn get_miner_puzzle<B: Blockchain>(
     let blk = context.blockchain.draft_block(&txs, &wallet)?;
     Ok(GetMinerPuzzleResponse {
         key: hex::encode(b"puzzle key"),
-        blob: hex::encode(bincode::serialize(&blk).unwrap()),
+        blob: hex::encode(bincode::serialize(&blk.header).unwrap()),
         offset: 109,
         size: 4,
         target: blk.header.proof_of_work.target,
