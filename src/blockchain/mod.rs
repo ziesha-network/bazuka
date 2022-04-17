@@ -63,7 +63,7 @@ impl<K: KvStore> KvStoreChain<K> {
     pub fn new(kv_store: K) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> { database: kv_store };
         if chain.get_height()? == 0 {
-            chain.apply_block(&genesis::get_genesis_block())?;
+            chain.apply_block(&genesis::get_genesis_block(), false)?;
         }
         Ok(chain)
     }
@@ -164,14 +164,14 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(result)
     }
 
-    fn apply_block(&mut self, block: &Block) -> Result<(), BlockchainError> {
+    fn apply_block(&mut self, block: &Block, draft: bool) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
 
         if curr_height > 0 {
             let last_block = self.get_block(curr_height - 1)?;
 
             #[cfg(feature = "pow")]
-            if !block.header.meets_target() {
+            if !draft && !block.header.meets_target() {
                 return Err(BlockchainError::DifficultyTargetUnmet);
             }
 
@@ -291,7 +291,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }
 
         for block in blocks.iter() {
-            forked.apply_block(block)?;
+            forked.apply_block(block, false)?;
         }
         let ops = forked.database.to_ops();
 
@@ -349,7 +349,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         blk.header.number = height as u64;
         blk.header.parent_hash = last_block.header.hash();
         blk.header.block_root = blk.merkle_tree().root();
-        self.fork_on_ram().apply_block(&blk)?; // Check if everything is ok
+        self.fork_on_ram().apply_block(&blk, true)?; // Check if everything is ok
         Ok(blk)
     }
     #[cfg(feature = "pow")]
