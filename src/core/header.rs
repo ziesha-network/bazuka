@@ -71,25 +71,25 @@ impl<H: Hash> Header<H> {
     }
 
     #[cfg(feature = "pow")]
-    fn pow_hash(&self) -> Output {
+    fn pow_hash(&self, key: &[u8]) -> Output {
         let bin = bincode::serialize(&self).expect("convert header to bincode format");
-        crate::consensus::pow::hash(b"key", &bin)
+        crate::consensus::pow::hash(key, &bin)
     }
 
     #[cfg(feature = "pow")]
-    fn leading_zeros(&self) -> u8 {
-        self.pow_hash().leading_zeros() as u8
+    fn leading_zeros(&self, key: &[u8]) -> u8 {
+        self.pow_hash(key).leading_zeros() as u8
     }
 
     // Approximate number of hashes run in order to generate this block
     #[cfg(feature = "pow")]
-    pub fn power(&self) -> u64 {
-        1u64 << self.leading_zeros()
+    pub fn power(&self, key: &[u8]) -> u64 {
+        1u64 << self.leading_zeros(key)
     }
 
     #[cfg(feature = "pow")]
-    pub fn meets_target(&self) -> bool {
-        self.pow_hash()
+    pub fn meets_target(&self, key: &[u8]) -> bool {
+        self.pow_hash(key)
             .meets_difficulty(Difficulty::new(self.proof_of_work.target))
     }
 

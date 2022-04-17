@@ -6,8 +6,8 @@ use tokio::sync::RwLock;
 
 pub async fn post_miner_solution<B: Blockchain>(
     _context: Arc<RwLock<NodeContext<B>>>,
-    _req: PostMinerSolutionRequest,
+    req: PostMinerSolutionRequest,
 ) -> Result<PostMinerSolutionResponse, NodeError> {
-    println!("Found block!");
+    println!("Found solution! {}", req.nonce);
     Ok(PostMinerSolutionResponse {})
 }

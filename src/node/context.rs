@@ -66,7 +66,7 @@ impl<B: Blockchain> NodeContext<B> {
         let txs = self.mempool.keys().cloned().collect();
         let blk = self.blockchain.draft_block(&txs, &wallet)?;
         Ok(Puzzle {
-            key: hex::encode(b"puzzle key"),
+            key: hex::encode(self.blockchain.pow_key(blk.header.number as usize)?),
             blob: hex::encode(bincode::serialize(&blk.header).unwrap()),
             offset: 112,
             size: 4,

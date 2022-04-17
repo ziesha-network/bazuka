@@ -53,6 +53,8 @@ pub trait Blockchain {
 
     #[cfg(feature = "pow")]
     fn get_power(&self) -> Result<u64, BlockchainError>;
+    #[cfg(feature = "pow")]
+    fn pow_key(&self, index: usize) -> Result<Vec<u8>, BlockchainError>;
 }
 
 pub struct KvStoreChain<K: KvStore> {
@@ -167,11 +169,14 @@ impl<K: KvStore> KvStoreChain<K> {
     fn apply_block(&mut self, block: &Block, draft: bool) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
 
+        #[cfg(feature = "pow")]
+        let pow_key = self.pow_key(block.header.number as usize)?;
+
         if curr_height > 0 {
             let last_block = self.get_block(curr_height - 1)?;
 
             #[cfg(feature = "pow")]
-            if !draft && !block.header.meets_target() {
+            if !draft && !block.header.meets_target(&pow_key) {
                 return Err(BlockchainError::DifficultyTargetUnmet);
             }
 
@@ -199,7 +204,7 @@ impl<K: KvStore> KvStoreChain<K> {
         #[cfg(feature = "pow")]
         changes.push(WriteOp::Put(
             format!("power_{:010}", block.header.number).into(),
-            (block.header.power() + self.get_power()?).into(),
+            (block.header.power(&pow_key) + self.get_power()?).into(),
         ));
 
         changes.push(WriteOp::Put(
@@ -253,7 +258,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 .try_into()?;
             let mut last_header = self.get_block(from - 1)?.header;
             for h in headers.iter() {
-                if !h.meets_target() {
+                let pow_key = self.pow_key(h.number as usize)?;
+
+                if !h.meets_target(&pow_key) {
                     return Err(BlockchainError::DifficultyTargetUnmet);
                 }
 
@@ -266,7 +273,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 }
 
                 last_header = h.clone();
-                new_power += h.power();
+                new_power += h.power(&pow_key);
             }
 
             Ok(new_power > current_power)
@@ -368,5 +375,19 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 .ok_or(BlockchainError::Inconsistency)?
                 .try_into()?)
         }
+    }
+    #[cfg(feature = "pow")]
+    fn pow_key(&self, index: usize) -> Result<Vec<u8>, BlockchainError> {
+        // 0 63 -> BAZUKA BASE KEY
+        // 64 2111 -> hash(blk#0)
+        // 2112 4159 -> hash(blk#2048)
+        // 4160 6207 -> hash(blk#4096)
+        // ...
+        Ok(if index < 64 {
+            b"BAZUKA BASE KEY".to_vec()
+        } else {
+            let reference = ((index - 64) / 2048) * 2048;
+            self.get_block(reference)?.header.hash().to_vec()
+        })
     }
 }

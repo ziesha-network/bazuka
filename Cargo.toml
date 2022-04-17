@@ -31,7 +31,7 @@ leveldb = { version = "0.8.6", optional = true }
 structopt = { version = "0.3", default-features = false, optional = true }
 
 # Proof-of-Work related deps
-rust-randomx = { version = "0.4.1", optional = true }
+rust-randomx = { version = "0.5.3", optional = true }
 
 # Proof-of-Stake related deps
 num-rational = { version = "0.4.0", optional = true }
