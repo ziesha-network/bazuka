@@ -119,6 +119,19 @@ pub async fn heartbeat<B: Blockchain>(
             }
         }
 
+        {
+            let mut ctx = context.write().await;
+            if let Some(w) = ctx.wallet.clone() {
+                let puzzle = ctx.get_puzzle(w)?;
+                if let Some(m) = &mut ctx.miner {
+                    if m.send_work {
+                        http::json_post::<Puzzle, String>(m.webhook.to_string(), puzzle).await?;
+                        m.send_work = false;
+                    }
+                }
+            }
+        }
+
         sleep(Duration::from_millis(1000)).await;
     }
 }

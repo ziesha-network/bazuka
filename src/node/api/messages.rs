@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct PostMinerSolutionRequest {
-    pub nonce: u32,
+    pub nonce: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -16,7 +16,7 @@ pub struct PostMinerSolutionResponse {}
 pub struct GetMinerPuzzleRequest {}
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct GetMinerPuzzleResponse {
+pub struct Puzzle {
     pub key: String,   // Puzzle key encoded in hex
     pub blob: String,  // Blob encoded in hex
     pub offset: usize, // From which byte the nonce starts?

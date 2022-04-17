@@ -8,5 +8,6 @@ pub async fn post_miner_solution<B: Blockchain>(
     _context: Arc<RwLock<NodeContext<B>>>,
     _req: PostMinerSolutionRequest,
 ) -> Result<PostMinerSolutionResponse, NodeError> {
-    unimplemented!();
+    println!("Found block!");
+    Ok(PostMinerSolutionResponse {})
 }

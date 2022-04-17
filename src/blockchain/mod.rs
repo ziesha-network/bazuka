@@ -349,6 +349,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         blk.header.number = height as u64;
         blk.header.parent_hash = last_block.header.hash();
         blk.header.block_root = blk.merkle_tree().root();
+        #[cfg(feature = "pow")]
+        {
+            blk.header.proof_of_work.target = 0x02ffffff;
+        }
         self.fork_on_ram().apply_block(&blk, true)?; // Check if everything is ok
         Ok(blk)
     }

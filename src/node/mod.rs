@@ -108,7 +108,7 @@ async fn node_service<B: Blockchain>(
 
         // Register the miner software as a webhook.
         #[cfg(feature = "pow")]
-        (Method::POST, "/miner/register") => {
+        (Method::POST, "/miner") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
                 &api::post_miner(
                     Arc::clone(&context),
