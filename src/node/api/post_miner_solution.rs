@@ -9,14 +9,24 @@ pub async fn post_miner_solution<B: Blockchain>(
     req: PostMinerSolutionRequest,
 ) -> Result<PostMinerSolutionResponse, NodeError> {
     let mut context = context.write().await;
-    if let Some(miner) = context.miner.as_mut() {
-        let mut blk = miner.block.take().unwrap();
-        let mut nonce_bytes = [0u8; 8];
-        nonce_bytes.copy_from_slice(&hex::decode(req.nonce).unwrap());
-        blk.header.proof_of_work.nonce = u64::from_le_bytes(nonce_bytes);
-        context
-            .blockchain
-            .extend(blk.header.number as usize, &vec![blk])?;
+
+    let mut nonce_bytes = [0u8; 8];
+    nonce_bytes.copy_from_slice(&hex::decode(req.nonce).unwrap());
+    let mut block = context
+        .miner
+        .as_ref()
+        .ok_or(NodeError::NoMinerError)?
+        .block
+        .as_ref()
+        .ok_or(NodeError::NoCurrentlyMiningBlockError)?
+        .clone();
+    block.header.proof_of_work.nonce = u64::from_le_bytes(nonce_bytes);
+    if context
+        .blockchain
+        .extend(block.header.number as usize, &vec![block])
+        .is_ok()
+    {
+        context.miner.as_mut().unwrap().block = None;
     }
     Ok(PostMinerSolutionResponse {})
 }
