@@ -12,7 +12,7 @@ pub async fn post_miner<B: Blockchain>(
     println!("Registered miner: {}", req.webhook);
     context.miner = Some(Miner {
         webhook: req.webhook,
-        send_work: true,
+        block: None,
     });
     Ok(RegisterMinerResponse {})
 }

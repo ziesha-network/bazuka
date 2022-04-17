@@ -1,7 +1,7 @@
 use super::api::messages::Puzzle;
 use super::{PeerAddress, PeerInfo, PeerStats};
 use crate::blockchain::{Blockchain, BlockchainError};
-use crate::core::Transaction;
+use crate::core::{Block, Transaction};
 use crate::utils;
 use crate::wallet::Wallet;
 use rand::seq::IteratorRandom;
@@ -15,7 +15,7 @@ pub struct TransactionStats {
 
 #[cfg(feature = "pow")]
 pub struct Miner {
-    pub send_work: bool,
+    pub block: Option<Block>,
     pub webhook: String,
 }
 
@@ -62,15 +62,16 @@ impl<B: Blockchain> NodeContext<B> {
             })
             .collect()
     }
-    pub fn get_puzzle(&self, wallet: Wallet) -> Result<Puzzle, BlockchainError> {
+    pub fn get_puzzle(&self, wallet: Wallet) -> Result<(Block, Puzzle), BlockchainError> {
         let txs = self.mempool.keys().cloned().collect();
-        let blk = self.blockchain.draft_block(&txs, &wallet)?;
-        Ok(Puzzle {
-            key: hex::encode(self.blockchain.pow_key(blk.header.number as usize)?),
-            blob: hex::encode(bincode::serialize(&blk.header).unwrap()),
+        let block = self.blockchain.draft_block(&txs, &wallet)?;
+        let puzzle = Puzzle {
+            key: hex::encode(self.blockchain.pow_key(block.header.number as usize)?),
+            blob: hex::encode(bincode::serialize(&block.header).unwrap()),
             offset: 112,
-            size: 4,
-            target: blk.header.proof_of_work.target,
-        })
+            size: 8,
+            target: block.header.proof_of_work.target,
+        };
+        Ok((block, puzzle))
     }
 }

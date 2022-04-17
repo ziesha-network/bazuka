@@ -8,7 +8,9 @@ pub async fn get_miner_puzzle<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     _req: GetMinerPuzzleRequest,
 ) -> Result<Puzzle, NodeError> {
-    let context = context.read().await;
+    let mut context = context.write().await;
     let wallet = context.wallet.clone().ok_or(NodeError::NoWalletError)?;
-    Ok(context.get_puzzle(wallet)?)
+    let (blk, puzzle) = context.get_puzzle(wallet)?;
+    context.miner.as_mut().unwrap().block = Some(blk);
+    Ok(puzzle)
 }
