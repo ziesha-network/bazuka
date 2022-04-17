@@ -14,7 +14,7 @@ pub struct ProofOfWork {
     /// difficulty target
     pub target: u32,
     /// arbitrary data
-    pub nonce: u32,
+    pub nonce: u64,
 }
 
 #[cfg(feature = "pow")]
@@ -22,8 +22,8 @@ impl Default for ProofOfWork {
     fn default() -> Self {
         ProofOfWork {
             timestamp: 0,
-            target: 0,
-            nonce: 0,
+            target: 0x02ffffff,
+            nonce: 0xeb4ad5ce811e1d48,
         }
     }
 }
