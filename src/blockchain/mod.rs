@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::config;
 use crate::config::{genesis, TOTAL_SUPPLY};
 use crate::core::{Account, Address, Block, Header, Transaction, TransactionData};
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
@@ -387,9 +388,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         // 4160 6207 -> hash(blk#4096)
         // ...
         Ok(if index < 64 {
-            b"BAZUKA BASE KEY".to_vec()
+            config::POW_BASE_KEY.to_vec()
         } else {
-            let reference = ((index - 64) / 2048) * 2048;
+            let reference = ((index - config::POW_KEY_CHANGE_DELAY)
+                / config::POW_KEY_CHANGE_INTERVAL)
+                * config::POW_KEY_CHANGE_INTERVAL;
             self.get_block(reference)?.header.hash().to_vec()
         })
     }
