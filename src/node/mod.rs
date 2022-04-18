@@ -222,7 +222,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
     pub async fn run(&'static self) -> Result<(), NodeError> {
         let server_future = self.server();
         let heartbeat_future =
-            heartbeat::heartbeat(self.address.clone(), Arc::clone(&self.context));
+            heartbeat::heartbeater(self.address.clone(), Arc::clone(&self.context));
 
         try_join!(server_future, heartbeat_future)?;
 
