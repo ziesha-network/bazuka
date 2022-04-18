@@ -77,6 +77,24 @@ impl<K: KvStore> KvStoreChain<K> {
         }
     }
 
+    #[cfg(feature = "pow")]
+    fn next_difficulty(&self) -> Result<u32, BlockchainError> {
+        let height = self.get_height()?;
+        let last_block = self.get_block(height - 1)?.header;
+        if height % config::DIFFICULTY_CALC_INTERVAL == 0 {
+            let prev_block = self
+                .get_block(height - config::DIFFICULTY_CALC_INTERVAL)?
+                .header;
+            let time_delta =
+                last_block.proof_of_work.timestamp - prev_block.proof_of_work.timestamp;
+            let diff_change = config::BLOCK_TIME as f32
+                / (time_delta / config::DIFFICULTY_CALC_INTERVAL as u32) as f32;
+            Ok(last_block.proof_of_work.target)
+        } else {
+            Ok(last_block.proof_of_work.target)
+        }
+    }
+
     fn get_block(&self, index: usize) -> Result<Block, BlockchainError> {
         if index >= self.get_height()? {
             return Err(BlockchainError::BlockNotFound);
