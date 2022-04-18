@@ -1,12 +1,14 @@
-use super::api::messages::Puzzle;
 use super::{PeerAddress, PeerInfo, PeerStats};
 use crate::blockchain::{Blockchain, BlockchainError};
-use crate::core::{Block, Transaction};
+use crate::core::Transaction;
 use crate::utils;
 use crate::wallet::Wallet;
 use rand::seq::IteratorRandom;
 use rand::RngCore;
 use std::collections::HashMap;
+
+#[cfg(feature = "pow")]
+use {super::api::messages::Puzzle, crate::core::Block};
 
 #[derive(Debug, Clone)]
 pub struct TransactionStats {
@@ -62,6 +64,8 @@ impl<B: Blockchain> NodeContext<B> {
             })
             .collect()
     }
+
+    #[cfg(feature = "pow")]
     pub fn get_puzzle(&self, wallet: Wallet) -> Result<(Block, Puzzle), BlockchainError> {
         let txs = self.mempool.keys().cloned().collect();
         let block = self.blockchain.draft_block(&txs, &wallet)?;

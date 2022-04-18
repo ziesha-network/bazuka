@@ -69,13 +69,20 @@ pub async fn heartbeat<B: Blockchain>(
                 .collect(),
         );
         ctx.timestamp_offset = median_timestamp as i64 - utils::local_timestamp() as i64;
-        let active_peers = ctx.active_peers().len();
-        println!(
-            "Lub dub! (Height: {}, Network Timestamp: {}, Peers: {})",
-            height,
-            ctx.network_timestamp(),
-            active_peers
-        );
+
+        let mut inf = Vec::new();
+        inf.extend([
+            ("Height".to_string(), height.to_string()),
+            ("Timestamp".to_string(), ctx.network_timestamp().to_string()),
+            (
+                "Active peers".to_string(),
+                ctx.active_peers().len().to_string(),
+            ),
+        ]);
+        #[cfg(feature = "pow")]
+        inf.push(("Power".to_string(), ctx.blockchain.get_power()?.to_string()));
+
+        println!("Lub dub! {:?}", inf);
     }
 
     let header_responses: Vec<(PeerAddress, Result<GetHeadersResponse, NodeError>)> =
@@ -129,6 +136,7 @@ pub async fn heartbeat<B: Blockchain>(
         }
     }
 
+    #[cfg(feature = "pow")]
     {
         let mut ctx = context.write().await;
         if let Some(w) = ctx.wallet.clone() {

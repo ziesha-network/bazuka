@@ -175,9 +175,11 @@ impl<K: KvStore> KvStoreChain<K> {
         if curr_height > 0 {
             let last_block = self.get_block(curr_height - 1)?;
 
-            #[cfg(feature = "pow")]
-            if !draft && !block.header.meets_target(&pow_key) {
-                return Err(BlockchainError::DifficultyTargetUnmet);
+            if !draft {
+                #[cfg(feature = "pow")]
+                if !block.header.meets_target(&pow_key) {
+                    return Err(BlockchainError::DifficultyTargetUnmet);
+                }
             }
 
             if block.header.number as usize != curr_height {
@@ -240,47 +242,48 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             },
         })
     }
+
+    #[cfg(feature = "pos")]
+    fn will_extend(&self, _from: usize, _headers: &Vec<Header>) -> Result<bool, BlockchainError> {
+        unimplemented!();
+    }
+
+    #[cfg(feature = "pow")]
     fn will_extend(&self, from: usize, headers: &Vec<Header>) -> Result<bool, BlockchainError> {
-        #[cfg(feature = "pow")]
-        {
-            let current_power = self.get_power()?;
+        let current_power = self.get_power()?;
 
-            if from == 0 {
-                return Err(BlockchainError::ExtendFromGenesis);
-            } else if from > self.get_height()? {
-                return Err(BlockchainError::ExtendFromFuture);
-            }
-
-            let mut new_power: u64 = self
-                .database
-                .get(format!("power_{:010}", from - 1).into())?
-                .ok_or(BlockchainError::Inconsistency)?
-                .try_into()?;
-            let mut last_header = self.get_block(from - 1)?.header;
-            for h in headers.iter() {
-                let pow_key = self.pow_key(h.number as usize)?;
-
-                if !h.meets_target(&pow_key) {
-                    return Err(BlockchainError::DifficultyTargetUnmet);
-                }
-
-                if h.number != last_header.number + 1 {
-                    return Err(BlockchainError::InvalidBlockNumber);
-                }
-
-                if h.parent_hash != last_header.hash() {
-                    return Err(BlockchainError::InvalidParentHash);
-                }
-
-                last_header = h.clone();
-                new_power += h.power(&pow_key);
-            }
-
-            Ok(new_power > current_power)
+        if from == 0 {
+            return Err(BlockchainError::ExtendFromGenesis);
+        } else if from > self.get_height()? {
+            return Err(BlockchainError::ExtendFromFuture);
         }
 
-        #[cfg(feature = "pos")]
-        unimplemented!();
+        let mut new_power: u64 = self
+            .database
+            .get(format!("power_{:010}", from - 1).into())?
+            .ok_or(BlockchainError::Inconsistency)?
+            .try_into()?;
+        let mut last_header = self.get_block(from - 1)?.header;
+        for h in headers.iter() {
+            let pow_key = self.pow_key(h.number as usize)?;
+
+            if !h.meets_target(&pow_key) {
+                return Err(BlockchainError::DifficultyTargetUnmet);
+            }
+
+            if h.number != last_header.number + 1 {
+                return Err(BlockchainError::InvalidBlockNumber);
+            }
+
+            if h.parent_hash != last_header.hash() {
+                return Err(BlockchainError::InvalidParentHash);
+            }
+
+            last_header = h.clone();
+            new_power += h.power(&pow_key);
+        }
+
+        Ok(new_power > current_power)
     }
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
