@@ -382,11 +382,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
     #[cfg(feature = "pow")]
     fn pow_key(&self, index: usize) -> Result<Vec<u8>, BlockchainError> {
-        // 0 63 -> BAZUKA BASE KEY
-        // 64 2111 -> hash(blk#0)
-        // 2112 4159 -> hash(blk#2048)
-        // 4160 6207 -> hash(blk#4096)
-        // ...
         Ok(if index < 64 {
             config::POW_BASE_KEY.to_vec()
         } else {
