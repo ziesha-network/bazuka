@@ -5,8 +5,12 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub async fn post_block<B: Blockchain>(
-    _context: Arc<RwLock<NodeContext<B>>>,
-    _req: PostBlockRequest,
+    context: Arc<RwLock<NodeContext<B>>>,
+    req: PostBlockRequest,
 ) -> Result<PostBlockResponse, NodeError> {
-    unimplemented!();
+    let mut context = context.write().await;
+    context
+        .blockchain
+        .extend(req.block.header.number as usize, &vec![req.block])?;
+    Ok(PostBlockResponse {})
 }
