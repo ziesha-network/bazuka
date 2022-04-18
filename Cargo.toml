@@ -20,6 +20,7 @@ rand = "0.8.5"
 thiserror = "1.0"
 num-bigint = "0.4"
 num-integer = "0.1"
+lru = "0.7.5"
 
 # Node related deps
 tokio = { version = "1", features = ["full"], optional = true }

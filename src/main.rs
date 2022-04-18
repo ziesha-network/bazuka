@@ -4,7 +4,7 @@ extern crate lazy_static;
 #[cfg(feature = "node")]
 use {
     bazuka::blockchain::KvStoreChain,
-    bazuka::db::LevelDbKvStore,
+    bazuka::db::{LevelDbKvStore, LruCacheKvStore},
     bazuka::node::{Node, NodeError, PeerAddress},
     bazuka::wallet::Wallet,
     std::path::{Path, PathBuf},
@@ -40,7 +40,7 @@ lazy_static! {
 #[cfg(feature = "node")]
 lazy_static! {
     static ref OPTS: NodeOptions = NodeOptions::from_args();
-    static ref NODE: Node<KvStoreChain<LevelDbKvStore>> = {
+    static ref NODE: Node<KvStoreChain<LruCacheKvStore<LevelDbKvStore>>> = {
         let opts = OPTS.clone();
         Node::new(
             PeerAddress(
@@ -51,10 +51,13 @@ lazy_static! {
                 opts.port.unwrap_or(3030),
             ),
             bazuka::config::bootstrap::debug_bootstrap_nodes(),
-            KvStoreChain::new(LevelDbKvStore::new(
-                &opts
-                    .db
-                    .unwrap_or(home::home_dir().unwrap().join(Path::new(".bazuka"))),
+            KvStoreChain::new(LruCacheKvStore::new(
+                LevelDbKvStore::new(
+                    &opts
+                        .db
+                        .unwrap_or(home::home_dir().unwrap().join(Path::new(".bazuka"))),
+                ),
+                64,
             ))
             .unwrap(),
             Some(WALLET.clone()),
