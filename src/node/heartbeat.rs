@@ -60,15 +60,16 @@ pub async fn heartbeat<B: Blockchain>(
                 .entry(bad_peer.clone())
                 .and_modify(|stats| stats.punish(punish::NO_RESPONSE_PUNISH));
         }
-        // Set timestamp_offset according to median timestamp of the network
-        let median_timestamp = utils::median(
-            &peer_responses
-                .iter()
-                .filter_map(|r| r.1.as_ref().ok())
-                .map(|r| r.timestamp)
-                .collect(),
-        );
-        ctx.timestamp_offset = median_timestamp as i64 - utils::local_timestamp() as i64;
+        let timestamps = peer_responses
+            .iter()
+            .filter_map(|r| r.1.as_ref().ok())
+            .map(|r| r.timestamp)
+            .collect::<Vec<_>>();
+        if timestamps.len() > 0 {
+            // Set timestamp_offset according to median timestamp of the network
+            let median_timestamp = utils::median(&timestamps);
+            ctx.timestamp_offset = median_timestamp as i64 - utils::local_timestamp() as i64;
+        }
 
         let mut inf = Vec::new();
         inf.extend([
