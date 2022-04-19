@@ -31,6 +31,8 @@ struct NodeOptions {
     port: Option<u16>,
     #[structopt(long, parse(from_os_str))]
     db: Option<PathBuf>,
+    #[structopt(long)]
+    bootstrap: Vec<String>,
 }
 
 lazy_static! {
@@ -50,7 +52,16 @@ lazy_static! {
                     .unwrap(),
                 opts.port.unwrap_or(3030),
             ),
-            bazuka::config::bootstrap::debug_bootstrap_nodes(),
+            opts.bootstrap
+                .clone()
+                .into_iter()
+                .map(|b| {
+                    let mut parts = b.splitn(2, ":");
+                    let host = parts.next().unwrap();
+                    let port = parts.next().unwrap();
+                    PeerAddress(host.parse().unwrap(), port.parse().unwrap())
+                })
+                .collect(),
             KvStoreChain::new(LruCacheKvStore::new(
                 LevelDbKvStore::new(
                     &opts
