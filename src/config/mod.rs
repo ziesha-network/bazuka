@@ -13,6 +13,8 @@ pub const MAX_DELTA_SIZE: usize = 1024 * 1024 * 1024; // Bytes
 pub const BLOCK_TIME: usize = 60; // Seconds
 pub const DIFFICULTY_CALC_INTERVAL: usize = 128; // Blocks
 
+pub const MAX_BLOCK_FETCH: usize = 16; // Blocks
+
 // 0 63 -> BAZUKA BASE KEY
 // 64 2111 -> hash(blk#0)
 // 2112 4159 -> hash(blk#2048)
