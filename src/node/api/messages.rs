@@ -4,6 +4,40 @@ use super::{PeerAddress, PeerInfo, PeerStats};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[cfg(feature = "pow")]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct PostMinerSolutionRequest {
+    pub nonce: String,
+}
+
+#[cfg(feature = "pow")]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct PostMinerSolutionResponse {}
+
+#[cfg(feature = "pow")]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct GetMinerPuzzleRequest {}
+
+#[cfg(feature = "pow")]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct Puzzle {
+    pub key: String,   // Puzzle key encoded in hex
+    pub blob: String,  // Blob encoded in hex
+    pub offset: usize, // From which byte the nonce starts?
+    pub size: usize,   // How big is the nonce? (Bytes)
+    pub target: u32,   // Difficulty target
+}
+
+#[cfg(feature = "pow")]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RegisterMinerRequest {
+    pub webhook: String,
+}
+
+#[cfg(feature = "pow")]
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RegisterMinerResponse {}
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct PostPeerRequest {
     pub address: PeerAddress,

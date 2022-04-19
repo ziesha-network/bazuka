@@ -7,9 +7,18 @@ use rand::seq::IteratorRandom;
 use rand::RngCore;
 use std::collections::HashMap;
 
+#[cfg(feature = "pow")]
+use {super::api::messages::Puzzle, crate::core::Block};
+
 #[derive(Debug, Clone)]
 pub struct TransactionStats {
     pub first_seen: u64,
+}
+
+#[cfg(feature = "pow")]
+pub struct Miner {
+    pub block: Option<Block>,
+    pub webhook: String,
 }
 
 pub struct NodeContext<B: Blockchain> {
@@ -18,6 +27,8 @@ pub struct NodeContext<B: Blockchain> {
     pub mempool: HashMap<Transaction, TransactionStats>,
     pub peers: HashMap<PeerAddress, PeerStats>,
     pub timestamp_offset: i64,
+    #[cfg(feature = "pow")]
+    pub miner: Option<Miner>,
 }
 
 impl<B: Blockchain> NodeContext<B> {
@@ -52,5 +63,19 @@ impl<B: Blockchain> NodeContext<B> {
                 }
             })
             .collect()
+    }
+
+    #[cfg(feature = "pow")]
+    pub fn get_puzzle(&self, wallet: Wallet) -> Result<(Block, Puzzle), BlockchainError> {
+        let txs = self.mempool.keys().cloned().collect();
+        let block = self.blockchain.draft_block(&txs, &wallet)?;
+        let puzzle = Puzzle {
+            key: hex::encode(self.blockchain.pow_key(block.header.number as usize)?),
+            blob: hex::encode(bincode::serialize(&block.header).unwrap()),
+            offset: 112,
+            size: 8,
+            target: block.header.proof_of_work.target,
+        };
+        Ok((block, puzzle))
     }
 }

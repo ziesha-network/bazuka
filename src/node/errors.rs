@@ -19,4 +19,10 @@ pub enum NodeError {
     Utf8Error(#[from] std::str::Utf8Error),
     #[error("addr parse error happened")]
     AddrParseError(#[from] std::net::AddrParseError),
+    #[error("no wallet available")]
+    NoWalletError,
+    #[error("no miner is registered")]
+    NoMinerError,
+    #[error("no block is currently being mined")]
+    NoCurrentlyMiningBlockError,
 }

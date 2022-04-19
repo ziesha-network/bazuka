@@ -94,6 +94,12 @@ fn main() {
 
     println!("Bazuka!");
     println!("Your address is: {}", WALLET.get_address());
+
+    #[cfg(feature = "pow")]
+    {
+        println!("Chain power: {}", chain.get_power().unwrap());
+    }
+
     chain
         .draft_block(
             &vec![Transaction {

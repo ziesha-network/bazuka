@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::config;
 use crate::config::{genesis, TOTAL_SUPPLY};
 use crate::core::{Account, Address, Block, Header, Transaction, TransactionData};
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
@@ -29,11 +30,13 @@ pub enum BlockchainError {
     InvalidMerkleRoot,
     #[error("transaction nonce invalid")]
     InvalidTransactionNonce,
+    #[error("unmet difficulty target")]
+    DifficultyTargetUnmet,
 }
 
 pub trait Blockchain {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
-    fn will_extend(&self, headers: &Vec<Header>) -> Result<bool, BlockchainError>;
+    fn will_extend(&self, from: usize, headers: &Vec<Header>) -> Result<bool, BlockchainError>;
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
     fn draft_block(
         &self,
@@ -48,6 +51,11 @@ pub trait Blockchain {
     ) -> Result<Vec<Header>, BlockchainError>;
     fn get_blocks(&self, since: usize, until: Option<usize>)
         -> Result<Vec<Block>, BlockchainError>;
+
+    #[cfg(feature = "pow")]
+    fn get_power(&self) -> Result<u64, BlockchainError>;
+    #[cfg(feature = "pow")]
+    fn pow_key(&self, index: usize) -> Result<Vec<u8>, BlockchainError>;
 }
 
 pub struct KvStoreChain<K: KvStore> {
@@ -58,7 +66,7 @@ impl<K: KvStore> KvStoreChain<K> {
     pub fn new(kv_store: K) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> { database: kv_store };
         if chain.get_height()? == 0 {
-            chain.apply_block(&genesis::get_genesis_block())?;
+            chain.apply_block(&genesis::get_genesis_block(), false)?;
         }
         Ok(chain)
     }
@@ -66,6 +74,24 @@ impl<K: KvStore> KvStoreChain<K> {
     fn fork_on_ram<'a>(&'a self) -> KvStoreChain<RamMirrorKvStore<'a, K>> {
         KvStoreChain {
             database: RamMirrorKvStore::new(&self.database),
+        }
+    }
+
+    #[cfg(feature = "pow")]
+    fn next_difficulty(&self) -> Result<u32, BlockchainError> {
+        let height = self.get_height()?;
+        let last_block = self.get_block(height - 1)?.header;
+        if height % config::DIFFICULTY_CALC_INTERVAL == 0 {
+            let prev_block = self
+                .get_block(height - config::DIFFICULTY_CALC_INTERVAL)?
+                .header;
+            let time_delta =
+                last_block.proof_of_work.timestamp - prev_block.proof_of_work.timestamp;
+            let diff_change = config::BLOCK_TIME as f32
+                / (time_delta / config::DIFFICULTY_CALC_INTERVAL as u32) as f32;
+            Ok(last_block.proof_of_work.target)
+        } else {
+            Ok(last_block.proof_of_work.target)
         }
     }
 
@@ -159,11 +185,21 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(result)
     }
 
-    fn apply_block(&mut self, block: &Block) -> Result<(), BlockchainError> {
+    fn apply_block(&mut self, block: &Block, draft: bool) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
+
+        #[cfg(feature = "pow")]
+        let pow_key = self.pow_key(block.header.number as usize)?;
 
         if curr_height > 0 {
             let last_block = self.get_block(curr_height - 1)?;
+
+            if !draft {
+                #[cfg(feature = "pow")]
+                if !block.header.meets_target(&pow_key) {
+                    return Err(BlockchainError::DifficultyTargetUnmet);
+                }
+            }
 
             if block.header.number as usize != curr_height {
                 return Err(BlockchainError::InvalidBlockNumber);
@@ -185,6 +221,12 @@ impl<K: KvStore> KvStoreChain<K> {
         let mut changes = fork.database.to_ops();
 
         changes.push(WriteOp::Put("height".into(), (curr_height + 1).into()));
+
+        #[cfg(feature = "pow")]
+        changes.push(WriteOp::Put(
+            format!("power_{:010}", block.header.number).into(),
+            (block.header.power(&pow_key) + self.get_power()?).into(),
+        ));
 
         changes.push(WriteOp::Put(
             format!("rollback_{:010}", block.header.number).into(),
@@ -219,8 +261,48 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             },
         })
     }
-    fn will_extend(&self, _headers: &Vec<Header>) -> Result<bool, BlockchainError> {
-        Ok(false)
+
+    #[cfg(feature = "pos")]
+    fn will_extend(&self, _from: usize, _headers: &Vec<Header>) -> Result<bool, BlockchainError> {
+        unimplemented!();
+    }
+
+    #[cfg(feature = "pow")]
+    fn will_extend(&self, from: usize, headers: &Vec<Header>) -> Result<bool, BlockchainError> {
+        let current_power = self.get_power()?;
+
+        if from == 0 {
+            return Err(BlockchainError::ExtendFromGenesis);
+        } else if from > self.get_height()? {
+            return Err(BlockchainError::ExtendFromFuture);
+        }
+
+        let mut new_power: u64 = self
+            .database
+            .get(format!("power_{:010}", from - 1).into())?
+            .ok_or(BlockchainError::Inconsistency)?
+            .try_into()?;
+        let mut last_header = self.get_block(from - 1)?.header;
+        for h in headers.iter() {
+            let pow_key = self.pow_key(h.number as usize)?;
+
+            if !h.meets_target(&pow_key) {
+                return Err(BlockchainError::DifficultyTargetUnmet);
+            }
+
+            if h.number != last_header.number + 1 {
+                return Err(BlockchainError::InvalidBlockNumber);
+            }
+
+            if h.parent_hash != last_header.hash() {
+                return Err(BlockchainError::InvalidParentHash);
+            }
+
+            last_header = h.clone();
+            new_power += h.power(&pow_key);
+        }
+
+        Ok(new_power > current_power)
     }
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
@@ -238,7 +320,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }
 
         for block in blocks.iter() {
-            forked.apply_block(block)?;
+            forked.apply_block(block, false)?;
         }
         let ops = forked.database.to_ops();
 
@@ -296,7 +378,35 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         blk.header.number = height as u64;
         blk.header.parent_hash = last_block.header.hash();
         blk.header.block_root = blk.merkle_tree().root();
-        self.fork_on_ram().apply_block(&blk)?; // Check if everything is ok
+        #[cfg(feature = "pow")]
+        {
+            blk.header.proof_of_work.target = last_block.header.proof_of_work.target;
+        }
+        self.fork_on_ram().apply_block(&blk, true)?; // Check if everything is ok
         Ok(blk)
+    }
+    #[cfg(feature = "pow")]
+    fn get_power(&self) -> Result<u64, BlockchainError> {
+        let height = self.get_height()?;
+        if height == 0 {
+            Ok(0)
+        } else {
+            Ok(self
+                .database
+                .get(format!("power_{:010}", height - 1).into())?
+                .ok_or(BlockchainError::Inconsistency)?
+                .try_into()?)
+        }
+    }
+    #[cfg(feature = "pow")]
+    fn pow_key(&self, index: usize) -> Result<Vec<u8>, BlockchainError> {
+        Ok(if index < 64 {
+            config::POW_BASE_KEY.to_vec()
+        } else {
+            let reference = ((index - config::POW_KEY_CHANGE_DELAY)
+                / config::POW_KEY_CHANGE_INTERVAL)
+                * config::POW_KEY_CHANGE_INTERVAL;
+            self.get_block(reference)?.header.hash().to_vec()
+        })
     }
 }
