@@ -38,6 +38,8 @@ impl<B: Blockchain> NodeContext<B> {
     pub fn get_info(&self) -> Result<PeerInfo, BlockchainError> {
         Ok(PeerInfo {
             height: self.blockchain.get_height()?,
+            #[cfg(feature = "pow")]
+            power: self.blockchain.get_power()?,
         })
     }
     pub fn random_peers<R: RngCore>(
