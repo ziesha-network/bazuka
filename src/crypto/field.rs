@@ -3,7 +3,7 @@ use ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
 #[derive(PrimeField, Serialize, Deserialize)]
-#[PrimeFieldModulus = "21888242871839275222246405745257275088548364400416034343698204186575808495617"]
+#[PrimeFieldModulus = "52435875175126190479447740508185965837690552500527637822603658699938581184513"]
 #[PrimeFieldGenerator = "7"]
 #[PrimeFieldReprEndianness = "little"]
 pub struct Fr([u64; 4]);
