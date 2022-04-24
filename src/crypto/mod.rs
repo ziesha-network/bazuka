@@ -5,6 +5,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 pub use eddsa::*;
+pub use field::*;
 pub use mimc::*;
 
 mod curve;
