@@ -125,28 +125,33 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn apply_tx(&mut self, tx: &Transaction) -> Result<(), BlockchainError> {
         let mut ops = Vec::new();
+
+        let mut acc_src = self.get_account(tx.src.clone())?;
+
         if !tx.verify_signature() {
             return Err(BlockchainError::SignatureError);
         }
+
+        if tx.nonce != acc_src.nonce + 1 {
+            return Err(BlockchainError::InvalidTransactionNonce);
+        }
+
+        if acc_src.balance < tx.fee {
+            return Err(BlockchainError::BalanceInsufficient);
+        }
+
+        acc_src.balance -= tx.fee;
+        acc_src.nonce += 1;
+
         match &tx.data {
             TransactionData::RegularSend { dst, amount } => {
-                let mut acc_src = self.get_account(tx.src.clone())?;
-
-                if tx.nonce != acc_src.nonce + 1 {
-                    return Err(BlockchainError::InvalidTransactionNonce);
-                }
-
-                if acc_src.balance < amount + tx.fee {
+                if acc_src.balance < *amount {
                     return Err(BlockchainError::BalanceInsufficient);
                 }
 
-                acc_src.balance -= if *dst != tx.src { *amount } else { 0 } + tx.fee;
-                acc_src.nonce += 1;
-
-                ops.push(WriteOp::Put(
-                    format!("account_{}", tx.src).into(),
-                    acc_src.into(),
-                ));
+                if *dst != tx.src {
+                    acc_src.balance -= *amount;
+                }
 
                 if *dst != tx.src {
                     let mut acc_dst = self.get_account(dst.clone())?;
@@ -158,10 +163,39 @@ impl<K: KvStore> KvStoreChain<K> {
                     ));
                 }
             }
+            TransactionData::CreateContract {
+                deposit_withdraw_circuit,
+                update_circuits,
+                initial_state,
+            } => {
+                unimplemented!();
+            }
+            TransactionData::DepositWithdraw {
+                contract_id,
+                deposit_withdraws,
+                next_state,
+                proof,
+            } => {
+                unimplemented!();
+            }
+            TransactionData::Update {
+                contract_id,
+                circuit_index,
+                next_state,
+                proof,
+            } => {
+                unimplemented!();
+            }
             _ => {
                 unimplemented!();
             }
         }
+
+        ops.push(WriteOp::Put(
+            format!("account_{}", tx.src).into(),
+            acc_src.into(),
+        ));
+
         self.database.update(&ops)?;
         Ok(())
     }
