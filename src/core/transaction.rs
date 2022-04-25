@@ -1,5 +1,7 @@
 use super::address::{Address, Signature};
-use super::contract::{Circuit, CircuitProof, ContractId, ContractPayment, ContractState};
+use super::contract::{
+    Circuit, CircuitProof, ContractCompressedState, ContractFullState, ContractId, ContractPayment,
+};
 use super::hash::Hash;
 use super::Money;
 use crate::crypto::SignatureScheme;
@@ -22,20 +24,20 @@ pub enum TransactionData<S: SignatureScheme> {
     CreateContract {
         deposit_withdraw_circuit: Circuit,
         update_circuits: Vec<Circuit>,
-        initial_state: ContractState,
+        initial_state: ContractFullState,
     },
     // Proof for DepositWithdrawCircuit(curr_state, next_state, hash(entries))
     DepositWithdraw {
         contract_id: ContractId,
         deposit_withdraws: Vec<ContractPayment<S>>,
-        next_state: ContractState,
+        next_state: ContractCompressedState,
         proof: CircuitProof,
     },
     // Proof for UpdateCircuit[circuit_index](curr_state, next_state)
     Update {
         contract_id: ContractId,
         circuit_index: u32,
-        next_state: ContractState,
+        next_state: ContractCompressedState,
         proof: CircuitProof,
     },
 }

@@ -1,15 +1,20 @@
 use super::address::{Address, Signature};
 use super::Money;
 use crate::crypto::SignatureScheme;
-use crate::zk::{ZkProof, ZkScalar, ZkVerifierKey};
+use crate::zk::{ZkProof, ZkScalar, ZkState, ZkVerifierKey};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct ContractId {}
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct ContractState {
+pub struct ContractCompressedState {
     pub state_hash: ZkScalar, // State in compressed form
     pub state_size: usize,    // Size of full state in bytes
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct ContractFullState {
+    pub state: ZkState,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
