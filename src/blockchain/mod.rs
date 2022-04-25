@@ -168,6 +168,24 @@ impl<K: KvStore> KvStoreChain<K> {
                 update_circuits,
                 initial_state,
             } => {
+                ops.push(WriteOp::Put(
+                    format!("contract_dw_{}", tx.uid()).into(),
+                    deposit_withdraw_circuit.clone().into(),
+                ));
+                for (i, c) in update_circuits.iter().enumerate() {
+                    ops.push(WriteOp::Put(
+                        format!("contract_update_{}_{}", tx.uid(), i).into(),
+                        c.clone().into(),
+                    ));
+                }
+                ops.push(WriteOp::Put(
+                    format!("contract_initial_state_{}", tx.uid()).into(),
+                    initial_state.clone().into(),
+                ));
+                ops.push(WriteOp::Put(
+                    format!("contract_compressed_state_{}", tx.uid()).into(),
+                    initial_state.compress().into(),
+                ));
                 unimplemented!();
             }
             TransactionData::DepositWithdraw {

@@ -9,12 +9,21 @@ pub struct ContractId {}
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct ContractCompressedState {
     pub state_hash: ZkScalar, // State in compressed form
-    pub state_size: usize,    // Size of full state in bytes
+    pub state_size: u32,      // Size of full state in bytes
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct ContractFullState {
     pub state: ZkState,
+}
+
+impl ContractFullState {
+    pub fn compress(&self) -> ContractCompressedState {
+        ContractCompressedState {
+            state_hash: self.state.root(),
+            state_size: self.state.size(),
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]

@@ -25,6 +25,10 @@ pub type TransactionData = transaction::TransactionData<Signer>;
 pub type Header = header::Header<Hasher>;
 pub type Block = blocks::Block<Hasher, Signer>;
 
+pub type Circuit = contract::Circuit;
+pub type ContractCompressedState = contract::ContractCompressedState;
+pub type ContractFullState = contract::ContractFullState;
+
 #[cfg(feature = "pow")]
 pub type ProofOfWork = header::ProofOfWork;
 

@@ -1,4 +1,4 @@
-use super::mimc;
+use super::{mimc, ZkState};
 use crate::config::LOG_ZK_RAM_SIZE;
 use crate::crypto::Fr;
 use ff::Field;
@@ -29,6 +29,13 @@ impl Default for Proof {
 }
 
 impl ZkRam {
+    pub fn from_state(state: &ZkState) -> Self {
+        let mut r = Self::new();
+        for (k, v) in state.0.iter() {
+            r.set(*k, v.0);
+        }
+        r
+    }
     pub fn new() -> Self {
         Self {
             layers: vec![HashMap::new(); LOG_ZK_RAM_SIZE + 1],

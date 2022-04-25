@@ -1,4 +1,4 @@
-use crate::core::{Account, Block, Hasher};
+use crate::core::{Account, Block, Circuit, ContractCompressedState, ContractFullState, Hasher};
 use crate::crypto::merkle::MerkleTree;
 use db_key::Key;
 use lru::LruCache;
@@ -58,7 +58,10 @@ gen_try_into!(
     Account,
     Block,
     Vec<WriteOp>,
-    MerkleTree<Hasher>
+    MerkleTree<Hasher>,
+    Circuit,
+    ContractCompressedState,
+    ContractFullState
 );
 gen_from!(
     u32,
@@ -67,7 +70,10 @@ gen_from!(
     Account,
     &Block,
     Vec<WriteOp>,
-    MerkleTree<Hasher>
+    MerkleTree<Hasher>,
+    Circuit,
+    ContractCompressedState,
+    ContractFullState
 );
 
 impl Key for StringKey {

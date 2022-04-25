@@ -52,6 +52,9 @@ pub struct Transaction<S: SignatureScheme> {
 }
 
 impl<S: SignatureScheme> Transaction<S> {
+    pub fn uid(&self) -> String {
+        format!("{}_{}", self.src, self.nonce)
+    }
     pub fn hash<H: Hash>(&self) -> H::Output {
         H::hash(&bincode::serialize(self).unwrap())
     }

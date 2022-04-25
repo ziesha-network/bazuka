@@ -13,6 +13,15 @@ pub struct ZkScalar(Fr);
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZkState(HashMap<u32, ZkScalar>);
 
+impl ZkState {
+    pub fn size(&self) -> u32 {
+        self.0.len() as u32
+    }
+    pub fn root(&self) -> ZkScalar {
+        ZkScalar(ram::ZkRam::from_state(self).root())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ZkVerifierKey(#[serde(with = "serde_bytes")] Vec<u8>);
 
