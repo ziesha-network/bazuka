@@ -4,6 +4,7 @@ use crate::config;
 use crate::config::{genesis, TOTAL_SUPPLY};
 use crate::core::{Account, Address, Block, Header, Transaction, TransactionData};
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
+use crate::utils;
 use crate::wallet::Wallet;
 
 #[derive(Error, Debug)]
@@ -30,6 +31,8 @@ pub enum BlockchainError {
     InvalidMerkleRoot,
     #[error("transaction nonce invalid")]
     InvalidTransactionNonce,
+    #[error("block timestamp is in past")]
+    InvalidTimestamp,
     #[error("unmet difficulty target")]
     DifficultyTargetUnmet,
 }
@@ -75,6 +78,18 @@ impl<K: KvStore> KvStoreChain<K> {
         KvStoreChain {
             database: RamMirrorKvStore::new(&self.database),
         }
+    }
+
+    #[cfg(feature = "pow")]
+    fn median_timestamp(&self, index: usize) -> Result<u32, BlockchainError> {
+        Ok(utils::median(
+            &(0..std::cmp::min(index + 1, config::MEDIAN_TIMESTAMP_COUNT))
+                .map(|i| {
+                    self.get_block(index - i)
+                        .map(|b| b.header.proof_of_work.timestamp)
+                })
+                .collect::<Result<Vec<u32>, BlockchainError>>()?,
+        ))
     }
 
     #[cfg(feature = "pow")]
@@ -194,6 +209,11 @@ impl<K: KvStore> KvStoreChain<K> {
         if curr_height > 0 {
             let last_block = self.get_block(curr_height - 1)?;
 
+            #[cfg(feature = "pow")]
+            if block.header.proof_of_work.timestamp > self.median_timestamp(curr_height - 1)? {
+                return Err(BlockchainError::InvalidTimestamp);
+            }
+
             if !draft {
                 #[cfg(feature = "pow")]
                 if !block.header.meets_target(&pow_key) {
@@ -285,6 +305,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let mut last_header = self.get_block(from - 1)?.header;
         for h in headers.iter() {
             let pow_key = self.pow_key(h.number as usize)?;
+
+            if h.proof_of_work.timestamp > self.median_timestamp(from - 1)? {
+                return Err(BlockchainError::InvalidTimestamp);
+            }
 
             if !h.meets_target(&pow_key) {
                 return Err(BlockchainError::DifficultyTargetUnmet);

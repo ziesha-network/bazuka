@@ -23,3 +23,7 @@ pub const MAX_BLOCK_FETCH: usize = 16; // Blocks
 pub const POW_BASE_KEY: &[u8] = b"BAZUKA BASE KEY";
 pub const POW_KEY_CHANGE_DELAY: usize = 64; // Blocks
 pub const POW_KEY_CHANGE_INTERVAL: usize = 2048; // Blocks
+
+// New block's timestamp should be higher than median
+// timestamp of 10 previous blocks
+pub const MEDIAN_TIMESTAMP_COUNT: usize = 10;
