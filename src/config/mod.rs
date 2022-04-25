@@ -27,3 +27,6 @@ pub const POW_KEY_CHANGE_INTERVAL: usize = 2048; // Blocks
 // New block's timestamp should be higher than median
 // timestamp of 10 previous blocks
 pub const MEDIAN_TIMESTAMP_COUNT: usize = 10;
+
+// Our Zero-Knowledge RAM will have 2^32 memory cells
+pub const LOG_ZK_RAM_SIZE: usize = 32;

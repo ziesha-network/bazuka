@@ -1,3 +1,6 @@
+mod mimc;
+pub mod ram;
+
 use crate::crypto::Fr;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
