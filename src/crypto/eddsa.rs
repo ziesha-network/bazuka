@@ -1,14 +1,8 @@
-use std::ops::*;
-
 use ff::{Field, PrimeField};
-use num_bigint::BigUint;
-use num_integer::Integer;
 use serde::{Deserialize, Serialize};
+use zeekit::{eddsa, mimc, Fr};
 
-use super::curve::*;
-use super::field::Fr;
 use super::SignatureScheme;
-use crate::core::number::U256;
 
 use std::str::FromStr;
 use thiserror::Error;
@@ -23,12 +17,12 @@ pub enum ParsePublicKeyError {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct EdDSAPublicKey(pub PointCompressed);
+pub struct EdDSAPublicKey(pub eddsa::PublicKey);
 
 impl std::fmt::Display for EdDSAPublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "0x{}", if self.0 .1 { 3 } else { 2 })?;
-        for byte in self.0 .0.to_repr().as_ref().iter().rev() {
+        write!(f, "0x{}", if self.0 .0 .1 { 3 } else { 2 })?;
+        for byte in self.0 .0 .0.to_repr().as_ref().iter().rev() {
             write!(f, "{:02x}", byte)?;
         }
         Ok(())
@@ -56,24 +50,21 @@ impl FromStr for EdDSAPublicKey {
             .map_err(|_| ParsePublicKeyError::Invalid)?;
         let mut repr = Fr::zero().to_repr();
         repr.as_mut().clone_from_slice(&bytes);
-        Ok(EdDSAPublicKey(PointCompressed(
+        Ok(EdDSAPublicKey(eddsa::PublicKey(eddsa::PointCompressed(
             Fr::from_repr(repr).unwrap(),
             oddity,
-        )))
+        ))))
     }
 }
 
 #[derive(Clone)]
-pub struct PrivateKey {
-    pub public_key: PointAffine,
-    pub randomness: U256,
-    pub scalar: U256,
-}
+pub struct PrivateKey(eddsa::PrivateKey);
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct Signature {
-    pub r: PointAffine,
-    pub s: U256,
+pub struct Signature(eddsa::Signature);
+
+fn mimc_u8(inp: &[u8]) -> Fr {
+    mimc::mimc(inp.iter().map(|u| Fr::from(*u as u64)).collect())
 }
 
 impl SignatureScheme for EdDSA {
@@ -81,66 +72,18 @@ impl SignatureScheme for EdDSA {
     type Priv = PrivateKey;
     type Sig = Signature;
     fn generate_keys(seed: &[u8]) -> (EdDSAPublicKey, PrivateKey) {
-        let (randomness, scalar) = U256::generate_two(seed);
-        let point = BASE.multiply(&scalar);
-        let pk = EdDSAPublicKey(point.compress());
-        (
-            pk.clone(),
-            PrivateKey {
-                public_key: point,
-                randomness,
-                scalar,
-            },
-        )
+        let randomness = mimc_u8(seed);
+        let scalar = mimc::mimc(vec![randomness]);
+        let (pk, sk) = eddsa::generate_keys(randomness, scalar);
+        (EdDSAPublicKey(pk), PrivateKey(sk))
     }
     fn sign(sk: &PrivateKey, message: &[u8]) -> Signature {
-        // r=H(b,M)
-        let mut randomized_message = sk.randomness.to_bytes().to_vec();
-        randomized_message.extend(message);
-        let (r, _) = U256::generate_two(&randomized_message);
-
-        // R=rB
-        let rr = BASE.multiply(&r);
-
-        // h=H(R,A,M)
-        let mut inp = Vec::new();
-        inp.extend_from_slice(rr.0.to_repr().as_ref());
-        inp.extend_from_slice(rr.1.to_repr().as_ref());
-        inp.extend_from_slice(sk.public_key.0.to_repr().as_ref());
-        inp.extend_from_slice(sk.public_key.1.to_repr().as_ref());
-        inp.extend(message);
-        let (h, _) = U256::generate_two(&inp);
-
-        // s = (r + ha) mod ORDER
-        let mut s = BigUint::from_bytes_le(&r.0);
-        let mut ha = BigUint::from_bytes_le(&h.0);
-        ha.mul_assign(&BigUint::from_bytes_le(&sk.scalar.0));
-        s.add_assign(&ha);
-        s = s.mod_floor(&*ORDER);
-
-        Signature {
-            r: rr,
-            s: U256::from_le_bytes(&s.to_bytes_le()),
-        }
+        let hash = mimc::mimc(message.iter().map(|u| Fr::from(*u as u64)).collect());
+        Signature(eddsa::sign(&sk.0, hash))
     }
     fn verify(pk: &EdDSAPublicKey, message: &[u8], sig: &Signature) -> bool {
-        let pk = pk.0.decompress();
-
-        // h=H(R,A,M)
-        let mut inp = Vec::new();
-        inp.extend_from_slice(sig.r.0.to_repr().as_ref());
-        inp.extend_from_slice(sig.r.1.to_repr().as_ref());
-        inp.extend_from_slice(pk.0.to_repr().as_ref());
-        inp.extend_from_slice(pk.1.to_repr().as_ref());
-        inp.extend(message);
-        let (h, _) = U256::generate_two(&inp);
-
-        let sb = BASE.multiply(&sig.s);
-
-        let mut r_plus_ha = pk.multiply(&h);
-        r_plus_ha.add_assign(&sig.r);
-
-        r_plus_ha == sb
+        let hash = mimc::mimc(message.iter().map(|u| Fr::from(*u as u64)).collect());
+        eddsa::verify(&pk.0, hash, &sig.0)
     }
 }
 

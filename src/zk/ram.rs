@@ -1,9 +1,10 @@
-use super::{mimc, ZkState};
+use super::ZkState;
 use crate::config::LOG_ZK_RAM_SIZE;
-use crate::crypto::Fr;
 use ff::Field;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
+use zeekit::mimc;
+use zeekit::Fr;
 
 // A virtual RAM which represents the state of a contract
 // based on a Sparse Merkle Tree.
@@ -75,9 +76,9 @@ impl ZkRam {
     pub fn verify(mut index: u32, mut value: Fr, proof: Proof, root: Fr) -> bool {
         for p in proof.0 {
             value = if index & 1 == 0 {
-                mimc::mimc(value, p)
+                mimc::mimc(vec![value, p])
             } else {
-                mimc::mimc(p, value)
+                mimc::mimc(vec![p, value])
             };
             index = index >> 1;
         }
@@ -89,9 +90,9 @@ impl ZkRam {
             let neigh = if index & 1 == 0 { index + 1 } else { index - 1 };
             let neigh_val = self.get(level, neigh);
             value = if index & 1 == 0 {
-                mimc::mimc(value, neigh_val)
+                mimc::mimc(vec![value, neigh_val])
             } else {
-                mimc::mimc(neigh_val, value)
+                mimc::mimc(vec![neigh_val, value])
             };
             index = index >> 1;
         }

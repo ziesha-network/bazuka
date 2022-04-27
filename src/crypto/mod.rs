@@ -5,14 +5,9 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 pub use eddsa::*;
-pub use field::*;
-pub use mimc::*;
 
-mod curve;
 mod eddsa;
-mod field;
 pub mod merkle;
-mod mimc;
 
 #[cfg(feature = "pos")]
 mod vrf;

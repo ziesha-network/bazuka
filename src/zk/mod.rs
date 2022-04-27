@@ -1,9 +1,8 @@
-mod mimc;
 pub mod ram;
 
-use crate::crypto::Fr;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use zeekit::Fr;
 
 // A single state cell
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
