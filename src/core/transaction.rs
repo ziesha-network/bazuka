@@ -1,10 +1,9 @@
 use super::address::{Address, Signature};
-use super::contract::{
-    Circuit, CircuitProof, ContractCompressedState, ContractFullState, ContractId, ContractPayment,
-};
+use super::contract::{ContractId, ContractPayment};
 use super::hash::Hash;
 use super::Money;
 use crate::crypto::SignatureScheme;
+use crate::zk::{ZkProof, ZkScalar, ZkStateData, ZkStateModel, ZkVerifierKey};
 
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
@@ -22,23 +21,24 @@ pub enum TransactionData<S: SignatureScheme> {
     // Create a Zero-Contract. The creator can consider multiple ways (Circuits) of updating
     // the state. But there should be only one circuit for entering and exiting the contract.
     CreateContract {
-        deposit_withdraw_circuit: Circuit,
-        update_circuits: Vec<Circuit>,
-        initial_state: ContractFullState,
+        deposit_withdraw_circuit: ZkVerifierKey,
+        update_circuits: Vec<ZkVerifierKey>,
+        initial_state: ZkStateData,
+        state_model: ZkStateModel,
     },
     // Proof for DepositWithdrawCircuit(curr_state, next_state, hash(entries))
     DepositWithdraw {
         contract_id: ContractId,
         deposit_withdraws: Vec<ContractPayment<S>>,
-        next_state: ContractCompressedState,
-        proof: CircuitProof,
+        next_state: ZkScalar,
+        proof: ZkProof,
     },
     // Proof for UpdateCircuit[circuit_index](curr_state, next_state)
     Update {
         contract_id: ContractId,
         circuit_index: u32,
-        next_state: ContractCompressedState,
-        proof: CircuitProof,
+        next_state: ZkScalar,
+        proof: ZkProof,
     },
 }
 

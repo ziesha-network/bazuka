@@ -6,6 +6,7 @@ use crate::core::{Account, Address, Block, Header, Transaction, TransactionData}
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
 use crate::wallet::Wallet;
+use crate::zk::ZkState;
 
 #[derive(Error, Debug)]
 pub enum BlockchainError {
@@ -166,6 +167,7 @@ impl<K: KvStore> KvStoreChain<K> {
             TransactionData::CreateContract {
                 deposit_withdraw_circuit,
                 update_circuits,
+                state_model,
                 initial_state,
             } => {
                 ops.push(WriteOp::Put(
@@ -179,12 +181,18 @@ impl<K: KvStore> KvStoreChain<K> {
                     ));
                 }
                 ops.push(WriteOp::Put(
+                    format!("contract_state_model_{}", tx.uid()).into(),
+                    state_model.clone().into(),
+                ));
+                ops.push(WriteOp::Put(
                     format!("contract_initial_state_{}", tx.uid()).into(),
                     initial_state.clone().into(),
                 ));
+                let compressed_state =
+                    ZkState::new(state_model.clone(), initial_state.clone()).compress();
                 ops.push(WriteOp::Put(
                     format!("contract_compressed_state_{}", tx.uid()).into(),
-                    initial_state.compress().into(),
+                    compressed_state.into(),
                 ));
                 unimplemented!();
             }

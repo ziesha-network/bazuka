@@ -1,5 +1,6 @@
-use crate::core::{Account, Block, Circuit, ContractCompressedState, ContractFullState, Hasher};
+use crate::core::{Account, Block, Hasher};
 use crate::crypto::merkle::MerkleTree;
+use crate::zk::{ZkCompressedState, ZkStateData, ZkStateModel, ZkVerifierKey};
 use db_key::Key;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
@@ -59,9 +60,10 @@ gen_try_into!(
     Block,
     Vec<WriteOp>,
     MerkleTree<Hasher>,
-    Circuit,
-    ContractCompressedState,
-    ContractFullState
+    ZkVerifierKey,
+    ZkStateModel,
+    ZkStateData,
+    ZkCompressedState
 );
 gen_from!(
     u32,
@@ -71,9 +73,10 @@ gen_from!(
     &Block,
     Vec<WriteOp>,
     MerkleTree<Hasher>,
-    Circuit,
-    ContractCompressedState,
-    ContractFullState
+    ZkVerifierKey,
+    ZkStateModel,
+    ZkStateData,
+    ZkCompressedState
 );
 
 impl Key for StringKey {

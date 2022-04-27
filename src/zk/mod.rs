@@ -9,16 +9,45 @@ use std::collections::HashMap;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ZkScalar(Fr);
 
+// Each leaf of the target sparse merkle tree will be the
+// result of consecutive hash of `leaf_size` cells.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ZkStateModel {
+    leaf_size: u32,
+    tree_depth: u8,
+}
+
 // Full state of a contract
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ZkState(HashMap<u32, ZkScalar>);
+pub struct ZkStateData(HashMap<u32, ZkScalar>);
 
-impl ZkState {
+pub struct ZkState {
+    model: ZkStateModel,
+    data: ZkStateData,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ZkCompressedState {
+    state_hash: ZkScalar,
+    state_size: u32,
+}
+
+impl ZkStateData {
     pub fn size(&self) -> u32 {
         self.0.len() as u32
     }
-    pub fn root(&self) -> ZkScalar {
-        ZkScalar(ram::ZkRam::from_state(self).root())
+}
+
+impl ZkState {
+    pub fn new(model: ZkStateModel, data: ZkStateData) -> Self {
+        Self { model, data }
+    }
+    pub fn compress(&self) -> ZkCompressedState {
+        let root = ZkScalar(ram::ZkRam::from_state(self).root());
+        ZkCompressedState {
+            state_hash: root,
+            state_size: self.data.size(),
+        }
     }
 }
 

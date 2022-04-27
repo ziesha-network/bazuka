@@ -31,7 +31,7 @@ impl Default for Proof {
 impl ZkRam {
     pub fn from_state(state: &ZkState) -> Self {
         let mut r = Self::new();
-        for (k, v) in state.0.iter() {
+        for (k, v) in state.data.0.iter() {
             r.set(*k, v.0);
         }
         r
