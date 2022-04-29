@@ -12,7 +12,7 @@ use {super::api::messages::Puzzle, crate::core::Block};
 
 #[derive(Debug, Clone)]
 pub struct TransactionStats {
-    pub first_seen: u64,
+    pub first_seen: u32,
 }
 
 #[cfg(feature = "pow")]
@@ -26,14 +26,14 @@ pub struct NodeContext<B: Blockchain> {
     pub wallet: Option<Wallet>,
     pub mempool: HashMap<Transaction, TransactionStats>,
     pub peers: HashMap<PeerAddress, PeerStats>,
-    pub timestamp_offset: i64,
+    pub timestamp_offset: i32,
     #[cfg(feature = "pow")]
     pub miner: Option<Miner>,
 }
 
 impl<B: Blockchain> NodeContext<B> {
-    pub fn network_timestamp(&self) -> u64 {
-        (utils::local_timestamp() as i64 + self.timestamp_offset) as u64
+    pub fn network_timestamp(&self) -> u32 {
+        (utils::local_timestamp() as i32 + self.timestamp_offset) as u32
     }
     pub fn get_info(&self) -> Result<PeerInfo, BlockchainError> {
         Ok(PeerInfo {
@@ -70,7 +70,8 @@ impl<B: Blockchain> NodeContext<B> {
     #[cfg(feature = "pow")]
     pub fn get_puzzle(&self, wallet: Wallet) -> Result<(Block, Puzzle), BlockchainError> {
         let txs = self.mempool.keys().cloned().collect();
-        let block = self.blockchain.draft_block(&txs, &wallet)?;
+        let ts = self.network_timestamp();
+        let block = self.blockchain.draft_block(ts, &txs, &wallet)?;
         let puzzle = Puzzle {
             key: hex::encode(self.blockchain.pow_key(block.header.number as usize)?),
             blob: hex::encode(bincode::serialize(&block.header).unwrap()),

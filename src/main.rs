@@ -102,6 +102,7 @@ fn main() {
 
     chain
         .draft_block(
+            0,
             &vec![Transaction {
                 src: Address::Treasury,
                 data: TransactionData::RegularSend {

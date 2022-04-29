@@ -44,6 +44,7 @@ pub trait Blockchain {
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
     fn draft_block(
         &self,
+        timestamp: u32,
         mempool: &Vec<Transaction>,
         wallet: &Wallet,
     ) -> Result<Block, BlockchainError>;
@@ -450,6 +451,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
     fn draft_block(
         &self,
+        timestamp: u32,
         mempool: &Vec<Transaction>,
         _wallet: &Wallet,
     ) -> Result<Block, BlockchainError> {
@@ -464,7 +466,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         blk.header.block_root = blk.merkle_tree().root();
         #[cfg(feature = "pow")]
         {
-            blk.header.proof_of_work.target = last_block.header.proof_of_work.target;
+            blk.header.proof_of_work.timestamp = timestamp;
+            blk.header.proof_of_work.target = self.next_difficulty()?;
         }
         self.fork_on_ram().apply_block(&blk, true)?; // Check if everything is ok
         Ok(blk)

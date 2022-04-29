@@ -42,13 +42,13 @@ pub struct RegisterMinerResponse {}
 pub struct PostPeerRequest {
     pub address: PeerAddress,
     pub info: PeerInfo,
-    pub timestamp: u64,
+    pub timestamp: u32,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct PostPeerResponse {
     pub info: PeerInfo,
-    pub timestamp: u64,
+    pub timestamp: u32,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

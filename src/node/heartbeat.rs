@@ -68,7 +68,7 @@ pub async fn heartbeat<B: Blockchain>(
         if timestamps.len() > 0 {
             // Set timestamp_offset according to median timestamp of the network
             let median_timestamp = utils::median(&timestamps);
-            ctx.timestamp_offset = median_timestamp as i64 - utils::local_timestamp() as i64;
+            ctx.timestamp_offset = median_timestamp as i32 - utils::local_timestamp() as i32;
         }
 
         let mut inf = Vec::new();
