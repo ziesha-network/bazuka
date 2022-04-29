@@ -10,7 +10,7 @@ use crate::zk::ZkState;
 
 #[derive(Error, Debug)]
 pub enum BlockchainError {
-    #[error("kvstore error happened")]
+    #[error("kvstore error happened: {0}")]
     KvStoreError(#[from] KvStoreError),
     #[error("transaction signature is invalid")]
     SignatureError,

@@ -11,7 +11,7 @@ use thiserror::Error;
 pub enum KvStoreError {
     #[error("kvstore failure")]
     Failure,
-    #[error("kvstore data corrupted")]
+    #[error("kvstore data corrupted: {0}")]
     Corrupted(#[from] bincode::Error),
 }
 
