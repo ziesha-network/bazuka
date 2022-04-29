@@ -274,7 +274,7 @@ impl<K: KvStore> KvStoreChain<K> {
             let last_block = self.get_block(curr_height - 1)?;
 
             #[cfg(feature = "pow")]
-            if block.header.proof_of_work.timestamp > self.median_timestamp(curr_height - 1)? {
+            if block.header.proof_of_work.timestamp < self.median_timestamp(curr_height - 1)? {
                 return Err(BlockchainError::InvalidTimestamp);
             }
 
@@ -370,7 +370,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         for h in headers.iter() {
             let pow_key = self.pow_key(h.number as usize)?;
 
-            if h.proof_of_work.timestamp > self.median_timestamp(from - 1)? {
+            if h.proof_of_work.timestamp < self.median_timestamp(from - 1)? {
                 return Err(BlockchainError::InvalidTimestamp);
             }
 
