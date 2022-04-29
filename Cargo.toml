@@ -23,7 +23,7 @@ num-bigint = "0.4"
 num-integer = "0.1"
 lru = "0.7.5"
 hex = "0.4.3"
-zeekit = { git = "https://github.com/zeeka-network/zeekit.git", tag = "v0.1.2" }
+zeekit = "0.1.1"
 
 # Node related deps
 tokio = { version = "1", features = ["full"], optional = true }
@@ -54,3 +54,6 @@ default = ["pow"]
 node = ["tokio", "hyper", "leveldb", "futures", "structopt"]
 pow = ["rust-randomx"]
 pos = ["schnorrkel", "merlin", "futures-timer", "async-trait", "num-traits", "num-rational"]
+
+[patch.crates-io]
+dusk-bytes = { git = "https://github.com/zeeka-network/dusk-bytes.git", tag = "v0.1.6" }

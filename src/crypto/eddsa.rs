@@ -89,9 +89,9 @@ impl SignatureScheme for EdDSA {
 
 #[cfg(test)]
 mod tests {
-    use zeekit::Fr;
-    use zeekit::eddsa::BASE;
     use super::*;
+    use zeekit::eddsa::BASE;
+    use zeekit::Fr;
 
     #[test]
     fn test_public_key_compression() {
