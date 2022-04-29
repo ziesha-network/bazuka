@@ -484,7 +484,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
     #[cfg(feature = "pow")]
     fn pow_key(&self, index: usize) -> Result<Vec<u8>, BlockchainError> {
-        Ok(if index < 64 {
+        Ok(if index < config::POW_KEY_CHANGE_DELAY {
             config::POW_BASE_KEY.to_vec()
         } else {
             let reference = ((index - config::POW_KEY_CHANGE_DELAY)
