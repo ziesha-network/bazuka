@@ -27,7 +27,7 @@ use hyper::server::conn::AddrStream;
 use tokio::sync::RwLock;
 use tokio::try_join;
 
-pub type Timestamp = u64;
+pub type Timestamp = u32;
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerAddress(pub IpAddr, pub u16); // ip, port
@@ -62,7 +62,7 @@ impl PeerStats {
         }
         punished
     }
-    pub fn punish(&mut self, secs: u64) {
+    pub fn punish(&mut self, secs: u32) {
         let now = utils::local_timestamp();
         self.punished_until = match self.punished_until {
             Some(curr) => Some(std::cmp::min(curr + secs, now + punish::MAX_PUNISH)),
