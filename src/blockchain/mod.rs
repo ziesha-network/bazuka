@@ -105,7 +105,8 @@ impl<K: KvStore> KvStoreChain<K> {
             let time_delta =
                 last_block.proof_of_work.timestamp - prev_block.proof_of_work.timestamp;
             let avg_block_time = time_delta / config::DIFFICULTY_CALC_INTERVAL as u32;
-            let diff_change = config::BLOCK_TIME as f32 / avg_block_time as f32;
+            let diff_change =
+                (config::BLOCK_TIME as f32 / avg_block_time as f32).clamp(0.5f32, 2f32);
             let new_diff =
                 rust_randomx::Difficulty::new(last_block.proof_of_work.target).scale(diff_change);
             Ok(new_diff.to_u32())
