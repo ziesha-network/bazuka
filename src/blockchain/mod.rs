@@ -201,18 +201,18 @@ impl<K: KvStore> KvStoreChain<K> {
                 unimplemented!();
             }
             TransactionData::DepositWithdraw {
-                contract_id,
-                deposit_withdraws,
-                next_state,
-                proof,
+                contract_id: _,
+                deposit_withdraws: _,
+                next_state: _,
+                proof: _,
             } => {
                 unimplemented!();
             }
             TransactionData::Update {
-                contract_id,
-                circuit_index,
-                next_state,
-                proof,
+                contract_id: _,
+                circuit_index: _,
+                next_state: _,
+                proof: _,
             } => {
                 unimplemented!();
             }
