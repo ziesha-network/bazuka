@@ -89,13 +89,13 @@ impl SignatureScheme for EdDSA {
 
 #[cfg(test)]
 mod tests {
+    use zeekit::Fr;
+    use zeekit::eddsa::BASE;
     use super::*;
 
     #[test]
     fn test_public_key_compression() {
-        let scalar = U256::generate(b"hi");
-        let p1 = BASE.multiply(&scalar);
-
+        let p1 = BASE.multiply(&Fr::from(123 as u64));
         let p2 = p1.compress().decompress();
 
         assert_eq!(p1, p2);
@@ -107,6 +107,7 @@ mod tests {
         let msg = b"Hi this a transaction!";
         let fake_msg = b"Hi this a fake transaction!";
         let sig = EdDSA::sign(&sk, msg);
+
         assert!(EdDSA::verify(&pk, msg, &sig));
         assert!(!EdDSA::verify(&pk, fake_msg, &sig));
     }
