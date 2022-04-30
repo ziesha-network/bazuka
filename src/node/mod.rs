@@ -29,7 +29,7 @@ use tokio::try_join;
 
 pub type Timestamp = u32;
 
-#[derive(Deserialize, Serialize, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerAddress(pub IpAddr, pub u16); // ip, port
 
 impl std::fmt::Display for PeerAddress {

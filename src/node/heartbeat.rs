@@ -112,7 +112,11 @@ pub async fn heartbeat<B: Blockchain>(
         let resps = punish_non_responding(Arc::clone(&context), &header_responses).await;
         for (peer, resp) in resps.iter() {
             if !resp.headers.is_empty() {
-                if ctx.blockchain.will_extend(height, &resp.headers)? {
+                if ctx
+                    .blockchain
+                    .will_extend(height, &resp.headers)
+                    .unwrap_or(false)
+                {
                     println!("{} has a longer chain!", peer);
                     let resp = http::bincode_get::<GetBlocksRequest, GetBlocksResponse>(
                         format!("{}/bincode/blocks", peer).to_string(),
@@ -122,7 +126,11 @@ pub async fn heartbeat<B: Blockchain>(
                         },
                     )
                     .await?;
-                    ctx.blockchain.extend(height, &resp.blocks)?;
+                    if ctx.blockchain.extend(height, &resp.blocks).is_err() {
+                        ctx.punish(*peer, punish::INVALID_DATA_PUNISH);
+                    }
+                } else {
+                    ctx.punish(*peer, punish::INVALID_DATA_PUNISH);
                 }
             }
         }
