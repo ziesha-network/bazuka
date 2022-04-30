@@ -35,6 +35,11 @@ impl<B: Blockchain> NodeContext<B> {
     pub fn network_timestamp(&self) -> u32 {
         (utils::local_timestamp() as i32 + self.timestamp_offset) as u32
     }
+    pub fn punish(&mut self, bad_peer: PeerAddress, secs: u32) {
+        self.peers
+            .entry(bad_peer.clone())
+            .and_modify(|stats| stats.punish(secs));
+    }
     pub fn get_info(&self) -> Result<PeerInfo, BlockchainError> {
         Ok(PeerInfo {
             height: self.blockchain.get_height()?,

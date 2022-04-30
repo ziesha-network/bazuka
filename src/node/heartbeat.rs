@@ -21,6 +21,24 @@ pub async fn heartbeater<B: Blockchain>(
     }
 }
 
+async fn punish_non_responding<B: Blockchain, R: Clone, E>(
+    ctx: Arc<RwLock<NodeContext<B>>>,
+    resps: &Vec<(PeerAddress, Result<R, E>)>,
+) -> Vec<(PeerAddress, R)> {
+    let mut ctx = ctx.write().await;
+    resps
+        .iter()
+        .filter_map(|(peer, resp)| {
+            if let Ok(resp) = resp {
+                ctx.punish(peer.clone(), punish::NO_RESPONSE_PUNISH);
+                Some((peer.clone(), resp.clone()))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
 pub async fn heartbeat<B: Blockchain>(
     address: PeerAddress,
     context: Arc<RwLock<NodeContext<B>>>,
@@ -51,19 +69,10 @@ pub async fn heartbeat<B: Blockchain>(
 
     {
         let mut ctx = context.write().await;
-        for bad_peer in peer_responses
-            .iter()
-            .filter(|(_, resp)| resp.is_err())
-            .map(|(p, _)| p)
-        {
-            ctx.peers
-                .entry(bad_peer.clone())
-                .and_modify(|stats| stats.punish(punish::NO_RESPONSE_PUNISH));
-        }
-        let timestamps = peer_responses
-            .iter()
-            .filter_map(|r| r.1.as_ref().ok())
-            .map(|r| r.timestamp)
+        let timestamps = punish_non_responding(Arc::clone(&context), &peer_responses)
+            .await
+            .into_iter()
+            .map(|(_, r)| r.timestamp)
             .collect::<Vec<_>>();
         if timestamps.len() > 0 {
             // Set timestamp_offset according to median timestamp of the network
@@ -100,25 +109,7 @@ pub async fn heartbeat<B: Blockchain>(
 
     {
         let mut ctx = context.write().await;
-        for bad_peer in header_responses
-            .iter()
-            .filter(|(_, resp)| resp.is_err())
-            .map(|(p, _)| p)
-        {
-            ctx.peers
-                .entry(bad_peer.clone())
-                .and_modify(|stats| stats.punish(punish::NO_RESPONSE_PUNISH));
-        }
-        let resps = header_responses
-            .into_iter()
-            .filter_map(|r| {
-                if r.1.as_ref().is_ok() {
-                    Some((r.0.clone(), r.1.unwrap()))
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<(PeerAddress, GetHeadersResponse)>>();
+        let resps = punish_non_responding(Arc::clone(&context), &header_responses).await;
         for (peer, resp) in resps.iter() {
             if !resp.headers.is_empty() {
                 if ctx.blockchain.will_extend(height, &resp.headers)? {
