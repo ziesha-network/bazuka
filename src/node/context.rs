@@ -48,7 +48,7 @@ impl<B: Blockchain> NodeContext<B> {
         })
     }
     pub fn random_peers<R: RngCore>(
-        &mut self,
+        &self,
         rng: &mut R,
         count: usize,
     ) -> HashMap<PeerAddress, PeerStats> {
@@ -59,9 +59,9 @@ impl<B: Blockchain> NodeContext<B> {
             .into_iter()
             .collect()
     }
-    pub fn active_peers(&mut self) -> HashMap<PeerAddress, PeerStats> {
+    pub fn active_peers(&self) -> HashMap<PeerAddress, PeerStats> {
         self.peers
-            .iter_mut()
+            .iter()
             .filter_map(|(k, v)| {
                 if !v.is_punished() {
                     Some((k.clone(), v.clone()))

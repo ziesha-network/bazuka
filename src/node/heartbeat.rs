@@ -43,7 +43,7 @@ pub async fn heartbeat<B: Blockchain>(
     address: PeerAddress,
     context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
-    let mut ctx = context.write().await;
+    let ctx = context.read().await;
     let timestamp = ctx.network_timestamp();
     let info = ctx.get_info()?;
     let height = ctx.blockchain.get_height()?;

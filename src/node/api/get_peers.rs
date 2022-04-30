@@ -8,7 +8,7 @@ pub async fn get_peers<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     _req: GetPeersRequest,
 ) -> Result<GetPeersResponse, NodeError> {
-    let mut context = context.write().await;
+    let context = context.read().await;
     Ok(GetPeersResponse {
         peers: context.active_peers(),
     })

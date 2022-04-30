@@ -52,20 +52,20 @@ pub struct PeerStats {
 }
 
 impl PeerStats {
-    pub fn is_punished(&mut self) -> bool {
+    pub fn is_punished(&self) -> bool {
         let punished = match self.punished_until {
             Some(until) => utils::local_timestamp() < until,
             None => false,
         };
-        if !punished {
-            self.punished_until = None;
-        }
         punished
     }
     pub fn punish(&mut self, secs: u32) {
         let now = utils::local_timestamp();
         self.punished_until = match self.punished_until {
-            Some(curr) => Some(std::cmp::min(curr + secs, now + punish::MAX_PUNISH)),
+            Some(curr) => Some(std::cmp::min(
+                std::cmp::max(curr, now) + secs,
+                now + punish::MAX_PUNISH,
+            )),
             None => Some(now + secs),
         };
     }
