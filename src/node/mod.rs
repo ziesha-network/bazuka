@@ -47,27 +47,20 @@ pub struct PeerInfo {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PeerStats {
-    pub punished_until: Option<Timestamp>,
+    pub punished_until: Timestamp,
     pub info: Option<PeerInfo>,
 }
 
 impl PeerStats {
     pub fn is_punished(&self) -> bool {
-        let punished = match self.punished_until {
-            Some(until) => utils::local_timestamp() < until,
-            None => false,
-        };
-        punished
+        utils::local_timestamp() < self.punished_until
     }
     pub fn punish(&mut self, secs: u32) {
         let now = utils::local_timestamp();
-        self.punished_until = match self.punished_until {
-            Some(curr) => Some(std::cmp::min(
-                std::cmp::max(curr, now) + secs,
-                now + punish::MAX_PUNISH,
-            )),
-            None => Some(now + secs),
-        };
+        self.punished_until = std::cmp::min(
+            std::cmp::max(self.punished_until, now) + secs,
+            now + punish::MAX_PUNISH,
+        );
     }
 }
 
@@ -189,7 +182,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                         (
                             addr,
                             PeerStats {
-                                punished_until: None,
+                                punished_until: 0,
                                 info: None,
                             },
                         )
