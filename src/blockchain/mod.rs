@@ -280,6 +280,7 @@ impl<K: KvStore> KvStoreChain<K> {
     fn apply_block(&mut self, block: &Block, draft: bool) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
         let is_genesis = block.header.number == 0;
+        let next_reward = self.next_reward()?;
 
         #[cfg(feature = "pow")]
         let pow_key = self.pow_key(block.header.number as usize)?;
@@ -319,8 +320,27 @@ impl<K: KvStore> KvStoreChain<K> {
             if block.body.len() < 1 {
                 return Err(BlockchainError::MinerRewardNotFound);
             }
+            let reward_tx = block.body.first().unwrap();
+
+            if reward_tx.src != Address::Treasury
+                || reward_tx.fee != 0
+                || reward_tx.sig != Signature::Unsigned
+            {
+                return Err(BlockchainError::InvalidMinerReward);
+            }
+            match reward_tx.data {
+                TransactionData::RegularSend { dst: _, amount } => {
+                    if amount != next_reward {
+                        return Err(BlockchainError::InvalidMinerReward);
+                    }
+                }
+                _ => {
+                    return Err(BlockchainError::InvalidMinerReward);
+                }
+            }
+
             // Reward tx allowed to get money from Treasury
-            fork.apply_tx(block.body.first().unwrap(), true)?;
+            fork.apply_tx(reward_tx, true)?;
             &block.body[1..]
         } else {
             &block.body[..]
