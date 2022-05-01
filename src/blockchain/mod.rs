@@ -480,7 +480,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(blks)
     }
     fn next_reward(&self) -> Result<Money, BlockchainError> {
-        Ok(100_000000000) // TODO: Calculate reward
+        let supply = self.get_account(Address::Treasury)?.balance;
+        Ok(supply / config::REWARD_RATIO)
     }
     fn draft_block(
         &self,

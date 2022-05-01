@@ -12,5 +12,6 @@ pub async fn get_stats<B: Blockchain>(
     Ok(GetStatsResponse {
         height: context.blockchain.get_height()?,
         power: context.blockchain.get_power()?,
+        next_reward: context.blockchain.next_reward()?,
     })
 }
