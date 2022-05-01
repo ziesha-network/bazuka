@@ -2,7 +2,9 @@ use thiserror::Error;
 
 use crate::config;
 use crate::config::{genesis, TOTAL_SUPPLY};
-use crate::core::{Account, Address, Block, Header, Transaction, TransactionData};
+use crate::core::{
+    Account, Address, Block, Header, Money, Signature, Transaction, TransactionData,
+};
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
 use crate::wallet::Wallet;
@@ -36,10 +38,17 @@ pub enum BlockchainError {
     InvalidTimestamp,
     #[error("unmet difficulty target")]
     DifficultyTargetUnmet,
+    #[error("miner reward not present")]
+    MinerRewardNotFound,
+    #[error("illegal access to treasury funds")]
+    IllegalTreasuryAccess,
+    #[error("miner reward transaction is invalid")]
+    InvalidMinerReward,
 }
 
 pub trait Blockchain {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
+    fn next_reward(&self) -> Result<Money, BlockchainError>;
     fn will_extend(&self, from: usize, headers: &Vec<Header>) -> Result<bool, BlockchainError>;
     fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
     fn draft_block(
@@ -128,10 +137,14 @@ impl<K: KvStore> KvStoreChain<K> {
         })
     }
 
-    fn apply_tx(&mut self, tx: &Transaction) -> Result<(), BlockchainError> {
+    fn apply_tx(&mut self, tx: &Transaction, allow_treasury: bool) -> Result<(), BlockchainError> {
         let mut ops = Vec::new();
 
         let mut acc_src = self.get_account(tx.src.clone())?;
+
+        if tx.src == Address::Treasury && !allow_treasury {
+            return Err(BlockchainError::IllegalTreasuryAccess);
+        }
 
         if !tx.verify_signature() {
             return Err(BlockchainError::SignatureError);
@@ -257,7 +270,7 @@ impl<K: KvStore> KvStoreChain<K> {
         let mut fork = self.fork_on_ram();
         let mut result = Vec::new();
         for tx in sorted.into_iter() {
-            if fork.apply_tx(&tx).is_ok() {
+            if fork.apply_tx(&tx, false).is_ok() {
                 result.push(tx);
             }
         }
@@ -266,6 +279,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn apply_block(&mut self, block: &Block, draft: bool) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
+        let is_genesis = block.header.number == 0;
 
         #[cfg(feature = "pow")]
         let pow_key = self.pow_key(block.header.number as usize)?;
@@ -299,8 +313,21 @@ impl<K: KvStore> KvStoreChain<K> {
         }
 
         let mut fork = self.fork_on_ram();
-        for tx in block.body.iter() {
-            fork.apply_tx(tx)?;
+
+        // All blocks except genesis block should have a miner reward
+        let txs = if !is_genesis {
+            if block.body.len() < 1 {
+                return Err(BlockchainError::MinerRewardNotFound);
+            }
+            // Reward tx allowed to get money from Treasury
+            fork.apply_tx(block.body.first().unwrap(), true)?;
+            &block.body[1..]
+        } else {
+            &block.body[..]
+        };
+
+        for tx in txs.iter() {
+            fork.apply_tx(tx, is_genesis)?; // All genesis block txs are allowed to get from Treasury
         }
         let mut changes = fork.database.to_ops();
 
@@ -452,17 +479,34 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }
         Ok(blks)
     }
+    fn next_reward(&self) -> Result<Money, BlockchainError> {
+        Ok(100_000000000) // TODO: Calculate reward
+    }
     fn draft_block(
         &self,
         timestamp: u32,
         mempool: &Vec<Transaction>,
-        _wallet: &Wallet,
+        wallet: &Wallet,
     ) -> Result<Block, BlockchainError> {
         let height = self.get_height()?;
         let last_block = self.get_block(height - 1)?;
+        let treasury_nonce = self.get_account(Address::Treasury)?.nonce;
+
+        let mut txs = vec![Transaction {
+            src: Address::Treasury,
+            data: TransactionData::RegularSend {
+                dst: wallet.get_address(),
+                amount: self.next_reward()?,
+            },
+            nonce: treasury_nonce + 1,
+            fee: 0,
+            sig: Signature::Unsigned,
+        }];
+        txs.extend(self.select_transactions(mempool)?);
+
         let mut blk = Block {
             header: Default::default(),
-            body: self.select_transactions(mempool)?,
+            body: txs,
         };
         blk.header.number = height as u64;
         blk.header.parent_hash = last_block.header.hash();
