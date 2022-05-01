@@ -38,7 +38,7 @@ impl std::fmt::Display for PeerAddress {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PeerInfo {
     pub height: usize,
     #[cfg(feature = "pow")]
