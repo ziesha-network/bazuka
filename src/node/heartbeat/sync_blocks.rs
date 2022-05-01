@@ -26,7 +26,7 @@ pub async fn sync_blocks<B: Blockchain>(
 
     {
         let mut ctx = context.write().await;
-        let resps = punish_non_responding(&mut ctx, &header_responses).await;
+        let resps = punish_non_responding(&mut ctx, &header_responses);
         for (peer, resp) in resps.iter() {
             if !resp.headers.is_empty() {
                 if ctx
