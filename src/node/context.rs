@@ -62,17 +62,15 @@ impl<B: Blockchain> NodeContext<B> {
             .into_iter()
             .collect()
     }
-    pub fn most_powerful_peers(
-        &self,
-        count: usize,
-    ) -> HashMap<PeerAddress, PeerStats> {
+    pub fn most_powerful_peers(&self, count: usize) -> HashMap<PeerAddress, PeerStats> {
         let mut active_peers = self
             .active_peers()
             .clone()
             .into_iter()
             .collect::<Vec<(PeerAddress, PeerStats)>>();
         active_peers.sort_by(|(_, a), (_, b)| -> std::cmp::Ordering {
-            b.info.clone()
+            b.info
+                .clone()
                 .unwrap_or_default()
                 .power
                 .cmp(&a.info.clone().unwrap_or_default().power)
@@ -243,6 +241,46 @@ mod test_node_context {
                 .map(|(_, v)| v.info.clone().unwrap().power)
                 .collect::<Vec<_>>(),
             vec![7, 5]
+        );
+    }
+    #[test]
+    #[cfg(feature = "pow")]
+    fn most_powerful_peers_should_not_fail_if_peer_info_is_unavailable() {
+        use std::net::IpAddr;
+
+        use crate::node::PeerStats;
+
+        let nodes_address: IpAddr = "127.0.0.1".parse().unwrap();
+        let node_context = NodeContext {
+            blockchain: MockBlockchain,
+            wallet: None,
+            mempool: HashMap::new(),
+            peers: HashMap::from([
+                (
+                    PeerAddress(nodes_address, 10),
+                    PeerStats {
+                        punished_until: 0,
+                        info: None,
+                    },
+                ),
+                (
+                    PeerAddress(nodes_address, 9),
+                    PeerStats {
+                        punished_until: 0,
+                        info: None,
+                    },
+                ),
+            ]),
+            timestamp_offset: 0,
+            miner: None,
+        };
+        let most_powerful_peers = node_context.most_powerful_peers(2);
+        assert_eq!(
+            most_powerful_peers
+                .iter()
+                .map(|(_, v)| v.info.clone().unwrap_or_default().power)
+                .collect::<Vec<_>>(),
+            vec![0, 0]
         );
     }
 }
