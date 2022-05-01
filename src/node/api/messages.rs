@@ -31,7 +31,7 @@ pub struct Puzzle {
 #[cfg(feature = "pow")]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct RegisterMinerRequest {
-    pub webhook: String,
+    pub webhook: Option<String>,
 }
 
 #[cfg(feature = "pow")]

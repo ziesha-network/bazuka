@@ -16,9 +16,12 @@ pub struct TransactionStats {
 }
 
 #[cfg(feature = "pow")]
+pub type BlockPuzzle = (Block, Puzzle);
+
+#[cfg(feature = "pow")]
 pub struct Miner {
-    pub block: Option<Block>,
-    pub webhook: String,
+    pub block_puzzle: Option<BlockPuzzle>,
+    pub webhook: Option<String>,
 }
 
 pub struct NodeContext<B: Blockchain> {
@@ -73,7 +76,7 @@ impl<B: Blockchain> NodeContext<B> {
     }
 
     #[cfg(feature = "pow")]
-    pub fn get_puzzle(&self, wallet: Wallet) -> Result<(Block, Puzzle), BlockchainError> {
+    pub fn get_puzzle(&self, wallet: Wallet) -> Result<BlockPuzzle, BlockchainError> {
         let txs = self.mempool.keys().cloned().collect();
         let ts = self.network_timestamp();
         let block = self.blockchain.draft_block(ts, &txs, &wallet)?;
