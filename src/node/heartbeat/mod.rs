@@ -47,9 +47,9 @@ async fn punish_non_responding<B: Blockchain, R: Clone, E>(
         .iter()
         .filter_map(|(peer, resp)| {
             if let Ok(resp) = resp {
-                ctx.punish(peer.clone(), punish::NO_RESPONSE_PUNISH);
                 Some((peer.clone(), resp.clone()))
             } else {
+                ctx.punish(peer.clone(), punish::NO_RESPONSE_PUNISH);
                 None
             }
         })
