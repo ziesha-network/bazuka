@@ -175,6 +175,10 @@ mod test_node_context {
         fn pow_key(&self, index: usize) -> Result<Vec<u8>, crate::blockchain::BlockchainError> {
             todo!()
         }
+
+        fn next_reward(&self) -> Result<crate::core::Money, BlockchainError> {
+            todo!()
+        }
     }
 
     #[test]
