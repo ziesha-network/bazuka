@@ -237,7 +237,7 @@ mod test_node_context {
                 .iter()
                 .map(|(_, v)| v.info.clone().unwrap().power)
                 .collect::<Vec<_>>(),
-            vec![7, 5]
+            vec![5, 7]
         );
     }
     #[test]
