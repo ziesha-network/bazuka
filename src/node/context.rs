@@ -62,6 +62,23 @@ impl<B: Blockchain> NodeContext<B> {
             .into_iter()
             .collect()
     }
+    pub fn most_powerful_peers(
+        &self,
+        count: usize,
+    ) -> HashMap<PeerAddress, PeerStats> {
+        let mut active_peers = self
+            .active_peers()
+            .clone()
+            .into_iter()
+            .collect::<Vec<(PeerAddress, PeerStats)>>();
+        active_peers.sort_by(|(_, a), (_, b)| -> std::cmp::Ordering {
+            b.info.clone()
+                .unwrap_or_default()
+                .power
+                .cmp(&a.info.clone().unwrap_or_default().power)
+        });
+        active_peers.into_iter().take(count).collect()
+    }
     pub fn active_peers(&self) -> HashMap<PeerAddress, PeerStats> {
         self.peers
             .iter()
@@ -88,5 +105,144 @@ impl<B: Blockchain> NodeContext<B> {
             target: block.header.proof_of_work.target,
         };
         Ok((block, puzzle))
+    }
+}
+
+#[cfg(test)]
+mod test_node_context {
+    use crate::node::{PeerAddress, PeerInfo};
+    use std::collections::HashMap;
+
+    use crate::{blockchain::Blockchain, blockchain::BlockchainError};
+
+    use super::NodeContext;
+
+    struct MockBlockchain;
+    impl Blockchain for MockBlockchain {
+        fn get_height(&self) -> Result<usize, BlockchainError> {
+            Ok(0)
+        }
+        fn get_power(&self) -> Result<u64, BlockchainError> {
+            Ok(0)
+        }
+
+        fn get_account(
+            &self,
+            addr: crate::core::Address,
+        ) -> Result<crate::core::Account, crate::blockchain::BlockchainError> {
+            todo!()
+        }
+
+        fn will_extend(
+            &self,
+            from: usize,
+            headers: &Vec<crate::core::Header>,
+        ) -> Result<bool, crate::blockchain::BlockchainError> {
+            todo!()
+        }
+
+        fn extend(
+            &mut self,
+            from: usize,
+            blocks: &Vec<crate::core::Block>,
+        ) -> Result<(), crate::blockchain::BlockchainError> {
+            todo!()
+        }
+
+        fn draft_block(
+            &self,
+            timestamp: u32,
+            mempool: &Vec<crate::core::Transaction>,
+            wallet: &crate::wallet::Wallet,
+        ) -> Result<crate::core::Block, crate::blockchain::BlockchainError> {
+            todo!()
+        }
+
+        fn get_headers(
+            &self,
+            since: usize,
+            until: Option<usize>,
+        ) -> Result<Vec<crate::core::Header>, crate::blockchain::BlockchainError> {
+            todo!()
+        }
+
+        fn get_blocks(
+            &self,
+            since: usize,
+            until: Option<usize>,
+        ) -> Result<Vec<crate::core::Block>, crate::blockchain::BlockchainError> {
+            todo!()
+        }
+
+        fn pow_key(&self, index: usize) -> Result<Vec<u8>, crate::blockchain::BlockchainError> {
+            todo!()
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "pow")]
+    fn most_powerful_peers_should_returns_peers_with_most_power() {
+        use std::net::IpAddr;
+
+        use crate::node::PeerStats;
+
+        let nodes_address: IpAddr = "127.0.0.1".parse().unwrap();
+        let node_context = NodeContext {
+            blockchain: MockBlockchain,
+            wallet: None,
+            mempool: HashMap::new(),
+            peers: HashMap::from([
+                (
+                    PeerAddress(nodes_address, 10),
+                    PeerStats {
+                        punished_until: 0,
+                        info: Some(PeerInfo {
+                            height: 0,
+                            power: 1,
+                        }),
+                    },
+                ),
+                (
+                    PeerAddress(nodes_address, 9),
+                    PeerStats {
+                        punished_until: 0,
+                        info: Some(PeerInfo {
+                            height: 0,
+                            power: 5,
+                        }),
+                    },
+                ),
+                (
+                    PeerAddress(nodes_address, 8),
+                    PeerStats {
+                        punished_until: 0,
+                        info: Some(PeerInfo {
+                            height: 0,
+                            power: 2,
+                        }),
+                    },
+                ),
+                (
+                    PeerAddress(nodes_address, 7),
+                    PeerStats {
+                        punished_until: 0,
+                        info: Some(PeerInfo {
+                            height: 0,
+                            power: 7,
+                        }),
+                    },
+                ),
+            ]),
+            timestamp_offset: 0,
+            miner: None,
+        };
+        let most_powerful_peers = node_context.most_powerful_peers(2);
+        assert_eq!(
+            most_powerful_peers
+                .iter()
+                .map(|(_, v)| v.info.clone().unwrap().power)
+                .collect::<Vec<_>>(),
+            vec![7, 5]
+        );
     }
 }
