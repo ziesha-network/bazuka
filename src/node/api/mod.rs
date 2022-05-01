@@ -2,6 +2,8 @@ use super::{NodeContext, NodeError, PeerAddress, PeerInfo, PeerStats, Transactio
 
 pub mod messages;
 
+mod get_stats;
+pub use get_stats::*;
 mod get_peers;
 pub use get_peers::*;
 mod post_peer;

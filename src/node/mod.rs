@@ -113,6 +113,11 @@ async fn node_service<B: Blockchain>(
             )?);
         }
 
+        (Method::GET, "/stats") => {
+            *response.body_mut() = Body::from(serde_json::to_vec(
+                &api::get_stats(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+            )?);
+        }
         (Method::GET, "/peers") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
                 &api::get_peers(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,

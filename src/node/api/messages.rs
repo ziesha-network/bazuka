@@ -4,6 +4,15 @@ use super::{PeerAddress, PeerInfo, PeerStats};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetStatsRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetStatsResponse {
+    pub height: usize,
+    pub power: u64,
+}
+
 #[cfg(feature = "pow")]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMinerSolutionRequest {
