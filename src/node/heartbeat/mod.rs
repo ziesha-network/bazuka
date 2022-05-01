@@ -10,6 +10,7 @@ use crate::blockchain::Blockchain;
 use crate::config::punish;
 use crate::utils;
 use std::sync::Arc;
+use tokio::join;
 use tokio::sync::{RwLock, RwLockWriteGuard};
 use tokio::time::{sleep, Duration};
 
@@ -32,10 +33,12 @@ pub async fn heartbeater<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     loop {
-        if let Err(e) = heartbeat(address.clone(), Arc::clone(&context)).await {
+        let heartbeat_future = heartbeat(address.clone(), Arc::clone(&context));
+        let sleep_future = sleep(Duration::from_millis(1000));
+        let (res, _) = join!(heartbeat_future, sleep_future);
+        if let Err(e) = res {
             println!("Error happened: {}", e);
         }
-        sleep(Duration::from_millis(1000)).await;
     }
 }
 
