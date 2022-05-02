@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::config;
-use crate::config::{genesis, TOTAL_SUPPLY};
+use crate::config::{TOTAL_SUPPLY};
 use crate::core::{
     Account, Address, Block, Header, Money, Signature, Transaction, TransactionData,
 };
@@ -77,10 +77,10 @@ pub struct KvStoreChain<K: KvStore> {
 }
 
 impl<K: KvStore> KvStoreChain<K> {
-    pub fn new(kv_store: K) -> Result<KvStoreChain<K>, BlockchainError> {
+    pub fn new(kv_store: K, genesis_block: Block) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> { database: kv_store };
         if chain.get_height()? == 0 {
-            chain.apply_block(&genesis::get_genesis_block(), false)?;
+            chain.apply_block(&genesis_block, false)?;
         }
         Ok(chain)
     }
@@ -173,7 +173,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
                 if *dst != tx.src {
                     let mut acc_dst = self.get_account(dst.clone())?;
-                    acc_dst.balance += amount;
+                    acc_dst.balance += *amount;
 
                     ops.push(WriteOp::Put(
                         format!("account_{}", dst).into(),
@@ -246,7 +246,7 @@ impl<K: KvStore> KvStoreChain<K> {
     pub fn rollback_block(&mut self) -> Result<(), BlockchainError> {
         let height = self.get_height()?;
         let rollback_key: StringKey = format!("rollback_{:010}", height - 1).into();
-        let mut rollback: Vec<WriteOp> = match self.database.get(rollback_key)? {
+        let mut rollback: Vec<WriteOp> = match self.database.get(rollback_key.clone())? {
             Some(b) => b.try_into()?,
             None => {
                 return Err(BlockchainError::Inconsistency);
@@ -254,9 +254,7 @@ impl<K: KvStore> KvStoreChain<K> {
         };
         rollback.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
         rollback.push(WriteOp::Remove(format!("merkle_{:010}", height - 1).into()));
-        rollback.push(WriteOp::Remove(
-            format!("rollback_{:010}", height - 1).into(),
-        ));
+        rollback.push(WriteOp::Remove(rollback_key));
         self.database.update(&rollback)?;
         Ok(())
     }
@@ -563,5 +561,225 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 * config::POW_KEY_CHANGE_INTERVAL;
             self.get_block(reference)?.header.hash().to_vec()
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{db};
+    use crate::config::genesis;
+    use crate::core::{Address, TransactionData};
+
+    const DEFAULT_DIFFICULTY: u32 = 0x0000ffff;
+
+    #[test]
+    fn test_empty_chain_should_have_genesis_block() -> Result<(), BlockchainError> {
+        let genesis_block = genesis::get_genesis_block();
+        let chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+        assert_eq!(1, chain.get_height()?);
+
+        let first_block = chain.get_block(0)?;
+        assert_eq!(genesis_block.header.hash(), first_block.header.hash());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
+        let wallet_miner = Wallet::new(Vec::from("MINER"));
+        let wallet1 = Wallet::new(Vec::from("ABC"));
+        let wallet2 = Wallet::new(Vec::from("CBA"));
+
+        let mut genesis_block = genesis::get_genesis_block();
+        genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
+        genesis_block.body = vec!(Transaction {
+            src: Address::Treasury,
+            data: TransactionData::RegularSend {
+                dst: wallet1.get_address(),
+                amount: 10_000_000,
+            },
+            nonce: 1,
+            fee: 0,
+            sig: Signature::Unsigned,
+        });
+
+        let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
+
+        let t1 = wallet1.create_transaction(wallet2.get_address(), 100, 0, 1);
+        let mempool = vec![t1];
+        let mut draft = chain.draft_block(1650000000, &mempool, &wallet_miner)?;
+
+        mine_block(&chain, &mut draft)?;
+        chain.apply_block(&draft, false)?;
+
+        let height = chain.get_height()?;
+        assert_eq!(2, height);
+
+        let last_block = chain.get_block(height - 1)?;
+        let w2_address = wallet2.get_address();
+        assert!(matches!(&last_block.body[1].data,
+            TransactionData::RegularSend { dst: _w2_address, amount: 100 }));
+
+        let account = chain.get_account(wallet2.get_address())?;
+        assert_eq!(100, account.balance);
+        assert_eq!(0, account.nonce);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainError> {
+        let wallet_miner = Wallet::new(Vec::from("MINER"));
+        let wallet1 = Wallet::new(Vec::from("ABC"));
+        let wallet2 = Wallet::new(Vec::from("CBA"));
+
+        let mut genesis_block = genesis::get_genesis_block();
+        genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
+        genesis_block.body = vec!(Transaction {
+            src: Address::Treasury,
+            data: TransactionData::RegularSend {
+                dst: wallet1.get_address(),
+                amount: 10_000_000,
+            },
+            nonce: 1,
+            fee: 0,
+            sig: Signature::Unsigned,
+        });
+
+        let chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
+
+        let t_valid = wallet1.create_transaction(wallet2.get_address(), 200, 0, 1);
+        let t_invalid_unsigned = Transaction {
+            src: wallet1.get_address(),
+            data: TransactionData::RegularSend { dst: wallet2.get_address(), amount: 300 },
+            nonce: 1,
+            fee: 0,
+            sig: Signature::Unsigned, // invalid transaction
+        };
+        let t_invalid_from_treasury = Transaction {
+            src: Address::Treasury,
+            data: TransactionData::RegularSend { dst: wallet2.get_address(), amount: 500 },
+            nonce: 1,
+            fee: 0,
+            sig: Signature::Unsigned, // invalid transaction
+        };
+        let mempool = vec![t_valid, t_invalid_unsigned, t_invalid_from_treasury];
+        let draft = chain.draft_block(1650000000, &mempool, &wallet_miner)?;
+
+        assert_eq!(2, draft.body.len());
+        assert_eq!(wallet1.get_address(), draft.body[1].src);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainError> {
+        let wallet_miner = Wallet::new(Vec::from("MINER"));
+        let wallet1 = Wallet::new(Vec::from("ABC"));
+        let wallet2 = Wallet::new(Vec::from("CBA"));
+
+        let mut genesis_block = genesis::get_genesis_block();
+        genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
+        genesis_block.body = vec!(Transaction {
+            src: Address::Treasury,
+            data: TransactionData::RegularSend {
+                dst: wallet1.get_address(),
+                amount: 10_000_000,
+            },
+            nonce: 1,
+            fee: 0,
+            sig: Signature::Unsigned,
+        });
+
+        let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
+
+        let t1 = wallet1.create_transaction(wallet2.get_address(), 3000, 0, 1);
+        let t2 = wallet1.create_transaction(wallet2.get_address(), 4000, 0, 2);
+
+        let mempool = vec![t1, t2];
+        let mut draft = chain.draft_block(1650000000, &mempool, &wallet_miner)?;
+
+        mine_block(&chain, &mut draft)?;
+        chain.apply_block(&draft, false)?;
+
+        assert_eq!(3, draft.body.len());
+
+        let account1 = chain.get_account(wallet1.get_address())?;
+        let account2 = chain.get_account(wallet2.get_address())?;
+        assert_eq!(10_000_000 - 7000, account1.balance);
+        assert_eq!(7000, account2.balance);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
+        let wallet_miner = Wallet::new(Vec::from("MINER"));
+        let wallet1 = Wallet::new(Vec::from("ABC"));
+        let wallet2 = Wallet::new(Vec::from("CBA"));
+
+        let mut genesis_block = genesis::get_genesis_block();
+        genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
+        genesis_block.body = vec!(Transaction {
+            src: Address::Treasury,
+            data: TransactionData::RegularSend {
+                dst: wallet1.get_address(),
+                amount: 10_000_000,
+            },
+            nonce: 1,
+            fee: 0,
+            sig: Signature::Unsigned,
+        });
+
+        let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
+
+        let t1 = wallet1.create_transaction(wallet2.get_address(), 1_000_000, 0, 1);
+        let mut mempool = vec![t1];
+        let mut draft = chain.draft_block(1650000000, &mempool, &wallet_miner)?;
+
+        mine_block(&chain, &mut draft)?;
+        chain.apply_block(&draft, false)?;
+
+        let t2 = wallet1.create_transaction(wallet2.get_address(), 500_000, 0, 2);
+        mempool.push(t2);
+
+        let mut draft = chain.draft_block(1650000001, &mempool, &wallet_miner)?;
+
+        mine_block(&chain, &mut draft)?;
+        chain.apply_block(&draft, false)?;
+
+        let height = chain.get_height()?;
+        assert_eq!(3, height);
+
+        let last_block = chain.get_block(height - 1)?;
+        assert!(matches!(&last_block.body[1].data,
+            TransactionData::RegularSend { dst: _dst_address, amount: 500_000 }));
+
+        chain.rollback_block()?;
+
+        let height = chain.get_height()?;
+        assert_eq!(2, height);
+
+        let account = chain.get_account(wallet2.get_address())?;
+        assert_eq!(1_000_000, account.balance);
+        assert_eq!(0, account.nonce);
+
+        Ok(())
+    }
+
+    fn mine_block<B: Blockchain>(chain: &B, draft: &mut Block) -> Result<(), BlockchainError> {
+        let pow_key = chain.pow_key(draft.header.number as usize)?;
+
+        if draft.header.meets_target(pow_key.as_slice()) {
+            return Ok(());
+        }
+
+        draft.header.proof_of_work.nonce = 0;
+        while !draft.header.meets_target(pow_key.as_slice()) {
+            draft.header.proof_of_work.nonce += 1;
+        }
+
+        Ok(())
     }
 }

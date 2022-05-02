@@ -20,6 +20,7 @@ use {
     bazuka::db::RamKvStore,
     bazuka::wallet::Wallet,
 };
+use bazuka::config::genesis;
 
 #[cfg(feature = "node")]
 #[derive(Debug, Clone, StructOpt)]
@@ -69,7 +70,7 @@ lazy_static! {
                         .unwrap_or(home::home_dir().unwrap().join(Path::new(".bazuka"))),
                 ),
                 64,
-            ))
+            ), genesis::get_genesis_block())
             .unwrap(),
             Some(WALLET.clone()),
         )
@@ -90,7 +91,8 @@ async fn main() -> Result<(), NodeError> {
 
 #[cfg(not(feature = "node"))]
 fn main() {
-    let mut chain = KvStoreChain::new(RamKvStore::new()).unwrap();
+    let mut genesis_block = genesis::get_genesis_block();
+    let mut chain = KvStoreChain::new(RamKvStore::new(), genesis_block).unwrap();
 
     println!("Bazuka!");
     println!("Your address is: {}", WALLET.get_address());

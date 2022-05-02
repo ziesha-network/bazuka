@@ -1,6 +1,6 @@
-FROM rust:1.58-alpine
+FROM rust:1.60.0-buster
 
-RUN apk add openssl-dev cmake build-base
+RUN apt update && apt install -y openssl cmake build-essential
 
 ENV RUSTFLAGS="$RUSTFLAGS -L /usr/lib/"
 
