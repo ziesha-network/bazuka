@@ -15,7 +15,7 @@ impl<T, const N: usize> Drop for LazyInitialized<T, N> {
                 if let Some(arr) = &mut self.0 {
                     while self.1 > 0 {
                         let offset = self.1;
-                        self.1 = self.1 - 1;
+                        self.1 -= 1;
                         let p = (arr.as_mut_ptr() as *mut T).wrapping_add(offset);
                         core::ptr::drop_in_place::<T>(p);
                     }

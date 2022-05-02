@@ -49,13 +49,13 @@ impl<H: Hash> MerkleTree<H> {
         let dep = self.depth();
         let lower_start = (1 << dep) - 1;
         let lower_leaves = len - lower_start;
-        return if lower_start + i < len {
+        if lower_start + i < len {
             lower_start + i
         } else {
             let upper_start = (1 << (dep - 1)) - 1;
             let upper_offset = lower_leaves >> 1;
             upper_start - upper_offset + i
-        };
+        }
     }
 
     fn make_parents(&mut self) {
@@ -77,7 +77,7 @@ impl<H: Hash> MerkleTree<H> {
     }
 
     pub fn root(&self) -> H::Output {
-        self.data[0].clone()
+        self.data[0]
     }
 
     pub fn prove(&self, leaf: usize) -> Vec<H::Output> {

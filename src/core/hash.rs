@@ -109,9 +109,7 @@ impl Hash for Sha3Hasher {
         if self.0.is_none() {
             self.0 = Some(Sha3_256::new())
         }
-        self.0.as_mut().map(|h| {
-            h.update(s);
-        });
+        if let Some(h) = self.0.as_mut() { h.update(s); }
     }
 
     fn finalize(self) -> Self::Output {

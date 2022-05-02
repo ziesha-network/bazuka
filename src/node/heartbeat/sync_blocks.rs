@@ -15,7 +15,7 @@ pub async fn sync_blocks<B: Blockchain>(
     let header_responses: Vec<(PeerAddress, Result<GetHeadersResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
             http::bincode_get::<GetHeadersRequest, GetHeadersResponse>(
-                format!("{}/bincode/headers", peer).to_string(),
+                format!("{}/bincode/headers", peer),
                 GetHeadersRequest {
                     since: height,
                     until: None,

@@ -17,9 +17,9 @@ pub async fn sync_clock<B: Blockchain>(
     let peer_responses: Vec<(PeerAddress, Result<PostPeerResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
             http::json_post::<PostPeerRequest, PostPeerResponse>(
-                format!("{}/peers", peer).to_string(),
+                format!("{}/peers", peer),
                 PostPeerRequest {
-                    address: address.clone(),
+                    address,
                     timestamp,
                     info: info.clone(),
                 },
@@ -33,7 +33,7 @@ pub async fn sync_clock<B: Blockchain>(
             .into_iter()
             .map(|(_, r)| r.timestamp)
             .collect::<Vec<_>>();
-        if timestamps.len() > 0 {
+        if !timestamps.is_empty() {
             // Set timestamp_offset according to median timestamp of the network
             let median_timestamp = utils::median(&timestamps);
             ctx.timestamp_offset = median_timestamp as i32 - utils::local_timestamp() as i32;

@@ -129,7 +129,7 @@ impl<K: KvStore> KvStoreChain<K> {
             return Err(BlockchainError::BlockNotFound);
         }
         let block_key: StringKey = format!("block_{:010}", index).into();
-        Ok(match self.database.get(block_key.clone())? {
+        Ok(match self.database.get(block_key)? {
             Some(b) => b.try_into()?,
             None => {
                 return Err(BlockchainError::Inconsistency);
@@ -246,7 +246,7 @@ impl<K: KvStore> KvStoreChain<K> {
     pub fn rollback_block(&mut self) -> Result<(), BlockchainError> {
         let height = self.get_height()?;
         let rollback_key: StringKey = format!("rollback_{:010}", height - 1).into();
-        let mut rollback: Vec<WriteOp> = match self.database.get(rollback_key.clone())? {
+        let mut rollback: Vec<WriteOp> = match self.database.get(rollback_key)? {
             Some(b) => b.try_into()?,
             None => {
                 return Err(BlockchainError::Inconsistency);
@@ -317,7 +317,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
         // All blocks except genesis block should have a miner reward
         let txs = if !is_genesis {
-            if block.body.len() < 1 {
+            if block.body.is_empty() {
                 return Err(BlockchainError::MinerRewardNotFound);
             }
             let reward_tx = block.body.first().unwrap();

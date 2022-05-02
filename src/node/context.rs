@@ -40,7 +40,7 @@ impl<B: Blockchain> NodeContext<B> {
     }
     pub fn punish(&mut self, bad_peer: PeerAddress, secs: u32) {
         self.peers
-            .entry(bad_peer.clone())
+            .entry(bad_peer)
             .and_modify(|stats| stats.punish(secs));
     }
     pub fn get_info(&self) -> Result<PeerInfo, BlockchainError> {
@@ -56,7 +56,7 @@ impl<B: Blockchain> NodeContext<B> {
         count: usize,
     ) -> HashMap<PeerAddress, PeerStats> {
         self.active_peers()
-            .clone()
+            
             .into_iter()
             .choose_multiple(rng, count)
             .into_iter()
@@ -67,7 +67,7 @@ impl<B: Blockchain> NodeContext<B> {
             .iter()
             .filter_map(|(k, v)| {
                 if !v.is_punished() {
-                    Some((k.clone(), v.clone()))
+                    Some((*k, v.clone()))
                 } else {
                     None
                 }

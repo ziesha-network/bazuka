@@ -4,7 +4,7 @@ pub mod genesis;
 pub mod punish;
 
 pub const SYMBOL: &str = "ZIK";
-pub const TOTAL_SUPPLY: u64 = 2000000000_000000000u64; // 2 Billion ZIK
+pub const TOTAL_SUPPLY: u64 = 2_000_000_000_000_000_000_u64; // 2 Billion ZIK
 pub const REWARD_RATIO: u64 = 100_000; // 1/100_000 -> 0.01% of Treasury Supply per block
 
 // Delta means: block size + state size changes

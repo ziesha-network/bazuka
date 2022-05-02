@@ -85,7 +85,7 @@ impl Key for StringKey {
     }
 
     fn as_slice<T, F: Fn(&[u8]) -> T>(&self, f: F) -> T {
-        f(&self.0.as_bytes())
+        f(self.0.as_bytes())
     }
 }
 
@@ -153,7 +153,7 @@ impl<K: KvStore> KvStore for LruCacheKvStore<K> {
         }
     }
     fn update(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
-        for op in ops.into_iter() {
+        for op in ops.iter() {
             match op {
                 WriteOp::Remove(k) => self.cache.pop(&k.0),
                 WriteOp::Put(k, _) => self.cache.pop(&k.0),
@@ -194,7 +194,7 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
         }
     }
     fn update(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
-        for op in ops.into_iter() {
+        for op in ops.iter() {
             match op {
                 WriteOp::Remove(k) => self.overwrite.insert(k.0.clone(), None),
                 WriteOp::Put(k, v) => self.overwrite.insert(k.0.clone(), Some(v.clone())),

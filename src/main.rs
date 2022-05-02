@@ -56,7 +56,7 @@ lazy_static! {
                 .clone()
                 .into_iter()
                 .map(|b| {
-                    let mut parts = b.splitn(2, ":");
+                    let mut parts = b.splitn(2, ':');
                     let host = parts.next().unwrap();
                     let port = parts.next().unwrap();
                     PeerAddress(host.parse().unwrap(), port.parse().unwrap())

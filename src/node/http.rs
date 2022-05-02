@@ -78,7 +78,7 @@ where
                 peers
                     .iter()
                     .cloned()
-                    .map(|peer| f(peer))
+                    .map(f)
                     .collect::<Vec<_>>(),
             )
             .await

@@ -33,7 +33,7 @@ pub async fn heartbeater<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     loop {
-        let heartbeat_future = heartbeat(address.clone(), Arc::clone(&context));
+        let heartbeat_future = heartbeat(address, Arc::clone(&context));
         let sleep_future = sleep(Duration::from_millis(1000));
         let (res, _) = join!(heartbeat_future, sleep_future);
         if let Err(e) = res {
@@ -50,9 +50,9 @@ fn punish_non_responding<B: Blockchain, R: Clone, E>(
         .iter()
         .filter_map(|(peer, resp)| {
             if let Ok(resp) = resp {
-                Some((peer.clone(), resp.clone()))
+                Some((*peer, resp.clone()))
             } else {
-                ctx.punish(peer.clone(), punish::NO_RESPONSE_PUNISH);
+                ctx.punish(*peer, punish::NO_RESPONSE_PUNISH);
                 None
             }
         })

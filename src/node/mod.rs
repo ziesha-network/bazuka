@@ -204,12 +204,12 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
         let addr = SocketAddr::from(([0, 0, 0, 0], self.address.1));
         let node_context = self.context.clone();
         let make_svc = make_service_fn(|conn: &AddrStream| {
-            let client = conn.remote_addr().clone();
+            let client = conn.remote_addr();
             let node_context = Arc::clone(&node_context);
             async move {
                 Ok::<_, NodeError>(service_fn(move |req: Request<Body>| {
                     let node_context = Arc::clone(&node_context);
-                    let client = client.clone();
+                    let client = client;
                     async move { node_service(client, node_context, req).await }
                 }))
             }
@@ -222,7 +222,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
     pub async fn run(&'static self) -> Result<(), NodeError> {
         let server_future = self.server();
         let heartbeat_future =
-            heartbeat::heartbeater(self.address.clone(), Arc::clone(&self.context));
+            heartbeat::heartbeater(self.address, Arc::clone(&self.context));
 
         try_join!(server_future, heartbeat_future)?;
 

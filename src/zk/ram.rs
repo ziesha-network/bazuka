@@ -69,7 +69,7 @@ impl ZkRam {
         for level in 0..LOG_ZK_RAM_SIZE {
             let neigh = if index & 1 == 0 { index + 1 } else { index - 1 };
             proof[level] = self.get(level, neigh);
-            index = index >> 1;
+            index >>= 1;
         }
         Proof(proof)
     }
@@ -80,7 +80,7 @@ impl ZkRam {
             } else {
                 mimc::mimc(vec![p, value])
             };
-            index = index >> 1;
+            index >>= 1;
         }
         value == root
     }
@@ -94,7 +94,7 @@ impl ZkRam {
             } else {
                 mimc::mimc(vec![neigh_val, value])
             };
-            index = index >> 1;
+            index >>= 1;
         }
     }
 }

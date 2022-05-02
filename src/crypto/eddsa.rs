@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn test_public_key_compression() {
-        let p1 = BASE.multiply(&Fr::from(123 as u64));
+        let p1 = BASE.multiply(&Fr::from(123_u64));
         let p2 = p1.compress().decompress();
 
         assert_eq!(p1, p2);

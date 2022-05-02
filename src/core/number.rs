@@ -109,7 +109,7 @@ impl U256 {
                 return false;
             }
         }
-        return true;
+        true
     }
 
     /// panic
@@ -121,7 +121,7 @@ impl U256 {
         }
         let mut ret = 0u64;
         for i in 0..8 {
-            ret += (arr[i] as u64) << i * 8
+            ret += (arr[i] as u64) << (i * 8)
         }
         ret
     }
@@ -135,7 +135,7 @@ impl U256 {
         }
         let mut ret = 0u32;
         for i in 0..4 {
-            ret += (arr[i] as u32) << i * 8
+            ret += (arr[i] as u32) << (i * 8)
         }
         ret
     }

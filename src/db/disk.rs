@@ -13,7 +13,7 @@ impl LevelDbKvStore {
         fs::create_dir_all(&path).unwrap();
         let mut options = Options::new();
         options.create_if_missing = true;
-        LevelDbKvStore(Database::open(&path, options).unwrap())
+        LevelDbKvStore(Database::open(path, options).unwrap())
     }
 }
 
@@ -21,7 +21,7 @@ impl KvStore for LevelDbKvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError> {
         let read_opts = ReadOptions::new();
         match self.0.get(read_opts, k) {
-            Ok(v) => Ok(v.map(|v| Blob(v))),
+            Ok(v) => Ok(v.map(Blob)),
             Err(_) => Err(KvStoreError::Failure),
         }
     }

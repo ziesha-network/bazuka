@@ -67,7 +67,7 @@ impl<S: SignatureScheme> Transaction<S> {
                     let mut unsigned = self.clone();
                     unsigned.sig = Signature::Unsigned;
                     let bytes = bincode::serialize(&unsigned).unwrap();
-                    S::verify(&pk, &bytes, &sig)
+                    S::verify(pk, &bytes, sig)
                 }
             },
         }
