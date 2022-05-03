@@ -14,12 +14,18 @@ impl Wallet {
         let (pk, _) = EdDSA::generate_keys(&self.seed);
         Address::PublicKey(pk)
     }
-    pub fn create_transaction(&self, dst: Address, amount: Money, fee: Money, nonce: u32) -> Transaction {
+    pub fn create_transaction(
+        &self,
+        dst: Address,
+        amount: Money,
+        fee: Money,
+        nonce: u32,
+    ) -> Transaction {
         let (_, sk) = EdDSA::generate_keys(&self.seed);
         let mut tx = Transaction {
             src: self.get_address(),
             data: TransactionData::RegularSend { dst, amount },
-            nonce: nonce,
+            nonce,
             fee,
             sig: Signature::Unsigned,
         };

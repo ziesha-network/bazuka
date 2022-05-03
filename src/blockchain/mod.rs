@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 use crate::config;
-use crate::config::{TOTAL_SUPPLY};
+use crate::config::TOTAL_SUPPLY;
 use crate::core::{
     Account, Address, Block, Header, Money, Signature, Transaction, TransactionData,
 };
@@ -567,9 +567,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{db};
     use crate::config::genesis;
     use crate::core::{Address, TransactionData};
+    use crate::db;
 
     const DEFAULT_DIFFICULTY: u32 = 0x0000ffff;
 
@@ -593,7 +593,7 @@ mod tests {
 
         let mut genesis_block = genesis::get_genesis_block();
         genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
-        genesis_block.body = vec!(Transaction {
+        genesis_block.body = vec![Transaction {
             src: Address::Treasury,
             data: TransactionData::RegularSend {
                 dst: wallet1.get_address(),
@@ -602,7 +602,7 @@ mod tests {
             nonce: 1,
             fee: 0,
             sig: Signature::Unsigned,
-        });
+        }];
 
         let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
 
@@ -618,8 +618,13 @@ mod tests {
 
         let last_block = chain.get_block(height - 1)?;
         let w2_address = wallet2.get_address();
-        assert!(matches!(&last_block.body[1].data,
-            TransactionData::RegularSend { dst: _w2_address, amount: 100 }));
+        assert!(matches!(
+            &last_block.body[1].data,
+            TransactionData::RegularSend {
+                dst: _w2_address,
+                amount: 100
+            }
+        ));
 
         let account = chain.get_account(wallet2.get_address())?;
         assert_eq!(100, account.balance);
@@ -636,7 +641,7 @@ mod tests {
 
         let mut genesis_block = genesis::get_genesis_block();
         genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
-        genesis_block.body = vec!(Transaction {
+        genesis_block.body = vec![Transaction {
             src: Address::Treasury,
             data: TransactionData::RegularSend {
                 dst: wallet1.get_address(),
@@ -645,21 +650,27 @@ mod tests {
             nonce: 1,
             fee: 0,
             sig: Signature::Unsigned,
-        });
+        }];
 
         let chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
 
         let t_valid = wallet1.create_transaction(wallet2.get_address(), 200, 0, 1);
         let t_invalid_unsigned = Transaction {
             src: wallet1.get_address(),
-            data: TransactionData::RegularSend { dst: wallet2.get_address(), amount: 300 },
+            data: TransactionData::RegularSend {
+                dst: wallet2.get_address(),
+                amount: 300,
+            },
             nonce: 1,
             fee: 0,
             sig: Signature::Unsigned, // invalid transaction
         };
         let t_invalid_from_treasury = Transaction {
             src: Address::Treasury,
-            data: TransactionData::RegularSend { dst: wallet2.get_address(), amount: 500 },
+            data: TransactionData::RegularSend {
+                dst: wallet2.get_address(),
+                amount: 500,
+            },
             nonce: 1,
             fee: 0,
             sig: Signature::Unsigned, // invalid transaction
@@ -681,7 +692,7 @@ mod tests {
 
         let mut genesis_block = genesis::get_genesis_block();
         genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
-        genesis_block.body = vec!(Transaction {
+        genesis_block.body = vec![Transaction {
             src: Address::Treasury,
             data: TransactionData::RegularSend {
                 dst: wallet1.get_address(),
@@ -690,7 +701,7 @@ mod tests {
             nonce: 1,
             fee: 0,
             sig: Signature::Unsigned,
-        });
+        }];
 
         let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
 
@@ -721,7 +732,7 @@ mod tests {
 
         let mut genesis_block = genesis::get_genesis_block();
         genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
-        genesis_block.body = vec!(Transaction {
+        genesis_block.body = vec![Transaction {
             src: Address::Treasury,
             data: TransactionData::RegularSend {
                 dst: wallet1.get_address(),
@@ -730,7 +741,7 @@ mod tests {
             nonce: 1,
             fee: 0,
             sig: Signature::Unsigned,
-        });
+        }];
 
         let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
 
@@ -753,8 +764,13 @@ mod tests {
         assert_eq!(3, height);
 
         let last_block = chain.get_block(height - 1)?;
-        assert!(matches!(&last_block.body[1].data,
-            TransactionData::RegularSend { dst: _dst_address, amount: 500_000 }));
+        assert!(matches!(
+            &last_block.body[1].data,
+            TransactionData::RegularSend {
+                dst: _dst_address,
+                amount: 500_000
+            }
+        ));
 
         chain.rollback_block()?;
 

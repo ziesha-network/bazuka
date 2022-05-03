@@ -1,13 +1,13 @@
 mod address;
 mod blocks;
 mod contract;
+pub mod hash;
 mod header;
 mod transaction;
 
 #[cfg(feature = "pos")]
 pub mod digest;
-
-pub mod hash;
+#[cfg(feature = "pos")]
 pub mod number;
 
 use std::fmt::Debug;

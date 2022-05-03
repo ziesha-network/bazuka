@@ -11,6 +11,7 @@ use {
     structopt::StructOpt,
 };
 
+use bazuka::config::genesis;
 #[cfg(not(feature = "node"))]
 use {
     bazuka::blockchain::Blockchain,
@@ -20,7 +21,6 @@ use {
     bazuka::db::RamKvStore,
     bazuka::wallet::Wallet,
 };
-use bazuka::config::genesis;
 
 #[cfg(feature = "node")]
 #[derive(Debug, Clone, StructOpt)]
@@ -63,14 +63,17 @@ lazy_static! {
                     PeerAddress(host.parse().unwrap(), port.parse().unwrap())
                 })
                 .collect(),
-            KvStoreChain::new(LruCacheKvStore::new(
-                LevelDbKvStore::new(
-                    &opts
-                        .db
-                        .unwrap_or(home::home_dir().unwrap().join(Path::new(".bazuka"))),
+            KvStoreChain::new(
+                LruCacheKvStore::new(
+                    LevelDbKvStore::new(
+                        &opts
+                            .db
+                            .unwrap_or(home::home_dir().unwrap().join(Path::new(".bazuka"))),
+                    ),
+                    64,
                 ),
-                64,
-            ), genesis::get_genesis_block())
+                genesis::get_genesis_block(),
+            )
             .unwrap(),
             Some(WALLET.clone()),
         )
