@@ -4,23 +4,22 @@ use crate::crypto::{EdDSA, SignatureScheme};
 #[derive(Debug, Clone)]
 pub struct Wallet {
     seed: Vec<u8>,
-    nonce: u32,
 }
 
 impl Wallet {
     pub fn new(seed: Vec<u8>) -> Self {
-        Self { seed, nonce: 0 }
+        Self { seed }
     }
     pub fn get_address(&self) -> Address {
         let (pk, _) = EdDSA::generate_keys(&self.seed);
         Address::PublicKey(pk)
     }
-    pub fn create_transaction(&self, dst: Address, amount: Money, fee: Money) -> Transaction {
+    pub fn create_transaction(&self, dst: Address, amount: Money, fee: Money, nonce: u32) -> Transaction {
         let (_, sk) = EdDSA::generate_keys(&self.seed);
         let mut tx = Transaction {
             src: self.get_address(),
             data: TransactionData::RegularSend { dst, amount },
-            nonce: self.nonce,
+            nonce: nonce,
             fee,
             sig: Signature::Unsigned,
         };
