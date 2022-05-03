@@ -5,11 +5,6 @@ pub mod hash;
 mod header;
 mod transaction;
 
-#[cfg(feature = "pos")]
-pub mod digest;
-#[cfg(feature = "pos")]
-pub mod number;
-
 use std::fmt::Debug;
 
 use crate::crypto;

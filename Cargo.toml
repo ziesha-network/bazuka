@@ -50,10 +50,9 @@ schnorrkel = { version = "0.9.1", features = [
 merlin = { version = "2.0.0", default-features = false, optional = true }
 
 [features]
-default = ["pow"]
+default = ["node", "pow"]
 node = ["tokio", "hyper", "leveldb", "futures", "structopt"]
 pow = ["rust-randomx"]
-pos = ["schnorrkel", "merlin", "futures-timer", "async-trait", "num-traits", "num-rational"]
 
 [patch.crates-io]
 dusk-bytes = { git = "https://github.com/zeeka-network/dusk-bytes.git", tag = "v0.1.6" }
