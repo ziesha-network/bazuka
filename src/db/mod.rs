@@ -5,6 +5,7 @@ use db_key::Key;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Mutex;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -128,35 +129,34 @@ pub trait KvStore {
 
 pub struct LruCacheKvStore<K: KvStore> {
     store: K,
-    cache: LruCache<String, Option<Blob>>,
+    cache: Mutex<LruCache<String, Option<Blob>>>,
 }
 impl<K: KvStore> LruCacheKvStore<K> {
     pub fn new(store: K, cap: usize) -> Self {
         Self {
             store,
-            cache: LruCache::new(cap),
+            cache: Mutex::new(LruCache::new(cap)),
         }
     }
 }
 
 impl<K: KvStore> KvStore for LruCacheKvStore<K> {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError> {
-        unsafe {
-            let mutable = &mut *(self as *const Self as *mut Self);
-            if let Some(v) = mutable.cache.get(&k.0) {
-                Ok(v.clone())
-            } else {
-                let res = mutable.store.get(k.clone())?;
-                mutable.cache.put(k.0.clone(), res.clone());
-                Ok(res)
-            }
+        let mut cache = self.cache.lock().unwrap();
+        if let Some(v) = cache.get(&k.0) {
+            Ok(v.clone())
+        } else {
+            let res = self.store.get(k.clone())?;
+            cache.put(k.0.clone(), res.clone());
+            Ok(res)
         }
     }
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError> {
+        let mut cache = self.cache.lock().unwrap();
         for op in ops.iter() {
             match op {
-                WriteOp::Remove(k) => self.cache.pop(&k.0),
-                WriteOp::Put(k, _) => self.cache.pop(&k.0),
+                WriteOp::Remove(k) => cache.pop(&k.0),
+                WriteOp::Put(k, _) => cache.pop(&k.0),
             };
         }
         self.store.update(ops)
