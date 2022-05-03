@@ -42,13 +42,19 @@ pub enum TransactionData<S: SignatureScheme> {
     },
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct Transaction<S: SignatureScheme> {
     pub src: Address<S>,
     pub nonce: u32,
     pub data: TransactionData<S>,
     pub fee: Money,
     pub sig: Signature<S>,
+}
+
+impl<S: SignatureScheme> PartialEq<Transaction<S>> for Transaction<S> {
+    fn eq(&self, other: &Transaction<S>) -> bool {
+        bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
+    }
 }
 
 impl<S: SignatureScheme> Transaction<S> {
