@@ -43,41 +43,40 @@ lazy_static! {
 #[cfg(feature = "node")]
 lazy_static! {
     static ref OPTS: NodeOptions = NodeOptions::from_args();
-    static ref NODE: Node<KvStoreChain<LruCacheKvStore<LevelDbKvStore>>> = {
-        let opts = OPTS.clone();
-        Node::new(
-            PeerAddress(
-                opts.host
-                    .unwrap_or("127.0.0.1".to_string())
-                    .parse()
-                    .unwrap(),
-                opts.port.unwrap_or(3030),
-            ),
-            opts.bootstrap
-                .clone()
-                .into_iter()
-                .map(|b| {
-                    let mut parts = b.splitn(2, ':');
-                    let host = parts.next().unwrap();
-                    let port = parts.next().unwrap();
-                    PeerAddress(host.parse().unwrap(), port.parse().unwrap())
-                })
-                .collect(),
-            KvStoreChain::new(
-                LruCacheKvStore::new(
-                    LevelDbKvStore::new(
-                        &opts
-                            .db
-                            .unwrap_or(home::home_dir().unwrap().join(Path::new(".bazuka"))),
-                    ),
-                    64,
+    static ref NODE: Node<KvStoreChain<LruCacheKvStore<LevelDbKvStore>>> =
+        {
+            let opts = OPTS.clone();
+            Node::new(
+                PeerAddress(
+                    opts.host
+                        .unwrap_or_else(|| "127.0.0.1".to_string())
+                        .parse()
+                        .unwrap(),
+                    opts.port.unwrap_or(3030),
                 ),
-                genesis::get_genesis_block(),
+                opts.bootstrap
+                    .clone()
+                    .into_iter()
+                    .map(|b| {
+                        let mut parts = b.splitn(2, ':');
+                        let host = parts.next().unwrap();
+                        let port = parts.next().unwrap();
+                        PeerAddress(host.parse().unwrap(), port.parse().unwrap())
+                    })
+                    .collect(),
+                KvStoreChain::new(
+                    LruCacheKvStore::new(
+                        LevelDbKvStore::new(&opts.db.unwrap_or_else(|| {
+                            home::home_dir().unwrap().join(Path::new(".bazuka"))
+                        })),
+                        64,
+                    ),
+                    genesis::get_genesis_block(),
+                )
+                .unwrap(),
+                Some(WALLET.clone()),
             )
-            .unwrap(),
-            Some(WALLET.clone()),
-        )
-    };
+        };
 }
 
 #[cfg(feature = "node")]
