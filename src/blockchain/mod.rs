@@ -391,11 +391,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
 
-    #[cfg(feature = "pos")]
-    fn will_extend(&self, _from: usize, _headers: &[Header]) -> Result<bool, BlockchainError> {
-        unimplemented!();
-    }
-
     #[cfg(feature = "pow")]
     fn will_extend(&self, from: usize, headers: &[Header]) -> Result<bool, BlockchainError> {
         let current_power = self.get_power()?;
