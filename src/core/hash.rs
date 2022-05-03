@@ -29,7 +29,7 @@ pub trait Hash: Debug + Clone + 'static {
     fn finalize(self) -> Self::Output;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Sha3Hasher(Option<CoreWrapper<Sha3_256Core>>);
 
 impl serde::ser::Serialize for Sha3Hasher {
@@ -70,12 +70,6 @@ impl<'de> serde::de::Deserialize<'de> for Sha3Hasher {
     }
 }
 
-impl Default for Sha3Hasher {
-    fn default() -> Self {
-        Sha3Hasher(None)
-    }
-}
-
 impl Sha3Hasher {
     pub fn new() -> Self {
         Self(Some(Sha3_256::new()))
@@ -109,7 +103,9 @@ impl Hash for Sha3Hasher {
         if self.0.is_none() {
             self.0 = Some(Sha3_256::new())
         }
-        if let Some(h) = self.0.as_mut() { h.update(s); }
+        if let Some(h) = self.0.as_mut() {
+            h.update(s);
+        }
     }
 
     fn finalize(self) -> Self::Output {

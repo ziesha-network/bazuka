@@ -108,8 +108,8 @@ pub enum WriteOp {
 
 pub trait KvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError>;
-    fn update(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError>;
-    fn rollback_of(&self, ops: &Vec<WriteOp>) -> Result<Vec<WriteOp>, KvStoreError> {
+    fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError>;
+    fn rollback_of(&self, ops: &[WriteOp]) -> Result<Vec<WriteOp>, KvStoreError> {
         let mut rollback = Vec::new();
         for op in ops.iter() {
             let key = match op {
@@ -152,7 +152,7 @@ impl<K: KvStore> KvStore for LruCacheKvStore<K> {
             }
         }
     }
-    fn update(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
+    fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError> {
         for op in ops.iter() {
             match op {
                 WriteOp::Remove(k) => self.cache.pop(&k.0),
@@ -193,7 +193,7 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
             self.store.get(k)
         }
     }
-    fn update(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
+    fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError> {
         for op in ops.iter() {
             match op {
                 WriteOp::Remove(k) => self.overwrite.insert(k.0.clone(), None),

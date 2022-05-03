@@ -8,11 +8,17 @@ impl RamKvStore {
     }
 }
 
+impl Default for RamKvStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl KvStore for RamKvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError> {
         Ok(self.0.get(&k.0).cloned())
     }
-    fn update(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
+    fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError> {
         for op in ops.iter() {
             match op {
                 WriteOp::Remove(k) => self.0.remove(&k.0),

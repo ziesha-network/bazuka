@@ -29,6 +29,12 @@ impl Default for Proof {
     }
 }
 
+impl Default for ZkRam {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ZkRam {
     pub fn from_state(state: &ZkState) -> Self {
         let mut r = Self::new();
@@ -62,13 +68,13 @@ impl ZkRam {
         self.layers[level]
             .get(&index)
             .cloned()
-            .unwrap_or(Fr::zero())
+            .unwrap_or_else(Fr::zero)
     }
     pub fn prove(&self, mut index: u32) -> Proof {
         let mut proof = [Fr::zero(); LOG_ZK_RAM_SIZE];
-        for level in 0..LOG_ZK_RAM_SIZE {
+        for (level, value) in proof.iter_mut().enumerate() {
             let neigh = if index & 1 == 0 { index + 1 } else { index - 1 };
-            proof[level] = self.get(level, neigh);
+            *value = self.get(level, neigh as u32);
             index >>= 1;
         }
         Proof(proof)

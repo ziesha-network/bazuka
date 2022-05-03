@@ -49,12 +49,12 @@ pub enum BlockchainError {
 pub trait Blockchain {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn next_reward(&self) -> Result<Money, BlockchainError>;
-    fn will_extend(&self, from: usize, headers: &Vec<Header>) -> Result<bool, BlockchainError>;
-    fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError>;
+    fn will_extend(&self, from: usize, headers: &[Header]) -> Result<bool, BlockchainError>;
+    fn extend(&mut self, from: usize, blocks: &[Block]) -> Result<(), BlockchainError>;
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &Vec<Transaction>,
+        mempool: &[Transaction],
         wallet: &Wallet,
     ) -> Result<Block, BlockchainError>;
     fn get_height(&self) -> Result<usize, BlockchainError>;
@@ -85,7 +85,7 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(chain)
     }
 
-    fn fork_on_ram<'a>(&'a self) -> KvStoreChain<RamMirrorKvStore<'a, K>> {
+    fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
         KvStoreChain {
             database: RamMirrorKvStore::new(&self.database),
         }
@@ -263,9 +263,9 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn select_transactions(
         &self,
-        txs: &Vec<Transaction>,
+        txs: &[Transaction],
     ) -> Result<Vec<Transaction>, BlockchainError> {
-        let mut sorted = txs.clone();
+        let mut sorted = txs.to_vec();
         sorted.sort_by(|t1, t2| t1.nonce.cmp(&t2.nonce));
         let mut fork = self.fork_on_ram();
         let mut result = Vec::new();
@@ -394,12 +394,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     #[cfg(feature = "pos")]
-    fn will_extend(&self, _from: usize, _headers: &Vec<Header>) -> Result<bool, BlockchainError> {
+    fn will_extend(&self, _from: usize, _headers: &[Header]) -> Result<bool, BlockchainError> {
         unimplemented!();
     }
 
     #[cfg(feature = "pow")]
-    fn will_extend(&self, from: usize, headers: &Vec<Header>) -> Result<bool, BlockchainError> {
+    fn will_extend(&self, from: usize, headers: &[Header]) -> Result<bool, BlockchainError> {
         let current_power = self.get_power()?;
 
         if from == 0 {
@@ -439,7 +439,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         Ok(new_power > current_power)
     }
-    fn extend(&mut self, from: usize, blocks: &Vec<Block>) -> Result<(), BlockchainError> {
+    fn extend(&mut self, from: usize, blocks: &[Block]) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
 
         if from == 0 {
@@ -506,7 +506,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &Vec<Transaction>,
+        mempool: &[Transaction],
         wallet: &Wallet,
     ) -> Result<Block, BlockchainError> {
         let height = self.get_height()?;

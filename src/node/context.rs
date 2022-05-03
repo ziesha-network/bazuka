@@ -56,7 +56,6 @@ impl<B: Blockchain> NodeContext<B> {
         count: usize,
     ) -> HashMap<PeerAddress, PeerStats> {
         self.active_peers()
-            
             .into_iter()
             .choose_multiple(rng, count)
             .into_iter()
@@ -77,7 +76,7 @@ impl<B: Blockchain> NodeContext<B> {
 
     #[cfg(feature = "pow")]
     pub fn get_puzzle(&self, wallet: Wallet) -> Result<BlockPuzzle, BlockchainError> {
-        let txs = self.mempool.keys().cloned().collect();
+        let txs = self.mempool.keys().cloned().collect::<Vec<_>>();
         let ts = self.network_timestamp();
         let block = self.blockchain.draft_block(ts, &txs, &wallet)?;
         let puzzle = Puzzle {

@@ -63,7 +63,7 @@ pub async fn json_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
 }
 
 pub async fn group_request<F, R>(
-    peers: &Vec<PeerAddress>,
+    peers: &[PeerAddress],
     f: F,
 ) -> Vec<(PeerAddress, <R as futures::Future>::Output)>
 where
@@ -74,15 +74,9 @@ where
         .iter()
         .cloned()
         .zip(
-            join_all(
-                peers
-                    .iter()
-                    .cloned()
-                    .map(f)
-                    .collect::<Vec<_>>(),
-            )
-            .await
-            .into_iter(),
+            join_all(peers.iter().cloned().map(f).collect::<Vec<_>>())
+                .await
+                .into_iter(),
         )
         .collect()
 }

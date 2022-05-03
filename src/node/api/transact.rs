@@ -11,7 +11,8 @@ pub async fn transact<B: Blockchain>(
     let mut context = context.write().await;
     let now = context.network_timestamp();
     // Prevent spamming mempool
-    if context.blockchain.get_account(req.tx.src.clone())?.balance > 0 && req.tx.verify_signature() {
+    if context.blockchain.get_account(req.tx.src.clone())?.balance > 0 && req.tx.verify_signature()
+    {
         context
             .mempool
             .insert(req.tx, TransactionStats { first_seen: now });

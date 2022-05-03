@@ -38,6 +38,12 @@ impl<T> ArrayVisitor<T> {
     }
 }
 
+impl<T> Default for ArrayVisitor<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'de, T, const N: usize> Visitor<'de> for ArrayVisitor<[T; N]>
 where
     T: Deserialize<'de>,

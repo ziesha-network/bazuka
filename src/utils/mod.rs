@@ -11,6 +11,6 @@ pub fn local_timestamp() -> u32 {
         .as_secs() as u32
 }
 
-pub fn median<T: Clone>(inps: &Vec<T>) -> T {
+pub fn median<T: Clone>(inps: &[T]) -> T {
     inps[inps.len() / 2].clone()
 }
