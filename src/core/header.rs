@@ -1,3 +1,6 @@
+#[cfg(feature = "pos")]
+use super::digest::{Digest, Digests};
+
 #[cfg(feature = "pow")]
 use rust_randomx::{Difficulty, Output};
 
@@ -36,6 +39,10 @@ pub struct Header<H: Hash> {
     /// the merkle root of current block
     pub block_root: H::Output,
 
+    /// aux data for Proof-of-Stake consensus
+    #[cfg(feature = "pos")]
+    pub digests: Digests,
+
     /// aux data for Proof-of-Work consensus
     #[cfg(feature = "pow")]
     pub proof_of_work: ProofOfWork,
@@ -48,6 +55,9 @@ impl<H: Hash> Default for Header<H> {
             number: 0,
             state_root: H::Output::default(),
             block_root: H::Output::default(),
+
+            #[cfg(feature = "pos")]
+            digests: Default::default(),
 
             #[cfg(feature = "pow")]
             proof_of_work: Default::default(),
@@ -81,5 +91,10 @@ impl<H: Hash> Header<H> {
     pub fn meets_target(&self, key: &[u8]) -> bool {
         self.pow_hash(key)
             .meets_difficulty(Difficulty::new(self.proof_of_work.target))
+    }
+
+    #[cfg(feature = "pos")]
+    pub fn logs(&self) -> &[Digest] {
+        self.digests.logs()
     }
 }

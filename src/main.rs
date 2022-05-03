@@ -129,6 +129,6 @@ fn main() {
         chain.get_account(WALLET.get_address()).unwrap()
     );
 
-    let tx = WALLET.create_transaction(Address::Treasury, 123, 0, 1);
+    let tx = WALLET.create_transaction(Address::Treasury, 123, 0);
     println!("Verify tx signature: {}", tx.verify_signature());
 }

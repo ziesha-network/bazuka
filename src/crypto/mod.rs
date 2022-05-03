@@ -9,6 +9,11 @@ pub use eddsa::*;
 mod eddsa;
 pub mod merkle;
 
+#[cfg(feature = "pos")]
+mod vrf;
+#[cfg(feature = "pos")]
+pub use vrf::*;
+
 pub trait SignatureScheme: Clone + Serialize {
     type Pub: Clone + Debug + PartialEq + Serialize + DeserializeOwned + FromStr + Display;
     type Priv;

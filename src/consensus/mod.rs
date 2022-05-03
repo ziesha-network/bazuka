@@ -1,3 +1,6 @@
+#[cfg(feature = "pos")]
+pub mod pos;
+
 #[cfg(feature = "pow")]
 pub mod pow {
     use rust_randomx::{Context, Hasher, Output};
