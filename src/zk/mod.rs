@@ -21,7 +21,7 @@ pub struct ZkStateModel {
 pub struct ZkStateData(HashMap<u32, ZkScalar>);
 
 pub struct ZkState {
-    model: ZkStateModel,
+    _model: ZkStateModel,
     data: ZkStateData,
 }
 
@@ -39,7 +39,10 @@ impl ZkStateData {
 
 impl ZkState {
     pub fn new(model: ZkStateModel, data: ZkStateData) -> Self {
-        Self { model, data }
+        Self {
+            _model: model,
+            data,
+        }
     }
     pub fn compress(&self) -> ZkCompressedState {
         let root = ZkScalar(ram::ZkRam::from_state(self).root());
