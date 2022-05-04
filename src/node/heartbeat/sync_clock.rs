@@ -9,8 +9,8 @@ pub async fn sync_clock<B: Blockchain>(
     let info = ctx.get_info()?;
     let peer_addresses = ctx
         .random_peers(&mut rand::thread_rng(), NUM_PEERS)
-        .keys()
-        .cloned()
+        .into_iter()
+        .map(|p| p.address)
         .collect::<Vec<PeerAddress>>();
     drop(ctx);
 

@@ -50,27 +50,18 @@ impl<B: Blockchain> NodeContext<B> {
             power: self.blockchain.get_power()?,
         })
     }
-    pub fn random_peers<R: RngCore>(
-        &self,
-        rng: &mut R,
-        count: usize,
-    ) -> HashMap<PeerAddress, Peer> {
+    pub fn random_peers<R: RngCore>(&self, rng: &mut R, count: usize) -> Vec<Peer> {
         self.active_peers()
             .into_iter()
             .choose_multiple(rng, count)
             .into_iter()
             .collect()
     }
-    pub fn active_peers(&self) -> HashMap<PeerAddress, Peer> {
+    pub fn active_peers(&self) -> Vec<Peer> {
         self.peers
-            .iter()
-            .filter_map(|(k, v)| {
-                if !v.is_punished() {
-                    Some((*k, v.clone()))
-                } else {
-                    None
-                }
-            })
+            .values()
+            .cloned()
+            .filter(|p| !p.is_punished())
             .collect()
     }
 

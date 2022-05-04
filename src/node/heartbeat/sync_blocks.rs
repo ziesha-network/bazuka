@@ -7,8 +7,8 @@ pub async fn sync_blocks<B: Blockchain>(
     let height = ctx.blockchain.get_height()?;
     let peer_addresses = ctx
         .random_peers(&mut rand::thread_rng(), NUM_PEERS)
-        .keys()
-        .cloned()
+        .into_iter()
+        .map(|p| p.address)
         .collect::<Vec<PeerAddress>>();
     drop(ctx);
 
