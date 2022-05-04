@@ -1,5 +1,5 @@
 use super::messages::{PostPeerRequest, PostPeerResponse};
-use super::{NodeContext, NodeError, PeerStats};
+use super::{NodeContext, NodeError, Peer};
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -15,7 +15,8 @@ pub async fn post_peer<B: Blockchain>(
         .and_modify(|s| {
             s.info = Some(req.info.clone());
         })
-        .or_insert(PeerStats {
+        .or_insert(Peer {
+            address: req.address,
             info: Some(req.info),
             punished_until: 0,
         });

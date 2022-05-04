@@ -46,12 +46,13 @@ pub struct PeerInfo {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct PeerStats {
+pub struct Peer {
+    pub address: PeerAddress,
     pub punished_until: Timestamp,
     pub info: Option<PeerInfo>,
 }
 
-impl PeerStats {
+impl Peer {
     pub fn is_punished(&self) -> bool {
         utils::local_timestamp() < self.punished_until
     }
@@ -186,7 +187,8 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                     .map(|addr| {
                         (
                             addr,
-                            PeerStats {
+                            Peer {
+                                address: addr,
                                 punished_until: 0,
                                 info: None,
                             },

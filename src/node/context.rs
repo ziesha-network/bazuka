@@ -1,4 +1,4 @@
-use super::{PeerAddress, PeerInfo, PeerStats};
+use super::{Peer, PeerAddress, PeerInfo};
 use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::Transaction;
 use crate::utils;
@@ -28,7 +28,7 @@ pub struct NodeContext<B: Blockchain> {
     pub blockchain: B,
     pub wallet: Option<Wallet>,
     pub mempool: HashMap<Transaction, TransactionStats>,
-    pub peers: HashMap<PeerAddress, PeerStats>,
+    pub peers: HashMap<PeerAddress, Peer>,
     pub timestamp_offset: i32,
     #[cfg(feature = "pow")]
     pub miner: Option<Miner>,
@@ -54,14 +54,14 @@ impl<B: Blockchain> NodeContext<B> {
         &self,
         rng: &mut R,
         count: usize,
-    ) -> HashMap<PeerAddress, PeerStats> {
+    ) -> HashMap<PeerAddress, Peer> {
         self.active_peers()
             .into_iter()
             .choose_multiple(rng, count)
             .into_iter()
             .collect()
     }
-    pub fn active_peers(&self) -> HashMap<PeerAddress, PeerStats> {
+    pub fn active_peers(&self) -> HashMap<PeerAddress, Peer> {
         self.peers
             .iter()
             .filter_map(|(k, v)| {
