@@ -7,53 +7,73 @@ pub async fn sync_blocks<B: Blockchain>(
     let net = ctx.outgoing.clone();
 
     let height = ctx.blockchain.get_height()?;
-    let peer_addresses = ctx
-        .random_peers(&mut rand::thread_rng(), NUM_PEERS)
+
+    // Find the peer that claims the highest power.
+    let most_powerful = ctx
+        .active_peers()
         .into_iter()
-        .map(|p| p.address)
-        .collect::<Vec<PeerAddress>>();
+        .max_by_key(|p| p.info.as_ref().map(|i| i.power).unwrap_or(0))
+        .ok_or(NodeError::NoPeers)?;
     drop(ctx);
 
-    let header_responses: Vec<(PeerAddress, Result<GetHeadersResponse, NodeError>)> =
-        http::group_request(&peer_addresses, |peer| {
-            net.bincode_get::<GetHeadersRequest, GetHeadersResponse>(
-                format!("{}/bincode/headers", peer),
+    // Get all headers starting from the indices that we don't have.
+    let mut headers = net
+        .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
+            format!("{}/bincode/headers", most_powerful.address),
+            GetHeadersRequest {
+                since: height,
+                until: None,
+            },
+        )
+        .await?
+        .headers;
+
+    // The local blockchain and the peer blockchain both have all blocks
+    // from 0 to height-1, though, the blocks might not be equal. Find
+    // the header from which the fork has happened.
+    for index in (0..height).rev() {
+        let peer_header = net
+            .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
+                format!("{}/bincode/headers", most_powerful.address),
                 GetHeadersRequest {
-                    since: height,
+                    since: index,
+                    until: Some(index + 1),
+                },
+            )
+            .await?
+            .headers[0]
+            .clone();
+
+        let ctx = context.read().await;
+        let local_header = ctx.blockchain.get_headers(index, Some(index + 1))?[0].clone();
+        drop(ctx);
+
+        if local_header.hash() != peer_header.hash() {
+            headers.insert(0, peer_header);
+        } else {
+            break;
+        }
+    }
+
+    let will_extend = {
+        let ctx = context.read().await;
+        ctx.blockchain
+            .will_extend(height, &headers)
+            .unwrap_or(false)
+    };
+
+    if will_extend {
+        let resp = net
+            .bincode_get::<GetBlocksRequest, GetBlocksResponse>(
+                format!("{}/bincode/blocks", most_powerful.address).to_string(),
+                GetBlocksRequest {
+                    since: headers[0].number as usize,
                     until: None,
                 },
             )
-        })
-        .await;
-
-    {
+            .await?;
         let mut ctx = context.write().await;
-        let resps = punish_non_responding(&mut ctx, &header_responses);
-        for (peer, resp) in resps.iter() {
-            if !resp.headers.is_empty() {
-                if ctx
-                    .blockchain
-                    .will_extend(height, &resp.headers)
-                    .unwrap_or(false)
-                {
-                    log::info!("{} has a longer chain!", peer);
-                    let resp = net
-                        .bincode_get::<GetBlocksRequest, GetBlocksResponse>(
-                            format!("{}/bincode/blocks", peer).to_string(),
-                            GetBlocksRequest {
-                                since: height,
-                                until: None,
-                            },
-                        )
-                        .await?;
-                    if ctx.blockchain.extend(height, &resp.blocks).is_err() {
-                        ctx.punish(*peer, punish::INVALID_DATA_PUNISH);
-                    }
-                } else {
-                    ctx.punish(*peer, punish::INVALID_DATA_PUNISH);
-                }
-            }
-        }
+        ctx.blockchain.extend(height, &resp.blocks)?;
     }
 
     Ok(())

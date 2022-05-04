@@ -7,6 +7,8 @@ pub enum NodeError {
     NotListeningError,
     #[error("node not answering")]
     NotAnsweringError,
+    #[error("no peers found in the network")]
+    NoPeers,
     #[error("blockchain error happened: {0}")]
     BlockchainError(#[from] BlockchainError),
     #[error("server error happened: {0}")]
