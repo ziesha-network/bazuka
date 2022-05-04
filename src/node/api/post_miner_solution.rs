@@ -23,10 +23,13 @@ pub async fn post_miner_solution<B: Blockchain>(
     block.header.proof_of_work.nonce = u64::from_le_bytes(nonce_bytes);
     if context
         .blockchain
-        .extend(block.header.number as usize, &[block])
+        .extend(block.header.number as usize, &[block.clone()])
         .is_ok()
     {
         context.miner.as_mut().unwrap().block_puzzle = None;
+        for (_, peer) in context.most_powerful_peers(5).iter() {
+            peer.announce_blocks(&[block.clone()]);
+        }
     }
     Ok(PostMinerSolutionResponse {})
 }

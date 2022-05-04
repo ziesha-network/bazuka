@@ -16,6 +16,7 @@ pub async fn post_peer<B: Blockchain>(
             s.info = Some(req.info.clone());
         })
         .or_insert(PeerStats {
+            address: req.address,
             info: Some(req.info),
             punished_until: 0,
         });

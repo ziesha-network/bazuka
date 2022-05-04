@@ -10,11 +10,13 @@ pub use errors::NodeError;
 #[cfg(feature = "pow")]
 use context::Miner;
 
+use thiserror::Error;
 use crate::blockchain::Blockchain;
+use crate::core::Block;
 use crate::utils;
 use crate::wallet::Wallet;
 use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use hyper::{Body, Client, Method, Request, Response, Server, StatusCode};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -24,8 +26,18 @@ use crate::config::punish;
 use serde_derive::{Deserialize, Serialize};
 
 use hyper::server::conn::AddrStream;
+use log::warn;
 use tokio::sync::RwLock;
 use tokio::try_join;
+use crate::node::api::messages::PostBlockRequest;
+
+
+#[derive(Error, Debug)]
+pub enum PeerOperationError {
+    #[error("announce block error")]
+    AnnounceBlockError,
+}
+
 
 pub type Timestamp = u32;
 
@@ -38,7 +50,7 @@ impl std::fmt::Display for PeerAddress {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Debug, Default)]
 pub struct PeerInfo {
     pub height: usize,
     #[cfg(feature = "pow")]
@@ -47,6 +59,7 @@ pub struct PeerInfo {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PeerStats {
+    pub address: PeerAddress,
     pub punished_until: Timestamp,
     pub info: Option<PeerInfo>,
 }
@@ -61,6 +74,29 @@ impl PeerStats {
             std::cmp::max(self.punished_until, now) + secs,
             now + punish::MAX_PUNISH,
         );
+    }
+    pub async fn announce_blocks(&self, blocks: &[Block]) -> Result<(), PeerOperationError> {
+        let client = Client::new();
+
+        for blk in blocks.iter() {
+            let body = Body::from(
+                bincode::serialize(&PostBlockRequest{block: blk.clone()})
+                    .map_err(|_| PeerOperationError::AnnounceBlockError)?
+            );
+            let req = Request::builder()
+                .method(Method::POST)
+                .uri(format!("{}/bincode/blocks", self.address))
+                .body(body).map_err(|_| PeerOperationError::AnnounceBlockError)?;
+            let status = client
+                .request(req)
+                .await.map_err(|_| PeerOperationError::AnnounceBlockError)?
+                .status();
+            if status.as_u16() != 200 {
+                warn!("can not announce blocks to peer: {}", self.address);
+            }
+        }
+
+        return Ok(())
     }
 }
 
@@ -187,6 +223,7 @@ impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
                         (
                             addr,
                             PeerStats {
+                                address: addr,
                                 punished_until: 0,
                                 info: None,
                             },

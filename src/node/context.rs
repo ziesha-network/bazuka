@@ -73,6 +73,21 @@ impl<B: Blockchain> NodeContext<B> {
             })
             .collect()
     }
+    pub fn most_powerful_peers(&self, count: usize) -> HashMap<PeerAddress, PeerStats> {
+        let mut active_peers = self
+            .active_peers()
+            .clone()
+            .into_iter()
+            .collect::<Vec<(PeerAddress, PeerStats)>>();
+        active_peers.sort_by(|(_, a), (_, b)| -> std::cmp::Ordering {
+            b.info
+                .clone()
+                .unwrap_or_default()
+                .power
+                .cmp(&a.info.clone().unwrap_or_default().power)
+        });
+        active_peers.into_iter().take(count).collect()
+    }
 
     #[cfg(feature = "pow")]
     pub fn get_puzzle(&self, wallet: Wallet) -> Result<BlockPuzzle, BlockchainError> {
