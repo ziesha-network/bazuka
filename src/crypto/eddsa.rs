@@ -17,9 +17,9 @@ pub enum ParsePublicKeyError {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct EdDSAPublicKey(pub eddsa::PublicKey);
+pub struct PublicKey(pub eddsa::PublicKey);
 
-impl std::fmt::Display for EdDSAPublicKey {
+impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "0x{}", if self.0 .0 .1 { 3 } else { 2 })?;
         for byte in self.0 .0 .0.to_repr().as_ref().iter().rev() {
@@ -29,7 +29,7 @@ impl std::fmt::Display for EdDSAPublicKey {
     }
 }
 
-impl FromStr for EdDSAPublicKey {
+impl FromStr for PublicKey {
     type Err = ParsePublicKeyError;
     fn from_str(mut s: &str) -> Result<Self, Self::Err> {
         if s.len() != 67 {
@@ -50,7 +50,7 @@ impl FromStr for EdDSAPublicKey {
             .map_err(|_| ParsePublicKeyError::Invalid)?;
         let mut repr = Fr::zero().to_repr();
         repr.as_mut().clone_from_slice(&bytes);
-        Ok(EdDSAPublicKey(eddsa::PublicKey(eddsa::PointCompressed(
+        Ok(PublicKey(eddsa::PublicKey(eddsa::PointCompressed(
             Fr::from_repr(repr).unwrap(),
             oddity,
         ))))
@@ -68,20 +68,20 @@ fn mimc_u8(inp: &[u8]) -> Fr {
 }
 
 impl SignatureScheme for EdDSA {
-    type Pub = EdDSAPublicKey;
+    type Pub = PublicKey;
     type Priv = PrivateKey;
     type Sig = Signature;
-    fn generate_keys(seed: &[u8]) -> (EdDSAPublicKey, PrivateKey) {
+    fn generate_keys(seed: &[u8]) -> (PublicKey, PrivateKey) {
         let randomness = mimc_u8(seed);
         let scalar = mimc::mimc(vec![randomness]);
         let (pk, sk) = eddsa::generate_keys(randomness, scalar);
-        (EdDSAPublicKey(pk), PrivateKey(sk))
+        (PublicKey(pk), PrivateKey(sk))
     }
     fn sign(sk: &PrivateKey, message: &[u8]) -> Signature {
         let hash = mimc::mimc(message.iter().map(|u| Fr::from(*u as u64)).collect());
         Signature(eddsa::sign(&sk.0, hash))
     }
-    fn verify(pk: &EdDSAPublicKey, message: &[u8], sig: &Signature) -> bool {
+    fn verify(pk: &PublicKey, message: &[u8], sig: &Signature) -> bool {
         let hash = mimc::mimc(message.iter().map(|u| Fr::from(*u as u64)).collect());
         eddsa::verify(&pk.0, hash, &sig.0)
     }
