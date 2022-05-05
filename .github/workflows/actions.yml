@@ -10,8 +10,12 @@ jobs:
   test:
     runs-on: ubuntu-20.04
     steps:
-    - uses: actions/checkout@v2
-    - name: Build Bazuka
-      run: docker build -t bazuka .
-    - name: Test Bazuka
-      run: docker run bazuka cargo test --release --features node
+    - uses: actions/checkout@v3
+    - name: Build binary
+      run: |
+        cargo build --release --features node
+    - name: Archive binary artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: bin-x86_64-unknown-linux-gnu
+        path: ./target/release/bazuka
