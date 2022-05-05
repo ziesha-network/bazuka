@@ -1,5 +1,7 @@
 # ℤ - Bazuka!
 
+[![Bazuka](https://github.com/zeeka-network/bazuka/actions/workflows/actions.yml/badge.svg)](https://github.com/zeeka-network/bazuka/actions/workflows/actions.yml)
+
 Rust implementation of the Zeeka Network
 
 ### What is Zeeka?
