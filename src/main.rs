@@ -5,11 +5,11 @@ extern crate lazy_static;
 use {
     bazuka::blockchain::KvStoreChain,
     bazuka::db::{LevelDbKvStore, LruCacheKvStore},
-    bazuka::node::{create, Internet, NodeError, NodeRequest, PeerAddress},
+    bazuka::node::{node_create, node_request, Internet, NodeError, NodeRequest, PeerAddress},
     bazuka::wallet::Wallet,
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
-    hyper::{Body, Request, Response, Server},
+    hyper::{Body, Request, Server},
     std::net::SocketAddr,
     std::path::{Path, PathBuf},
     std::sync::Arc,
@@ -65,7 +65,7 @@ async fn main() -> Result<(), NodeError> {
             .unwrap(),
         opts.port.unwrap_or(3030),
     );
-    let node_fut = create(
+    let node_fut = node_create(
         Arc::new(Internet::new()),
         address,
         opts.bootstrap
@@ -103,21 +103,8 @@ async fn main() -> Result<(), NodeError> {
         let arc_req_send = Arc::clone(&arc_req_send);
         async move {
             Ok::<_, NodeError>(service_fn(move |req: Request<Body>| {
-                let (resp_snd, mut resp_rcv) =
-                    mpsc::channel::<Result<Response<Body>, NodeError>>(1);
-                let req = NodeRequest {
-                    socket_addr: client,
-                    body: req,
-                    resp: resp_snd,
-                };
                 let arc_req_send = Arc::clone(&arc_req_send);
-
-                async move {
-                    arc_req_send
-                        .send(req)
-                        .map_err(|_| NodeError::NotListeningError)?;
-                    resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)?
-                }
+                async move { node_request(arc_req_send, client, req).await }
             }))
         }
     });

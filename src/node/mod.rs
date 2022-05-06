@@ -172,7 +172,22 @@ pub struct NodeRequest {
     pub resp: mpsc::Sender<Result<Response<Body>, NodeError>>,
 }
 
-pub async fn create<N: Network, B: Blockchain>(
+pub async fn node_request(
+    chan: Arc<mpsc::UnboundedSender<NodeRequest>>,
+    client: SocketAddr,
+    req: Request<Body>,
+) -> Result<Response<Body>, NodeError> {
+    let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
+    let req = NodeRequest {
+        socket_addr: client,
+        body: req,
+        resp: resp_snd,
+    };
+    chan.send(req).map_err(|_| NodeError::NotListeningError)?;
+    resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)?
+}
+
+pub async fn node_create<N: Network, B: Blockchain>(
     network: Arc<N>,
     address: PeerAddress,
     bootstrap: Vec<PeerAddress>,
