@@ -27,7 +27,7 @@ use hyper::server::conn::AddrStream;
 use tokio::sync::RwLock;
 use tokio::try_join;
 
-pub use http::{Network, Internet};
+pub use http::{Internet, Network};
 
 pub type Timestamp = u32;
 
@@ -177,7 +177,7 @@ impl<
     > Node<N, B>
 {
     pub fn new(
-        network: N,
+        network: Arc<N>,
         address: PeerAddress,
         bootstrap: Vec<PeerAddress>,
         blockchain: B,
@@ -186,7 +186,7 @@ impl<
         Node {
             address,
             context: Arc::new(RwLock::new(NodeContext {
-                network: Arc::new(network),
+                network,
                 blockchain,
                 wallet,
                 mempool: HashMap::new(),

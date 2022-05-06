@@ -8,6 +8,7 @@ use {
     bazuka::node::{Internet, Node, NodeError, PeerAddress},
     bazuka::wallet::Wallet,
     std::path::{Path, PathBuf},
+    std::sync::Arc,
     structopt::StructOpt,
 };
 
@@ -47,7 +48,7 @@ lazy_static! {
         {
             let opts = OPTS.clone();
             Node::new(
-                Internet::new(),
+                Arc::new(Internet::new()),
                 PeerAddress(
                     opts.host
                         .unwrap_or_else(|| "127.0.0.1".to_string())
