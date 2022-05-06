@@ -13,11 +13,6 @@ pub enum TransactionData<S: SignatureScheme> {
         dst: Address<S>,
         amount: Money,
     },
-    RegisterValidator {
-        vrf_stuff: u8,
-        amount: Money,
-    },
-
     // Create a Zero-Contract. The creator can consider multiple ways (Circuits) of updating
     // the state. But there should be only one circuit for entering and exiting the contract.
     CreateContract {

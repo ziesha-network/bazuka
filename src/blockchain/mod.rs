@@ -229,9 +229,6 @@ impl<K: KvStore> KvStoreChain<K> {
             } => {
                 unimplemented!();
             }
-            _ => {
-                unimplemented!();
-            }
         }
 
         ops.push(WriteOp::Put(
