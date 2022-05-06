@@ -5,7 +5,7 @@ extern crate lazy_static;
 use {
     bazuka::blockchain::KvStoreChain,
     bazuka::db::{LevelDbKvStore, LruCacheKvStore},
-    bazuka::node::{node_create, node_request, Internet, NodeError, NodeRequest, PeerAddress},
+    bazuka::node::{node_create, node_request, IncomingRequest, Internet, NodeError, PeerAddress},
     bazuka::wallet::Wallet,
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
@@ -55,7 +55,7 @@ async fn main() -> Result<(), NodeError> {
         bazuka::node::upnp::get_public_ip().await.ok()
     );
 
-    let (req_snd, req_rcv) = mpsc::unbounded_channel::<NodeRequest>();
+    let (req_snd, req_rcv) = mpsc::unbounded_channel::<IncomingRequest>();
 
     let opts = NodeOptions::from_args();
     let address = PeerAddress(

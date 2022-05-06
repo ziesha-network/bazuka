@@ -166,19 +166,19 @@ async fn node_service<N: Network, B: Blockchain>(
 
 use tokio::sync::mpsc;
 
-pub struct NodeRequest {
+pub struct IncomingRequest {
     pub socket_addr: SocketAddr,
     pub body: Request<Body>,
     pub resp: mpsc::Sender<Result<Response<Body>, NodeError>>,
 }
 
 pub async fn node_request(
-    chan: Arc<mpsc::UnboundedSender<NodeRequest>>,
+    chan: Arc<mpsc::UnboundedSender<IncomingRequest>>,
     client: SocketAddr,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
     let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
-    let req = NodeRequest {
+    let req = IncomingRequest {
         socket_addr: client,
         body: req,
         resp: resp_snd,
@@ -193,7 +193,7 @@ pub async fn node_create<N: Network, B: Blockchain>(
     bootstrap: Vec<PeerAddress>,
     blockchain: B,
     wallet: Option<Wallet>,
-    mut rcv: mpsc::UnboundedReceiver<NodeRequest>,
+    mut rcv: mpsc::UnboundedReceiver<IncomingRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
         network,
