@@ -13,8 +13,7 @@ use context::Miner;
 use crate::blockchain::Blockchain;
 use crate::utils;
 use crate::wallet::Wallet;
-use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Method, Request, Response, Server, StatusCode};
+use hyper::{Body, Method, Request, Response, StatusCode};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -23,7 +22,6 @@ use crate::config::punish;
 
 use serde_derive::{Deserialize, Serialize};
 
-use hyper::server::conn::AddrStream;
 use tokio::sync::RwLock;
 use tokio::try_join;
 
@@ -65,11 +63,6 @@ impl Peer {
             now + punish::MAX_PUNISH,
         );
     }
-}
-
-pub struct Node<N: Network, B: Blockchain> {
-    address: PeerAddress,
-    context: Arc<RwLock<NodeContext<N, B>>>,
 }
 
 async fn node_service<N: Network, B: Blockchain>(
@@ -171,70 +164,62 @@ async fn node_service<N: Network, B: Blockchain>(
     Ok(response)
 }
 
-impl<
-        B: Blockchain + std::marker::Sync + std::marker::Send,
-        N: Network + std::marker::Send + std::marker::Sync,
-    > Node<N, B>
-{
-    pub fn new(
-        network: Arc<N>,
-        address: PeerAddress,
-        bootstrap: Vec<PeerAddress>,
-        blockchain: B,
-        wallet: Option<Wallet>,
-    ) -> Node<N, B> {
-        Node {
-            address,
-            context: Arc::new(RwLock::new(NodeContext {
-                network,
-                blockchain,
-                wallet,
-                mempool: HashMap::new(),
-                peers: bootstrap
-                    .into_iter()
-                    .map(|addr| {
-                        (
-                            addr,
-                            Peer {
-                                address: addr,
-                                punished_until: 0,
-                                info: None,
-                            },
-                        )
-                    })
-                    .collect(),
-                timestamp_offset: 0,
-                #[cfg(feature = "pow")]
-                miner: None,
-            })),
-        }
-    }
+use tokio::sync::mpsc;
 
-    async fn server(&'static self) -> Result<(), NodeError> {
-        let addr = SocketAddr::from(([0, 0, 0, 0], self.address.1));
-        let node_context = self.context.clone();
-        let make_svc = make_service_fn(|conn: &AddrStream| {
-            let client = conn.remote_addr();
-            let node_context = Arc::clone(&node_context);
-            async move {
-                Ok::<_, NodeError>(service_fn(move |req: Request<Body>| {
-                    let node_context = Arc::clone(&node_context);
-                    let client = client;
-                    async move { node_service(client, node_context, req).await }
-                }))
+pub struct NodeRequest {
+    pub socket_addr: SocketAddr,
+    pub body: Request<Body>,
+    pub resp: mpsc::Sender<Result<Response<Body>, NodeError>>,
+}
+
+pub async fn create<N: Network, B: Blockchain>(
+    network: Arc<N>,
+    address: PeerAddress,
+    bootstrap: Vec<PeerAddress>,
+    blockchain: B,
+    wallet: Option<Wallet>,
+    mut rcv: mpsc::UnboundedReceiver<NodeRequest>,
+) -> Result<(), NodeError> {
+    let context = Arc::new(RwLock::new(NodeContext {
+        network,
+        blockchain,
+        wallet,
+        mempool: HashMap::new(),
+        peers: bootstrap
+            .into_iter()
+            .map(|addr| {
+                (
+                    addr,
+                    Peer {
+                        address: addr,
+                        punished_until: 0,
+                        info: None,
+                    },
+                )
+            })
+            .collect(),
+        timestamp_offset: 0,
+        #[cfg(feature = "pow")]
+        miner: None,
+    }));
+
+    let server_future = async {
+        loop {
+            if let Some(msg) = rcv.recv().await {
+                if let Err(_) = msg
+                    .resp
+                    .send(node_service(msg.socket_addr, Arc::clone(&context), msg.body).await)
+                    .await
+                {}
+            } else {
+                break;
             }
-        });
-        Server::bind(&addr).serve(make_svc).await?;
-
+        }
         Ok(())
-    }
+    };
 
-    pub async fn run(&'static self) -> Result<(), NodeError> {
-        let server_future = self.server();
-        let heartbeat_future = heartbeat::heartbeater(self.address, Arc::clone(&self.context));
+    let heartbeat_future = heartbeat::heartbeater(address, Arc::clone(&context));
 
-        try_join!(server_future, heartbeat_future)?;
-
-        Ok(())
-    }
+    try_join!(server_future, heartbeat_future)?;
+    Ok(())
 }

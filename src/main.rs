@@ -5,11 +5,17 @@ extern crate lazy_static;
 use {
     bazuka::blockchain::KvStoreChain,
     bazuka::db::{LevelDbKvStore, LruCacheKvStore},
-    bazuka::node::{Internet, Node, NodeError, PeerAddress},
+    bazuka::node::{create, Internet, NodeError, NodeRequest, PeerAddress},
     bazuka::wallet::Wallet,
+    hyper::server::conn::AddrStream,
+    hyper::service::{make_service_fn, service_fn},
+    hyper::{Body, Request, Response, Server},
+    std::net::SocketAddr,
     std::path::{Path, PathBuf},
     std::sync::Arc,
     structopt::StructOpt,
+    tokio::sync::mpsc,
+    tokio::try_join,
 };
 
 use bazuka::config::genesis;
@@ -42,47 +48,6 @@ lazy_static! {
 }
 
 #[cfg(feature = "node")]
-lazy_static! {
-    static ref OPTS: NodeOptions = NodeOptions::from_args();
-    static ref NODE: Node<Internet, KvStoreChain<LruCacheKvStore<LevelDbKvStore>>> =
-        {
-            let opts = OPTS.clone();
-            Node::new(
-                Arc::new(Internet::new()),
-                PeerAddress(
-                    opts.host
-                        .unwrap_or_else(|| "127.0.0.1".to_string())
-                        .parse()
-                        .unwrap(),
-                    opts.port.unwrap_or(3030),
-                ),
-                opts.bootstrap
-                    .clone()
-                    .into_iter()
-                    .map(|b| {
-                        let mut parts = b.splitn(2, ':');
-                        let host = parts.next().unwrap();
-                        let port = parts.next().unwrap();
-                        PeerAddress(host.parse().unwrap(), port.parse().unwrap())
-                    })
-                    .collect(),
-                KvStoreChain::new(
-                    LruCacheKvStore::new(
-                        LevelDbKvStore::new(&opts.db.unwrap_or_else(|| {
-                            home::home_dir().unwrap().join(Path::new(".bazuka"))
-                        }))
-                        .unwrap(),
-                        64,
-                    ),
-                    genesis::get_genesis_block(),
-                )
-                .unwrap(),
-                Some(WALLET.clone()),
-            )
-        };
-}
-
-#[cfg(feature = "node")]
 #[tokio::main]
 async fn main() -> Result<(), NodeError> {
     println!(
@@ -90,7 +55,73 @@ async fn main() -> Result<(), NodeError> {
         bazuka::node::upnp::get_public_ip().await.ok()
     );
 
-    NODE.run().await?;
+    let (req_snd, req_rcv) = mpsc::unbounded_channel::<NodeRequest>();
+
+    let opts = NodeOptions::from_args();
+    let address = PeerAddress(
+        opts.host
+            .unwrap_or_else(|| "127.0.0.1".to_string())
+            .parse()
+            .unwrap(),
+        opts.port.unwrap_or(3030),
+    );
+    let node_fut = create(
+        Arc::new(Internet::new()),
+        address,
+        opts.bootstrap
+            .clone()
+            .into_iter()
+            .map(|b| {
+                let mut parts = b.splitn(2, ':');
+                let host = parts.next().unwrap();
+                let port = parts.next().unwrap();
+                PeerAddress(host.parse().unwrap(), port.parse().unwrap())
+            })
+            .collect(),
+        KvStoreChain::new(
+            LruCacheKvStore::new(
+                LevelDbKvStore::new(
+                    &opts
+                        .db
+                        .unwrap_or_else(|| home::home_dir().unwrap().join(Path::new(".bazuka"))),
+                )
+                .unwrap(),
+                64,
+            ),
+            genesis::get_genesis_block(),
+        )
+        .unwrap(),
+        Some(WALLET.clone()),
+        req_rcv,
+    );
+
+    let arc_req_send = Arc::new(req_snd);
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], address.1));
+    let make_svc = make_service_fn(|conn: &AddrStream| {
+        let client = conn.remote_addr();
+        let arc_req_send = Arc::clone(&arc_req_send);
+        async move {
+            Ok::<_, NodeError>(service_fn(move |req: Request<Body>| {
+                let (resp_snd, mut resp_rcv) =
+                    mpsc::channel::<Result<Response<Body>, NodeError>>(1);
+                let req = NodeRequest {
+                    socket_addr: addr,
+                    body: req,
+                    resp: resp_snd,
+                };
+                arc_req_send.send(req);
+                async move { resp_rcv.recv().await.unwrap() }
+            }))
+        }
+    });
+    let server_future = async {
+        Server::bind(&addr).serve(make_svc).await?;
+        Ok::<(), NodeError>(())
+    };
+
+    try_join!(server_future, node_fut).unwrap();
+
     Ok(())
 }
 
