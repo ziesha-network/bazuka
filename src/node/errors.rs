@@ -3,6 +3,10 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum NodeError {
+    #[error("node not listening")]
+    NotListeningError,
+    #[error("node not answering")]
+    NotAnsweringError,
     #[error("blockchain error happened: {0}")]
     BlockchainError(#[from] BlockchainError),
     #[error("server error happened: {0}")]

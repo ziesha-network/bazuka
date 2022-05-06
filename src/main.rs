@@ -106,12 +106,18 @@ async fn main() -> Result<(), NodeError> {
                 let (resp_snd, mut resp_rcv) =
                     mpsc::channel::<Result<Response<Body>, NodeError>>(1);
                 let req = NodeRequest {
-                    socket_addr: addr,
+                    socket_addr: client,
                     body: req,
                     resp: resp_snd,
                 };
-                arc_req_send.send(req);
-                async move { resp_rcv.recv().await.unwrap() }
+                let arc_req_send = Arc::clone(&arc_req_send);
+
+                async move {
+                    arc_req_send
+                        .send(req)
+                        .map_err(|_| NodeError::NotListeningError)?;
+                    resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)?
+                }
             }))
         }
     });
