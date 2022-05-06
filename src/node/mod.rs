@@ -27,6 +27,8 @@ use hyper::server::conn::AddrStream;
 use tokio::sync::RwLock;
 use tokio::try_join;
 
+pub use http::{Network, Internet};
+
 pub type Timestamp = u32;
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -65,14 +67,14 @@ impl Peer {
     }
 }
 
-pub struct Node<B: Blockchain> {
+pub struct Node<N: Network, B: Blockchain> {
     address: PeerAddress,
-    context: Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<N, B>>>,
 }
 
-async fn node_service<B: Blockchain>(
+async fn node_service<N: Network, B: Blockchain>(
     _client: SocketAddr,
-    context: Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<N, B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
     let mut response = Response::new(Body::empty());
@@ -169,16 +171,22 @@ async fn node_service<B: Blockchain>(
     Ok(response)
 }
 
-impl<B: Blockchain + std::marker::Sync + std::marker::Send> Node<B> {
+impl<
+        B: Blockchain + std::marker::Sync + std::marker::Send,
+        N: Network + std::marker::Send + std::marker::Sync,
+    > Node<N, B>
+{
     pub fn new(
+        network: N,
         address: PeerAddress,
         bootstrap: Vec<PeerAddress>,
         blockchain: B,
         wallet: Option<Wallet>,
-    ) -> Node<B> {
+    ) -> Node<N, B> {
         Node {
             address,
             context: Arc::new(RwLock::new(NodeContext {
+                network: Arc::new(network),
                 blockchain,
                 wallet,
                 mempool: HashMap::new(),

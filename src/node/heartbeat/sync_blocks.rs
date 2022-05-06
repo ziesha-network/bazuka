@@ -1,9 +1,12 @@
 use super::*;
 
-pub async fn sync_blocks<B: Blockchain>(
-    context: &Arc<RwLock<NodeContext<B>>>,
+pub async fn sync_blocks<N: Network, B: Blockchain>(
+    context: &Arc<RwLock<NodeContext<N, B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
+
+    let net = Arc::clone(&ctx.network);
+
     let height = ctx.blockchain.get_height()?;
     let peer_addresses = ctx
         .random_peers(&mut rand::thread_rng(), NUM_PEERS)
@@ -14,7 +17,7 @@ pub async fn sync_blocks<B: Blockchain>(
 
     let header_responses: Vec<(PeerAddress, Result<GetHeadersResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
-            http::bincode_get::<GetHeadersRequest, GetHeadersResponse>(
+            net.bincode_get::<GetHeadersRequest, GetHeadersResponse>(
                 format!("{}/bincode/headers", peer),
                 GetHeadersRequest {
                     since: height,
@@ -35,14 +38,15 @@ pub async fn sync_blocks<B: Blockchain>(
                     .unwrap_or(false)
                 {
                     println!("{} has a longer chain!", peer);
-                    let resp = http::bincode_get::<GetBlocksRequest, GetBlocksResponse>(
-                        format!("{}/bincode/blocks", peer).to_string(),
-                        GetBlocksRequest {
-                            since: height,
-                            until: None,
-                        },
-                    )
-                    .await?;
+                    let resp = net
+                        .bincode_get::<GetBlocksRequest, GetBlocksResponse>(
+                            format!("{}/bincode/blocks", peer).to_string(),
+                            GetBlocksRequest {
+                                since: height,
+                                until: None,
+                            },
+                        )
+                        .await?;
                     if ctx.blockchain.extend(height, &resp.blocks).is_err() {
                         ctx.punish(*peer, punish::INVALID_DATA_PUNISH);
                     }

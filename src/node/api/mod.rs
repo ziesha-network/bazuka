@@ -1,4 +1,4 @@
-use super::{NodeContext, NodeError, Peer, PeerAddress, PeerInfo, TransactionStats};
+use super::{Network, NodeContext, NodeError, Peer, PeerAddress, PeerInfo, TransactionStats};
 
 pub mod messages;
 

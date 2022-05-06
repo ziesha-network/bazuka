@@ -1,10 +1,13 @@
 use super::*;
 
-pub async fn sync_clock<B: Blockchain>(
+pub async fn sync_clock<N: Network, B: Blockchain>(
     address: PeerAddress,
-    context: &Arc<RwLock<NodeContext<B>>>,
+    context: &Arc<RwLock<NodeContext<N, B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
+
+    let net = Arc::clone(&ctx.network);
+
     let timestamp = ctx.network_timestamp();
     let info = ctx.get_info()?;
     let peer_addresses = ctx
@@ -16,7 +19,7 @@ pub async fn sync_clock<B: Blockchain>(
 
     let peer_responses: Vec<(PeerAddress, Result<PostPeerResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
-            http::json_post::<PostPeerRequest, PostPeerResponse>(
+            net.json_post::<PostPeerRequest, PostPeerResponse>(
                 format!("{}/peers", peer),
                 PostPeerRequest {
                     address,

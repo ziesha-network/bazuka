@@ -1,11 +1,11 @@
 use super::messages::{TransactRequest, TransactResponse};
-use super::{NodeContext, NodeError, TransactionStats};
+use super::{Network, NodeContext, NodeError, TransactionStats};
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn transact<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+pub async fn transact<B: Blockchain, N: Network>(
+    context: Arc<RwLock<NodeContext<N, B>>>,
     req: TransactRequest,
 ) -> Result<TransactResponse, NodeError> {
     let mut context = context.write().await;

@@ -1,11 +1,11 @@
 use super::messages::{PostBlockRequest, PostBlockResponse};
-use super::{NodeContext, NodeError};
+use super::{Network, NodeContext, NodeError};
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn post_block<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+pub async fn post_block<B: Blockchain, N: Network>(
+    context: Arc<RwLock<NodeContext<N, B>>>,
     req: PostBlockRequest,
 ) -> Result<PostBlockResponse, NodeError> {
     let mut context = context.write().await;
