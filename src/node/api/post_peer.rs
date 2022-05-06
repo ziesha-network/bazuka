@@ -1,11 +1,11 @@
 use super::messages::{PostPeerRequest, PostPeerResponse};
-use super::{NodeContext, NodeError, Peer};
+use super::{Network, NodeContext, NodeError, Peer};
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn post_peer<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+pub async fn post_peer<B: Blockchain, N: Network>(
+    context: Arc<RwLock<NodeContext<N, B>>>,
     req: PostPeerRequest,
 ) -> Result<PostPeerResponse, NodeError> {
     let mut context = context.write().await;

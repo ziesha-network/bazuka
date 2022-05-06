@@ -5,7 +5,7 @@ mod sync_blocks;
 mod sync_clock;
 
 use super::api::messages::*;
-use super::{http, NodeContext, NodeError, PeerAddress};
+use super::{http, Network, NodeContext, NodeError, PeerAddress};
 use crate::blockchain::Blockchain;
 use crate::config::punish;
 use crate::utils;
@@ -16,9 +16,9 @@ use tokio::time::{sleep, Duration};
 
 const NUM_PEERS: usize = 8;
 
-pub async fn heartbeat<B: Blockchain>(
+pub async fn heartbeat<B: Blockchain, N: Network>(
     address: PeerAddress,
-    context: Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<N, B>>>,
 ) -> Result<(), NodeError> {
     log_info::log_info(&context).await?;
     sync_clock::sync_clock(address, &context).await?;
@@ -28,9 +28,9 @@ pub async fn heartbeat<B: Blockchain>(
     Ok(())
 }
 
-pub async fn heartbeater<B: Blockchain>(
+pub async fn heartbeater<B: Blockchain, N: Network>(
     address: PeerAddress,
-    context: Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<N, B>>>,
 ) -> Result<(), NodeError> {
     loop {
         let heartbeat_future = heartbeat(address, Arc::clone(&context));
@@ -42,8 +42,8 @@ pub async fn heartbeater<B: Blockchain>(
     }
 }
 
-fn punish_non_responding<B: Blockchain, R: Clone, E>(
-    ctx: &mut RwLockWriteGuard<'_, NodeContext<B>>,
+fn punish_non_responding<B: Blockchain, N: Network, R: Clone, E>(
+    ctx: &mut RwLockWriteGuard<'_, NodeContext<N, B>>,
     resps: &[(PeerAddress, Result<R, E>)],
 ) -> Vec<(PeerAddress, R)> {
     resps

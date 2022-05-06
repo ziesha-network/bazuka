@@ -31,13 +31,14 @@ hyper = { version = "0.14", features = ["full"], optional = true }
 futures = { version = "0.3", optional = true }
 leveldb = { version = "0.8.6", optional = true }
 structopt = { version = "0.3", default-features = false, optional = true }
+async-trait = { version = "0.1.53", optional = true }
 
 # Proof-of-Work related deps
 rust-randomx = { version = "0.5.5", optional = true }
 
 [features]
 default = ["node", "pow"]
-node = ["tokio", "hyper", "leveldb", "futures", "structopt"]
+node = ["tokio", "hyper", "leveldb", "futures", "structopt", "async-trait"]
 pow = ["rust-randomx"]
 
 [patch.crates-io]

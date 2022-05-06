@@ -1,3 +1,4 @@
+use super::http::Network;
 use super::{Peer, PeerAddress, PeerInfo};
 use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::Transaction;
@@ -6,6 +7,7 @@ use crate::wallet::Wallet;
 use rand::seq::IteratorRandom;
 use rand::RngCore;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 #[cfg(feature = "pow")]
 use {super::api::messages::Puzzle, crate::core::Block};
@@ -24,7 +26,8 @@ pub struct Miner {
     pub webhook: Option<String>,
 }
 
-pub struct NodeContext<B: Blockchain> {
+pub struct NodeContext<N: Network, B: Blockchain> {
+    pub network: Arc<N>,
     pub blockchain: B,
     pub wallet: Option<Wallet>,
     pub mempool: HashMap<Transaction, TransactionStats>,
@@ -34,7 +37,7 @@ pub struct NodeContext<B: Blockchain> {
     pub miner: Option<Miner>,
 }
 
-impl<B: Blockchain> NodeContext<B> {
+impl<N: Network, B: Blockchain> NodeContext<N, B> {
     pub fn network_timestamp(&self) -> u32 {
         (utils::local_timestamp() as i32 + self.timestamp_offset) as u32
     }
