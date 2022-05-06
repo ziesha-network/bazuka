@@ -14,6 +14,11 @@ pub enum KvStoreError {
     Failure,
     #[error("kvstore data corrupted: {0}")]
     Corrupted(#[from] bincode::Error),
+    #[error("io error: {0}")]
+    IO(#[from] std::io::Error),
+    #[cfg(feature = "node")]
+    #[error("leveldb error: {0}")]
+    LevelDb(#[from] leveldb::error::Error),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

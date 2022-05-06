@@ -9,11 +9,11 @@ use std::path::Path;
 
 pub struct LevelDbKvStore(Database<StringKey>);
 impl LevelDbKvStore {
-    pub fn new(path: &Path) -> LevelDbKvStore {
-        fs::create_dir_all(&path).unwrap();
+    pub fn new(path: &Path) -> Result<LevelDbKvStore, KvStoreError> {
+        fs::create_dir_all(&path)?;
         let mut options = Options::new();
         options.create_if_missing = true;
-        LevelDbKvStore(Database::open(path, options).unwrap())
+        Ok(LevelDbKvStore(Database::open(path, options)?))
     }
 }
 

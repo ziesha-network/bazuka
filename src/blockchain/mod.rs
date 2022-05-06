@@ -315,10 +315,10 @@ impl<K: KvStore> KvStoreChain<K> {
 
         // All blocks except genesis block should have a miner reward
         let txs = if !is_genesis {
-            if block.body.is_empty() {
-                return Err(BlockchainError::MinerRewardNotFound);
-            }
-            let reward_tx = block.body.first().unwrap();
+            let reward_tx = block
+                .body
+                .first()
+                .ok_or(BlockchainError::MinerRewardNotFound)?;
 
             if reward_tx.src != Address::Treasury
                 || reward_tx.fee != 0

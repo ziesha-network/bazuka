@@ -68,7 +68,8 @@ lazy_static! {
                     LruCacheKvStore::new(
                         LevelDbKvStore::new(&opts.db.unwrap_or_else(|| {
                             home::home_dir().unwrap().join(Path::new(".bazuka"))
-                        })),
+                        }))
+                        .unwrap(),
                         64,
                     ),
                     genesis::get_genesis_block(),
@@ -93,7 +94,7 @@ async fn main() -> Result<(), NodeError> {
 
 #[cfg(not(feature = "node"))]
 fn main() {
-    let mut genesis_block = genesis::get_genesis_block();
+    let genesis_block = genesis::get_genesis_block();
     let mut chain = KvStoreChain::new(RamKvStore::new(), genesis_block).unwrap();
 
     println!("Bazuka!");
