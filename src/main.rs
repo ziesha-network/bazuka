@@ -5,11 +5,13 @@ extern crate lazy_static;
 use {
     bazuka::blockchain::KvStoreChain,
     bazuka::db::{LevelDbKvStore, LruCacheKvStore},
-    bazuka::node::{node_create, node_request, IncomingRequest, Internet, NodeError, PeerAddress},
+    bazuka::node::{
+        node_create, node_request, IncomingRequest, NodeError, OutgoingRequest, PeerAddress,
+    },
     bazuka::wallet::Wallet,
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
-    hyper::{Body, Request, Server},
+    hyper::{Body, Client, Request, Server},
     std::net::SocketAddr,
     std::path::{Path, PathBuf},
     std::sync::Arc,
@@ -55,7 +57,8 @@ async fn main() -> Result<(), NodeError> {
         bazuka::node::upnp::get_public_ip().await.ok()
     );
 
-    let (req_snd, req_rcv) = mpsc::unbounded_channel::<IncomingRequest>();
+    let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
+    let (out_send, mut out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
 
     let opts = NodeOptions::from_args();
     let address = PeerAddress(
@@ -66,7 +69,6 @@ async fn main() -> Result<(), NodeError> {
         opts.port.unwrap_or(3030),
     );
     let node_fut = node_create(
-        Arc::new(Internet::new()),
         address,
         opts.bootstrap
             .clone()
@@ -92,10 +94,11 @@ async fn main() -> Result<(), NodeError> {
         )
         .unwrap(),
         Some(WALLET.clone()),
-        req_rcv,
+        inc_recv,
+        out_send,
     );
 
-    let arc_req_send = Arc::new(req_snd);
+    let arc_req_send = Arc::new(inc_send);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], address.1));
     let make_svc = make_service_fn(|conn: &AddrStream| {
@@ -112,8 +115,25 @@ async fn main() -> Result<(), NodeError> {
         Server::bind(&addr).serve(make_svc).await?;
         Ok::<(), NodeError>(())
     };
+    let net_loop = async {
+        loop {
+            if let Some(req) = out_recv.recv().await {
+                let client = Client::new();
+                let resp = client
+                    .request(req.body)
+                    .await
+                    .map_err(|h| NodeError::ServerError(h));
+                if req.resp.send(resp).await.is_err() {
+                    println!("Something bad happened!");
+                }
+            } else {
+                break;
+            }
+        }
+        Ok::<(), NodeError>(())
+    };
 
-    try_join!(server_future, node_fut).unwrap();
+    try_join!(server_future, node_fut, net_loop).unwrap();
 
     Ok(())
 }

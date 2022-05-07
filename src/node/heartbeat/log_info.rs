@@ -1,7 +1,7 @@
 use super::*;
 
-pub async fn log_info<B: Blockchain, N: Network>(
-    context: &Arc<RwLock<NodeContext<N, B>>>,
+pub async fn log_info<B: Blockchain>(
+    context: &Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
     let mut inf = Vec::new();

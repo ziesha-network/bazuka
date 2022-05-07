@@ -1,5 +1,4 @@
-use super::http::Network;
-use super::{Peer, PeerAddress, PeerInfo};
+use super::{OutgoingSender, Peer, PeerAddress, PeerInfo};
 use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::Transaction;
 use crate::utils;
@@ -26,8 +25,8 @@ pub struct Miner {
     pub webhook: Option<String>,
 }
 
-pub struct NodeContext<N: Network, B: Blockchain> {
-    pub network: Arc<N>,
+pub struct NodeContext<B: Blockchain> {
+    pub outgoing: Arc<OutgoingSender>,
     pub blockchain: B,
     pub wallet: Option<Wallet>,
     pub mempool: HashMap<Transaction, TransactionStats>,
@@ -37,7 +36,7 @@ pub struct NodeContext<N: Network, B: Blockchain> {
     pub miner: Option<Miner>,
 }
 
-impl<N: Network, B: Blockchain> NodeContext<N, B> {
+impl<B: Blockchain> NodeContext<B> {
     pub fn network_timestamp(&self) -> u32 {
         (utils::local_timestamp() as i32 + self.timestamp_offset) as u32
     }

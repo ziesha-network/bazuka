@@ -1,11 +1,10 @@
 use super::*;
 
-pub async fn sync_blocks<N: Network, B: Blockchain>(
-    context: &Arc<RwLock<NodeContext<N, B>>>,
+pub async fn sync_blocks<B: Blockchain>(
+    context: &Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
-
-    let net = Arc::clone(&ctx.network);
+    let net = ctx.outgoing.clone();
 
     let height = ctx.blockchain.get_height()?;
     let peer_addresses = ctx

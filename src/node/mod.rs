@@ -25,8 +25,6 @@ use serde_derive::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use tokio::try_join;
 
-pub use http::{Internet, Network};
-
 pub type Timestamp = u32;
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -65,9 +63,9 @@ impl Peer {
     }
 }
 
-async fn node_service<N: Network, B: Blockchain>(
+async fn node_service<B: Blockchain>(
     _client: SocketAddr,
-    context: Arc<RwLock<NodeContext<N, B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
     let mut response = Response::new(Body::empty());
@@ -172,6 +170,89 @@ pub struct IncomingRequest {
     pub resp: mpsc::Sender<Result<Response<Body>, NodeError>>,
 }
 
+pub struct OutgoingRequest {
+    pub body: Request<Body>,
+    pub resp: mpsc::Sender<Result<Response<Body>, NodeError>>,
+}
+
+pub struct OutgoingSender {
+    chan: mpsc::UnboundedSender<OutgoingRequest>,
+}
+
+impl OutgoingSender {
+    pub async fn raw(&self, body: Request<Body>) -> Result<Response<Body>, NodeError> {
+        let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
+        let req = OutgoingRequest {
+            body,
+            resp: resp_snd,
+        };
+        self.chan
+            .send(req)
+            .map_err(|_| NodeError::NotListeningError)?;
+        resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)?
+    }
+
+    async fn bincode_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
+        &self,
+        addr: String,
+        req: Req,
+    ) -> Result<Resp, NodeError> {
+        let req = Request::builder()
+            .method(Method::GET)
+            .uri(format!("{}?{}", addr, serde_qs::to_string(&req)?))
+            .body(Body::empty())?;
+        let body = self.raw(req).await?.into_body();
+        let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
+        Ok(resp)
+    }
+
+    #[allow(dead_code)]
+    async fn bincode_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
+        &self,
+        addr: String,
+        req: Req,
+    ) -> Result<Resp, NodeError> {
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(&addr)
+            .header("content-type", "application/octet-stream")
+            .body(Body::from(bincode::serialize(&req)?))?;
+        let body = self.raw(req).await?.into_body();
+        let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
+        Ok(resp)
+    }
+
+    async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
+        &self,
+        addr: String,
+        req: Req,
+    ) -> Result<Resp, NodeError> {
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(&addr)
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&req)?))?;
+        let body = self.raw(req).await?.into_body();
+        let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
+        Ok(resp)
+    }
+
+    #[allow(dead_code)]
+    async fn json_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
+        &self,
+        addr: String,
+        req: Req,
+    ) -> Result<Resp, NodeError> {
+        let req = Request::builder()
+            .method(Method::GET)
+            .uri(format!("{}?{}", addr, serde_qs::to_string(&req)?))
+            .body(Body::empty())?;
+        let body = self.raw(req).await?.into_body();
+        let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
+        Ok(resp)
+    }
+}
+
 pub async fn node_request(
     chan: Arc<mpsc::UnboundedSender<IncomingRequest>>,
     client: SocketAddr,
@@ -187,16 +268,16 @@ pub async fn node_request(
     resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)?
 }
 
-pub async fn node_create<N: Network, B: Blockchain>(
-    network: Arc<N>,
+pub async fn node_create<B: Blockchain>(
     address: PeerAddress,
     bootstrap: Vec<PeerAddress>,
     blockchain: B,
     wallet: Option<Wallet>,
-    mut rcv: mpsc::UnboundedReceiver<IncomingRequest>,
+    mut incoming: mpsc::UnboundedReceiver<IncomingRequest>,
+    outgoing: mpsc::UnboundedSender<OutgoingRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
-        network,
+        outgoing: Arc::new(OutgoingSender { chan: outgoing }),
         blockchain,
         wallet,
         mempool: HashMap::new(),
@@ -220,7 +301,7 @@ pub async fn node_create<N: Network, B: Blockchain>(
 
     let server_future = async {
         loop {
-            if let Some(msg) = rcv.recv().await {
+            if let Some(msg) = incoming.recv().await {
                 if let Err(_) = msg
                     .resp
                     .send(node_service(msg.socket_addr, Arc::clone(&context), msg.body).await)

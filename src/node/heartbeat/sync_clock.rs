@@ -1,12 +1,12 @@
 use super::*;
 
-pub async fn sync_clock<N: Network, B: Blockchain>(
+pub async fn sync_clock<B: Blockchain>(
     address: PeerAddress,
-    context: &Arc<RwLock<NodeContext<N, B>>>,
+    context: &Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
 
-    let net = Arc::clone(&ctx.network);
+    let net = ctx.outgoing.clone();
 
     let timestamp = ctx.network_timestamp();
     let info = ctx.get_info()?;
