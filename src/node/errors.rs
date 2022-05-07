@@ -31,4 +31,6 @@ pub enum NodeError {
     NoCurrentlyMiningBlockError,
     #[error("timeout reached: {0}")]
     TimeoutError(#[from] tokio::time::error::Elapsed),
+    #[error("http body size limit error")]
+    SizeLimitError,
 }

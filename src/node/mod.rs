@@ -13,6 +13,7 @@ use context::Miner;
 use crate::blockchain::Blockchain;
 use crate::utils;
 use crate::wallet::Wallet;
+use hyper::body::HttpBody;
 use hyper::{Body, Method, Request, Response, StatusCode};
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -182,7 +183,10 @@ pub struct OutgoingSender {
 }
 
 impl OutgoingSender {
-    pub async fn raw(&self, body: Request<Body>) -> Result<Response<Body>, NodeError> {
+    pub async fn raw(&self, body: Request<Body>) -> Result<Body, NodeError> {
+        const TIME_LIMIT: u64 = 1000; // ms
+        const SIZE_LIMIT: u64 = 1024 * 1024; // bytes
+
         let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
         let req = OutgoingRequest {
             body,
@@ -191,9 +195,22 @@ impl OutgoingSender {
         self.chan
             .send(req)
             .map_err(|_| NodeError::NotListeningError)?;
-        timeout(Duration::from_millis(1000), resp_rcv.recv())
+
+        let body = timeout(Duration::from_millis(TIME_LIMIT), resp_rcv.recv())
             .await?
-            .ok_or(NodeError::NotAnsweringError)?
+            .ok_or(NodeError::NotAnsweringError)??
+            .into_body();
+
+        if body
+            .size_hint()
+            .upper()
+            .map(|u| u > SIZE_LIMIT)
+            .unwrap_or(true)
+        {
+            Err(NodeError::SizeLimitError)
+        } else {
+            Ok(body)
+        }
     }
 
     async fn bincode_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
@@ -205,7 +222,7 @@ impl OutgoingSender {
             .method(Method::GET)
             .uri(format!("{}?{}", addr, serde_qs::to_string(&req)?))
             .body(Body::empty())?;
-        let body = self.raw(req).await?.into_body();
+        let body = self.raw(req).await?;
         let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }
@@ -221,7 +238,7 @@ impl OutgoingSender {
             .uri(&addr)
             .header("content-type", "application/octet-stream")
             .body(Body::from(bincode::serialize(&req)?))?;
-        let body = self.raw(req).await?.into_body();
+        let body = self.raw(req).await?;
         let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }
@@ -236,7 +253,7 @@ impl OutgoingSender {
             .uri(&addr)
             .header("content-type", "application/json")
             .body(Body::from(serde_json::to_vec(&req)?))?;
-        let body = self.raw(req).await?.into_body();
+        let body = self.raw(req).await?;
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }
@@ -251,7 +268,7 @@ impl OutgoingSender {
             .method(Method::GET)
             .uri(format!("{}?{}", addr, serde_qs::to_string(&req)?))
             .body(Body::empty())?;
-        let body = self.raw(req).await?.into_body();
+        let body = self.raw(req).await?;
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }
