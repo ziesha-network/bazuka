@@ -15,7 +15,7 @@ use crate::utils;
 use crate::wallet::Wallet;
 use hyper::{Body, Method, Request, Response, StatusCode};
 use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use crate::config::punish;
@@ -28,11 +28,11 @@ use tokio::try_join;
 pub type Timestamp = u32;
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PeerAddress(pub IpAddr, pub u16); // ip, port
+pub struct PeerAddress(pub SocketAddr); // ip, port
 
 impl std::fmt::Display for PeerAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "http://{}:{}", self.0, self.1)
+        write!(f, "http://{}", self.0)
     }
 }
 

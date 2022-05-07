@@ -30,13 +30,13 @@ use {
 };
 
 #[cfg(feature = "node")]
-#[derive(Debug, Clone, StructOpt)]
+#[derive(StructOpt)]
 #[structopt(name = "Options", about = "Bazuka node software options")]
 struct NodeOptions {
     #[structopt(long)]
-    host: Option<String>,
+    listen: Option<SocketAddr>,
     #[structopt(long)]
-    port: Option<u16>,
+    external: Option<SocketAddr>,
     #[structopt(long, parse(from_os_str))]
     db: Option<PathBuf>,
     #[structopt(long)]
@@ -50,22 +50,25 @@ lazy_static! {
 #[cfg(feature = "node")]
 #[tokio::main]
 async fn main() -> Result<(), NodeError> {
-    println!(
-        "Public Ip: {:?}",
-        bazuka::node::upnp::get_public_ip().await.ok()
+    let public_ip = bazuka::node::upnp::get_public_ip().await;
+
+    const DEFAULT_PORT: u16 = 3030;
+
+    let opts = NodeOptions::from_args();
+
+    let listen = opts
+        .listen
+        .unwrap_or(SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT)));
+    let address = PeerAddress(
+        opts.external
+            .unwrap_or_else(|| SocketAddr::from((public_ip.unwrap(), DEFAULT_PORT))),
     );
+
+    println!("Node listening to: {}", listen);
+    println!("Peer introduced as: {}", address);
 
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, mut out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
-
-    let opts = NodeOptions::from_args();
-    let address = PeerAddress(
-        opts.host
-            .unwrap_or_else(|| "127.0.0.1".to_string())
-            .parse()
-            .unwrap(),
-        opts.port.unwrap_or(3030),
-    );
 
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
@@ -74,12 +77,7 @@ async fn main() -> Result<(), NodeError> {
         opts.bootstrap
             .clone()
             .into_iter()
-            .map(|b| {
-                let mut parts = b.splitn(2, ':');
-                let host = parts.next().unwrap();
-                let port = parts.next().unwrap();
-                PeerAddress(host.parse().unwrap(), port.parse().unwrap())
-            })
+            .map(|b| PeerAddress(b.parse().unwrap()))
             .collect(),
         KvStoreChain::new(
             LruCacheKvStore::new(
@@ -103,8 +101,7 @@ async fn main() -> Result<(), NodeError> {
     // socket and redirecting it to the node channels.
     let server_loop = async {
         let arc_inc_send = Arc::new(inc_send);
-        let addr = SocketAddr::from(([0, 0, 0, 0], address.1));
-        Server::bind(&addr)
+        Server::bind(&listen)
             .serve(make_service_fn(|conn: &AddrStream| {
                 let client = conn.remote_addr();
                 let arc_inc_send = Arc::clone(&arc_inc_send);
