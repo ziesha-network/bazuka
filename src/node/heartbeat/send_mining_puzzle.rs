@@ -1,11 +1,10 @@
 use super::*;
 
-pub async fn send_mining_puzzle<N: Network, B: Blockchain>(
-    context: &Arc<RwLock<NodeContext<N, B>>>,
+pub async fn send_mining_puzzle<B: Blockchain>(
+    context: &Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let mut ctx = context.write().await;
-
-    let net = Arc::clone(&ctx.network);
+    let net = ctx.outgoing.clone();
 
     if let Some(w) = ctx.wallet.clone() {
         let (blk, puzzle) = ctx.get_puzzle(w)?;

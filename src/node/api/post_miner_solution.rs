@@ -1,11 +1,11 @@
 use super::messages::{PostMinerSolutionRequest, PostMinerSolutionResponse};
-use super::{Network, NodeContext, NodeError};
+use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn post_miner_solution<B: Blockchain, N: Network>(
-    context: Arc<RwLock<NodeContext<N, B>>>,
+pub async fn post_miner_solution<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     req: PostMinerSolutionRequest,
 ) -> Result<PostMinerSolutionResponse, NodeError> {
     let mut context = context.write().await;
