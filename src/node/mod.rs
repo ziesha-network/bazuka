@@ -17,6 +17,8 @@ use hyper::{Body, Method, Request, Response, StatusCode};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Duration;
+use tokio::time::timeout;
 
 use crate::config::punish;
 
@@ -189,7 +191,9 @@ impl OutgoingSender {
         self.chan
             .send(req)
             .map_err(|_| NodeError::NotListeningError)?;
-        resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)?
+        timeout(Duration::from_millis(1000), resp_rcv.recv())
+            .await?
+            .ok_or(NodeError::NotAnsweringError)?
     }
 
     async fn bincode_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(

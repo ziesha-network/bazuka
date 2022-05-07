@@ -29,4 +29,6 @@ pub enum NodeError {
     NoMinerError,
     #[error("no block is currently being mined")]
     NoCurrentlyMiningBlockError,
+    #[error("timeout reached: {0}")]
+    TimeoutError(#[from] tokio::time::error::Elapsed),
 }
