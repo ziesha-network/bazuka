@@ -610,13 +610,13 @@ mod tests {
 
         let last_block = chain.get_block(height - 1)?;
         let w2_address = wallet2.get_address();
-        assert!(matches!(
-            &last_block.body[1].data,
+        assert_eq!(
+            last_block.body[1].data.clone(),
             TransactionData::RegularSend {
-                dst: _w2_address,
+                dst: w2_address,
                 amount: 100
             }
-        ));
+        );
 
         let account = chain.get_account(wallet2.get_address())?;
         assert_eq!(100, account.balance);
@@ -756,13 +756,13 @@ mod tests {
         assert_eq!(3, height);
 
         let last_block = chain.get_block(height - 1)?;
-        assert!(matches!(
-            &last_block.body[1].data,
+        assert_eq!(
+            last_block.body[1].data.clone(),
             TransactionData::RegularSend {
-                dst: _dst_address,
+                dst: wallet2.get_address(),
                 amount: 500_000
             }
-        ));
+        );
 
         chain.rollback_block()?;
 
