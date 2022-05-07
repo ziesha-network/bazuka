@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod test;
+
 mod api;
 mod context;
 mod errors;
