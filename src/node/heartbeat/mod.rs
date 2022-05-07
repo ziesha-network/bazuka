@@ -3,9 +3,10 @@ mod log_info;
 mod send_mining_puzzle;
 mod sync_blocks;
 mod sync_clock;
+mod sync_peers;
 
 use super::api::messages::*;
-use super::{http, NodeContext, NodeError, PeerAddress};
+use super::{http, NodeContext, NodeError, Peer, PeerAddress};
 use crate::blockchain::Blockchain;
 use crate::config::punish;
 use crate::utils;
@@ -22,6 +23,7 @@ pub async fn heartbeat<B: Blockchain>(
 ) -> Result<(), NodeError> {
     log_info::log_info(&context).await?;
     sync_clock::sync_clock(address, &context).await?;
+    sync_peers::sync_peers(address, &context).await?;
     sync_blocks::sync_blocks(&context).await?;
     #[cfg(feature = "pow")]
     send_mining_puzzle::send_mining_puzzle(&context).await?;
