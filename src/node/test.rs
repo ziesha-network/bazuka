@@ -5,6 +5,8 @@ use crate::blockchain::KvStoreChain;
 use crate::config::genesis;
 use crate::db::RamKvStore;
 use rand::Rng;
+use std::time::Duration;
+use tokio::time::sleep;
 
 struct Node {
     addr: PeerAddress,
@@ -139,6 +141,10 @@ impl SenderWrapper {
             .await?;
         Ok(())
     }
+    async fn stats(&self) -> Result<GetStatsResponse, NodeError> {
+        self.json_get::<GetStatsRequest, GetStatsResponse>("stats", GetStatsRequest {})
+            .await
+    }
 }
 
 fn test_network(
@@ -169,10 +175,17 @@ fn test_network(
 }
 
 #[tokio::test]
-async fn test_node() {
+async fn test_timestamps_are_sync() {
     let (node_futs, route_futs, chans) = test_network(3);
     let test_logic = async {
-        // Test logic
+        sleep(Duration::from_millis(2000)).await;
+
+        let mut timestamps = Vec::new();
+        for chan in chans.values() {
+            timestamps.push(chan.stats().await.unwrap().timestamp);
+        }
+        let first = timestamps.first().unwrap();
+        assert!(timestamps.iter().all(|t| t == first));
 
         for chan in chans.values() {
             chan.shutdown().await.unwrap();
