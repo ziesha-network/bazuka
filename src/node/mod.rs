@@ -324,11 +324,13 @@ pub async fn node_create<B: Blockchain>(
                 break;
             }
             if let Some(msg) = incoming.recv().await {
-                if let Err(_) = msg
+                if let Err(e) = msg
                     .resp
                     .send(node_service(msg.socket_addr, Arc::clone(&context), msg.body).await)
                     .await
-                {}
+                {
+                    println!("Request sender not receiving its answer: {}", e);
+                }
             } else {
                 break;
             }

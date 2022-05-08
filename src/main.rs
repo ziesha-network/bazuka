@@ -58,7 +58,7 @@ async fn main() -> Result<(), NodeError> {
 
     let listen = opts
         .listen
-        .unwrap_or(SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT)));
+        .unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT)));
     let address = PeerAddress(
         opts.external
             .unwrap_or_else(|| SocketAddr::from((public_ip.unwrap(), DEFAULT_PORT))),
@@ -131,19 +131,15 @@ async fn main() -> Result<(), NodeError> {
     // Async loop that is responsible for redirecting node requests from its outgoing
     // channel to the Internet and piping back the responses.
     let client_loop = async {
-        loop {
-            if let Some(req) = out_recv.recv().await {
-                let resp = async {
-                    let client = Client::new();
-                    let resp = client.request(req.body).await?;
-                    Ok::<_, NodeError>(resp)
-                }
-                .await;
-                if req.resp.send(resp).await.is_err() {
-                    println!("Node not listening to its HTTP request answer.");
-                }
-            } else {
-                break;
+        while let Some(req) = out_recv.recv().await {
+            let resp = async {
+                let client = Client::new();
+                let resp = client.request(req.body).await?;
+                Ok::<_, NodeError>(resp)
+            }
+            .await;
+            if req.resp.send(resp).await.is_err() {
+                println!("Node not listening to its HTTP request answer.");
             }
         }
         Ok::<(), NodeError>(())

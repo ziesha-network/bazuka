@@ -36,34 +36,30 @@ async fn route(
     mut outgoing: mpsc::UnboundedReceiver<OutgoingRequest>,
     incs: HashMap<PeerAddress, SenderWrapper>,
 ) -> Result<(), NodeError> {
-    loop {
-        if let Some(req) = outgoing.recv().await {
-            let s = PeerAddress(
-                req.body
-                    .uri()
-                    .authority()
-                    .unwrap()
-                    .to_string()
-                    .parse()
-                    .unwrap(),
-            );
-            let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
-            let inc_req = IncomingRequest {
-                socket_addr: s.0,
-                body: req.body,
-                resp: resp_snd,
-            };
-            incs[&s]
-                .chan
-                .send(inc_req)
-                .map_err(|_| NodeError::NotListeningError)?;
-            req.resp
-                .send(resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)?)
-                .await
-                .map_err(|_| NodeError::NotListeningError)?;
-        } else {
-            break;
-        }
+    while let Some(req) = outgoing.recv().await {
+        let s = PeerAddress(
+            req.body
+                .uri()
+                .authority()
+                .unwrap()
+                .to_string()
+                .parse()
+                .unwrap(),
+        );
+        let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
+        let inc_req = IncomingRequest {
+            socket_addr: s.0,
+            body: req.body,
+            resp: resp_snd,
+        };
+        incs[&s]
+            .chan
+            .send(inc_req)
+            .map_err(|_| NodeError::NotListeningError)?;
+        req.resp
+            .send(resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)?)
+            .await
+            .map_err(|_| NodeError::NotListeningError)?;
     }
 
     Ok(())
