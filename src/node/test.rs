@@ -4,6 +4,7 @@ use super::api::messages::*;
 use crate::blockchain::KvStoreChain;
 use crate::config::genesis;
 use crate::db::RamKvStore;
+use rand::Rng;
 
 struct Node {
     addr: PeerAddress,
@@ -15,10 +16,19 @@ fn create_test_node(
     addr: PeerAddress,
     bootstrap: Vec<PeerAddress>,
 ) -> (impl futures::Future<Output = Result<(), NodeError>>, Node) {
+    let timestamp_offset = rand::thread_rng().gen_range(-100..100);
     let chain = KvStoreChain::new(RamKvStore::new(), genesis::get_genesis_block()).unwrap();
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
-    let node = node_create(addr, bootstrap, chain, None, inc_recv, out_send);
+    let node = node_create(
+        addr,
+        bootstrap,
+        chain,
+        timestamp_offset,
+        None,
+        inc_recv,
+        out_send,
+    );
     (
         node,
         Node {

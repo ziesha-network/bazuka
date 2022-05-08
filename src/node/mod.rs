@@ -290,6 +290,7 @@ pub async fn node_create<B: Blockchain>(
     address: PeerAddress,
     bootstrap: Vec<PeerAddress>,
     blockchain: B,
+    timestamp_offset: i32,
     wallet: Option<Wallet>,
     mut incoming: mpsc::UnboundedReceiver<IncomingRequest>,
     outgoing: mpsc::UnboundedSender<OutgoingRequest>,
@@ -313,7 +314,7 @@ pub async fn node_create<B: Blockchain>(
                 )
             })
             .collect(),
-        timestamp_offset: 0,
+        timestamp_offset,
         #[cfg(feature = "pow")]
         miner: None,
     }));

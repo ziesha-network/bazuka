@@ -92,6 +92,7 @@ async fn main() -> Result<(), NodeError> {
             genesis::get_genesis_block(),
         )
         .unwrap(),
+        0,
         Some(WALLET.clone()),
         inc_recv,
         out_send,
