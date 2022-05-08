@@ -7,6 +7,7 @@ use {
     bazuka::db::{LevelDbKvStore, LruCacheKvStore},
     bazuka::node::{node_create, IncomingRequest, NodeError, OutgoingRequest, PeerAddress},
     bazuka::wallet::Wallet,
+    colored::Colorize,
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
     hyper::{Body, Client, Request, Response, Server},
@@ -66,8 +67,14 @@ async fn main() -> Result<(), NodeError> {
             .unwrap_or_else(|| SocketAddr::from((public_ip.unwrap(), DEFAULT_PORT))),
     );
 
-    log::info!("Node listening to: {}", listen);
-    log::info!("Peer introduced as: {}", address);
+    println!(
+        "{} v{}",
+        "Bazuka!".bright_green(),
+        env!("CARGO_PKG_VERSION")
+    );
+    println!();
+    println!("{} {}", "Listening:".bright_yellow(), listen);
+    println!("{} {}", "Internet endpoint:".bright_yellow(), address);
 
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, mut out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();

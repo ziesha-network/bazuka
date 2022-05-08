@@ -25,6 +25,7 @@ num-integer = "0.1"
 lru = "0.7.5"
 hex = "0.4.3"
 zeekit = "0.2.1"
+colored = "2.0.0"
 
 # Node related deps
 tokio = { version = "1", features = ["full"], optional = true }
