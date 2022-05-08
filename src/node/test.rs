@@ -24,6 +24,7 @@ fn create_test_node(
         Node {
             addr,
             incoming: SenderWrapper {
+                peer: addr,
                 chan: Arc::new(inc_send),
             },
             outgoing: out_recv,
@@ -70,6 +71,7 @@ async fn route(
 
 #[derive(Clone)]
 struct SenderWrapper {
+    peer: PeerAddress,
     chan: Arc<mpsc::UnboundedSender<IncomingRequest>>,
 }
 
@@ -93,18 +95,43 @@ impl SenderWrapper {
 
         Ok(body)
     }
+    #[allow(dead_code)]
     async fn json_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
         &self,
-        addr: String,
+        url: &str,
         req: Req,
     ) -> Result<Resp, NodeError> {
         let req = Request::builder()
             .method(Method::GET)
-            .uri(format!("{}?{}", addr, serde_qs::to_string(&req)?))
+            .uri(format!(
+                "{}/{}?{}",
+                self.peer,
+                url,
+                serde_qs::to_string(&req)?
+            ))
             .body(Body::empty())?;
         let body = self.raw(req).await?;
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
+    }
+    async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
+        &self,
+        url: &str,
+        req: Req,
+    ) -> Result<Resp, NodeError> {
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(format!("{}/{}", self.peer, url))
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_vec(&req)?))?;
+        let body = self.raw(req).await?;
+        let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
+        Ok(resp)
+    }
+    async fn shutdown(&self) -> Result<(), NodeError> {
+        self.json_post::<ShutdownRequest, ShutdownResponse>("shutdown", ShutdownRequest {})
+            .await?;
+        Ok(())
     }
 }
 
@@ -139,15 +166,11 @@ fn test_network(
 async fn test_node() {
     let (node_futs, route_futs, chans) = test_network(3);
     let test_logic = async {
-        tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
-        println!("Start test logic...");
-        let resp = chans[&PeerAddress("127.0.0.1:3030".to_string().parse().unwrap())]
-            .json_get::<GetStatsRequest, GetStatsResponse>(
-                "http://127.0.0.1:3030/stats".to_string(),
-                GetStatsRequest {},
-            )
-            .await;
-        println!("Stats: {:?}", resp);
+        // Test logic
+
+        for chan in chans.values() {
+            chan.shutdown().await.unwrap();
+        }
     };
     tokio::join!(node_futs, route_futs, test_logic);
 }

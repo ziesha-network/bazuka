@@ -132,6 +132,15 @@ async fn node_service<B: Blockchain>(
                 .await?,
             )?);
         }
+        (Method::POST, "/shutdown") => {
+            *response.body_mut() = Body::from(serde_json::to_vec(
+                &api::shutdown(
+                    Arc::clone(&context),
+                    serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
+                )
+                .await?,
+            )?);
+        }
         (Method::POST, "/bincode/transact") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
                 &api::transact(
@@ -286,6 +295,7 @@ pub async fn node_create<B: Blockchain>(
     outgoing: mpsc::UnboundedSender<OutgoingRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
+        shutdown: false,
         outgoing: Arc::new(OutgoingSender { chan: outgoing }),
         blockchain,
         wallet,
@@ -310,6 +320,9 @@ pub async fn node_create<B: Blockchain>(
 
     let server_future = async {
         loop {
+            if context.read().await.shutdown {
+                break;
+            }
             if let Some(msg) = incoming.recv().await {
                 if let Err(_) = msg
                     .resp
@@ -326,5 +339,8 @@ pub async fn node_create<B: Blockchain>(
     let heartbeat_future = heartbeat::heartbeater(address, Arc::clone(&context));
 
     try_join!(server_future, heartbeat_future)?;
+
+    println!("Node stopped!");
+
     Ok(())
 }
