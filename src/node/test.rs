@@ -64,7 +64,13 @@ async fn route(
     Ok(())
 }
 
-async fn test_network(num_nodes: usize) {
+fn test_network(
+    num_nodes: usize,
+) -> (
+    impl futures::Future,
+    impl futures::Future,
+    HashMap<PeerAddress, Arc<mpsc::UnboundedSender<IncomingRequest>>>,
+) {
     let addresses: Vec<PeerAddress> = (0..num_nodes)
         .map(|i| PeerAddress(format!("127.0.0.1:{}", 3030 + i).parse().unwrap()))
         .collect();
@@ -81,13 +87,19 @@ async fn test_network(num_nodes: usize) {
         .map(|n| route(n.outgoing, incs.clone()))
         .collect::<Vec<_>>();
 
-    tokio::join!(
+    (
         futures::future::join_all(node_futs),
-        futures::future::join_all(route_futs)
-    );
+        futures::future::join_all(route_futs),
+        incs,
+    )
 }
 
 #[tokio::test]
 async fn test_node() {
-    test_network(3).await;
+    let (node_futs, route_futs, chans) = test_network(3);
+    let test_logic = async {
+        tokio::time::sleep(std::time::Duration::from_millis(5000)).await;
+        println!("Start test logic...");
+    };
+    tokio::join!(node_futs, route_futs, test_logic);
 }
