@@ -50,6 +50,8 @@ lazy_static! {
 #[cfg(feature = "node")]
 #[tokio::main]
 async fn main() -> Result<(), NodeError> {
+    env_logger::init();
+
     let public_ip = bazuka::node::upnp::get_public_ip().await;
 
     const DEFAULT_PORT: u16 = 3030;
@@ -64,8 +66,8 @@ async fn main() -> Result<(), NodeError> {
             .unwrap_or_else(|| SocketAddr::from((public_ip.unwrap(), DEFAULT_PORT))),
     );
 
-    println!("Node listening to: {}", listen);
-    println!("Peer introduced as: {}", address);
+    log::info!("Node listening to: {}", listen);
+    log::info!("Peer introduced as: {}", address);
 
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, mut out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
@@ -139,8 +141,8 @@ async fn main() -> Result<(), NodeError> {
                 Ok::<_, NodeError>(resp)
             }
             .await;
-            if req.resp.send(resp).await.is_err() {
-                println!("Node not listening to its HTTP request answer.");
+            if let Err(e) = req.resp.send(resp).await {
+                log::error!("Node not listening to its HTTP request answer: {}", e);
             }
         }
         Ok::<(), NodeError>(())
@@ -156,12 +158,12 @@ fn main() {
     let genesis_block = genesis::get_genesis_block();
     let mut chain = KvStoreChain::new(RamKvStore::new(), genesis_block).unwrap();
 
-    println!("Bazuka!");
-    println!("Your address is: {}", WALLET.get_address());
+    log::info!("Bazuka!");
+    log::info!("Your address is: {}", WALLET.get_address());
 
     #[cfg(feature = "pow")]
     {
-        println!("Chain power: {}", chain.get_power().unwrap());
+        log::info!("Chain power: {}", chain.get_power().unwrap());
     }
 
     chain
@@ -184,11 +186,11 @@ fn main() {
         .unwrap();
 
     chain.rollback_block().unwrap();
-    println!(
+    log::info!(
         "Balance: {:?}",
         chain.get_account(WALLET.get_address()).unwrap()
     );
 
     let tx = WALLET.create_transaction(Address::Treasury, 123, 0, 1);
-    println!("Verify tx signature: {}", tx.verify_signature());
+    log::info!("Verify tx signature: {}", tx.verify_signature());
 }

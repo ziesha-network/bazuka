@@ -330,7 +330,7 @@ pub async fn node_create<B: Blockchain>(
                     .send(node_service(msg.socket_addr, Arc::clone(&context), msg.body).await)
                     .await
                 {
-                    println!("Request sender not receiving its answer: {}", e);
+                    log::error!("Request sender not receiving its answer: {}", e);
                 }
             } else {
                 break;
@@ -343,7 +343,7 @@ pub async fn node_create<B: Blockchain>(
 
     try_join!(server_future, heartbeat_future)?;
 
-    println!("Node stopped!");
+    log::info!("Node stopped!");
 
     Ok(())
 }

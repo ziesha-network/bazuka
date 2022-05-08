@@ -18,7 +18,7 @@ pub async fn log_info<B: Blockchain>(
     ]);
     #[cfg(feature = "pow")]
     inf.push(("Power".to_string(), ctx.blockchain.get_power()?.to_string()));
-    println!("Lub dub! {:?}", inf);
+    log::info!("Lub dub! {:?}", inf);
 
     Ok(())
 }

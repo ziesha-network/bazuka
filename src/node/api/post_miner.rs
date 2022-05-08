@@ -9,7 +9,7 @@ pub async fn post_miner<B: Blockchain>(
     req: RegisterMinerRequest,
 ) -> Result<RegisterMinerResponse, NodeError> {
     let mut context = context.write().await;
-    println!("Registered miner!");
+    log::info!("Registered miner!");
     context.miner = Some(Miner {
         webhook: req.webhook,
         block_puzzle: None,

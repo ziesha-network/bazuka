@@ -10,7 +10,7 @@ pub mod pow {
     pub fn hash(key: &[u8], input: &[u8]) -> Output {
         let mut hasher = HASHER.lock().unwrap();
         if hasher.is_none() || hasher.as_ref().unwrap().context().key() != key {
-            println!("Initializing RandomX hasher...");
+            log::info!("Initializing RandomX hasher...");
             *hasher = Some(Hasher::new(Arc::new(Context::new(key, false))));
         }
         hasher.as_ref().unwrap().hash(input)

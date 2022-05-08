@@ -36,7 +36,7 @@ pub async fn sync_blocks<B: Blockchain>(
                     .will_extend(height, &resp.headers)
                     .unwrap_or(false)
                 {
-                    println!("{} has a longer chain!", peer);
+                    log::info!("{} has a longer chain!", peer);
                     let resp = net
                         .bincode_get::<GetBlocksRequest, GetBlocksResponse>(
                             format!("{}/bincode/blocks", peer).to_string(),

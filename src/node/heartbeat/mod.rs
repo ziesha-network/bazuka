@@ -42,7 +42,7 @@ pub async fn heartbeater<B: Blockchain>(
         let sleep_future = sleep(Duration::from_millis(1000));
         let (res, _) = join!(heartbeat_future, sleep_future);
         if let Err(e) = res {
-            println!("Error happened: {}", e);
+            log::error!("Error happened: {}", e);
         }
     }
 
