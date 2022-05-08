@@ -4,39 +4,90 @@ use crate::blockchain::KvStoreChain;
 use crate::config::genesis;
 use crate::db::RamKvStore;
 
-async fn handle_connections(
-    peers: HashMap<
-        PeerAddress,
-        (
-            mpsc::UnboundedSender<IncomingRequest>,
-            mpsc::UnboundedReceiver<OutgoingRequest>,
-        ),
-    >,
-) {
+struct Node {
+    addr: PeerAddress,
+    incoming: Arc<mpsc::UnboundedSender<IncomingRequest>>,
+    outgoing: mpsc::UnboundedReceiver<OutgoingRequest>,
 }
 
 fn create_test_node(
     addr: PeerAddress,
-) -> (
-    impl futures::Future,
-    (
-        mpsc::UnboundedSender<IncomingRequest>,
-        mpsc::UnboundedReceiver<OutgoingRequest>,
-    ),
-) {
+    bootstrap: Vec<PeerAddress>,
+) -> (impl futures::Future<Output = Result<(), NodeError>>, Node) {
     let chain = KvStoreChain::new(RamKvStore::new(), genesis::get_genesis_block()).unwrap();
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
-    let node = node_create(addr, Vec::new(), chain, None, inc_recv, out_send);
-    (node, (inc_send, out_recv))
+    let node = node_create(addr, bootstrap, chain, None, inc_recv, out_send);
+    (
+        node,
+        Node {
+            addr,
+            incoming: Arc::new(inc_send),
+            outgoing: out_recv,
+        },
+    )
+}
+
+async fn route(
+    mut outgoing: mpsc::UnboundedReceiver<OutgoingRequest>,
+    incs: HashMap<PeerAddress, Arc<mpsc::UnboundedSender<IncomingRequest>>>,
+) -> Result<(), NodeError> {
+    loop {
+        if let Some(req) = outgoing.recv().await {
+            let s = PeerAddress(
+                req.body
+                    .uri()
+                    .authority()
+                    .unwrap()
+                    .to_string()
+                    .parse()
+                    .unwrap(),
+            );
+            let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
+            let inc_req = IncomingRequest {
+                socket_addr: s.0,
+                body: req.body,
+                resp: resp_snd,
+            };
+            incs[&s]
+                .send(inc_req)
+                .map_err(|_| NodeError::NotListeningError)?;
+            req.resp
+                .send(resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)?)
+                .await
+                .map_err(|_| NodeError::NotListeningError)?;
+        } else {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
+async fn test_network(num_nodes: usize) {
+    let addresses: Vec<PeerAddress> = (0..num_nodes)
+        .map(|i| PeerAddress(format!("127.0.0.1:{}", 3030 + i).parse().unwrap()))
+        .collect();
+    let (node_futs, nodes): (Vec<_>, Vec<Node>) = addresses
+        .iter()
+        .map(|p| create_test_node(*p, addresses.clone()))
+        .unzip();
+    let incs: HashMap<_, _> = nodes
+        .iter()
+        .map(|n| (n.addr, Arc::clone(&n.incoming)))
+        .collect();
+    let route_futs = nodes
+        .into_iter()
+        .map(|n| route(n.outgoing, incs.clone()))
+        .collect::<Vec<_>>();
+
+    tokio::join!(
+        futures::future::join_all(node_futs),
+        futures::future::join_all(route_futs)
+    );
 }
 
 #[tokio::test]
 async fn test_node() {
-    let addr1 = PeerAddress("127.0.0.1:3031".parse().unwrap());
-    let addr2 = PeerAddress("127.0.0.1:3032".parse().unwrap());
-    let (node1, chans1) = create_test_node(addr1);
-    let (node2, chans2) = create_test_node(addr2);
-    let conns = handle_connections([(addr1, chans1), (addr2, chans2)].into_iter().collect());
-    tokio::join!(node1, node2);
+    test_network(3).await;
 }
