@@ -11,6 +11,7 @@ pub struct GetStatsResponse {
     pub height: usize,
     pub power: u64,
     pub next_reward: Money,
+    pub timestamp: u32,
 }
 
 #[cfg(feature = "pow")]

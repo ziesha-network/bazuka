@@ -13,5 +13,6 @@ pub async fn get_stats<B: Blockchain>(
         height: context.blockchain.get_height()?,
         power: context.blockchain.get_power()?,
         next_reward: context.blockchain.next_reward()?,
+        timestamp: context.network_timestamp(),
     })
 }
