@@ -26,6 +26,7 @@ pub struct Miner {
 }
 
 pub struct NodeContext<B: Blockchain> {
+    pub shutdown: bool,
     pub outgoing: Arc<OutgoingSender>,
     pub blockchain: B,
     pub wallet: Option<Wallet>,

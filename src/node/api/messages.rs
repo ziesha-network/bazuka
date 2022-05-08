@@ -115,3 +115,9 @@ pub struct TransactRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct TransactResponse {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ShutdownRequest {}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct ShutdownResponse {}

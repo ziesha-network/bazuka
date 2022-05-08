@@ -16,6 +16,8 @@ mod get_headers;
 pub use get_headers::*;
 mod transact;
 pub use transact::*;
+mod shutdown;
+pub use shutdown::*;
 
 #[cfg(feature = "pow")]
 use super::Miner;
