@@ -32,7 +32,7 @@ use {
 
 #[cfg(feature = "node")]
 #[derive(StructOpt)]
-#[structopt(name = "Options", about = "Bazuka node software options")]
+#[structopt(name = "Bazuka!", about = "Node software for Zeeka Network")]
 struct NodeOptions {
     #[structopt(long)]
     listen: Option<SocketAddr>,
