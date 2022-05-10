@@ -1,0 +1,6 @@
+all:
+  hosts:
+    ir-1:
+      ansible_host: 45.156.185.21
+      ansible_connection: ssh
+      ansible_user: root

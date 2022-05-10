@@ -7,15 +7,20 @@ on:
     branches: [ master ]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
     - name: Build binary
-      run: |
-        cargo build --release --features node
+      run: cargo build --release
     - name: Archive binary artifacts
       uses: actions/upload-artifact@v3
       with:
         name: bin-x86_64-unknown-linux-gnu
         path: ./target/release/bazuka
+  test:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run tests
+        run: cargo test
