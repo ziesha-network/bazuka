@@ -14,17 +14,6 @@ pub struct ProofOfWork {
     pub nonce: u64,
 }
 
-#[cfg(feature = "pow")]
-impl Default for ProofOfWork {
-    fn default() -> Self {
-        ProofOfWork {
-            timestamp: 0,
-            target: 0x02ffffff,
-            nonce: 0xeb4ad5ce811e1d48,
-        }
-    }
-}
-
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Header<H: Hash> {
     /// the parent hash
@@ -39,20 +28,6 @@ pub struct Header<H: Hash> {
     /// aux data for Proof-of-Work consensus
     #[cfg(feature = "pow")]
     pub proof_of_work: ProofOfWork,
-}
-
-impl<H: Hash> Default for Header<H> {
-    fn default() -> Self {
-        Header {
-            parent_hash: H::Output::default(),
-            number: 0,
-            state_root: H::Output::default(),
-            block_root: H::Output::default(),
-
-            #[cfg(feature = "pow")]
-            proof_of_work: Default::default(),
-        }
-    }
 }
 
 impl<H: Hash> Header<H> {
