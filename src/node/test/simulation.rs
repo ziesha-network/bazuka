@@ -2,7 +2,7 @@ use super::*;
 
 use super::api::messages::*;
 use crate::blockchain::KvStoreChain;
-use crate::config::genesis;
+use crate::core::Block;
 use crate::db::RamKvStore;
 use rand::Rng;
 
@@ -16,11 +16,12 @@ struct Node {
 }
 
 fn create_test_node(
+    genesis: Block,
     addr: PeerAddress,
     bootstrap: Vec<PeerAddress>,
 ) -> (impl futures::Future<Output = Result<(), NodeError>>, Node) {
     let timestamp_offset = rand::thread_rng().gen_range(-100..100);
-    let chain = KvStoreChain::new(RamKvStore::new(), genesis::get_genesis_block()).unwrap();
+    let chain = KvStoreChain::new(RamKvStore::new(), genesis).unwrap();
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
     let node = node_create(
@@ -154,6 +155,7 @@ impl SenderWrapper {
 
 pub fn test_network(
     enabled: Arc<RwLock<bool>>,
+    genesis: Block,
     num_nodes: usize,
 ) -> (
     impl futures::Future,
@@ -165,7 +167,7 @@ pub fn test_network(
         .collect();
     let (node_futs, nodes): (Vec<_>, Vec<Node>) = addresses
         .iter()
-        .map(|p| create_test_node(*p, addresses.clone()))
+        .map(|p| create_test_node(genesis.clone(), *p, addresses.clone()))
         .unzip();
     let incs: HashMap<_, _> = nodes.iter().map(|n| (n.addr, n.incoming.clone())).collect();
     let route_futs = nodes
