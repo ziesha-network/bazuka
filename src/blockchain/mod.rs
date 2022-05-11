@@ -3,7 +3,7 @@ use thiserror::Error;
 use crate::config;
 use crate::config::TOTAL_SUPPLY;
 use crate::core::{
-    Account, Address, Block, Header, Money, Signature, Transaction, TransactionData,
+    Account, Address, Block, Header, Money, ProofOfWork, Signature, Transaction, TransactionData,
 };
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
@@ -516,17 +516,20 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         txs.extend(self.select_transactions(mempool)?);
 
         let mut blk = Block {
-            header: Default::default(),
+            header: Header {
+                parent_hash: last_block.header.hash(),
+                number: height as u64,
+                state_root: Default::default(),
+                block_root: Default::default(),
+                proof_of_work: ProofOfWork {
+                    timestamp: timestamp,
+                    target: self.next_difficulty()?,
+                    nonce: 0,
+                },
+            },
             body: txs,
         };
-        blk.header.number = height as u64;
-        blk.header.parent_hash = last_block.header.hash();
         blk.header.block_root = blk.merkle_tree().root();
-        #[cfg(feature = "pow")]
-        {
-            blk.header.proof_of_work.timestamp = timestamp;
-            blk.header.proof_of_work.target = self.next_difficulty()?;
-        }
         self.fork_on_ram().apply_block(&blk, true)?; // Check if everything is ok
         Ok(blk)
     }
