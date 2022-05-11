@@ -6,6 +6,9 @@ use crate::config::genesis;
 use crate::db::RamKvStore;
 use rand::Rng;
 
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
 struct Node {
     addr: PeerAddress,
     incoming: SenderWrapper,
@@ -43,10 +46,14 @@ fn create_test_node(
 }
 
 async fn route(
+    enabled: Arc<RwLock<bool>>,
     mut outgoing: mpsc::UnboundedReceiver<OutgoingRequest>,
     incs: HashMap<PeerAddress, SenderWrapper>,
 ) -> Result<(), NodeError> {
     while let Some(req) = outgoing.recv().await {
+        if !*enabled.read().await {
+            continue;
+        }
         let s = PeerAddress(
             req.body
                 .uri()
@@ -146,6 +153,7 @@ impl SenderWrapper {
 }
 
 pub fn test_network(
+    enabled: Arc<RwLock<bool>>,
     num_nodes: usize,
 ) -> (
     impl futures::Future,
@@ -162,7 +170,7 @@ pub fn test_network(
     let incs: HashMap<_, _> = nodes.iter().map(|n| (n.addr, n.incoming.clone())).collect();
     let route_futs = nodes
         .into_iter()
-        .map(|n| route(n.outgoing, incs.clone()))
+        .map(|n| route(Arc::clone(&enabled), n.outgoing, incs.clone()))
         .collect::<Vec<_>>();
 
     (
