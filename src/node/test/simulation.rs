@@ -5,8 +5,6 @@ use crate::blockchain::KvStoreChain;
 use crate::config::genesis;
 use crate::db::RamKvStore;
 use rand::Rng;
-use std::time::Duration;
-use tokio::time::sleep;
 
 struct Node {
     addr: PeerAddress,
@@ -78,7 +76,7 @@ async fn route(
 }
 
 #[derive(Clone)]
-struct SenderWrapper {
+pub struct SenderWrapper {
     peer: PeerAddress,
     chan: Arc<mpsc::UnboundedSender<IncomingRequest>>,
 }
@@ -104,7 +102,7 @@ impl SenderWrapper {
         Ok(body)
     }
     #[allow(dead_code)]
-    async fn json_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
+    pub async fn json_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
         &self,
         url: &str,
         req: Req,
@@ -122,7 +120,7 @@ impl SenderWrapper {
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }
-    async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
+    pub async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
         &self,
         url: &str,
         req: Req,
@@ -136,18 +134,18 @@ impl SenderWrapper {
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }
-    async fn shutdown(&self) -> Result<(), NodeError> {
+    pub async fn shutdown(&self) -> Result<(), NodeError> {
         self.json_post::<ShutdownRequest, ShutdownResponse>("shutdown", ShutdownRequest {})
             .await?;
         Ok(())
     }
-    async fn stats(&self) -> Result<GetStatsResponse, NodeError> {
+    pub async fn stats(&self) -> Result<GetStatsResponse, NodeError> {
         self.json_get::<GetStatsRequest, GetStatsResponse>("stats", GetStatsRequest {})
             .await
     }
 }
 
-fn test_network(
+pub fn test_network(
     num_nodes: usize,
 ) -> (
     impl futures::Future,
@@ -172,24 +170,4 @@ fn test_network(
         futures::future::join_all(route_futs),
         incs,
     )
-}
-
-#[tokio::test]
-async fn test_timestamps_are_sync() {
-    let (node_futs, route_futs, chans) = test_network(3);
-    let test_logic = async {
-        sleep(Duration::from_millis(2000)).await;
-
-        let mut timestamps = Vec::new();
-        for chan in chans.values() {
-            timestamps.push(chan.stats().await.unwrap().timestamp);
-        }
-        let first = timestamps.first().unwrap();
-        assert!(timestamps.iter().all(|t| t == first));
-
-        for chan in chans.values() {
-            chan.shutdown().await.unwrap();
-        }
-    };
-    tokio::join!(node_futs, route_futs, test_logic);
 }
