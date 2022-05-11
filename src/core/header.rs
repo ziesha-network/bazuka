@@ -20,8 +20,6 @@ pub struct Header<H: Hash> {
     pub parent_hash: H::Output,
     /// block number or block height
     pub number: u64,
-    /// the root of state tired merkle tree
-    pub state_root: H::Output,
     /// the merkle root of current block
     pub block_root: H::Output,
 

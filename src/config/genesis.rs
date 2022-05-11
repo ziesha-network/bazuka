@@ -5,7 +5,6 @@ pub fn get_genesis_block() -> Block {
         header: Header {
             parent_hash: Default::default(),
             number: 0,
-            state_root: Default::default(),
             block_root: Default::default(),
             proof_of_work: ProofOfWork {
                 timestamp: 0,
@@ -35,7 +34,6 @@ pub fn get_test_genesis_block() -> Block {
         header: Header {
             parent_hash: Default::default(),
             number: 0,
-            state_root: Default::default(),
             block_root: Default::default(),
             proof_of_work: ProofOfWork {
                 timestamp: 0,
