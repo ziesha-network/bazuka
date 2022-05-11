@@ -2,3 +2,5 @@
 **/*.rs.bk
 Cargo.lock
 **/.idea
+.ansible_vault_password
+.ansible_key
