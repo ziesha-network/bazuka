@@ -519,7 +519,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             header: Header {
                 parent_hash: last_block.header.hash(),
                 number: height as u64,
-                state_root: Default::default(),
                 block_root: Default::default(),
                 proof_of_work: ProofOfWork {
                     timestamp: timestamp,
