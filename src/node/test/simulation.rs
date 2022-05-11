@@ -4,6 +4,7 @@ use super::api::messages::*;
 use crate::blockchain::KvStoreChain;
 use crate::core::Block;
 use crate::db::RamKvStore;
+use crate::wallet::Wallet;
 use rand::Rng;
 
 use std::sync::Arc;
@@ -17,6 +18,7 @@ struct Node {
 
 fn create_test_node(
     genesis: Block,
+    wallet: Option<Wallet>,
     addr: PeerAddress,
     bootstrap: Vec<PeerAddress>,
 ) -> (impl futures::Future<Output = Result<(), NodeError>>, Node) {
@@ -29,7 +31,7 @@ fn create_test_node(
         bootstrap,
         chain,
         timestamp_offset,
-        None,
+        wallet,
         inc_recv,
         out_send,
     );
@@ -151,23 +153,61 @@ impl SenderWrapper {
         self.json_get::<GetStatsRequest, GetStatsResponse>("stats", GetStatsRequest {})
             .await
     }
+
+    pub async fn set_miner(
+        &self,
+        webhook: Option<String>,
+    ) -> Result<RegisterMinerResponse, NodeError> {
+        self.json_post::<RegisterMinerRequest, RegisterMinerResponse>(
+            "miner",
+            RegisterMinerRequest { webhook },
+        )
+        .await
+    }
+
+    pub async fn mine(&self) -> Result<PostMinerSolutionResponse, NodeError> {
+        let puzzle = self
+            .json_get::<GetMinerPuzzleRequest, Puzzle>("miner/puzzle", GetMinerPuzzleRequest {})
+            .await?;
+        let sol = mine_puzzle(&puzzle);
+        self.json_post::<PostMinerSolutionRequest, PostMinerSolutionResponse>("miner/solution", sol)
+            .await
+    }
+}
+
+fn mine_puzzle(puzzle: &Puzzle) -> PostMinerSolutionRequest {
+    let key = hex::decode(&puzzle.key).unwrap();
+    let mut blob = hex::decode(&puzzle.blob).unwrap();
+    let mut nonce = 0u64;
+    loop {
+        blob[puzzle.offset..puzzle.offset + puzzle.size].copy_from_slice(&nonce.to_le_bytes());
+        let hash = crate::consensus::pow::hash(&key, &blob);
+        if hash.meets_difficulty(rust_randomx::Difficulty::new(puzzle.target)) {
+            return PostMinerSolutionRequest {
+                nonce: hex::encode(nonce.to_le_bytes()),
+            };
+        }
+
+        nonce += 1;
+    }
 }
 
 pub fn test_network(
     enabled: Arc<RwLock<bool>>,
     genesis: Block,
-    num_nodes: usize,
+    node_wallets: Vec<Option<Wallet>>,
 ) -> (
     impl futures::Future,
     impl futures::Future,
-    HashMap<PeerAddress, SenderWrapper>,
+    Vec<SenderWrapper>,
 ) {
-    let addresses: Vec<PeerAddress> = (0..num_nodes)
+    let addresses: Vec<PeerAddress> = (0..node_wallets.len())
         .map(|i| PeerAddress(format!("127.0.0.1:{}", 3030 + i).parse().unwrap()))
         .collect();
     let (node_futs, nodes): (Vec<_>, Vec<Node>) = addresses
         .iter()
-        .map(|p| create_test_node(genesis.clone(), *p, addresses.clone()))
+        .zip(node_wallets.into_iter())
+        .map(|(p, w)| create_test_node(genesis.clone(), w, *p, addresses.clone()))
         .unzip();
     let incs: HashMap<_, _> = nodes.iter().map(|n| (n.addr, n.incoming.clone())).collect();
     let route_futs = nodes
@@ -178,6 +218,6 @@ pub fn test_network(
     (
         futures::future::join_all(node_futs),
         futures::future::join_all(route_futs),
-        incs,
+        incs.into_values().collect(),
     )
 }

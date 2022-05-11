@@ -26,6 +26,7 @@ pub struct Miner {
 }
 
 pub struct NodeContext<B: Blockchain> {
+    pub address: PeerAddress,
     pub shutdown: bool,
     pub outgoing: Arc<OutgoingSender>,
     pub blockchain: B,
@@ -64,7 +65,7 @@ impl<B: Blockchain> NodeContext<B> {
         self.peers
             .values()
             .cloned()
-            .filter(|p| !p.is_punished())
+            .filter(|p| !p.is_punished() && p.address != self.address)
             .collect()
     }
 
@@ -76,7 +77,7 @@ impl<B: Blockchain> NodeContext<B> {
         let puzzle = Puzzle {
             key: hex::encode(self.blockchain.pow_key(block.header.number as usize)?),
             blob: hex::encode(bincode::serialize(&block.header).unwrap()),
-            offset: 112,
+            offset: 80,
             size: 8,
             target: block.header.proof_of_work.target,
         };

@@ -1,10 +1,10 @@
 use super::*;
 
 pub async fn sync_clock<B: Blockchain>(
-    address: PeerAddress,
     context: &Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
+    let address = ctx.address.clone();
 
     let net = ctx.outgoing.clone();
 
