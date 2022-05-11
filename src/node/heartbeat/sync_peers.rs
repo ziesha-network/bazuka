@@ -1,7 +1,6 @@
 use super::*;
 
 pub async fn sync_peers<B: Blockchain>(
-    _address: PeerAddress,
     context: &Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;

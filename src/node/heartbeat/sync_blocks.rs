@@ -4,6 +4,7 @@ pub async fn sync_blocks<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
+    let power = ctx.blockchain.get_power()?;
     let net = ctx.outgoing.clone();
 
     let height = ctx.blockchain.get_height()?;
@@ -16,12 +17,20 @@ pub async fn sync_blocks<B: Blockchain>(
         .ok_or(NodeError::NoPeers)?;
     drop(ctx);
 
+    let most_powerful_info = most_powerful.info.as_ref().ok_or(NodeError::NoPeers)?;
+
+    if most_powerful_info.power <= power {
+        return Ok(());
+    }
+
+    let start_height = std::cmp::min(height, most_powerful_info.height);
+
     // Get all headers starting from the indices that we don't have.
     let mut headers = net
         .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
             format!("{}/bincode/headers", most_powerful.address),
             GetHeadersRequest {
-                since: height,
+                since: start_height,
                 until: None,
             },
         )
@@ -31,7 +40,7 @@ pub async fn sync_blocks<B: Blockchain>(
     // The local blockchain and the peer blockchain both have all blocks
     // from 0 to height-1, though, the blocks might not be equal. Find
     // the header from which the fork has happened.
-    for index in (0..height).rev() {
+    for index in (0..start_height).rev() {
         let peer_header = net
             .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
                 format!("{}/bincode/headers", most_powerful.address),
@@ -58,7 +67,7 @@ pub async fn sync_blocks<B: Blockchain>(
     let will_extend = {
         let ctx = context.read().await;
         ctx.blockchain
-            .will_extend(height, &headers)
+            .will_extend(headers[0].number as usize, &headers)
             .unwrap_or(false)
     };
 
@@ -73,7 +82,8 @@ pub async fn sync_blocks<B: Blockchain>(
             )
             .await?;
         let mut ctx = context.write().await;
-        ctx.blockchain.extend(height, &resp.blocks)?;
+        ctx.blockchain
+            .extend(headers[0].number as usize, &resp.blocks)?;
     }
 
     Ok(())

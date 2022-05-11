@@ -18,12 +18,11 @@ use tokio::time::{sleep, Duration};
 const NUM_PEERS: usize = 8;
 
 pub async fn heartbeat<B: Blockchain>(
-    address: PeerAddress,
     context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     log_info::log_info(&context).await?;
-    sync_clock::sync_clock(address, &context).await?;
-    sync_peers::sync_peers(address, &context).await?;
+    sync_clock::sync_clock(&context).await?;
+    sync_peers::sync_peers(&context).await?;
     sync_blocks::sync_blocks(&context).await?;
     #[cfg(feature = "pow")]
     send_mining_puzzle::send_mining_puzzle(&context).await?;
@@ -31,14 +30,13 @@ pub async fn heartbeat<B: Blockchain>(
 }
 
 pub async fn heartbeater<B: Blockchain>(
-    address: PeerAddress,
     context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     loop {
         if context.read().await.shutdown {
             break;
         }
-        let heartbeat_future = heartbeat(address, Arc::clone(&context));
+        let heartbeat_future = heartbeat(Arc::clone(&context));
         let sleep_future = sleep(Duration::from_millis(1000));
         let (res, _) = join!(heartbeat_future, sleep_future);
         if let Err(e) = res {

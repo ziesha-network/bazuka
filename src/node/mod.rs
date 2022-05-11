@@ -296,6 +296,7 @@ pub async fn node_create<B: Blockchain>(
     outgoing: mpsc::UnboundedSender<OutgoingRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
+        address,
         shutdown: false,
         outgoing: Arc::new(OutgoingSender { chan: outgoing }),
         blockchain,
@@ -339,7 +340,7 @@ pub async fn node_create<B: Blockchain>(
         Ok(())
     };
 
-    let heartbeat_future = heartbeat::heartbeater(address, Arc::clone(&context));
+    let heartbeat_future = heartbeat::heartbeater(Arc::clone(&context));
 
     try_join!(server_future, heartbeat_future)?;
 
