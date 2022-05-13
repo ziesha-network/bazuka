@@ -9,8 +9,14 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 
+fn init() {
+    let _ = env_logger::builder().is_test(true).try_init();
+}
+
 #[tokio::test]
 async fn test_peers_find_each_other() {
+    init();
+
     let enabled = Arc::new(RwLock::new(true));
     let genesis = genesis::get_genesis_block();
 
@@ -56,6 +62,8 @@ async fn test_peers_find_each_other() {
 
 #[tokio::test]
 async fn test_timestamps_are_sync() {
+    init();
+
     let enabled = Arc::new(RwLock::new(true));
     let genesis = genesis::get_genesis_block();
 
@@ -104,6 +112,8 @@ async fn test_timestamps_are_sync() {
 
 #[tokio::test]
 async fn test_blocks_get_synced() {
+    init();
+
     let enabled = Arc::new(RwLock::new(false));
     let genesis = genesis::get_test_genesis_block();
 
