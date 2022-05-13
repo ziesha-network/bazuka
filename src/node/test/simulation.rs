@@ -5,7 +5,6 @@ use crate::blockchain::KvStoreChain;
 use crate::core::Block;
 use crate::db::RamKvStore;
 use crate::wallet::Wallet;
-use rand::Rng;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -16,22 +15,30 @@ struct Node {
     outgoing: mpsc::UnboundedReceiver<OutgoingRequest>,
 }
 
+pub struct NodeOpts {
+    pub genesis: Block,
+    pub wallet: Option<Wallet>,
+    pub addr: u16,
+    pub bootstrap: Vec<u16>,
+    pub timestamp_offset: i32,
+}
+
 fn create_test_node(
-    genesis: Block,
-    wallet: Option<Wallet>,
-    addr: PeerAddress,
-    bootstrap: Vec<PeerAddress>,
+    opts: NodeOpts,
 ) -> (impl futures::Future<Output = Result<(), NodeError>>, Node) {
-    let timestamp_offset = rand::thread_rng().gen_range(-100..100);
-    let chain = KvStoreChain::new(RamKvStore::new(), genesis).unwrap();
+    let addr = PeerAddress(SocketAddr::from(([127, 0, 0, 1], opts.addr)));
+    let chain = KvStoreChain::new(RamKvStore::new(), opts.genesis).unwrap();
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
     let node = node_create(
         addr,
-        bootstrap,
+        opts.bootstrap
+            .iter()
+            .map(|p| PeerAddress(SocketAddr::from(([127, 0, 0, 1], *p))))
+            .collect(),
         chain,
-        timestamp_offset,
-        wallet,
+        opts.timestamp_offset,
+        opts.wallet,
         inc_recv,
         out_send,
     );
@@ -194,20 +201,15 @@ fn mine_puzzle(puzzle: &Puzzle) -> PostMinerSolutionRequest {
 
 pub fn test_network(
     enabled: Arc<RwLock<bool>>,
-    genesis: Block,
-    node_wallets: Vec<Option<Wallet>>,
+    node_opts: Vec<NodeOpts>,
 ) -> (
     impl futures::Future,
     impl futures::Future,
     Vec<SenderWrapper>,
 ) {
-    let addresses: Vec<PeerAddress> = (0..node_wallets.len())
-        .map(|i| PeerAddress(format!("127.0.0.1:{}", 3030 + i).parse().unwrap()))
-        .collect();
-    let (node_futs, nodes): (Vec<_>, Vec<Node>) = addresses
-        .iter()
-        .zip(node_wallets.into_iter())
-        .map(|(p, w)| create_test_node(genesis.clone(), w, *p, addresses.clone()))
+    let (node_futs, nodes): (Vec<_>, Vec<Node>) = node_opts
+        .into_iter()
+        .map(|node_opts| create_test_node(node_opts))
         .unzip();
     let incs: HashMap<_, _> = nodes.iter().map(|n| (n.addr, n.incoming.clone())).collect();
     let route_futs = nodes

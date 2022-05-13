@@ -1,6 +1,7 @@
 use super::*;
 
 mod simulation;
+use simulation::NodeOpts;
 
 use crate::config::genesis;
 use std::sync::Arc;
@@ -11,13 +12,36 @@ use tokio::time::sleep;
 #[tokio::test]
 async fn test_timestamps_are_sync() {
     let enabled = Arc::new(RwLock::new(true));
+    let genesis = genesis::get_genesis_block();
+
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&enabled),
-        genesis::get_genesis_block(),
-        vec![None, None, None],
+        vec![
+            NodeOpts {
+                genesis: genesis.clone(),
+                wallet: None,
+                addr: 3030,
+                bootstrap: vec![],
+                timestamp_offset: 5,
+            },
+            NodeOpts {
+                genesis: genesis.clone(),
+                wallet: None,
+                addr: 3031,
+                bootstrap: vec![3030],
+                timestamp_offset: 10,
+            },
+            NodeOpts {
+                genesis: genesis.clone(),
+                wallet: None,
+                addr: 3032,
+                bootstrap: vec![3031],
+                timestamp_offset: 15,
+            },
+        ],
     );
     let test_logic = async {
-        sleep(Duration::from_millis(2000)).await;
+        sleep(Duration::from_millis(5000)).await;
 
         let mut timestamps = Vec::new();
         for chan in chans.iter() {
@@ -36,14 +60,26 @@ async fn test_timestamps_are_sync() {
 #[tokio::test]
 async fn test_blocks_get_synced() {
     let enabled = Arc::new(RwLock::new(false));
-
-    let wallet0 = Some(Wallet::new(Vec::from("ABC")));
-    let wallet1 = Some(Wallet::new(Vec::from("CBA")));
+    let genesis = genesis::get_test_genesis_block();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&enabled),
-        genesis::get_test_genesis_block(),
-        vec![wallet0, wallet1],
+        vec![
+            NodeOpts {
+                genesis: genesis.clone(),
+                wallet: Some(Wallet::new(Vec::from("ABC"))),
+                addr: 3030,
+                bootstrap: vec![],
+                timestamp_offset: 5,
+            },
+            NodeOpts {
+                genesis: genesis.clone(),
+                wallet: Some(Wallet::new(Vec::from("CBA"))),
+                addr: 3031,
+                bootstrap: vec![3030],
+                timestamp_offset: 10,
+            },
+        ],
     );
     let test_logic = async {
         chans[0].set_miner(None).await.unwrap();
