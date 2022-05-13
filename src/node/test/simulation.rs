@@ -160,6 +160,10 @@ impl SenderWrapper {
         self.json_get::<GetStatsRequest, GetStatsResponse>("stats", GetStatsRequest {})
             .await
     }
+    pub async fn peers(&self) -> Result<GetPeersResponse, NodeError> {
+        self.json_get::<GetPeersRequest, GetPeersResponse>("peers", GetPeersRequest {})
+            .await
+    }
 
     pub async fn set_miner(
         &self,
