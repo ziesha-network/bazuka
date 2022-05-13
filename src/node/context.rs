@@ -8,7 +8,6 @@ use rand::RngCore;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-#[cfg(feature = "pow")]
 use {super::api::messages::Puzzle, crate::core::Block};
 
 #[derive(Debug, Clone)]
@@ -16,10 +15,8 @@ pub struct TransactionStats {
     pub first_seen: u32,
 }
 
-#[cfg(feature = "pow")]
 pub type BlockPuzzle = (Block, Puzzle);
 
-#[cfg(feature = "pow")]
 pub struct Miner {
     pub block_puzzle: Option<BlockPuzzle>,
     pub webhook: Option<String>,
@@ -34,7 +31,7 @@ pub struct NodeContext<B: Blockchain> {
     pub mempool: HashMap<Transaction, TransactionStats>,
     pub peers: HashMap<PeerAddress, Peer>,
     pub timestamp_offset: i32,
-    #[cfg(feature = "pow")]
+
     pub miner: Option<Miner>,
 }
 
@@ -50,7 +47,7 @@ impl<B: Blockchain> NodeContext<B> {
     pub fn get_info(&self) -> Result<PeerInfo, BlockchainError> {
         Ok(PeerInfo {
             height: self.blockchain.get_height()?,
-            #[cfg(feature = "pow")]
+
             power: self.blockchain.get_power()?,
         })
     }
@@ -69,7 +66,6 @@ impl<B: Blockchain> NodeContext<B> {
             .collect()
     }
 
-    #[cfg(feature = "pow")]
     pub fn get_puzzle(&self, wallet: Wallet) -> Result<BlockPuzzle, BlockchainError> {
         let txs = self.mempool.keys().cloned().collect::<Vec<_>>();
         let ts = self.network_timestamp();

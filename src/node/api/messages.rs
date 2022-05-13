@@ -14,21 +14,17 @@ pub struct GetStatsResponse {
     pub timestamp: u32,
 }
 
-#[cfg(feature = "pow")]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMinerSolutionRequest {
     pub nonce: String,
 }
 
-#[cfg(feature = "pow")]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMinerSolutionResponse {}
 
-#[cfg(feature = "pow")]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMinerPuzzleRequest {}
 
-#[cfg(feature = "pow")]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Puzzle {
     pub key: String,   // Puzzle key encoded in hex
@@ -38,13 +34,11 @@ pub struct Puzzle {
     pub target: u32,   // Difficulty target
 }
 
-#[cfg(feature = "pow")]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct RegisterMinerRequest {
     pub webhook: Option<String>,
 }
 
-#[cfg(feature = "pow")]
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct RegisterMinerResponse {}
 

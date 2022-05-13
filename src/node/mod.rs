@@ -10,7 +10,6 @@ pub mod upnp;
 use context::{NodeContext, TransactionStats};
 pub use errors::NodeError;
 
-#[cfg(feature = "pow")]
 use context::Miner;
 
 use crate::blockchain::Blockchain;
@@ -45,7 +44,7 @@ impl std::fmt::Display for PeerAddress {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PeerInfo {
     pub height: usize,
-    #[cfg(feature = "pow")]
+
     pub power: u64,
 }
 
@@ -82,7 +81,6 @@ async fn node_service<B: Blockchain>(
 
     match (method, &path[..]) {
         // Miner will call this to fetch new PoW work.
-        #[cfg(feature = "pow")]
         (Method::GET, "/miner/puzzle") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
                 &api::get_miner_puzzle(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
@@ -90,7 +88,6 @@ async fn node_service<B: Blockchain>(
         }
 
         // Miner will call this when he has solved the PoW puzzle.
-        #[cfg(feature = "pow")]
         (Method::POST, "/miner/solution") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
                 &api::post_miner_solution(
@@ -102,7 +99,6 @@ async fn node_service<B: Blockchain>(
         }
 
         // Register the miner software as a webhook.
-        #[cfg(feature = "pow")]
         (Method::POST, "/miner") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
                 &api::post_miner(
@@ -316,7 +312,7 @@ pub async fn node_create<B: Blockchain>(
             })
             .collect(),
         timestamp_offset,
-        #[cfg(feature = "pow")]
+
         miner: None,
     }));
 

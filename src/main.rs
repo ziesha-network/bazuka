@@ -168,7 +168,6 @@ fn main() {
     log::info!("Bazuka!");
     log::info!("Your address is: {}", WALLET.get_address());
 
-    #[cfg(feature = "pow")]
     {
         log::info!("Chain power: {}", chain.get_power().unwrap());
     }

@@ -19,20 +19,16 @@ pub use transact::*;
 mod shutdown;
 pub use shutdown::*;
 
-#[cfg(feature = "pow")]
 use super::Miner;
 
-#[cfg(feature = "pow")]
 mod post_miner;
-#[cfg(feature = "pow")]
+
 pub use post_miner::*;
 
-#[cfg(feature = "pow")]
 mod get_miner_puzzle;
-#[cfg(feature = "pow")]
+
 pub use get_miner_puzzle::*;
 
-#[cfg(feature = "pow")]
 mod post_miner_solution;
-#[cfg(feature = "pow")]
+
 pub use post_miner_solution::*;

@@ -26,6 +26,7 @@ lru = "0.7.5"
 hex = "0.4.3"
 zeekit = "0.2.1"
 colored = "2.0.0"
+rust-randomx = "0.5.5"
 
 # Node related deps
 tokio = { version = "1", features = ["full"], optional = true }
@@ -35,13 +36,9 @@ leveldb = { version = "0.8.6", optional = true }
 structopt = { version = "0.3", default-features = false, optional = true }
 async-trait = { version = "0.1.53", optional = true }
 
-# Proof-of-Work related deps
-rust-randomx = { version = "0.5.5", optional = true }
-
 [features]
-default = ["node", "pow"]
+default = ["node"]
 node = ["tokio", "hyper", "leveldb", "futures", "structopt", "async-trait"]
-pow = ["rust-randomx"]
 
 [patch.crates-io]
 dusk-bytes = { git = "https://github.com/zeeka-network/dusk-bytes.git", tag = "v0.1.6" }

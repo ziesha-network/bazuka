@@ -16,7 +16,7 @@ pub async fn log_info<B: Blockchain>(
             ctx.active_peers().len().to_string(),
         ),
     ]);
-    #[cfg(feature = "pow")]
+
     inf.push(("Power".to_string(), ctx.blockchain.get_power()?.to_string()));
     log::info!("Lub dub! {:?}", inf);
 

@@ -1,4 +1,3 @@
-#[cfg(feature = "pow")]
 pub mod pow {
     use rust_randomx::{Context, Hasher, Output};
     use std::sync::{Arc, Mutex};

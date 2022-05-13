@@ -66,9 +66,8 @@ pub trait Blockchain {
     fn get_blocks(&self, since: usize, until: Option<usize>)
         -> Result<Vec<Block>, BlockchainError>;
 
-    #[cfg(feature = "pow")]
     fn get_power(&self) -> Result<u64, BlockchainError>;
-    #[cfg(feature = "pow")]
+
     fn pow_key(&self, index: usize) -> Result<Vec<u8>, BlockchainError>;
 }
 
@@ -91,7 +90,6 @@ impl<K: KvStore> KvStoreChain<K> {
         }
     }
 
-    #[cfg(feature = "pow")]
     fn median_timestamp(&self, index: usize) -> Result<u32, BlockchainError> {
         Ok(utils::median(
             &(0..std::cmp::min(index + 1, config::MEDIAN_TIMESTAMP_COUNT))
@@ -103,7 +101,6 @@ impl<K: KvStore> KvStoreChain<K> {
         ))
     }
 
-    #[cfg(feature = "pow")]
     fn next_difficulty(&self) -> Result<u32, BlockchainError> {
         let height = self.get_height()?;
         let last_block = self.get_block(height - 1)?.header;
@@ -277,19 +274,16 @@ impl<K: KvStore> KvStoreChain<K> {
         let is_genesis = block.header.number == 0;
         let next_reward = self.next_reward()?;
 
-        #[cfg(feature = "pow")]
         let pow_key = self.pow_key(block.header.number as usize)?;
 
         if curr_height > 0 {
             let last_block = self.get_block(curr_height - 1)?;
 
-            #[cfg(feature = "pow")]
             if block.header.proof_of_work.timestamp < self.median_timestamp(curr_height - 1)? {
                 return Err(BlockchainError::InvalidTimestamp);
             }
 
             if !draft {
-                #[cfg(feature = "pow")]
                 if !block.header.meets_target(&pow_key) {
                     return Err(BlockchainError::DifficultyTargetUnmet);
                 }
@@ -348,7 +342,6 @@ impl<K: KvStore> KvStoreChain<K> {
 
         changes.push(WriteOp::Put("height".into(), (curr_height + 1).into()));
 
-        #[cfg(feature = "pow")]
         changes.push(WriteOp::Put(
             format!("power_{:010}", block.header.number).into(),
             (block.header.power(&pow_key) + self.get_power()?).into(),
@@ -388,7 +381,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
 
-    #[cfg(feature = "pow")]
     fn will_extend(&self, from: usize, headers: &[Header]) -> Result<bool, BlockchainError> {
         let current_power = self.get_power()?;
 
@@ -532,7 +524,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         self.fork_on_ram().apply_block(&blk, true)?; // Check if everything is ok
         Ok(blk)
     }
-    #[cfg(feature = "pow")]
+
     fn get_power(&self) -> Result<u64, BlockchainError> {
         let height = self.get_height()?;
         if height == 0 {
@@ -545,7 +537,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 .try_into()?)
         }
     }
-    #[cfg(feature = "pow")]
+
     fn pow_key(&self, index: usize) -> Result<Vec<u8>, BlockchainError> {
         Ok(if index < config::POW_KEY_CHANGE_DELAY {
             config::POW_BASE_KEY.to_vec()

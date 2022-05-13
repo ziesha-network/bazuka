@@ -20,7 +20,6 @@ pub type TransactionData = transaction::TransactionData<Signer>;
 pub type Header = header::Header<Hasher>;
 pub type Block = blocks::Block<Hasher, Signer>;
 
-#[cfg(feature = "pow")]
 pub type ProofOfWork = header::ProofOfWork;
 
 macro_rules! auto_trait {

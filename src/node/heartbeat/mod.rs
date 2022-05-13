@@ -1,5 +1,5 @@
 mod log_info;
-#[cfg(feature = "pow")]
+
 mod send_mining_puzzle;
 mod sync_blocks;
 mod sync_clock;
@@ -24,7 +24,7 @@ pub async fn heartbeat<B: Blockchain>(
     sync_clock::sync_clock(&context).await?;
     sync_peers::sync_peers(&context).await?;
     sync_blocks::sync_blocks(&context).await?;
-    #[cfg(feature = "pow")]
+
     send_mining_puzzle::send_mining_puzzle(&context).await?;
     Ok(())
 }
