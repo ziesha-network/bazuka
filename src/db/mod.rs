@@ -61,6 +61,7 @@ macro_rules! gen_from {
 gen_try_into!(
     u32,
     u64,
+    u128,
     usize,
     Account,
     Block,
@@ -74,6 +75,7 @@ gen_try_into!(
 gen_from!(
     u32,
     u64,
+    u128,
     usize,
     Account,
     &Block,

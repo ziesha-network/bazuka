@@ -1,4 +1,4 @@
-use rust_randomx::{Difficulty, Output};
+use rust_randomx::Difficulty;
 
 use super::hash::Hash;
 
@@ -30,23 +30,14 @@ impl<H: Hash> Header<H> {
         H::hash(&bincode::serialize(&self).expect("convert header to bincode format"))
     }
 
-    fn pow_hash(&self, key: &[u8]) -> Output {
-        let bin = bincode::serialize(&self).expect("convert header to bincode format");
-        crate::consensus::pow::hash(key, &bin)
-    }
-
-    fn leading_zeros(&self, key: &[u8]) -> u8 {
-        self.pow_hash(key).leading_zeros() as u8
-    }
-
     // Approximate number of hashes run in order to generate this block
-
-    pub fn power(&self, key: &[u8]) -> u64 {
-        1u64 << self.leading_zeros(key)
+    pub fn power(&self) -> u128 {
+        Difficulty::new(self.proof_of_work.target).power()
     }
 
     pub fn meets_target(&self, key: &[u8]) -> bool {
-        self.pow_hash(key)
+        let bin = bincode::serialize(&self).expect("convert header to bincode format");
+        crate::consensus::pow::hash(key, &bin)
             .meets_difficulty(Difficulty::new(self.proof_of_work.target))
     }
 }

@@ -9,7 +9,7 @@ pub struct GetStatsRequest {}
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetStatsResponse {
     pub height: u64,
-    pub power: u64,
+    pub power: u128,
     pub next_reward: Money,
     pub timestamp: u32,
 }
