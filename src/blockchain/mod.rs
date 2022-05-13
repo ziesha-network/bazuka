@@ -49,26 +49,21 @@ pub enum BlockchainError {
 pub trait Blockchain {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn next_reward(&self) -> Result<Money, BlockchainError>;
-    fn will_extend(&self, from: usize, headers: &[Header]) -> Result<bool, BlockchainError>;
-    fn extend(&mut self, from: usize, blocks: &[Block]) -> Result<(), BlockchainError>;
+    fn will_extend(&self, from: u64, headers: &[Header]) -> Result<bool, BlockchainError>;
+    fn extend(&mut self, from: u64, blocks: &[Block]) -> Result<(), BlockchainError>;
     fn draft_block(
         &self,
         timestamp: u32,
         mempool: &[Transaction],
         wallet: &Wallet,
     ) -> Result<Block, BlockchainError>;
-    fn get_height(&self) -> Result<usize, BlockchainError>;
-    fn get_headers(
-        &self,
-        since: usize,
-        until: Option<usize>,
-    ) -> Result<Vec<Header>, BlockchainError>;
-    fn get_blocks(&self, since: usize, until: Option<usize>)
-        -> Result<Vec<Block>, BlockchainError>;
+    fn get_height(&self) -> Result<u64, BlockchainError>;
+    fn get_headers(&self, since: u64, until: Option<u64>) -> Result<Vec<Header>, BlockchainError>;
+    fn get_blocks(&self, since: u64, until: Option<u64>) -> Result<Vec<Block>, BlockchainError>;
 
     fn get_power(&self) -> Result<u64, BlockchainError>;
 
-    fn pow_key(&self, index: usize) -> Result<Vec<u8>, BlockchainError>;
+    fn pow_key(&self, index: u64) -> Result<Vec<u8>, BlockchainError>;
 }
 
 pub struct KvStoreChain<K: KvStore> {
@@ -90,7 +85,7 @@ impl<K: KvStore> KvStoreChain<K> {
         }
     }
 
-    fn median_timestamp(&self, index: usize) -> Result<u32, BlockchainError> {
+    fn median_timestamp(&self, index: u64) -> Result<u32, BlockchainError> {
         Ok(utils::median(
             &(0..std::cmp::min(index + 1, config::MEDIAN_TIMESTAMP_COUNT))
                 .map(|i| {
@@ -121,7 +116,7 @@ impl<K: KvStore> KvStoreChain<K> {
         }
     }
 
-    fn get_block(&self, index: usize) -> Result<Block, BlockchainError> {
+    fn get_block(&self, index: u64) -> Result<Block, BlockchainError> {
         if index >= self.get_height()? {
             return Err(BlockchainError::BlockNotFound);
         }
@@ -274,7 +269,7 @@ impl<K: KvStore> KvStoreChain<K> {
         let is_genesis = block.header.number == 0;
         let next_reward = self.next_reward()?;
 
-        let pow_key = self.pow_key(block.header.number as usize)?;
+        let pow_key = self.pow_key(block.header.number)?;
 
         if curr_height > 0 {
             let last_block = self.get_block(curr_height - 1)?;
@@ -289,7 +284,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 }
             }
 
-            if block.header.number as usize != curr_height {
+            if block.header.number != curr_height {
                 return Err(BlockchainError::InvalidBlockNumber);
             }
 
@@ -381,7 +376,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
 
-    fn will_extend(&self, from: usize, headers: &[Header]) -> Result<bool, BlockchainError> {
+    fn will_extend(&self, from: u64, headers: &[Header]) -> Result<bool, BlockchainError> {
         let current_power = self.get_power()?;
 
         if from == 0 {
@@ -397,7 +392,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .try_into()?;
         let mut last_header = self.get_block(from - 1)?.header;
         for h in headers.iter() {
-            let pow_key = self.pow_key(h.number as usize)?;
+            let pow_key = self.pow_key(h.number)?;
 
             if h.proof_of_work.timestamp < self.median_timestamp(from - 1)? {
                 return Err(BlockchainError::InvalidTimestamp);
@@ -421,7 +416,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         Ok(new_power > current_power)
     }
-    fn extend(&mut self, from: usize, blocks: &[Block]) -> Result<(), BlockchainError> {
+    fn extend(&mut self, from: u64, blocks: &[Block]) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
 
         if from == 0 {
@@ -444,28 +439,20 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         self.database.update(&ops)?;
         Ok(())
     }
-    fn get_height(&self) -> Result<usize, BlockchainError> {
+    fn get_height(&self) -> Result<u64, BlockchainError> {
         Ok(match self.database.get("height".into())? {
             Some(b) => b.try_into()?,
             None => 0,
         })
     }
-    fn get_headers(
-        &self,
-        since: usize,
-        until: Option<usize>,
-    ) -> Result<Vec<Header>, BlockchainError> {
+    fn get_headers(&self, since: u64, until: Option<u64>) -> Result<Vec<Header>, BlockchainError> {
         Ok(self
             .get_blocks(since, until)?
             .into_iter()
             .map(|b| b.header)
             .collect())
     }
-    fn get_blocks(
-        &self,
-        since: usize,
-        until: Option<usize>,
-    ) -> Result<Vec<Block>, BlockchainError> {
+    fn get_blocks(&self, since: u64, until: Option<u64>) -> Result<Vec<Block>, BlockchainError> {
         let mut blks: Vec<Block> = Vec::new();
         let height = self.get_height()?;
         for i in since..until.unwrap_or(height) {
@@ -538,7 +525,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }
     }
 
-    fn pow_key(&self, index: usize) -> Result<Vec<u8>, BlockchainError> {
+    fn pow_key(&self, index: u64) -> Result<Vec<u8>, BlockchainError> {
         Ok(if index < config::POW_KEY_CHANGE_DELAY {
             config::POW_BASE_KEY.to_vec()
         } else {
@@ -771,7 +758,7 @@ mod tests {
     }
 
     fn mine_block<B: Blockchain>(chain: &B, draft: &mut Block) -> Result<(), BlockchainError> {
-        let pow_key = chain.pow_key(draft.header.number as usize)?;
+        let pow_key = chain.pow_key(draft.header.number)?;
 
         if draft.header.meets_target(pow_key.as_slice()) {
             return Ok(());

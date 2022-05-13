@@ -71,7 +71,7 @@ impl<B: Blockchain> NodeContext<B> {
         let ts = self.network_timestamp();
         let block = self.blockchain.draft_block(ts, &txs, &wallet)?;
         let puzzle = Puzzle {
-            key: hex::encode(self.blockchain.pow_key(block.header.number as usize)?),
+            key: hex::encode(self.blockchain.pow_key(block.header.number)?),
             blob: hex::encode(bincode::serialize(&block.header).unwrap()),
             offset: 80,
             size: 8,

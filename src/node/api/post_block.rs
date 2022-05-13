@@ -11,6 +11,6 @@ pub async fn post_block<B: Blockchain>(
     let mut context = context.write().await;
     context
         .blockchain
-        .extend(req.block.header.number as usize, &[req.block])?;
+        .extend(req.block.header.number, &[req.block])?;
     Ok(PostBlockResponse {})
 }

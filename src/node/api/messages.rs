@@ -8,7 +8,7 @@ pub struct GetStatsRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetStatsResponse {
-    pub height: usize,
+    pub height: u64,
     pub power: u64,
     pub next_reward: Money,
     pub timestamp: u32,
@@ -73,8 +73,8 @@ pub struct PostBlockResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetBlocksRequest {
-    pub since: usize,
-    pub until: Option<usize>,
+    pub since: u64,
+    pub until: Option<u64>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -84,8 +84,8 @@ pub struct GetBlocksResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetHeadersRequest {
-    pub since: usize,
-    pub until: Option<usize>,
+    pub since: u64,
+    pub until: Option<u64>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

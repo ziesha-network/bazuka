@@ -67,7 +67,7 @@ pub async fn sync_blocks<B: Blockchain>(
     let will_extend = {
         let ctx = context.read().await;
         ctx.blockchain
-            .will_extend(headers[0].number as usize, &headers)
+            .will_extend(headers[0].number, &headers)
             .unwrap_or(false)
     };
 
@@ -76,14 +76,13 @@ pub async fn sync_blocks<B: Blockchain>(
             .bincode_get::<GetBlocksRequest, GetBlocksResponse>(
                 format!("{}/bincode/blocks", most_powerful.address).to_string(),
                 GetBlocksRequest {
-                    since: headers[0].number as usize,
+                    since: headers[0].number,
                     until: None,
                 },
             )
             .await?;
         let mut ctx = context.write().await;
-        ctx.blockchain
-            .extend(headers[0].number as usize, &resp.blocks)?;
+        ctx.blockchain.extend(headers[0].number, &resp.blocks)?;
     }
 
     Ok(())
