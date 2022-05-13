@@ -6,7 +6,7 @@ mod sync_clock;
 mod sync_peers;
 
 use super::api::messages::*;
-use super::{http, NodeContext, NodeError, Peer, PeerAddress};
+use super::{http, Limit, NodeContext, NodeError, Peer, PeerAddress};
 use crate::blockchain::Blockchain;
 use crate::config::punish;
 use crate::utils;

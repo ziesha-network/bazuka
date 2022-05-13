@@ -11,8 +11,12 @@ pub async fn send_mining_puzzle<B: Blockchain>(
         if let Some(m) = &mut ctx.miner {
             if m.block_puzzle.is_none() {
                 if let Some(webhook) = m.webhook.clone() {
-                    net.json_post::<Puzzle, String>(webhook.to_string(), puzzle.clone())
-                        .await?;
+                    net.json_post::<Puzzle, String>(
+                        webhook.to_string(),
+                        puzzle.clone(),
+                        Limit::new().size(1024 * 1024).time(1000),
+                    )
+                    .await?;
                     m.block_puzzle = Some((blk, puzzle));
                 }
             }

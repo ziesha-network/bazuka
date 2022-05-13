@@ -189,11 +189,30 @@ pub struct OutgoingSender {
     chan: mpsc::UnboundedSender<OutgoingRequest>,
 }
 
-impl OutgoingSender {
-    pub async fn raw(&self, body: Request<Body>) -> Result<Body, NodeError> {
-        const TIME_LIMIT: u64 = 1000; // ms
-        const SIZE_LIMIT: u64 = 1024 * 1024; // bytes
+pub struct Limit {
+    pub time: Option<Duration>,
+    pub size: Option<u64>,
+}
 
+impl Limit {
+    pub fn new() -> Self {
+        Limit {
+            time: None,
+            size: None,
+        }
+    }
+    pub fn time(mut self, time: u32) -> Self {
+        self.time = Some(Duration::from_millis(time as u64));
+        self
+    }
+    pub fn size(mut self, size: u64) -> Self {
+        self.size = Some(size);
+        self
+    }
+}
+
+impl OutgoingSender {
+    pub async fn raw(&self, body: Request<Body>, limit: Limit) -> Result<Body, NodeError> {
         let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
         let req = OutgoingRequest {
             body,
@@ -203,33 +222,39 @@ impl OutgoingSender {
             .send(req)
             .map_err(|_| NodeError::NotListeningError)?;
 
-        let body = timeout(Duration::from_millis(TIME_LIMIT), resp_rcv.recv())
-            .await?
-            .ok_or(NodeError::NotAnsweringError)??
-            .into_body();
-
-        if body
-            .size_hint()
-            .upper()
-            .map(|u| u > SIZE_LIMIT)
-            .unwrap_or(true)
-        {
-            Err(NodeError::SizeLimitError)
+        let body = if let Some(time_limit) = limit.time {
+            timeout(time_limit, resp_rcv.recv()).await?
         } else {
-            Ok(body)
+            resp_rcv.recv().await
         }
+        .ok_or(NodeError::NotAnsweringError)??
+        .into_body();
+
+        if let Some(size_limit) = limit.size {
+            if body
+                .size_hint()
+                .upper()
+                .map(|u| u > size_limit)
+                .unwrap_or(true)
+            {
+                return Err(NodeError::SizeLimitError);
+            }
+        }
+
+        Ok(body)
     }
 
     async fn bincode_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
         &self,
         addr: String,
         req: Req,
+        limit: Limit,
     ) -> Result<Resp, NodeError> {
         let req = Request::builder()
             .method(Method::GET)
             .uri(format!("{}?{}", addr, serde_qs::to_string(&req)?))
             .body(Body::empty())?;
-        let body = self.raw(req).await?;
+        let body = self.raw(req, limit).await?;
         let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }
@@ -239,13 +264,14 @@ impl OutgoingSender {
         &self,
         addr: String,
         req: Req,
+        limit: Limit,
     ) -> Result<Resp, NodeError> {
         let req = Request::builder()
             .method(Method::POST)
             .uri(&addr)
             .header("content-type", "application/octet-stream")
             .body(Body::from(bincode::serialize(&req)?))?;
-        let body = self.raw(req).await?;
+        let body = self.raw(req, limit).await?;
         let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }
@@ -254,13 +280,14 @@ impl OutgoingSender {
         &self,
         addr: String,
         req: Req,
+        limit: Limit,
     ) -> Result<Resp, NodeError> {
         let req = Request::builder()
             .method(Method::POST)
             .uri(&addr)
             .header("content-type", "application/json")
             .body(Body::from(serde_json::to_vec(&req)?))?;
-        let body = self.raw(req).await?;
+        let body = self.raw(req, limit).await?;
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }
@@ -270,12 +297,13 @@ impl OutgoingSender {
         &self,
         addr: String,
         req: Req,
+        limit: Limit,
     ) -> Result<Resp, NodeError> {
         let req = Request::builder()
             .method(Method::GET)
             .uri(format!("{}?{}", addr, serde_qs::to_string(&req)?))
             .body(Body::empty())?;
-        let body = self.raw(req).await?;
+        let body = self.raw(req, limit).await?;
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }

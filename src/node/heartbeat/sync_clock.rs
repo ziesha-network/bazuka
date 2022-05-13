@@ -26,6 +26,7 @@ pub async fn sync_clock<B: Blockchain>(
                     timestamp,
                     info: info.clone(),
                 },
+                Limit::new().size(1024 * 1024).time(1000),
             )
         })
         .await;
