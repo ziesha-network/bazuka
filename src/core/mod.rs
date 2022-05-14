@@ -1,6 +1,5 @@
 mod address;
 mod blocks;
-mod contract;
 pub mod hash;
 mod header;
 mod transaction;
@@ -15,8 +14,8 @@ pub type Hasher = hash::Sha3Hasher;
 pub type Address = address::Address<Signer>;
 pub type Account = address::Account;
 pub type Signature = address::Signature<Signer>;
-pub type Transaction = transaction::Transaction<Signer>;
-pub type TransactionData = transaction::TransactionData<Signer>;
+pub type Transaction = transaction::Transaction<Hasher, Signer>;
+pub type TransactionData = transaction::TransactionData<Hasher, Signer>;
 pub type Header = header::Header<Hasher>;
 pub type Block = blocks::Block<Hasher, Signer>;
 

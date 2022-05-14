@@ -2,13 +2,13 @@ use std::fmt::{Debug, Formatter};
 use std::str::FromStr;
 
 use serde::de::{Error, Visitor};
-use serde::{Deserializer, Serializer};
+use serde::{Deserializer, Serialize, Serializer};
 use sha3::digest::core_api::CoreWrapper;
 use sha3::{Digest, Sha3_256, Sha3_256Core};
 
 use super::{AutoDeserialize, AutoHash, AutoSerialize, MemberBound};
 
-pub trait Hash: Debug + Clone + 'static {
+pub trait Hash: Debug + Clone + Serialize + 'static {
     /// The length in bytes of the Hasher output
     const LENGTH: usize;
 
