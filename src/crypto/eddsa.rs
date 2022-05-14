@@ -1,6 +1,7 @@
+use crate::core::hash::{Hash, Sha3Hasher};
 use ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
-use zeekit::{eddsa, mimc, Fr};
+use zeekit::{eddsa, Fr};
 
 use super::SignatureScheme;
 
@@ -63,8 +64,11 @@ pub struct PrivateKey(eddsa::PrivateKey);
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Signature(eddsa::Signature);
 
-fn mimc_u8(inp: &[u8]) -> Fr {
-    mimc::mimc(inp.iter().map(|u| Fr::from(*u as u64)).collect())
+fn hash_to_fr(inp: &[u8]) -> Fr {
+    let hash = Sha3Hasher::hash(inp);
+    let mut fr_data = [0u8; 32];
+    fr_data.copy_from_slice(&hash);
+    Fr::new(fr_data)
 }
 
 impl SignatureScheme for EdDSA {
@@ -72,17 +76,17 @@ impl SignatureScheme for EdDSA {
     type Priv = PrivateKey;
     type Sig = Signature;
     fn generate_keys(seed: &[u8]) -> (PublicKey, PrivateKey) {
-        let randomness = mimc_u8(seed);
-        let scalar = mimc::mimc(vec![randomness]);
+        let randomness = hash_to_fr(seed);
+        let scalar = hash_to_fr(randomness.to_repr().as_ref());
         let (pk, sk) = eddsa::generate_keys(randomness, scalar);
         (PublicKey(pk), PrivateKey(sk))
     }
     fn sign(sk: &PrivateKey, message: &[u8]) -> Signature {
-        let hash = mimc::mimc(message.iter().map(|u| Fr::from(*u as u64)).collect());
+        let hash = hash_to_fr(message);
         Signature(eddsa::sign(&sk.0, hash))
     }
     fn verify(pk: &PublicKey, message: &[u8], sig: &Signature) -> bool {
-        let hash = mimc::mimc(message.iter().map(|u| Fr::from(*u as u64)).collect());
+        let hash = hash_to_fr(message);
         eddsa::verify(&pk.0, hash, &sig.0)
     }
 }
