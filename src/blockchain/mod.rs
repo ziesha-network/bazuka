@@ -203,7 +203,10 @@ impl<K: KvStore> KvStoreChain<K> {
                     format!("contract_compressed_state_{}", tx.uid()).into(),
                     compressed_state.into(),
                 ));
-                unimplemented!();
+                ops.push(WriteOp::IrreversiblePut(
+                    format!("contract_full_state_{}", tx.uid()).into(),
+                    initial_state.clone().into(),
+                ));
             }
             TransactionData::DepositWithdraw {
                 contract_id: _,
