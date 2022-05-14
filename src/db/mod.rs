@@ -112,7 +112,6 @@ impl From<&str> for StringKey {
 pub enum WriteOp {
     Remove(StringKey),
     Put(StringKey, Blob),
-    IrreversiblePut(StringKey, Blob),
 }
 
 pub trait KvStore {
@@ -124,9 +123,6 @@ pub trait KvStore {
             let key = match op {
                 WriteOp::Put(k, _) => k,
                 WriteOp::Remove(k) => k,
-                _ => {
-                    continue;
-                }
             }
             .clone();
             rollback.push(match self.get(key.clone())? {
@@ -168,7 +164,6 @@ impl<K: KvStore> KvStore for LruCacheKvStore<K> {
             match op {
                 WriteOp::Remove(k) => cache.pop(&k.0),
                 WriteOp::Put(k, _) => cache.pop(&k.0),
-                WriteOp::IrreversiblePut(k, _) => cache.pop(&k.0),
             };
         }
         self.store.update(ops)
@@ -178,31 +173,22 @@ impl<K: KvStore> KvStore for LruCacheKvStore<K> {
 pub struct RamMirrorKvStore<'a, K: KvStore> {
     store: &'a K,
     overwrite: HashMap<String, Option<Blob>>,
-    irrev_puts: HashMap<String, Blob>,
 }
 impl<'a, K: KvStore> RamMirrorKvStore<'a, K> {
     pub fn new(store: &'a K) -> Self {
         Self {
             store,
             overwrite: HashMap::new(),
-            irrev_puts: HashMap::new(),
         }
     }
     pub fn to_ops(self) -> Vec<WriteOp> {
-        let mut ops: Vec<_> = self
-            .overwrite
+        self.overwrite
             .into_iter()
             .map(|(k, v)| match v {
                 Some(b) => WriteOp::Put(k.into(), b),
                 None => WriteOp::Remove(k.into()),
             })
-            .collect();
-        ops.extend(
-            self.irrev_puts
-                .into_iter()
-                .map(|(k, v)| WriteOp::IrreversiblePut(k.into(), v)),
-        );
-        ops
+            .collect()
     }
 }
 
@@ -210,8 +196,6 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError> {
         if self.overwrite.contains_key(&k.0) {
             Ok(self.overwrite.get(&k.0).cloned().unwrap())
-        } else if self.irrev_puts.contains_key(&k.0) {
-            Ok(Some(self.irrev_puts.get(&k.0).cloned().unwrap()))
         } else {
             self.store.get(k)
         }
@@ -219,15 +203,8 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError> {
         for op in ops.iter() {
             match op {
-                WriteOp::Remove(k) => {
-                    self.overwrite.insert(k.0.clone(), None);
-                }
-                WriteOp::Put(k, v) => {
-                    self.overwrite.insert(k.0.clone(), Some(v.clone()));
-                }
-                WriteOp::IrreversiblePut(k, v) => {
-                    self.irrev_puts.insert(k.0.clone(), v.clone());
-                }
+                WriteOp::Remove(k) => self.overwrite.insert(k.0.clone(), None),
+                WriteOp::Put(k, v) => self.overwrite.insert(k.0.clone(), Some(v.clone())),
             };
         }
         Ok(())

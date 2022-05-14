@@ -23,7 +23,6 @@ impl KvStore for RamKvStore {
             match op {
                 WriteOp::Remove(k) => self.0.remove(&k.0),
                 WriteOp::Put(k, v) => self.0.insert(k.0.clone(), v.clone()),
-                WriteOp::IrreversiblePut(k, v) => self.0.insert(k.0.clone(), v.clone()),
             };
         }
         Ok(())

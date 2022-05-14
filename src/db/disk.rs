@@ -32,7 +32,6 @@ impl KvStore for LevelDbKvStore {
             match op {
                 WriteOp::Remove(k) => batch.delete(k.clone()),
                 WriteOp::Put(k, v) => batch.put(k.clone(), &v.0),
-                WriteOp::IrreversiblePut(k, v) => batch.put(k.clone(), &v.0),
             }
         }
         match self.0.write(write_opts, &batch) {
