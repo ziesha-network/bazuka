@@ -6,6 +6,52 @@ use crate::db;
 const DEFAULT_DIFFICULTY: u32 = 0x0000ffff;
 
 #[test]
+fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let alice = Wallet::new(Vec::from("ABC"));
+    let bob = Wallet::new(Vec::from("CBA"));
+    let mut genesis_block = genesis::get_test_genesis_block();
+    genesis_block.header.proof_of_work.target = 0x00ffffff;
+    genesis_block.body = vec![Transaction {
+        src: Address::Treasury,
+        data: TransactionData::RegularSend {
+            dst: alice.get_address(),
+            amount: 10_000,
+        },
+        nonce: 1,
+        fee: 0,
+        sig: Signature::Unsigned,
+    }];
+
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+
+    // Alice: 10000 Bob: 0
+    assert_eq!(chain.get_account(alice.get_address())?.balance, 10000);
+    assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
+
+    let tx = alice.create_transaction(bob.get_address(), 2700, 300, 1);
+
+    // Alice -> 2700 -> Bob (Fee 300)
+    chain.apply_block(&chain.draft_block(1, &[tx.clone()], &miner)?, false)?;
+    assert_eq!(chain.get_account(alice.get_address())?.balance, 7000);
+    assert_eq!(chain.get_account(bob.get_address())?.balance, 2700);
+
+    // Alice -> 2700 -> Bob (Fee 300) (NOT APPLIED: DUPLICATED TRANSACTION!)
+    chain.apply_block(&chain.draft_block(1, &[tx.clone()], &miner)?, false)?;
+    assert_eq!(chain.get_account(alice.get_address())?.balance, 7000);
+    assert_eq!(chain.get_account(bob.get_address())?.balance, 2700);
+
+    let tx2 = alice.create_transaction(bob.get_address(), 2700, 300, 2);
+
+    // Alice -> 2700 -> Bob (Fee 300)
+    chain.apply_block(&chain.draft_block(1, &[tx2], &miner)?, false)?;
+    assert_eq!(chain.get_account(alice.get_address())?.balance, 4000);
+    assert_eq!(chain.get_account(bob.get_address())?.balance, 5400);
+
+    Ok(())
+}
+
+#[test]
 fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
