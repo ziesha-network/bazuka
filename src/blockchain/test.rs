@@ -3,8 +3,6 @@ use crate::config::genesis;
 use crate::core::{Address, TransactionData};
 use crate::db;
 
-const DEFAULT_DIFFICULTY: u32 = 0x0000ffff;
-
 #[test]
 fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
@@ -169,7 +167,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
     let mut genesis_block = genesis::get_genesis_block();
-    genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
+    genesis_block.header.proof_of_work.target = 0x0000ffff;
     genesis_block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
@@ -216,8 +214,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut genesis_block = genesis::get_genesis_block();
-    genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
+    let mut genesis_block = genesis::get_test_genesis_block();
     genesis_block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
@@ -253,7 +250,9 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
         sig: Signature::Unsigned, // invalid transaction
     };
     let mempool = vec![t_valid, t_invalid_unsigned, t_invalid_from_treasury];
-    let draft = chain.draft_block(1650000000, &mempool, &wallet_miner)?;
+    let mut draft = chain.draft_block(1650000000, &mempool, &wallet_miner)?;
+
+    mine_block(&chain, &mut draft)?;
 
     assert_eq!(2, draft.body.len());
     assert_eq!(wallet1.get_address(), draft.body[1].src);
@@ -267,8 +266,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut genesis_block = genesis::get_genesis_block();
-    genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
+    let mut genesis_block = genesis::get_test_genesis_block();
     genesis_block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
@@ -289,6 +287,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
     let mut draft = chain.draft_block(1650000000, &mempool, &wallet_miner)?;
 
     mine_block(&chain, &mut draft)?;
+
     chain.apply_block(&draft, false)?;
 
     assert_eq!(3, draft.body.len());
@@ -307,8 +306,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut genesis_block = genesis::get_genesis_block();
-    genesis_block.header.proof_of_work.target = DEFAULT_DIFFICULTY;
+    let mut genesis_block = genesis::get_test_genesis_block();
     genesis_block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
@@ -327,6 +325,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let mut draft = chain.draft_block(1650000000, &mempool, &wallet_miner)?;
 
     mine_block(&chain, &mut draft)?;
+
     chain.apply_block(&draft, false)?;
 
     let t2 = wallet1.create_transaction(wallet2.get_address(), 500_000, 0, 2);
@@ -335,6 +334,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let mut draft = chain.draft_block(1650000001, &mempool, &wallet_miner)?;
 
     mine_block(&chain, &mut draft)?;
+
     chain.apply_block(&draft, false)?;
 
     let height = chain.get_height()?;
