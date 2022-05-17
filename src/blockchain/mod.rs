@@ -9,8 +9,7 @@ use crate::core::{
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
 use crate::wallet::Wallet;
-use crate::zk::ZkCompressedState;
-use crate::zk::ZkState;
+use crate::zk;
 
 #[derive(Error, Debug)]
 pub enum BlockchainError {
@@ -46,9 +45,20 @@ pub enum BlockchainError {
     IllegalTreasuryAccess,
     #[error("miner reward transaction is invalid")]
     InvalidMinerReward,
+    #[error("contract not found")]
+    ContractNotFound,
+    #[error("update function not found in the given contract")]
+    ContractFunctionNotFound,
+    #[error("Incorrect zero-knowledge proof")]
+    IncorrectZkProof,
 }
 
 pub trait Blockchain {
+    fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError>;
+    fn get_compressed_state(
+        &self,
+        contract_id: ContractId,
+    ) -> Result<zk::ZkCompressedState, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn next_reward(&self) -> Result<Money, BlockchainError>;
     fn will_extend(&self, from: u64, headers: &[Header]) -> Result<bool, BlockchainError>;
@@ -135,7 +145,7 @@ impl<K: KvStore> KvStoreChain<K> {
         &mut self,
         tx: &Transaction,
         allow_treasury: bool,
-    ) -> Result<Option<(ContractId, ZkCompressedState)>, BlockchainError> {
+    ) -> Result<Option<(ContractId, zk::ZkCompressedState)>, BlockchainError> {
         let mut state_update = None;
 
         let mut ops = Vec::new();
@@ -181,44 +191,30 @@ impl<K: KvStore> KvStoreChain<K> {
                     ));
                 }
             }
-            TransactionData::CreateContract {
-                deposit_withdraw_circuit,
-                update_circuits,
-                state_model,
-                initial_state,
-            } => {
+            TransactionData::CreateContract { contract } => {
                 let contract_id = ContractId::new(tx);
                 ops.push(WriteOp::Put(
-                    format!("contract_dw_{}", contract_id).into(),
-                    deposit_withdraw_circuit.clone().into(),
+                    format!("contract_{}", contract_id).into(),
+                    contract.clone().into(),
                 ));
-                for (i, c) in update_circuits.iter().enumerate() {
-                    ops.push(WriteOp::Put(
-                        format!("contract_update_{}_{}", contract_id, i).into(),
-                        c.clone().into(),
-                    ));
-                }
-                ops.push(WriteOp::Put(
-                    format!("contract_state_model_{}", contract_id).into(),
-                    state_model.clone().into(),
-                ));
-                ops.push(WriteOp::Put(
-                    format!("contract_initial_state_{}", contract_id).into(),
-                    initial_state.clone().into(),
-                ));
-                let compressed_state =
-                    ZkState::new(state_model.clone(), initial_state.clone()).compress();
+                let compressed_state = contract.initial_state.compress();
                 ops.push(WriteOp::Put(
                     format!("contract_compressed_state_{}", contract_id).into(),
                     compressed_state.into(),
                 ));
+                state_update = Some((contract_id, compressed_state));
             }
             TransactionData::DepositWithdraw {
                 contract_id,
                 deposit_withdraws: _,
                 next_state,
-                proof: _,
+                proof,
             } => {
+                let contract = self.get_contract(*contract_id)?;
+                let prev_state = self.get_compressed_state(*contract_id)?;
+                if !zk::check_proof(&contract.deposit_withdraw, &prev_state, next_state, proof) {
+                    return Err(BlockchainError::IncorrectZkProof);
+                }
                 state_update = Some((*contract_id, *next_state));
                 ops.push(WriteOp::Put(
                     format!("contract_compressed_state_{}", contract_id).into(),
@@ -227,10 +223,19 @@ impl<K: KvStore> KvStoreChain<K> {
             }
             TransactionData::Update {
                 contract_id,
-                circuit_index: _,
+                circuit_index,
                 next_state,
-                proof: _,
+                proof,
             } => {
+                let contract = self.get_contract(*contract_id)?;
+                let prev_state = self.get_compressed_state(*contract_id)?;
+                let vk = contract
+                    .update
+                    .get(*circuit_index as usize)
+                    .ok_or(BlockchainError::ContractFunctionNotFound)?;
+                if !zk::check_proof(&vk, &prev_state, next_state, proof) {
+                    return Err(BlockchainError::IncorrectZkProof);
+                }
                 state_update = Some((*contract_id, *next_state));
                 ops.push(WriteOp::Put(
                     format!("contract_compressed_state_{}", contract_id).into(),
@@ -377,6 +382,26 @@ impl<K: KvStore> KvStoreChain<K> {
 }
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
+    fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError> {
+        let k = format!("contract_{}", contract_id).into();
+        Ok(self
+            .database
+            .get(k)?
+            .map(|b| b.try_into())
+            .ok_or(BlockchainError::ContractNotFound)??)
+    }
+    fn get_compressed_state(
+        &self,
+        contract_id: ContractId,
+    ) -> Result<zk::ZkCompressedState, BlockchainError> {
+        let k = format!("contract_compressed_state_{}", contract_id).into();
+        Ok(self
+            .database
+            .get(k)?
+            .map(|b| b.try_into())
+            .ok_or(BlockchainError::ContractNotFound)??)
+    }
+
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {
         let k = format!("account_{}", addr).into();
         Ok(match self.database.get(k)? {

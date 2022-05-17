@@ -4,6 +4,15 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use zeekit::Fr;
 
+pub fn check_proof(
+    _vk: &ZkVerifierKey,
+    _prev_state: &ZkCompressedState,
+    _next_state: &ZkCompressedState,
+    _proof: &ZkProof,
+) -> bool {
+    unimplemented!();
+}
+
 // A single state cell
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ZkScalar(Fr);
@@ -20,6 +29,7 @@ pub struct ZkStateModel {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZkStateData(HashMap<u32, ZkScalar>);
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZkState {
     _model: ZkStateModel,
     data: ZkStateData,
@@ -55,6 +65,13 @@ impl ZkState {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ZkVerifierKey(#[serde(with = "serde_bytes")] Vec<u8>);
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ZkContract {
+    pub initial_state: ZkState,
+    pub deposit_withdraw: ZkVerifierKey,
+    pub update: Vec<ZkVerifierKey>,
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ZkProof(#[serde(with = "serde_bytes")] Vec<u8>);

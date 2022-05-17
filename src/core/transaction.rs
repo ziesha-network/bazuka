@@ -2,7 +2,7 @@ use super::address::{Address, Signature};
 use super::hash::Hash;
 use super::Money;
 use crate::crypto::SignatureScheme;
-use crate::zk::{ZkCompressedState, ZkProof, ZkStateData, ZkStateModel, ZkVerifierKey};
+use crate::zk::{ZkCompressedState, ZkContract, ZkProof};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct ContractId<H: Hash>(H::Output);
@@ -47,10 +47,7 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
     // Create a Zero-Contract. The creator can consider multiple ways (Circuits) of updating
     // the state. But there should be only one circuit for entering and exiting the contract.
     CreateContract {
-        deposit_withdraw_circuit: ZkVerifierKey,
-        update_circuits: Vec<ZkVerifierKey>,
-        initial_state: ZkStateData,
-        state_model: ZkStateModel,
+        contract: ZkContract,
     },
     // Proof for DepositWithdrawCircuit(curr_state, next_state, hash(entries))
     DepositWithdraw {
