@@ -4,7 +4,7 @@ pub async fn sync_clock<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
-    let address = ctx.address.clone();
+    let address = ctx.address;
 
     let net = ctx.outgoing.clone();
 
@@ -26,7 +26,7 @@ pub async fn sync_clock<B: Blockchain>(
                     timestamp,
                     info: info.clone(),
                 },
-                Limit::new().size(1024 * 1024).time(1000),
+                Limit::default().size(1024 * 1024).time(1000),
             )
         })
         .await;

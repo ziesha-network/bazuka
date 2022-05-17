@@ -33,7 +33,7 @@ pub async fn sync_blocks<B: Blockchain>(
                 since: start_height,
                 until: None,
             },
-            Limit::new().size(1024 * 1024).time(1000),
+            Limit::default().size(1024 * 1024).time(1000),
         )
         .await?
         .headers;
@@ -49,7 +49,7 @@ pub async fn sync_blocks<B: Blockchain>(
                     since: index,
                     until: Some(index + 1),
                 },
-                Limit::new().size(1024 * 1024).time(1000),
+                Limit::default().size(1024 * 1024).time(1000),
             )
             .await?
             .headers[0]
@@ -81,7 +81,7 @@ pub async fn sync_blocks<B: Blockchain>(
                     since: headers[0].number,
                     until: None,
                 },
-                Limit::new().size(1024 * 1024).time(1000),
+                Limit::default().size(1024 * 1024).time(1000),
             )
             .await?;
         let mut ctx = context.write().await;

@@ -189,18 +189,13 @@ pub struct OutgoingSender {
     chan: mpsc::UnboundedSender<OutgoingRequest>,
 }
 
+#[derive(Default)]
 pub struct Limit {
     pub time: Option<Duration>,
     pub size: Option<u64>,
 }
 
 impl Limit {
-    pub fn new() -> Self {
-        Limit {
-            time: None,
-            size: None,
-        }
-    }
     pub fn time(mut self, time: u32) -> Self {
         self.time = Some(Duration::from_millis(time as u64));
         self

@@ -14,7 +14,7 @@ pub async fn send_mining_puzzle<B: Blockchain>(
                     net.json_post::<Puzzle, String>(
                         webhook.to_string(),
                         puzzle.clone(),
-                        Limit::new().size(1024 * 1024).time(1000),
+                        Limit::default().size(1024 * 1024).time(1000),
                     )
                     .await?;
                     m.block_puzzle = Some((blk, puzzle));

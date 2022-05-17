@@ -19,7 +19,7 @@ pub async fn sync_peers<B: Blockchain>(
             net.json_get::<GetPeersRequest, GetPeersResponse>(
                 format!("{}/peers", peer),
                 GetPeersRequest {},
-                Limit::new().size(1024 * 1024).time(1000),
+                Limit::default().size(1024 * 1024).time(1000),
             )
         })
         .await;

@@ -233,7 +233,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     .update
                     .get(*circuit_index as usize)
                     .ok_or(BlockchainError::ContractFunctionNotFound)?;
-                if !zk::check_proof(&vk, &prev_state, next_state, proof) {
+                if !zk::check_proof(vk, &prev_state, next_state, proof) {
                     return Err(BlockchainError::IncorrectZkProof);
                 }
                 state_update = Some((*contract_id, *next_state));
@@ -299,10 +299,8 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InvalidTimestamp);
             }
 
-            if !draft {
-                if !block.header.meets_target(&pow_key) {
-                    return Err(BlockchainError::DifficultyTargetUnmet);
-                }
+            if !draft && !block.header.meets_target(&pow_key) {
+                return Err(BlockchainError::DifficultyTargetUnmet);
             }
 
             if block.header.number != curr_height {
@@ -541,7 +539,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 number: height as u64,
                 block_root: Default::default(),
                 proof_of_work: ProofOfWork {
-                    timestamp: timestamp,
+                    timestamp,
                     target: self.next_difficulty()?,
                     nonce: 0,
                 },
