@@ -1,14 +1,35 @@
 use super::address::{Address, Signature};
-use super::contract::{ContractId, ContractPayment};
 use super::hash::Hash;
 use super::Money;
 use crate::crypto::SignatureScheme;
 use crate::zk::{ZkProof, ZkScalar, ZkStateData, ZkStateModel, ZkVerifierKey};
 
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct ContractId<H: Hash> {
+    hash: H::Output,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub enum PaymentDirection {
+    Deposit,
+    Withdraw,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct ContractPayment<H: Hash, S: SignatureScheme> {
+    initiator: Address<S>,
+    contract_id: ContractId<H>, // Makes sure the payment can only run on this contract.
+    nonce: usize, // Makes sure a contract payment cannot be replayed on this contract.
+    amount: Money,
+    fee: Money,
+    direction: PaymentDirection,
+    sig: Signature<S>,
+}
+
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub enum TransactionData<S: SignatureScheme> {
+pub enum TransactionData<H: Hash, S: SignatureScheme> {
     RegularSend {
         dst: Address<S>,
         amount: Money,
@@ -23,14 +44,14 @@ pub enum TransactionData<S: SignatureScheme> {
     },
     // Proof for DepositWithdrawCircuit(curr_state, next_state, hash(entries))
     DepositWithdraw {
-        contract_id: ContractId,
-        deposit_withdraws: Vec<ContractPayment<S>>,
+        contract_id: ContractId<H>,
+        deposit_withdraws: Vec<ContractPayment<H, S>>,
         next_state: ZkScalar,
         proof: ZkProof,
     },
     // Proof for UpdateCircuit[circuit_index](curr_state, next_state)
     Update {
-        contract_id: ContractId,
+        contract_id: ContractId<H>,
         circuit_index: u32,
         next_state: ZkScalar,
         proof: ZkProof,
@@ -38,25 +59,22 @@ pub enum TransactionData<S: SignatureScheme> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct Transaction<S: SignatureScheme> {
+pub struct Transaction<H: Hash, S: SignatureScheme> {
     pub src: Address<S>,
     pub nonce: u32,
-    pub data: TransactionData<S>,
+    pub data: TransactionData<H, S>,
     pub fee: Money,
     pub sig: Signature<S>,
 }
 
-impl<S: SignatureScheme> PartialEq<Transaction<S>> for Transaction<S> {
-    fn eq(&self, other: &Transaction<S>) -> bool {
+impl<H: Hash, S: SignatureScheme> PartialEq<Transaction<H, S>> for Transaction<H, S> {
+    fn eq(&self, other: &Transaction<H, S>) -> bool {
         bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
     }
 }
 
-impl<S: SignatureScheme> Transaction<S> {
-    pub fn uid(&self) -> String {
-        format!("{}_{}", self.src, self.nonce)
-    }
-    pub fn hash<H: Hash>(&self) -> H::Output {
+impl<H: Hash, S: SignatureScheme> Transaction<H, S> {
+    pub fn hash(&self) -> H::Output {
         H::hash(&bincode::serialize(self).unwrap())
     }
     pub fn verify_signature(&self) -> bool {
@@ -75,11 +93,11 @@ impl<S: SignatureScheme> Transaction<S> {
     }
 }
 
-impl<S: SignatureScheme + PartialEq> Eq for Transaction<S> {}
-impl<S: SignatureScheme> std::hash::Hash for Transaction<S> {
-    fn hash<H>(&self, state: &mut H)
+impl<H: Hash, S: SignatureScheme + PartialEq> Eq for Transaction<H, S> {}
+impl<H: Hash, S: SignatureScheme> std::hash::Hash for Transaction<H, S> {
+    fn hash<Hasher>(&self, state: &mut Hasher)
     where
-        H: std::hash::Hasher,
+        Hasher: std::hash::Hasher,
     {
         state.write(&bincode::serialize(self).unwrap());
         state.finish();

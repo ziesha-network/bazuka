@@ -179,31 +179,31 @@ impl<K: KvStore> KvStoreChain<K> {
                 state_model,
                 initial_state,
             } => {
+                let contract_id = hex::encode(&tx.hash());
                 ops.push(WriteOp::Put(
-                    format!("contract_dw_{}", tx.uid()).into(),
+                    format!("contract_dw_{}", contract_id).into(),
                     deposit_withdraw_circuit.clone().into(),
                 ));
                 for (i, c) in update_circuits.iter().enumerate() {
                     ops.push(WriteOp::Put(
-                        format!("contract_update_{}_{}", tx.uid(), i).into(),
+                        format!("contract_update_{}_{}", contract_id, i).into(),
                         c.clone().into(),
                     ));
                 }
                 ops.push(WriteOp::Put(
-                    format!("contract_state_model_{}", tx.uid()).into(),
+                    format!("contract_state_model_{}", contract_id).into(),
                     state_model.clone().into(),
                 ));
                 ops.push(WriteOp::Put(
-                    format!("contract_initial_state_{}", tx.uid()).into(),
+                    format!("contract_initial_state_{}", contract_id).into(),
                     initial_state.clone().into(),
                 ));
                 let compressed_state =
                     ZkState::new(state_model.clone(), initial_state.clone()).compress();
                 ops.push(WriteOp::Put(
-                    format!("contract_compressed_state_{}", tx.uid()).into(),
+                    format!("contract_compressed_state_{}", contract_id).into(),
                     compressed_state.into(),
                 ));
-                unimplemented!();
             }
             TransactionData::DepositWithdraw {
                 contract_id: _,
