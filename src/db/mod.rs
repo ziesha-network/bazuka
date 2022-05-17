@@ -1,6 +1,6 @@
 use crate::core::{Account, Block, ContractId, Hasher};
 use crate::crypto::merkle::MerkleTree;
-use crate::zk::{ZkCompressedState, ZkContract, ZkStateData};
+use crate::zk::{ZkCompressedState, ZkContract, ZkState, ZkStateData};
 use db_key::Key;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
@@ -70,7 +70,8 @@ gen_try_into!(
     ZkContract,
     ZkStateData,
     ZkCompressedState,
-    HashMap<ContractId, ZkCompressedState>
+    HashMap<ContractId, ZkCompressedState>,
+    ZkState
 );
 gen_from!(
     u32,
@@ -84,7 +85,8 @@ gen_from!(
     ZkContract,
     ZkStateData,
     ZkCompressedState,
-    HashMap<ContractId, ZkCompressedState>
+    HashMap<ContractId, ZkCompressedState>,
+    &ZkState
 );
 
 impl Key for StringKey {

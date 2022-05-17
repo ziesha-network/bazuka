@@ -52,14 +52,15 @@ pub enum BlockchainError {
     ContractFunctionNotFound,
     #[error("Incorrect zero-knowledge proof")]
     IncorrectZkProof,
+    #[error("Full-state not found in the update provided")]
+    FullStateNotFound,
+    #[error("Invalid full-state in the update provided")]
+    FullStateNotValid,
+    #[error("cannot draft a new block when full-states are outdated")]
+    StatesOutdated,
 }
 
 pub trait Blockchain {
-    fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError>;
-    fn get_compressed_state(
-        &self,
-        contract_id: ContractId,
-    ) -> Result<zk::ZkCompressedState, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn next_reward(&self) -> Result<Money, BlockchainError>;
     fn will_extend(&self, from: u64, headers: &[Header]) -> Result<bool, BlockchainError>;
@@ -73,10 +74,19 @@ pub trait Blockchain {
     fn get_height(&self) -> Result<u64, BlockchainError>;
     fn get_headers(&self, since: u64, until: Option<u64>) -> Result<Vec<Header>, BlockchainError>;
     fn get_blocks(&self, since: u64, until: Option<u64>) -> Result<Vec<Block>, BlockchainError>;
-
     fn get_power(&self) -> Result<u128, BlockchainError>;
-
     fn pow_key(&self, index: u64) -> Result<Vec<u8>, BlockchainError>;
+
+    fn get_state_height(&self) -> Result<u64, BlockchainError>;
+    fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError>;
+    fn get_compressed_state(
+        &self,
+        contract_id: ContractId,
+    ) -> Result<zk::ZkCompressedState, BlockchainError>;
+    fn update_states(
+        &mut self,
+        states: HashMap<ContractId, zk::ZkState>,
+    ) -> Result<(), BlockchainError>;
 }
 
 pub struct KvStoreChain<K: KvStore> {
@@ -254,6 +264,31 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(state_update)
     }
 
+    fn get_changed_states(
+        &self,
+        index: u64,
+    ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError> {
+        let k = format!("contract_updates_{:010}", index).into();
+        Ok(self
+            .database
+            .get(k)?
+            .map(|b| b.try_into())
+            .ok_or(BlockchainError::Inconsistency)??)
+    }
+
+    fn get_outdated_states(
+        &self,
+    ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError> {
+        let height = self.get_height()?;
+        let state_height = self.get_state_height()?;
+        let mut changes = HashMap::new();
+        for i in state_height..height {
+            let block_changes = self.get_changed_states(i)?;
+            changes.extend(block_changes.into_iter());
+        }
+        Ok(changes)
+    }
+
     pub fn rollback_block(&mut self) -> Result<(), BlockchainError> {
         let height = self.get_height()?;
         let rollback_key: StringKey = format!("rollback_{:010}", height - 1).into();
@@ -364,6 +399,12 @@ impl<K: KvStore> KvStoreChain<K> {
         let mut changes = fork.database.to_ops();
 
         changes.push(WriteOp::Put("height".into(), (curr_height + 1).into()));
+        if state_updates.is_empty() && self.get_state_height()? == curr_height {
+            changes.push(WriteOp::Put(
+                "state_height".into(),
+                (curr_height + 1).into(),
+            ));
+        }
 
         changes.push(WriteOp::Put(
             format!("power_{:010}", block.header.number).into(),
@@ -497,6 +538,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             None => 0,
         })
     }
+    fn get_state_height(&self) -> Result<u64, BlockchainError> {
+        Ok(match self.database.get("state_height".into())? {
+            Some(b) => b.try_into()?,
+            None => 0,
+        })
+    }
     fn get_headers(&self, since: u64, until: Option<u64>) -> Result<Vec<Header>, BlockchainError> {
         Ok(self
             .get_blocks(since, until)?
@@ -531,6 +578,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         wallet: &Wallet,
     ) -> Result<Block, BlockchainError> {
         let height = self.get_height()?;
+        let state_height = self.get_state_height()?;
+
+        if height != state_height {
+            return Err(BlockchainError::StatesOutdated);
+        }
+
         let last_block = self.get_block(height - 1)?;
         let treasury_nonce = self.get_account(Address::Treasury)?.nonce;
 
@@ -586,6 +639,30 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 * config::POW_KEY_CHANGE_INTERVAL;
             self.get_block(reference)?.header.hash().to_vec()
         })
+    }
+
+    fn update_states(
+        &mut self,
+        states: HashMap<ContractId, zk::ZkState>,
+    ) -> Result<(), BlockchainError> {
+        let mut ops = Vec::new();
+        for (cid, comp_state) in self.get_outdated_states()? {
+            let full_state = states.get(&cid).ok_or(BlockchainError::FullStateNotFound)?;
+            if full_state.compress() == comp_state {
+                ops.push(WriteOp::Put(
+                    format!("contract_state_{}", cid).into(),
+                    full_state.into(),
+                ));
+            } else {
+                return Err(BlockchainError::FullStateNotValid);
+            }
+        }
+        ops.push(WriteOp::Put(
+            "state_height".into(),
+            self.get_height()?.into(),
+        ));
+        self.database.update(&ops)?;
+        Ok(())
     }
 }
 
