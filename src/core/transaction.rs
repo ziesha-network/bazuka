@@ -4,7 +4,9 @@ use super::Money;
 use crate::crypto::SignatureScheme;
 use crate::zk::{ZkCompressedState, ZkContract, ZkProof};
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy)]
+#[derive(
+    serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy, Eq, std::hash::Hash,
+)]
 pub struct ContractId<H: Hash>(H::Output);
 
 impl<H: Hash> ContractId<H> {

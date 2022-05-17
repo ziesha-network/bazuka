@@ -10,6 +10,7 @@ use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
 use crate::wallet::Wallet;
 use crate::zk;
+use std::collections::HashMap;
 
 #[derive(Error, Debug)]
 pub enum BlockchainError {
@@ -264,6 +265,9 @@ impl<K: KvStore> KvStoreChain<K> {
         };
         rollback.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
         rollback.push(WriteOp::Remove(format!("merkle_{:010}", height - 1).into()));
+        rollback.push(WriteOp::Remove(
+            format!("contract_updates_{:010}", height - 1).into(),
+        ));
         rollback.push(WriteOp::Remove(rollback_key));
         self.database.update(&rollback)?;
         Ok(())
@@ -349,9 +353,14 @@ impl<K: KvStore> KvStoreChain<K> {
             &block.body[..]
         };
 
+        let mut state_updates: HashMap<ContractId, zk::ZkCompressedState> = HashMap::new();
         for tx in txs.iter() {
-            fork.apply_tx(tx, is_genesis)?; // All genesis block txs are allowed to get from Treasury
+            // All genesis block txs are allowed to get from Treasury
+            if let Some((contract_id, compressed_state)) = fork.apply_tx(tx, is_genesis)? {
+                state_updates.insert(contract_id, compressed_state);
+            }
         }
+
         let mut changes = fork.database.to_ops();
 
         changes.push(WriteOp::Put("height".into(), (curr_height + 1).into()));
@@ -372,6 +381,10 @@ impl<K: KvStore> KvStoreChain<K> {
         changes.push(WriteOp::Put(
             format!("merkle_{:010}", block.header.number).into(),
             block.merkle_tree().into(),
+        ));
+        changes.push(WriteOp::Put(
+            format!("contract_updates_{:010}", block.header.number).into(),
+            state_updates.into(),
         ));
 
         self.database.update(&changes)?;

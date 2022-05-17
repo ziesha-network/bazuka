@@ -1,4 +1,4 @@
-use crate::core::{Account, Block, Hasher};
+use crate::core::{Account, Block, ContractId, Hasher};
 use crate::crypto::merkle::MerkleTree;
 use crate::zk::{ZkCompressedState, ZkContract, ZkStateData};
 use db_key::Key;
@@ -69,7 +69,8 @@ gen_try_into!(
     MerkleTree<Hasher>,
     ZkContract,
     ZkStateData,
-    ZkCompressedState
+    ZkCompressedState,
+    HashMap<ContractId, ZkCompressedState>
 );
 gen_from!(
     u32,
@@ -82,7 +83,8 @@ gen_from!(
     MerkleTree<Hasher>,
     ZkContract,
     ZkStateData,
-    ZkCompressedState
+    ZkCompressedState,
+    HashMap<ContractId, ZkCompressedState>
 );
 
 impl Key for StringKey {
