@@ -18,3 +18,4 @@ pub type Header = header::Header<Hasher>;
 pub type Block = blocks::Block<Hasher, Signer>;
 
 pub type ProofOfWork = header::ProofOfWork;
+pub type ContractId = transaction::ContractId<Hasher>;

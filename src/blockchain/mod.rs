@@ -3,11 +3,13 @@ use thiserror::Error;
 use crate::config;
 use crate::config::TOTAL_SUPPLY;
 use crate::core::{
-    Account, Address, Block, Header, Money, ProofOfWork, Signature, Transaction, TransactionData,
+    Account, Address, Block, ContractId, Header, Money, ProofOfWork, Signature, Transaction,
+    TransactionData,
 };
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
 use crate::wallet::Wallet;
+use crate::zk::ZkCompressedState;
 use crate::zk::ZkState;
 
 #[derive(Error, Debug)]
@@ -129,7 +131,13 @@ impl<K: KvStore> KvStoreChain<K> {
         })
     }
 
-    fn apply_tx(&mut self, tx: &Transaction, allow_treasury: bool) -> Result<(), BlockchainError> {
+    fn apply_tx(
+        &mut self,
+        tx: &Transaction,
+        allow_treasury: bool,
+    ) -> Result<Option<(ContractId, ZkCompressedState)>, BlockchainError> {
+        let mut state_update = None;
+
         let mut ops = Vec::new();
 
         let mut acc_src = self.get_account(tx.src.clone())?;
@@ -206,20 +214,20 @@ impl<K: KvStore> KvStoreChain<K> {
                 ));
             }
             TransactionData::DepositWithdraw {
-                contract_id: _,
+                contract_id,
                 deposit_withdraws: _,
-                next_state: _,
+                next_state,
                 proof: _,
             } => {
-                unimplemented!();
+                state_update = Some((contract_id.clone(), next_state.clone()));
             }
             TransactionData::Update {
-                contract_id: _,
+                contract_id,
                 circuit_index: _,
-                next_state: _,
+                next_state,
                 proof: _,
             } => {
-                unimplemented!();
+                state_update = Some((contract_id.clone(), next_state.clone()));
             }
         }
 
@@ -229,7 +237,7 @@ impl<K: KvStore> KvStoreChain<K> {
         ));
 
         self.database.update(&ops)?;
-        Ok(())
+        Ok(state_update)
     }
 
     pub fn rollback_block(&mut self) -> Result<(), BlockchainError> {

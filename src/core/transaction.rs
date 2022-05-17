@@ -2,7 +2,7 @@ use super::address::{Address, Signature};
 use super::hash::Hash;
 use super::Money;
 use crate::crypto::SignatureScheme;
-use crate::zk::{ZkProof, ZkScalar, ZkStateData, ZkStateModel, ZkVerifierKey};
+use crate::zk::{ZkCompressedState, ZkProof, ZkStateData, ZkStateModel, ZkVerifierKey};
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct ContractId<H: Hash> {
@@ -46,14 +46,14 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
     DepositWithdraw {
         contract_id: ContractId<H>,
         deposit_withdraws: Vec<ContractPayment<H, S>>,
-        next_state: ZkScalar,
+        next_state: ZkCompressedState,
         proof: ZkProof,
     },
     // Proof for UpdateCircuit[circuit_index](curr_state, next_state)
     Update {
         contract_id: ContractId<H>,
         circuit_index: u32,
-        next_state: ZkScalar,
+        next_state: ZkCompressedState,
         proof: ZkProof,
     },
 }
