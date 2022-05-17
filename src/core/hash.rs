@@ -19,7 +19,7 @@ pub trait Hash: Debug + Clone + Serialize + 'static {
     fn hash(s: &[u8]) -> Self::Output;
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, Copy)]
 pub struct Sha3Hasher;
 
 impl Hash for Sha3Hasher {

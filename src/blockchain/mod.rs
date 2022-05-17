@@ -187,7 +187,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 state_model,
                 initial_state,
             } => {
-                let contract_id = hex::encode(&tx.hash());
+                let contract_id = ContractId::new(tx);
                 ops.push(WriteOp::Put(
                     format!("contract_dw_{}", contract_id).into(),
                     deposit_withdraw_circuit.clone().into(),
@@ -219,7 +219,11 @@ impl<K: KvStore> KvStoreChain<K> {
                 next_state,
                 proof: _,
             } => {
-                state_update = Some((contract_id.clone(), next_state.clone()));
+                state_update = Some((*contract_id, *next_state));
+                ops.push(WriteOp::Put(
+                    format!("contract_compressed_state_{}", contract_id).into(),
+                    (*next_state).into(),
+                ));
             }
             TransactionData::Update {
                 contract_id,
@@ -227,7 +231,11 @@ impl<K: KvStore> KvStoreChain<K> {
                 next_state,
                 proof: _,
             } => {
-                state_update = Some((contract_id.clone(), next_state.clone()));
+                state_update = Some((*contract_id, *next_state));
+                ops.push(WriteOp::Put(
+                    format!("contract_compressed_state_{}", contract_id).into(),
+                    (*next_state).into(),
+                ));
             }
         }
 

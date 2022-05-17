@@ -5,12 +5,12 @@ use std::collections::HashMap;
 use zeekit::Fr;
 
 // A single state cell
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ZkScalar(Fr);
 
 // Each leaf of the target sparse merkle tree will be the
 // result of consecutive hash of `leaf_size` cells.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ZkStateModel {
     leaf_size: u32,
     tree_depth: u8,
@@ -25,7 +25,7 @@ pub struct ZkState {
     data: ZkStateData,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ZkCompressedState {
     state_hash: ZkScalar,
     state_size: u32,

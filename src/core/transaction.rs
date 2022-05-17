@@ -4,9 +4,19 @@ use super::Money;
 use crate::crypto::SignatureScheme;
 use crate::zk::{ZkCompressedState, ZkProof, ZkStateData, ZkStateModel, ZkVerifierKey};
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct ContractId<H: Hash> {
-    hash: H::Output,
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy)]
+pub struct ContractId<H: Hash>(H::Output);
+
+impl<H: Hash> ContractId<H> {
+    pub fn new<S: SignatureScheme>(tx: &Transaction<H, S>) -> Self {
+        Self(tx.hash())
+    }
+}
+
+impl<H: Hash> std::fmt::Display for ContractId<H> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
