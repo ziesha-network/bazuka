@@ -35,6 +35,9 @@ pub struct ZkState {
     data: ZkStateData,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ZkStatePatch(HashMap<u32, ZkScalar>);
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ZkCompressedState {
     state_hash: ZkScalar,

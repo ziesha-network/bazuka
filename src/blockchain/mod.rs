@@ -4,7 +4,7 @@ use crate::config;
 use crate::config::TOTAL_SUPPLY;
 use crate::core::{
     Account, Address, Block, ContractId, Header, Money, ProofOfWork, Signature, Transaction,
-    TransactionData,
+    TransactionAndPatch, TransactionData,
 };
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
@@ -61,6 +61,8 @@ pub enum BlockchainError {
 }
 
 pub trait Blockchain {
+    fn validate_transaction(&self, tx_patch: &TransactionAndPatch)
+        -> Result<bool, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn next_reward(&self) -> Result<Money, BlockchainError>;
     fn will_extend(&self, from: u64, headers: &[Header]) -> Result<bool, BlockchainError>;
@@ -68,7 +70,7 @@ pub trait Blockchain {
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &[Transaction],
+        mempool: &[TransactionAndPatch],
         wallet: &Wallet,
     ) -> Result<Block, BlockchainError>;
     fn get_height(&self) -> Result<u64, BlockchainError>;
@@ -308,14 +310,14 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn select_transactions(
         &self,
-        txs: &[Transaction],
-    ) -> Result<Vec<Transaction>, BlockchainError> {
+        txs: &[TransactionAndPatch],
+    ) -> Result<Vec<TransactionAndPatch>, BlockchainError> {
         let mut sorted = txs.to_vec();
-        sorted.sort_by(|t1, t2| t1.nonce.cmp(&t2.nonce));
+        sorted.sort_by(|t1, t2| t1.tx.nonce.cmp(&t2.tx.nonce));
         let mut fork = self.fork_on_ram();
         let mut result = Vec::new();
         for tx in sorted.into_iter() {
-            if fork.apply_tx(&tx, false).is_ok() {
+            if fork.apply_tx(&tx.tx, false).is_ok() {
                 result.push(tx);
             }
         }
@@ -572,7 +574,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &[Transaction],
+        mempool: &[TransactionAndPatch],
         wallet: &Wallet,
     ) -> Result<Block, BlockchainError> {
         let height = self.get_height()?;
@@ -595,7 +597,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             fee: 0,
             sig: Signature::Unsigned,
         }];
-        txs.extend(self.select_transactions(mempool)?);
+
+        let tx_and_patches = self.select_transactions(mempool)?;
+        txs.extend(tx_and_patches.iter().map(|tp| tp.tx.clone()));
 
         let mut blk = Block {
             header: Header {
@@ -661,6 +665,16 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         ));
         self.database.update(&ops)?;
         Ok(())
+    }
+
+    fn validate_transaction(
+        &self,
+        tx_patch: &TransactionAndPatch,
+    ) -> Result<bool, BlockchainError> {
+        Ok(
+            self.get_account(tx_patch.tx.src.clone())?.balance > 0
+                && tx_patch.tx.verify_signature(),
+        )
     }
 }
 

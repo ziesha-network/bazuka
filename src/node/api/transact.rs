@@ -11,11 +11,10 @@ pub async fn transact<B: Blockchain>(
     let mut context = context.write().await;
     let now = context.network_timestamp();
     // Prevent spamming mempool
-    if context.blockchain.get_account(req.tx.src.clone())?.balance > 0 && req.tx.verify_signature()
-    {
+    if context.blockchain.validate_transaction(&req.tx_patch)? {
         context
             .mempool
-            .insert(req.tx, TransactionStats { first_seen: now });
+            .insert(req.tx_patch, TransactionStats { first_seen: now });
     }
     Ok(TransactResponse {})
 }

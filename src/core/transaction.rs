@@ -2,7 +2,7 @@ use super::address::{Address, Signature};
 use super::hash::Hash;
 use super::Money;
 use crate::crypto::SignatureScheme;
-use crate::zk::{ZkCompressedState, ZkContract, ZkProof};
+use crate::zk::{ZkCompressedState, ZkContract, ZkProof, ZkStatePatch};
 
 #[derive(
     serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy, Eq, std::hash::Hash,
@@ -76,8 +76,16 @@ pub struct Transaction<H: Hash, S: SignatureScheme> {
     pub sig: Signature<S>,
 }
 
-impl<H: Hash, S: SignatureScheme> PartialEq<Transaction<H, S>> for Transaction<H, S> {
-    fn eq(&self, other: &Transaction<H, S>) -> bool {
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct TransactionAndPatch<H: Hash, S: SignatureScheme> {
+    pub tx: Transaction<H, S>,
+    pub state_patch: Option<ZkStatePatch>,
+}
+
+impl<H: Hash, S: SignatureScheme> PartialEq<TransactionAndPatch<H, S>>
+    for TransactionAndPatch<H, S>
+{
+    fn eq(&self, other: &Self) -> bool {
         bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
     }
 }
@@ -102,8 +110,8 @@ impl<H: Hash, S: SignatureScheme> Transaction<H, S> {
     }
 }
 
-impl<H: Hash, S: SignatureScheme + PartialEq> Eq for Transaction<H, S> {}
-impl<H: Hash, S: SignatureScheme> std::hash::Hash for Transaction<H, S> {
+impl<H: Hash, S: SignatureScheme + PartialEq> Eq for TransactionAndPatch<H, S> {}
+impl<H: Hash, S: SignatureScheme> std::hash::Hash for TransactionAndPatch<H, S> {
     fn hash<Hasher>(&self, state: &mut Hasher)
     where
         Hasher: std::hash::Hasher,

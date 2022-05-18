@@ -1,4 +1,4 @@
-use crate::core::{Address, Block, Header, Money, Transaction};
+use crate::core::{Address, Block, Header, Money, TransactionAndPatch};
 
 use super::{Peer, PeerAddress, PeerInfo};
 use serde_derive::{Deserialize, Serialize};
@@ -105,7 +105,7 @@ pub struct GetBalanceResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TransactRequest {
-    pub tx: Transaction,
+    pub tx_patch: TransactionAndPatch,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

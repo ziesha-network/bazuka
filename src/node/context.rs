@@ -1,6 +1,6 @@
 use super::{OutgoingSender, Peer, PeerAddress, PeerInfo};
 use crate::blockchain::{Blockchain, BlockchainError};
-use crate::core::Transaction;
+use crate::core::TransactionAndPatch;
 use crate::utils;
 use crate::wallet::Wallet;
 use rand::seq::IteratorRandom;
@@ -28,7 +28,7 @@ pub struct NodeContext<B: Blockchain> {
     pub outgoing: Arc<OutgoingSender>,
     pub blockchain: B,
     pub wallet: Option<Wallet>,
-    pub mempool: HashMap<Transaction, TransactionStats>,
+    pub mempool: HashMap<TransactionAndPatch, TransactionStats>,
     pub peers: HashMap<PeerAddress, Peer>,
     pub timestamp_offset: i32,
 
