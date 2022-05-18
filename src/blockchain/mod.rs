@@ -190,9 +190,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
                 if *dst != tx.src {
                     acc_src.balance -= *amount;
-                }
 
-                if *dst != tx.src {
                     let mut acc_dst = self.get_account(dst.clone())?;
                     acc_dst.balance += *amount;
 
