@@ -36,7 +36,13 @@ pub struct ZkState {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ZkStatePatch(HashMap<u32, ZkScalar>);
+pub struct ZkStateDelta(HashMap<u32, ZkScalar>);
+
+impl ZkState {
+    pub fn apply_patch(&mut self, patch: &ZkStateDelta) {
+        self.data.0.extend(patch.0.iter());
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct ZkCompressedState {

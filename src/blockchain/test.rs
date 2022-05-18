@@ -229,25 +229,31 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     let chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
 
     let t_valid = wallet1.create_transaction(wallet2.get_address(), 200, 0, 1);
-    let t_invalid_unsigned = Transaction {
-        src: wallet1.get_address(),
-        data: TransactionData::RegularSend {
-            dst: wallet2.get_address(),
-            amount: 300,
+    let t_invalid_unsigned = TransactionAndDelta {
+        tx: Transaction {
+            src: wallet1.get_address(),
+            data: TransactionData::RegularSend {
+                dst: wallet2.get_address(),
+                amount: 300,
+            },
+            nonce: 1,
+            fee: 0,
+            sig: Signature::Unsigned, // invalid transaction
         },
-        nonce: 1,
-        fee: 0,
-        sig: Signature::Unsigned, // invalid transaction
+        state_delta: None,
     };
-    let t_invalid_from_treasury = Transaction {
-        src: Address::Treasury,
-        data: TransactionData::RegularSend {
-            dst: wallet2.get_address(),
-            amount: 500,
+    let t_invalid_from_treasury = TransactionAndDelta {
+        tx: Transaction {
+            src: Address::Treasury,
+            data: TransactionData::RegularSend {
+                dst: wallet2.get_address(),
+                amount: 500,
+            },
+            nonce: 1,
+            fee: 0,
+            sig: Signature::Unsigned, // invalid transaction
         },
-        nonce: 1,
-        fee: 0,
-        sig: Signature::Unsigned, // invalid transaction
+        state_delta: None,
     };
     let mempool = vec![t_valid, t_invalid_unsigned, t_invalid_from_treasury];
     let mut draft = chain.draft_block(1650000000, &mempool, &wallet_miner)?;

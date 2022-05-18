@@ -4,7 +4,7 @@ use crate::config;
 use crate::config::TOTAL_SUPPLY;
 use crate::core::{
     Account, Address, Block, ContractId, Header, Money, ProofOfWork, Signature, Transaction,
-    TransactionAndPatch, TransactionData,
+    TransactionAndDelta, TransactionData,
 };
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
@@ -60,8 +60,25 @@ pub enum BlockchainError {
     StatesOutdated,
 }
 
+pub enum ZkBlockchainPatchData {
+    Full(HashMap<ContractId, zk::ZkState>),
+    Delta(HashMap<ContractId, zk::ZkStateDelta>),
+}
+
+pub struct ZkBlockchainPatch {
+    from: u64,
+    to: u64,
+    patch_data: ZkBlockchainPatchData,
+}
+
+pub struct PartialStatePatch {
+    from: u64,
+    to: u64,
+    patch: HashMap<ContractId, zk::ZkStateDelta>,
+}
+
 pub trait Blockchain {
-    fn validate_transaction(&self, tx_patch: &TransactionAndPatch)
+    fn validate_transaction(&self, tx_delta: &TransactionAndDelta)
         -> Result<bool, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn next_reward(&self) -> Result<Money, BlockchainError>;
@@ -70,7 +87,7 @@ pub trait Blockchain {
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &[TransactionAndPatch],
+        mempool: &[TransactionAndDelta],
         wallet: &Wallet,
     ) -> Result<Block, BlockchainError>;
     fn get_height(&self) -> Result<u64, BlockchainError>;
@@ -85,10 +102,7 @@ pub trait Blockchain {
         &self,
         contract_id: ContractId,
     ) -> Result<zk::ZkCompressedState, BlockchainError>;
-    fn update_states(
-        &mut self,
-        states: HashMap<ContractId, zk::ZkState>,
-    ) -> Result<(), BlockchainError>;
+    fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError>;
 }
 
 pub struct KvStoreChain<K: KvStore> {
@@ -310,8 +324,8 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn select_transactions(
         &self,
-        txs: &[TransactionAndPatch],
-    ) -> Result<Vec<TransactionAndPatch>, BlockchainError> {
+        txs: &[TransactionAndDelta],
+    ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
         let mut sorted = txs.to_vec();
         sorted.sort_by(|t1, t2| t1.tx.nonce.cmp(&t2.tx.nonce));
         let mut fork = self.fork_on_ram();
@@ -574,7 +588,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &[TransactionAndPatch],
+        mempool: &[TransactionAndDelta],
         wallet: &Wallet,
     ) -> Result<Block, BlockchainError> {
         let height = self.get_height()?;
@@ -598,8 +612,26 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             sig: Signature::Unsigned,
         }];
 
-        let tx_and_patches = self.select_transactions(mempool)?;
-        txs.extend(tx_and_patches.iter().map(|tp| tp.tx.clone()));
+        let tx_and_deltas = self.select_transactions(mempool)?;
+        let mut block_delta: HashMap<ContractId, zk::ZkStateDelta> = HashMap::new();
+        for tx_delta in tx_and_deltas.iter() {
+            if let Some(contract_id) = match &tx_delta.tx.data {
+                TransactionData::CreateContract { .. } => Some(ContractId::new(&tx_delta.tx)),
+                TransactionData::DepositWithdraw { contract_id, .. } => Some(*contract_id),
+                TransactionData::Update { contract_id, .. } => Some(*contract_id),
+                _ => None,
+            } {
+                block_delta.insert(
+                    contract_id,
+                    tx_delta
+                        .state_delta
+                        .clone()
+                        .ok_or(BlockchainError::FullStateNotFound)?,
+                );
+            }
+        }
+
+        txs.extend(tx_and_deltas.iter().map(|tp| tp.tx.clone()));
 
         let mut blk = Block {
             header: Header {
@@ -615,7 +647,14 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             body: txs,
         };
         blk.header.block_root = blk.merkle_tree().root();
-        self.fork_on_ram().apply_block(&blk, true)?; // Check if everything is ok
+
+        let mut ram_fork = self.fork_on_ram();
+        ram_fork.apply_block(&blk, true)?; // Check if everything is ok
+        ram_fork.update_states(&ZkBlockchainPatch {
+            from: height - 1,
+            to: height,
+            patch_data: ZkBlockchainPatchData::Delta(block_delta),
+        })?;
         Ok(blk)
     }
 
@@ -643,20 +682,32 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
 
-    fn update_states(
-        &mut self,
-        states: HashMap<ContractId, zk::ZkState>,
-    ) -> Result<(), BlockchainError> {
+    fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError> {
+        let state_height = self.get_state_height()?;
+        let height = self.get_height()?;
+        if patch.from != state_height {
+            //
+        }
+        if patch.to <= state_height || patch.to > height {
+            //
+        }
         let mut ops = Vec::new();
-        for (cid, comp_state) in self.get_outdated_states()? {
-            let full_state = states.get(&cid).ok_or(BlockchainError::FullStateNotFound)?;
-            if full_state.compress() == comp_state {
-                ops.push(WriteOp::Put(
-                    format!("contract_state_{}", cid).into(),
-                    full_state.into(),
-                ));
-            } else {
-                return Err(BlockchainError::FullStateNotValid);
+        match &patch.patch_data {
+            ZkBlockchainPatchData::Full(states) => {
+                for (cid, comp_state) in self.get_outdated_states()? {
+                    let full_state = states.get(&cid).ok_or(BlockchainError::FullStateNotFound)?;
+                    if full_state.compress() == comp_state {
+                        ops.push(WriteOp::Put(
+                            format!("contract_state_{}", cid).into(),
+                            full_state.into(),
+                        ));
+                    } else {
+                        return Err(BlockchainError::FullStateNotValid);
+                    }
+                }
+            }
+            ZkBlockchainPatchData::Delta(_delta) => {
+                //unimplemented!();
             }
         }
         ops.push(WriteOp::Put(
@@ -669,11 +720,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn validate_transaction(
         &self,
-        tx_patch: &TransactionAndPatch,
+        tx_delta: &TransactionAndDelta,
     ) -> Result<bool, BlockchainError> {
         Ok(
-            self.get_account(tx_patch.tx.src.clone())?.balance > 0
-                && tx_patch.tx.verify_signature(),
+            self.get_account(tx_delta.tx.src.clone())?.balance > 0
+                && tx_delta.tx.verify_signature(),
         )
     }
 }

@@ -1,4 +1,4 @@
-use crate::core::{Address, Money, Signature, Transaction, TransactionData};
+use crate::core::{Address, Money, Signature, Transaction, TransactionAndDelta, TransactionData};
 use crate::crypto::{EdDSA, SignatureScheme};
 
 #[derive(Debug, Clone)]
@@ -20,7 +20,7 @@ impl Wallet {
         amount: Money,
         fee: Money,
         nonce: u32,
-    ) -> Transaction {
+    ) -> TransactionAndDelta {
         let (_, sk) = EdDSA::generate_keys(&self.seed);
         let mut tx = Transaction {
             src: self.get_address(),
@@ -31,6 +31,9 @@ impl Wallet {
         };
         let bytes = bincode::serialize(&tx).unwrap();
         tx.sig = Signature::Signed(EdDSA::sign(&sk, &bytes));
-        tx
+        TransactionAndDelta {
+            tx,
+            state_delta: None,
+        }
     }
 }

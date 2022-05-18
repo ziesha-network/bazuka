@@ -20,4 +20,4 @@ pub type Block = blocks::Block<Hasher, Signer>;
 pub type ProofOfWork = header::ProofOfWork;
 pub type ContractId = transaction::ContractId<Hasher>;
 
-pub type TransactionAndPatch = transaction::TransactionAndPatch<Hasher, Signer>;
+pub type TransactionAndDelta = transaction::TransactionAndDelta<Hasher, Signer>;
