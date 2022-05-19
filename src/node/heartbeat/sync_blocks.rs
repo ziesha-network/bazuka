@@ -61,7 +61,7 @@ pub async fn sync_blocks<B: Blockchain>(
         let ctx = context.read().await;
         let local_header = ctx.blockchain.get_headers(mid_idx, Some(mid_idx + 1))?[0].clone();
         drop(ctx);
-        
+
         if local_header.hash() != peer_header.hash() {
             headers.insert(0, peer_header);
             high_idx = mid_idx - 1;
