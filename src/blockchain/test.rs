@@ -1,6 +1,6 @@
 use super::*;
 use crate::config::genesis;
-use crate::core::{Address, TransactionData, Signature};
+use crate::core::{Address, Signature, TransactionData};
 use crate::crypto::{EdDSA, SignatureScheme};
 use crate::db;
 
@@ -83,7 +83,7 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
             false,
             "Transaction from wallet with insufficient fund should fail"
         ),
-        Err(e) => assert!(matches!(e, BlockchainError::BalanceInsufficient))
+        Err(e) => assert!(matches!(e, BlockchainError::BalanceInsufficient)),
     }
 
     // Ensure tx is not included in block and bob has not received funds
@@ -117,7 +117,10 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     // Create unsigned signed tx
     let unsigned_tx = Transaction {
         src: alice.get_address(),
-        data: TransactionData::RegularSend { dst: bob.get_address(), amount: 1000 },
+        data: TransactionData::RegularSend {
+            dst: bob.get_address(),
+            amount: 1000,
+        },
         nonce: 1,
         fee: 300,
         sig: Signature::Unsigned,
@@ -130,7 +133,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     // Ensure apply_tx will raise
     match chain.apply_tx(&unsigned_tx.tx, false) {
         Ok(_) => assert!(false, "Unsigned transaction shall not be applied"),
-        Err(e) => assert!(matches!(e, BlockchainError::SignatureError))
+        Err(e) => assert!(matches!(e, BlockchainError::SignatureError)),
     }
 
     // Ensure tx is not included in block and bob has not received funds
@@ -165,7 +168,10 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     let (_, sk) = EdDSA::generate_keys(&Vec::from("ABC"));
     let mut tx = Transaction {
         src: alice.get_address(),
-        data: TransactionData::RegularSend { dst: bob.get_address(), amount: 1000 },
+        data: TransactionData::RegularSend {
+            dst: bob.get_address(),
+            amount: 1000,
+        },
         nonce: 1,
         fee: 300,
         sig: Signature::Unsigned,
@@ -183,7 +189,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     // Ensure apply_tx will raise
     match chain.apply_tx(&tx.tx, false) {
         Ok(_) => assert!(false, "Unsigned transaction shall not be applied"),
-        Err(e) => assert!(matches!(e, BlockchainError::SignatureError))
+        Err(e) => assert!(matches!(e, BlockchainError::SignatureError)),
     }
 
     // Ensure tx is not included in block and bob has not received funds

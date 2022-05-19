@@ -73,16 +73,16 @@ pub async fn sync_blocks<B: Blockchain>(
         // The remote blockchain is forked
         // TODO: Blocks should be streamed in smaller batches
         headers = net
-        .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
-            format!("{}/bincode/headers", most_powerful.address),
-            GetHeadersRequest {
-                since: low_idx,
-                until: None,
-            },
-            Limit::default().size(1024 * 1024).time(1000),
-        )
-        .await?
-        .headers;
+            .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
+                format!("{}/bincode/headers", most_powerful.address),
+                GetHeadersRequest {
+                    since: low_idx,
+                    until: None,
+                },
+                Limit::default().size(1024 * 1024).time(1000),
+            )
+            .await?
+            .headers;
     }
 
     let will_extend = {

@@ -627,6 +627,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 );
             }
         }
+        let block_delta = ZkBlockchainPatch::Delta(block_delta);
 
         txs.extend(tx_and_deltas.iter().map(|tp| tp.tx.clone()));
 
@@ -647,7 +648,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         let mut ram_fork = self.fork_on_ram();
         ram_fork.apply_block(&blk, true)?; // Check if everything is ok
-        ram_fork.update_states(&ZkBlockchainPatch::Delta(block_delta))?;
+        ram_fork.update_states(&block_delta)?;
         Ok(blk)
     }
 
