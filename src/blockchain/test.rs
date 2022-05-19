@@ -1,6 +1,7 @@
 use super::*;
 use crate::config::genesis;
-use crate::core::{Address, TransactionData};
+use crate::core::{Address, TransactionData, Signature};
+use crate::crypto::{EdDSA, SignatureScheme};
 use crate::db;
 
 #[test]
@@ -82,10 +83,107 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
             false,
             "Transaction from wallet with insufficient fund should fail"
         ),
-        Err(e) => assert_eq!(
-            e.to_string(),
-            BlockchainError::BalanceInsufficient.to_string()
-        ),
+        Err(e) => assert!(matches!(e, BlockchainError::BalanceInsufficient))
+    }
+
+    // Ensure tx is not included in block and bob has not received funds
+    chain.apply_block(&chain.draft_block(1, &[tx], &miner)?, false)?;
+    assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
+
+    Ok(())
+}
+
+#[test]
+fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let alice = Wallet::new(Vec::from("ABC"));
+    let bob = Wallet::new(Vec::from("CBA"));
+
+    let mut genesis_block = genesis::get_test_genesis_block();
+    genesis_block.header.proof_of_work.target = 0x00ffffff;
+    genesis_block.body = vec![Transaction {
+        src: Address::Treasury,
+        data: TransactionData::RegularSend {
+            dst: alice.get_address(),
+            amount: 10_000,
+        },
+        nonce: 1,
+        fee: 0,
+        sig: Signature::Unsigned,
+    }];
+
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+
+    // Create unsigned signed tx
+    let unsigned_tx = Transaction {
+        src: alice.get_address(),
+        data: TransactionData::RegularSend { dst: bob.get_address(), amount: 1000 },
+        nonce: 1,
+        fee: 300,
+        sig: Signature::Unsigned,
+    };
+    let unsigned_tx = TransactionAndDelta {
+        tx: unsigned_tx,
+        state_delta: None,
+    };
+
+    // Ensure apply_tx will raise
+    match chain.apply_tx(&unsigned_tx.tx, false) {
+        Ok(_) => assert!(false, "Unsigned transaction shall not be applied"),
+        Err(e) => assert!(matches!(e, BlockchainError::SignatureError))
+    }
+
+    // Ensure tx is not included in block and bob has not received funds
+    chain.apply_block(&chain.draft_block(1, &[unsigned_tx], &miner)?, false)?;
+    assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
+
+    Ok(())
+}
+
+#[test]
+fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let alice = Wallet::new(Vec::from("ABC"));
+    let bob = Wallet::new(Vec::from("CBA"));
+
+    let mut genesis_block = genesis::get_test_genesis_block();
+    genesis_block.header.proof_of_work.target = 0x00ffffff;
+    genesis_block.body = vec![Transaction {
+        src: Address::Treasury,
+        data: TransactionData::RegularSend {
+            dst: alice.get_address(),
+            amount: 10_000,
+        },
+        nonce: 1,
+        fee: 0,
+        sig: Signature::Unsigned,
+    }];
+
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+
+    // Create unsigned tx
+    let (_, sk) = EdDSA::generate_keys(&Vec::from("ABC"));
+    let mut tx = Transaction {
+        src: alice.get_address(),
+        data: TransactionData::RegularSend { dst: bob.get_address(), amount: 1000 },
+        nonce: 1,
+        fee: 300,
+        sig: Signature::Unsigned,
+    };
+
+    let mut bytes = bincode::serialize(&tx).unwrap();
+    bytes.push(0x11);
+
+    tx.sig = Signature::Signed(EdDSA::sign(&sk, &bytes));
+    let tx = TransactionAndDelta {
+        tx,
+        state_delta: None,
+    };
+
+    // Ensure apply_tx will raise
+    match chain.apply_tx(&tx.tx, false) {
+        Ok(_) => assert!(false, "Unsigned transaction shall not be applied"),
+        Err(e) => assert!(matches!(e, BlockchainError::SignatureError))
     }
 
     // Ensure tx is not included in block and bob has not received funds
