@@ -50,6 +50,46 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
 }
 
 #[test]
+fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let alice = Wallet::new(Vec::from("ABC"));
+    let bob = Wallet::new(Vec::from("CBA"));
+
+    let mut genesis_block = genesis::get_test_genesis_block();
+    genesis_block.header.proof_of_work.target = 0x00ffffff;
+    genesis_block.body = vec![Transaction {
+        src: Address::Treasury,
+        data: TransactionData::RegularSend {
+            dst: alice.get_address(),
+            amount: 10_000,
+        },
+        nonce: 1,
+        fee: 0,
+        sig: Signature::Unsigned,
+    }];
+
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+
+    // Alice: 10000 Bob: 0
+    assert_eq!(chain.get_account(alice.get_address())?.balance, 10000);
+    assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
+
+    let tx = alice.create_transaction(bob.get_address(), 9701, 300, 1);
+
+    // Ensure apply_tx will raise
+    match chain.apply_tx(&tx.tx, false) {
+        Ok(_) => assert!(false, "Transaction from wallet with insufficient fund should fail"),
+        Err(e) => assert_eq!(e.to_string(), BlockchainError::BalanceInsufficient.to_string())
+    }
+
+    // Ensure tx is not included in block and bob has not received funds
+    chain.apply_block(&chain.draft_block(1, &[tx], &miner)?, false)?;
+    assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
+
+    Ok(())
+}
+
+#[test]
 fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
