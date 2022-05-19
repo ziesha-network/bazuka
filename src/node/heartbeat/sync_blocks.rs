@@ -63,11 +63,26 @@ pub async fn sync_blocks<B: Blockchain>(
         drop(ctx);
 
         if local_header.hash() != peer_header.hash() {
-            headers.insert(0, peer_header);
             high_idx = mid_idx - 1;
         } else {
             low_idx = mid_idx + 1;
         }
+    }
+
+    if low_idx != start_height {
+        // The remote blockchain is forked
+        // TODO: Blocks should be streamed in smaller batches
+        headers = net
+        .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
+            format!("{}/bincode/headers", most_powerful.address),
+            GetHeadersRequest {
+                since: low_idx,
+                until: None,
+            },
+            Limit::default().size(1024 * 1024).time(1000),
+        )
+        .await?
+        .headers;
     }
 
     let will_extend = {
