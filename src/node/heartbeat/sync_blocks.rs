@@ -41,13 +41,16 @@ pub async fn sync_blocks<B: Blockchain>(
     // The local blockchain and the peer blockchain both have all blocks
     // from 0 to height-1, though, the blocks might not be equal. Find
     // the header from which the fork has happened.
-    for index in (0..start_height).rev() {
+    let mut low_idx: u64 = 0;
+    let mut high_idx: u64 = start_height - 1;
+    while low_idx <= high_idx {
+        let mid_idx = ((high_idx - low_idx) / 2) + low_idx;
         let peer_header = net
             .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
                 format!("{}/bincode/headers", most_powerful.address),
                 GetHeadersRequest {
-                    since: index,
-                    until: Some(index + 1),
+                    since: mid_idx,
+                    until: Some(mid_idx + 1),
                 },
                 Limit::default().size(1024 * 1024).time(1000),
             )
@@ -56,13 +59,14 @@ pub async fn sync_blocks<B: Blockchain>(
             .clone();
 
         let ctx = context.read().await;
-        let local_header = ctx.blockchain.get_headers(index, Some(index + 1))?[0].clone();
+        let local_header = ctx.blockchain.get_headers(mid_idx, Some(mid_idx + 1))?[0].clone();
         drop(ctx);
-
+        
         if local_header.hash() != peer_header.hash() {
             headers.insert(0, peer_header);
+            high_idx = mid_idx - 1;
         } else {
-            break;
+            low_idx = mid_idx + 1;
         }
     }
 
