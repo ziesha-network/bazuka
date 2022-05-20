@@ -1,3 +1,4 @@
+use crate::blockchain::ZkBlockchainPatch;
 use crate::core::{Address, Block, Header, Money, TransactionAndDelta};
 
 use super::{Peer, PeerAddress, PeerInfo};
@@ -81,6 +82,17 @@ pub struct GetBlocksRequest {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetBlocksResponse {
     pub blocks: Vec<Block>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetStatesRequest {
+    pub from: u64,
+    pub to: u64,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetStatesResponse {
+    pub patch: ZkBlockchainPatch,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

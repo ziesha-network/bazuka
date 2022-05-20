@@ -44,6 +44,7 @@ impl std::fmt::Display for PeerAddress {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PeerInfo {
     pub height: u64,
+    pub state_height: u64,
     pub power: u128,
 }
 
@@ -162,6 +163,11 @@ async fn node_service<B: Blockchain>(
                     bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
                 )
                 .await?,
+            )?);
+        }
+        (Method::GET, "/bincode/states") => {
+            *response.body_mut() = Body::from(bincode::serialize(
+                &api::get_states(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
             )?);
         }
         _ => {

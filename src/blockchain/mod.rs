@@ -10,6 +10,8 @@ use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
 use crate::wallet::Wallet;
 use crate::zk;
+
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Error, Debug)]
@@ -58,9 +60,11 @@ pub enum BlockchainError {
     FullStateNotValid,
     #[error("cannot draft a new block when full-states are outdated")]
     StatesOutdated,
+    #[error("contract states at requested height are unavailable")]
+    StatesUnavailable,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ZkBlockchainPatch {
     Full(HashMap<ContractId, zk::ZkState>),
     Delta(HashMap<ContractId, zk::ZkStateDelta>),
@@ -93,6 +97,11 @@ pub trait Blockchain {
     ) -> Result<zk::ZkCompressedState, BlockchainError>;
     fn get_state(&self, contract_id: ContractId) -> Result<zk::ZkState, BlockchainError>;
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError>;
+    fn generate_state_patch(
+        &self,
+        from: u64,
+        to: u64,
+    ) -> Result<ZkBlockchainPatch, BlockchainError>;
 }
 
 pub struct KvStoreChain<K: KvStore> {
@@ -729,6 +738,26 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             self.get_account(tx_delta.tx.src.clone())?.balance > 0
                 && tx_delta.tx.verify_signature(),
         )
+    }
+    fn generate_state_patch(
+        &self,
+        from: u64,
+        to: u64,
+    ) -> Result<ZkBlockchainPatch, BlockchainError> {
+        if to != self.get_state_height()? {
+            return Err(BlockchainError::StatesUnavailable);
+        }
+        let mut changes = HashMap::new();
+        for i in from..to {
+            let block_changes = self.get_changed_states(i)?;
+            changes.extend(block_changes.into_iter());
+        }
+
+        let mut patch_data: HashMap<ContractId, zk::ZkState> = HashMap::new();
+        for (cid, _) in changes {
+            patch_data.insert(cid, self.get_state(cid)?);
+        }
+        Ok(ZkBlockchainPatch::Full(patch_data))
     }
 }
 
