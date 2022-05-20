@@ -25,22 +25,28 @@ pub struct ZkStateModel {
     tree_depth: u8,
 }
 
-// Full state of a contract
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ZkStateData(HashMap<u32, ZkScalar>);
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ZkState {
-    _model: ZkStateModel,
-    data: ZkStateData,
+impl ZkStateModel {
+    pub fn new(leaf_size: u32, tree_depth: u8) -> Self {
+        Self {
+            leaf_size,
+            tree_depth,
+        }
+    }
 }
+
+// Full state of a contract
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ZkState(HashMap<u32, ZkScalar>);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZkStateDelta(HashMap<u32, ZkScalar>);
 
 impl ZkState {
+    pub fn as_delta(&self) -> ZkStateDelta {
+        ZkStateDelta(self.0.clone())
+    }
     pub fn apply_patch(&mut self, patch: &ZkStateDelta) {
-        self.data.0.extend(patch.0.iter());
+        self.0.extend(patch.0.iter());
     }
 }
 
@@ -50,34 +56,31 @@ pub struct ZkCompressedState {
     state_size: u32,
 }
 
-impl ZkStateData {
+impl ZkState {
     pub fn size(&self) -> u32 {
         self.0.len() as u32
     }
 }
 
 impl ZkState {
-    pub fn new(model: ZkStateModel, data: ZkStateData) -> Self {
-        Self {
-            _model: model,
-            data,
-        }
-    }
-    pub fn compress(&self) -> ZkCompressedState {
+    pub fn compress(&self, _model: ZkStateModel) -> ZkCompressedState {
         let root = ZkScalar(ram::ZkRam::from_state(self).root());
         ZkCompressedState {
             state_hash: root,
-            state_size: self.data.size(),
+            state_size: self.size(),
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ZkVerifierKey(#[serde(with = "serde_bytes")] Vec<u8>);
+pub enum ZkVerifierKey {
+    Groth16(#[serde(with = "serde_bytes")] Vec<u8>),
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ZkContract {
-    pub initial_state: ZkState,
+    pub initial_state: ZkCompressedState,
+    pub state_model: ZkStateModel,
     pub deposit_withdraw: ZkVerifierKey,
     pub update: Vec<ZkVerifierKey>,
 }

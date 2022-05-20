@@ -1,6 +1,6 @@
 use crate::core::{Account, Block, ContractId, Hasher};
 use crate::crypto::merkle::MerkleTree;
-use crate::zk::{ZkCompressedState, ZkContract, ZkState, ZkStateData};
+use crate::zk::{ZkCompressedState, ZkContract, ZkState};
 use db_key::Key;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
@@ -68,7 +68,6 @@ gen_try_into!(
     Vec<WriteOp>,
     MerkleTree<Hasher>,
     ZkContract,
-    ZkStateData,
     ZkCompressedState,
     HashMap<ContractId, ZkCompressedState>,
     ZkState
@@ -83,7 +82,6 @@ gen_from!(
     Vec<WriteOp>,
     MerkleTree<Hasher>,
     ZkContract,
-    ZkStateData,
     ZkCompressedState,
     HashMap<ContractId, ZkCompressedState>,
     &ZkState

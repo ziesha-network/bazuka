@@ -1,5 +1,5 @@
 use super::{OutgoingSender, Peer, PeerAddress, PeerInfo};
-use crate::blockchain::{Blockchain, BlockchainError};
+use crate::blockchain::{Blockchain, BlockchainError, DraftBlock};
 use crate::core::TransactionAndDelta;
 use crate::utils;
 use crate::wallet::Wallet;
@@ -8,14 +8,14 @@ use rand::RngCore;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use {super::api::messages::Puzzle, crate::core::Block};
+use super::api::messages::Puzzle;
 
 #[derive(Debug, Clone)]
 pub struct TransactionStats {
     pub first_seen: u32,
 }
 
-pub type BlockPuzzle = (Block, Puzzle);
+pub type BlockPuzzle = (DraftBlock, Puzzle);
 
 pub struct Miner {
     pub block_puzzle: Option<BlockPuzzle>,
@@ -69,14 +69,14 @@ impl<B: Blockchain> NodeContext<B> {
     pub fn get_puzzle(&self, wallet: Wallet) -> Result<BlockPuzzle, BlockchainError> {
         let txs = self.mempool.keys().cloned().collect::<Vec<_>>();
         let ts = self.network_timestamp();
-        let block = self.blockchain.draft_block(ts, &txs, &wallet)?;
+        let draft = self.blockchain.draft_block(ts, &txs, &wallet)?;
         let puzzle = Puzzle {
-            key: hex::encode(self.blockchain.pow_key(block.header.number)?),
-            blob: hex::encode(bincode::serialize(&block.header).unwrap()),
+            key: hex::encode(self.blockchain.pow_key(draft.block.header.number)?),
+            blob: hex::encode(bincode::serialize(&draft.block.header).unwrap()),
             offset: 80,
             size: 8,
-            target: block.header.proof_of_work.target,
+            target: draft.block.header.proof_of_work.target,
         };
-        Ok((block, puzzle))
+        Ok((draft, puzzle))
     }
 }
