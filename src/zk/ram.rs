@@ -45,8 +45,12 @@ impl ZkRam {
         r
     }
     pub fn new() -> Self {
+        let mut defaults = vec![Fr::zero()];
+        for i in 0..LOG_ZK_RAM_SIZE {
+            defaults.push(mimc::mimc(&[defaults[i], defaults[i]]));
+        }
         Self {
-            defaults: vec![Fr::zero(); LOG_ZK_RAM_SIZE + 1],
+            defaults,
             layers: vec![HashMap::new(); LOG_ZK_RAM_SIZE + 1],
         }
     }
@@ -66,13 +70,13 @@ impl ZkRam {
     pub fn root(&self) -> Fr {
         *self.layers[LOG_ZK_RAM_SIZE]
             .get(&0)
-            .unwrap_or(&self.defaults[0])
+            .unwrap_or(&self.defaults[LOG_ZK_RAM_SIZE])
     }
     fn get(&self, level: usize, index: u32) -> Fr {
         self.layers[level]
             .get(&index)
             .cloned()
-            .unwrap_or_else(Fr::zero)
+            .unwrap_or(self.defaults[level])
     }
     pub fn prove(&self, mut index: u32) -> Proof {
         let mut proof = [Fr::zero(); LOG_ZK_RAM_SIZE];
