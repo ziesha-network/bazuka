@@ -10,6 +10,10 @@ pub async fn log_info<B: Blockchain>(
             "Height".to_string(),
             ctx.blockchain.get_height()?.to_string(),
         ),
+        (
+            "State Height".to_string(),
+            ctx.blockchain.get_state_height()?.to_string(),
+        ),
         ("Timestamp".to_string(), ctx.network_timestamp().to_string()),
         (
             "Active peers".to_string(),
