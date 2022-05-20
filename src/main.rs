@@ -79,15 +79,24 @@ async fn main() -> Result<(), NodeError> {
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, mut out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
 
+    // Use hardcoded seed bootstrap nodes if none provided via cli opts
+    let bootstrap_nodes = {
+        match opts.bootstrap.len() {
+            0 => bazuka::node::seeds::seed_bootstrap_nodes(),
+            _ => opts
+                .bootstrap
+                .clone()
+                .into_iter()
+                .map(|b| PeerAddress(b.parse().unwrap()))
+                .collect(),
+        }
+    };
+
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
     let node = node_create(
         address,
-        opts.bootstrap
-            .clone()
-            .into_iter()
-            .map(|b| PeerAddress(b.parse().unwrap()))
-            .collect(),
+        bootstrap_nodes,
         KvStoreChain::new(
             LruCacheKvStore::new(
                 LevelDbKvStore::new(

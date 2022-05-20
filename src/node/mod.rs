@@ -6,6 +6,7 @@ mod context;
 mod errors;
 mod heartbeat;
 mod http;
+pub mod seeds;
 pub mod upnp;
 use context::{NodeContext, TransactionStats};
 pub use errors::NodeError;
