@@ -43,14 +43,26 @@ impl ZkStateModel {
 pub struct ZkState(HashMap<u32, ZkScalar>);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ZkStateDelta(HashMap<u32, ZkScalar>);
+pub struct ZkStateDelta(HashMap<u32, Option<ZkScalar>>);
 
 impl ZkState {
     pub fn as_delta(&self) -> ZkStateDelta {
-        ZkStateDelta(self.0.clone())
+        ZkStateDelta(
+            self.0
+                .clone()
+                .into_iter()
+                .map(|(k, v)| (k, Some(v)))
+                .collect(),
+        )
     }
     pub fn apply_patch(&mut self, patch: &ZkStateDelta) {
-        self.0.extend(patch.0.iter());
+        for (k, v) in patch.0.iter() {
+            if let Some(v) = v {
+                self.0.insert(*k, *v);
+            } else {
+                self.0.remove(k);
+            }
+        }
     }
 }
 
