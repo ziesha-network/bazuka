@@ -10,8 +10,8 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
     let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.header.proof_of_work.target = 0x00ffffff;
-    genesis_block.body = vec![Transaction {
+    genesis_block.0.header.proof_of_work.target = 0x00ffffff;
+    genesis_block.0.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: alice.get_address(),
@@ -57,8 +57,8 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
     let bob = Wallet::new(Vec::from("CBA"));
 
     let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.header.proof_of_work.target = 0x00ffffff;
-    genesis_block.body = vec![Transaction {
+    genesis_block.0.header.proof_of_work.target = 0x00ffffff;
+    genesis_block.0.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: alice.get_address(),
@@ -100,8 +100,8 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     let bob = Wallet::new(Vec::from("CBA"));
 
     let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.header.proof_of_work.target = 0x00ffffff;
-    genesis_block.body = vec![Transaction {
+    genesis_block.0.header.proof_of_work.target = 0x00ffffff;
+    genesis_block.0.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: alice.get_address(),
@@ -150,8 +150,8 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     let bob = Wallet::new(Vec::from("CBA"));
 
     let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.header.proof_of_work.target = 0x00ffffff;
-    genesis_block.body = vec![Transaction {
+    genesis_block.0.header.proof_of_work.target = 0x00ffffff;
+    genesis_block.0.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: alice.get_address(),
@@ -205,8 +205,8 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
     let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.header.proof_of_work.target = 0x00ffffff;
-    genesis_block.body = vec![Transaction {
+    genesis_block.0.header.proof_of_work.target = 0x00ffffff;
+    genesis_block.0.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: alice.get_address(),
@@ -305,7 +305,7 @@ fn test_empty_chain_should_have_genesis_block() -> Result<(), BlockchainError> {
     assert_eq!(1, chain.get_height()?);
 
     let first_block = chain.get_block(0)?;
-    assert_eq!(genesis_block.header.hash(), first_block.header.hash());
+    assert_eq!(genesis_block.0.header.hash(), first_block.header.hash());
 
     Ok(())
 }
@@ -317,8 +317,8 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
     let mut genesis_block = genesis::get_genesis_block();
-    genesis_block.header.proof_of_work.target = 0x0000ffff;
-    genesis_block.body = vec![Transaction {
+    genesis_block.0.header.proof_of_work.target = 0x0000ffff;
+    genesis_block.0.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: wallet1.get_address(),
@@ -365,7 +365,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
     let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.body = vec![Transaction {
+    genesis_block.0.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: wallet1.get_address(),
@@ -423,7 +423,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
     let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.body = vec![Transaction {
+    genesis_block.0.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: wallet1.get_address(),
@@ -463,7 +463,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
     let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.body = vec![Transaction {
+    genesis_block.0.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: wallet1.get_address(),

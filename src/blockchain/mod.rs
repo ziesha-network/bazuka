@@ -60,6 +60,7 @@ pub enum BlockchainError {
     StatesOutdated,
 }
 
+#[derive(Clone)]
 pub enum ZkBlockchainPatch {
     Full(HashMap<ContractId, zk::ZkState>),
     Delta(HashMap<ContractId, zk::ZkStateDelta>),
@@ -99,10 +100,14 @@ pub struct KvStoreChain<K: KvStore> {
 }
 
 impl<K: KvStore> KvStoreChain<K> {
-    pub fn new(kv_store: K, genesis_block: Block) -> Result<KvStoreChain<K>, BlockchainError> {
+    pub fn new(
+        kv_store: K,
+        genesis_block: (Block, ZkBlockchainPatch),
+    ) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> { database: kv_store };
         if chain.get_height()? == 0 {
-            chain.apply_block(&genesis_block, false)?;
+            chain.apply_block(&genesis_block.0, false)?;
+            chain.update_states(&genesis_block.1)?;
         }
         Ok(chain)
     }

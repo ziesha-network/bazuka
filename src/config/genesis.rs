@@ -1,6 +1,8 @@
+use crate::blockchain::ZkBlockchainPatch;
 use crate::core::{Address, Block, Header, ProofOfWork, Signature, Transaction, TransactionData};
+use std::collections::HashMap;
 
-pub fn get_genesis_block() -> Block {
+pub fn get_genesis_block() -> (Block, ZkBlockchainPatch) {
     let mut blk = Block {
         header: Header {
             parent_hash: Default::default(),
@@ -26,10 +28,10 @@ pub fn get_genesis_block() -> Block {
         }],
     };
     blk.header.block_root = blk.merkle_tree().root();
-    blk
+    (blk, ZkBlockchainPatch::Full(HashMap::new()))
 }
 
-pub fn get_test_genesis_block() -> Block {
+pub fn get_test_genesis_block() -> (Block, ZkBlockchainPatch) {
     let mut blk = Block {
         header: Header {
             parent_hash: Default::default(),
@@ -44,5 +46,5 @@ pub fn get_test_genesis_block() -> Block {
         body: vec![],
     };
     blk.header.block_root = blk.merkle_tree().root();
-    blk
+    (blk, ZkBlockchainPatch::Full(HashMap::new()))
 }

@@ -1,7 +1,7 @@
 use super::*;
 
 use super::api::messages::*;
-use crate::blockchain::KvStoreChain;
+use crate::blockchain::{KvStoreChain, ZkBlockchainPatch};
 use crate::core::Block;
 use crate::db::RamKvStore;
 use crate::wallet::Wallet;
@@ -16,7 +16,7 @@ struct Node {
 }
 
 pub struct NodeOpts {
-    pub genesis: Block,
+    pub genesis: (Block, ZkBlockchainPatch),
     pub wallet: Option<Wallet>,
     pub addr: u16,
     pub bootstrap: Vec<u16>,
