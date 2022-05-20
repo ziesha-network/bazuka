@@ -348,13 +348,21 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
 }
 
 #[test]
-fn test_empty_chain_should_have_genesis_block() -> Result<(), BlockchainError> {
+fn test_genesis_is_not_replaceable() -> Result<(), BlockchainError> {
     let genesis_block = genesis::get_genesis_block();
-    let chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
     assert_eq!(1, chain.get_height()?);
 
     let first_block = chain.get_block(0)?;
     assert_eq!(genesis_block.0.header.hash(), first_block.header.hash());
+
+    let mut another_genesis_block = genesis_block.clone();
+    another_genesis_block.0.header.proof_of_work.timestamp += 1;
+
+    assert!(matches!(
+        chain.extend(0, &[another_genesis_block.0]),
+        Err(BlockchainError::ExtendFromGenesis)
+    ));
 
     Ok(())
 }
