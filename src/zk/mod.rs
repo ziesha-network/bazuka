@@ -5,12 +5,16 @@ use std::collections::HashMap;
 use zeekit::Fr;
 
 pub fn check_proof(
-    _vk: &ZkVerifierKey,
+    vk: &ZkVerifierKey,
     _prev_state: &ZkCompressedState,
     _next_state: &ZkCompressedState,
     _proof: &ZkProof,
 ) -> bool {
-    unimplemented!();
+    match vk {
+        #[cfg(test)]
+        ZkVerifierKey::Dummy => _proof.0.len() > 0,
+        _ => unimplemented!(),
+    }
 }
 
 // A single state cell
@@ -75,14 +79,16 @@ impl ZkState {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ZkVerifierKey {
     Groth16(#[serde(with = "serde_bytes")] Vec<u8>),
+    #[cfg(test)]
+    Dummy,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ZkContract {
-    pub initial_state: ZkCompressedState,
+    pub initial_state: ZkCompressedState, // 32byte
     pub state_model: ZkStateModel,
-    pub deposit_withdraw: ZkVerifierKey,
-    pub update: Vec<ZkVerifierKey>,
+    pub deposit_withdraw: ZkVerifierKey, // VK f(prev_state, io_txs (L1)) -> next_state
+    pub update: Vec<ZkVerifierKey>,      // Vec<VK> f(prev_state) -> next_state
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
