@@ -15,6 +15,7 @@ TEMPLATE = """
 */
 
 use super::PeerAddress;
+#[allow(unused_imports)]
 use std::net::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
 
 pub fn seed_bootstrap_nodes() -> Vec<PeerAddress> {
