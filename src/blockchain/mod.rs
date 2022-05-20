@@ -70,6 +70,12 @@ pub enum ZkBlockchainPatch {
     Delta(HashMap<ContractId, zk::ZkStateDelta>),
 }
 
+#[derive(Clone)]
+pub struct DraftBlock {
+    pub block: Block,
+    pub patch: ZkBlockchainPatch,
+}
+
 pub trait Blockchain {
     fn validate_transaction(&self, tx_delta: &TransactionAndDelta)
         -> Result<bool, BlockchainError>;
@@ -82,7 +88,7 @@ pub trait Blockchain {
         timestamp: u32,
         mempool: &[TransactionAndDelta],
         wallet: &Wallet,
-    ) -> Result<Block, BlockchainError>;
+    ) -> Result<DraftBlock, BlockchainError>;
     fn get_height(&self) -> Result<u64, BlockchainError>;
     fn get_headers(&self, since: u64, until: Option<u64>) -> Result<Vec<Header>, BlockchainError>;
     fn get_blocks(&self, since: u64, until: Option<u64>) -> Result<Vec<Block>, BlockchainError>;
@@ -225,12 +231,11 @@ impl<K: KvStore> KvStoreChain<K> {
                     format!("contract_{}", contract_id).into(),
                     contract.clone().into(),
                 ));
-                let compressed_state = contract.initial_state.compress();
                 ops.push(WriteOp::Put(
                     format!("contract_compressed_state_{}", contract_id).into(),
-                    compressed_state.into(),
+                    contract.initial_state.into(),
                 ));
-                state_update = Some((contract_id, compressed_state));
+                state_update = Some((contract_id, contract.initial_state));
             }
             TransactionData::DepositWithdraw {
                 contract_id,
@@ -472,11 +477,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
     fn get_state(&self, contract_id: ContractId) -> Result<zk::ZkState, BlockchainError> {
         let k = format!("contract_state_{}", contract_id).into();
-        Ok(self
-            .database
-            .get(k)?
-            .map(|b| b.try_into())
-            .ok_or(BlockchainError::ContractNotFound)??)
+        Ok(match self.database.get(k)? {
+            Some(b) => b.try_into()?,
+            None => zk::ZkState::default(),
+        })
     }
 
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {
@@ -601,7 +605,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         timestamp: u32,
         mempool: &[TransactionAndDelta],
         wallet: &Wallet,
-    ) -> Result<Block, BlockchainError> {
+    ) -> Result<DraftBlock, BlockchainError> {
         let height = self.get_height()?;
         let state_height = self.get_state_height()?;
 
@@ -663,7 +667,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let mut ram_fork = self.fork_on_ram();
         ram_fork.apply_block(&blk, true)?; // Check if everything is ok
         ram_fork.update_states(&block_delta)?;
-        Ok(blk)
+        Ok(DraftBlock {
+            block: blk,
+            patch: block_delta,
+        })
     }
 
     fn get_power(&self) -> Result<u128, BlockchainError> {
@@ -695,8 +702,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         match &patch {
             ZkBlockchainPatch::Full(states) => {
                 for (cid, comp_state) in self.get_outdated_states()? {
+                    let contract = self.get_contract(cid)?;
                     let full_state = states.get(&cid).ok_or(BlockchainError::FullStateNotFound)?;
-                    if full_state.compress() == comp_state {
+                    if full_state.compress(contract.state_model) == comp_state {
                         ops.push(WriteOp::Put(
                             format!("contract_state_{}", cid).into(),
                             full_state.into(),
@@ -708,10 +716,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             }
             ZkBlockchainPatch::Delta(deltas) => {
                 for (cid, comp_state) in self.get_outdated_states()? {
+                    let contract = self.get_contract(cid)?;
                     let mut state = self.get_state(cid)?;
                     let delta = deltas.get(&cid).ok_or(BlockchainError::FullStateNotFound)?;
                     state.apply_patch(delta);
-                    if state.compress() == comp_state {
+                    if state.compress(contract.state_model) == comp_state {
                         ops.push(WriteOp::Put(
                             format!("contract_state_{}", cid).into(),
                             (&state).into(),

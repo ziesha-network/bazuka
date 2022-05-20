@@ -10,6 +10,7 @@ use zeekit::Fr;
 // based on a Sparse Merkle Tree.
 #[derive(Debug, Clone)]
 pub struct ZkRam {
+    defaults: Vec<Fr>,
     layers: Vec<HashMap<u32, Fr>>,
 }
 
@@ -38,13 +39,14 @@ impl Default for ZkRam {
 impl ZkRam {
     pub fn from_state(state: &ZkState) -> Self {
         let mut r = Self::new();
-        for (k, v) in state.data.0.iter() {
+        for (k, v) in state.0.iter() {
             r.set(*k, v.0);
         }
         r
     }
     pub fn new() -> Self {
         Self {
+            defaults: vec![Fr::zero(); LOG_ZK_RAM_SIZE + 1],
             layers: vec![HashMap::new(); LOG_ZK_RAM_SIZE + 1],
         }
     }
@@ -62,7 +64,9 @@ impl ZkRam {
         panic!("Invalid patch!");
     }
     pub fn root(&self) -> Fr {
-        *self.layers[LOG_ZK_RAM_SIZE].get(&0).expect("Tree empty!")
+        *self.layers[LOG_ZK_RAM_SIZE]
+            .get(&0)
+            .unwrap_or(&self.defaults[0])
     }
     fn get(&self, level: usize, index: u32) -> Fr {
         self.layers[level]
