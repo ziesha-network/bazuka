@@ -1,5 +1,5 @@
 use super::{OutgoingSender, Peer, PeerAddress, PeerInfo};
-use crate::blockchain::{Blockchain, BlockchainError, DraftBlock};
+use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError};
 use crate::core::TransactionAndDelta;
 use crate::utils;
 use crate::wallet::Wallet;
@@ -15,7 +15,7 @@ pub struct TransactionStats {
     pub first_seen: u32,
 }
 
-pub type BlockPuzzle = (DraftBlock, Puzzle);
+pub type BlockPuzzle = (BlockAndPatch, Puzzle);
 
 pub struct Miner {
     pub block_puzzle: Option<BlockPuzzle>,

@@ -71,7 +71,7 @@ pub enum ZkBlockchainPatch {
 }
 
 #[derive(Clone)]
-pub struct DraftBlock {
+pub struct BlockAndPatch {
     pub block: Block,
     pub patch: ZkBlockchainPatch,
 }
@@ -88,7 +88,7 @@ pub trait Blockchain {
         timestamp: u32,
         mempool: &[TransactionAndDelta],
         wallet: &Wallet,
-    ) -> Result<DraftBlock, BlockchainError>;
+    ) -> Result<BlockAndPatch, BlockchainError>;
     fn get_height(&self) -> Result<u64, BlockchainError>;
     fn get_headers(&self, since: u64, until: Option<u64>) -> Result<Vec<Header>, BlockchainError>;
     fn get_blocks(&self, since: u64, until: Option<u64>) -> Result<Vec<Block>, BlockchainError>;
@@ -117,12 +117,12 @@ pub struct KvStoreChain<K: KvStore> {
 impl<K: KvStore> KvStoreChain<K> {
     pub fn new(
         kv_store: K,
-        genesis_block: (Block, ZkBlockchainPatch),
+        genesis_block: BlockAndPatch,
     ) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> { database: kv_store };
         if chain.get_height()? == 0 {
-            chain.apply_block(&genesis_block.0, false)?;
-            chain.update_states(&genesis_block.1)?;
+            chain.apply_block(&genesis_block.block, false)?;
+            chain.update_states(&genesis_block.patch)?;
         }
         Ok(chain)
     }
@@ -605,7 +605,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         timestamp: u32,
         mempool: &[TransactionAndDelta],
         wallet: &Wallet,
-    ) -> Result<DraftBlock, BlockchainError> {
+    ) -> Result<BlockAndPatch, BlockchainError> {
         let height = self.get_height()?;
         let state_height = self.get_state_height()?;
 
@@ -667,7 +667,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let mut ram_fork = self.fork_on_ram();
         ram_fork.apply_block(&blk, true)?; // Check if everything is ok
         ram_fork.update_states(&block_delta)?;
-        Ok(DraftBlock {
+        Ok(BlockAndPatch {
             block: blk,
             patch: block_delta,
         })
