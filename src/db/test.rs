@@ -73,3 +73,40 @@ fn test_mirror_kv_store() -> Result<(), KvStoreError> {
 
     Ok(())
 }
+
+#[test]
+fn test_rollback_of() -> Result<(), KvStoreError> {
+    let mut ram = RamKvStore::default();
+
+    let ops = &[
+        WriteOp::Put("bc".into(), Blob(vec![0, 1, 2, 3])),
+        WriteOp::Put("aa".into(), Blob(vec![3, 2, 1, 0])),
+        WriteOp::Put("def".into(), Blob(vec![])),
+    ];
+
+    ram.update(ops)?;
+
+    assert_eq!(ram.rollback_of(&[])?, vec![]);
+
+    assert_eq!(
+        ram.rollback_of(&[WriteOp::Remove("kk".into()),])?,
+        vec![WriteOp::Remove("kk".into())]
+    );
+
+    assert_eq!(
+        ram.rollback_of(&[
+            WriteOp::Put("bc".into(), Blob(vec![3, 2, 1])),
+            WriteOp::Put("gg".into(), Blob(vec![2, 2, 2, 2])),
+            WriteOp::Put("fre".into(), Blob(vec![1, 1])),
+            WriteOp::Remove("aa".into()),
+        ])?,
+        vec![
+            WriteOp::Put("bc".into(), Blob(vec![0, 1, 2, 3])),
+            WriteOp::Remove("gg".into()),
+            WriteOp::Remove("fre".into()),
+            WriteOp::Put("aa".into(), Blob(vec![3, 2, 1, 0])),
+        ]
+    );
+
+    Ok(())
+}

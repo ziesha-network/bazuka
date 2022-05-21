@@ -40,7 +40,7 @@ impl StringKey {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Blob(Vec<u8>);
 
 macro_rules! gen_try_into {
@@ -118,7 +118,7 @@ impl From<&str> for StringKey {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum WriteOp {
     Remove(StringKey),
     Put(StringKey, Blob),
