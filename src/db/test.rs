@@ -2,7 +2,7 @@ use super::*;
 use tempdir::TempDir;
 
 fn temp_disk_store() -> Result<LevelDbKvStore, KvStoreError> {
-    LevelDbKvStore::new(TempDir::new("bazuka_test").unwrap().path())
+    LevelDbKvStore::new(TempDir::new("bazuka_test").unwrap().path(), 64)
 }
 
 #[test]

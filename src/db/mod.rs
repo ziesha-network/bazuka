@@ -2,10 +2,8 @@ use crate::core::{hash::Hash, Account, Block, ContractId, Hasher};
 use crate::crypto::merkle::MerkleTree;
 use crate::zk::{ZkCompressedState, ZkContract, ZkState};
 use db_key::Key;
-use lru::LruCache;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::Mutex;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -132,45 +130,6 @@ pub trait KvStore {
             })
         }
         Ok(rollback)
-    }
-}
-
-pub struct LruCacheKvStore<K: KvStore> {
-    store: K,
-    cache: Mutex<LruCache<String, Option<Blob>>>,
-}
-impl<K: KvStore> LruCacheKvStore<K> {
-    pub fn new(store: K, cap: usize) -> Self {
-        Self {
-            store,
-            cache: Mutex::new(LruCache::new(cap)),
-        }
-    }
-}
-
-impl<K: KvStore> KvStore for LruCacheKvStore<K> {
-    fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError> {
-        let mut cache = self.cache.lock().unwrap();
-        if let Some(v) = cache.get(&k.0) {
-            Ok(v.clone())
-        } else {
-            let res = self.store.get(k.clone())?;
-            cache.put(k.0.clone(), res.clone());
-            Ok(res)
-        }
-    }
-    fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError> {
-        let mut cache = self.cache.lock().unwrap();
-        for op in ops.iter() {
-            match op {
-                WriteOp::Remove(k) => cache.pop(&k.0),
-                WriteOp::Put(k, _) => cache.pop(&k.0),
-            };
-        }
-        self.store.update(ops)
-    }
-    fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
-        self.store.checksum::<H>()
     }
 }
 

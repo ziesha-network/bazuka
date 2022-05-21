@@ -4,7 +4,7 @@ extern crate lazy_static;
 #[cfg(feature = "node")]
 use {
     bazuka::blockchain::KvStoreChain,
-    bazuka::db::{LevelDbKvStore, LruCacheKvStore},
+    bazuka::db::LevelDbKvStore,
     bazuka::node::{node_create, IncomingRequest, NodeError, OutgoingRequest, PeerAddress},
     bazuka::wallet::Wallet,
     colored::Colorize,
@@ -98,15 +98,13 @@ async fn main() -> Result<(), NodeError> {
         address,
         bootstrap_nodes,
         KvStoreChain::new(
-            LruCacheKvStore::new(
-                LevelDbKvStore::new(
-                    &opts
-                        .db
-                        .unwrap_or_else(|| home::home_dir().unwrap().join(Path::new(".bazuka"))),
-                )
-                .unwrap(),
+            LevelDbKvStore::new(
+                &opts
+                    .db
+                    .unwrap_or_else(|| home::home_dir().unwrap().join(Path::new(".bazuka"))),
                 64,
-            ),
+            )
+            .unwrap(),
             genesis::get_genesis_block(),
         )
         .unwrap(),

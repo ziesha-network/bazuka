@@ -1,6 +1,7 @@
 use super::*;
 use leveldb::batch::Batch;
 use leveldb::database::batch::Writebatch;
+use leveldb::database::cache::Cache;
 use leveldb::database::Database;
 use leveldb::iterator::Iterable;
 use leveldb::kv::KV;
@@ -10,10 +11,11 @@ use std::path::Path;
 
 pub struct LevelDbKvStore(Database<StringKey>);
 impl LevelDbKvStore {
-    pub fn new(path: &Path) -> Result<LevelDbKvStore, KvStoreError> {
+    pub fn new(path: &Path, cache_size: usize) -> Result<LevelDbKvStore, KvStoreError> {
         fs::create_dir_all(&path)?;
         let mut options = Options::new();
         options.create_if_missing = true;
+        options.cache = Some(Cache::new(cache_size));
         Ok(LevelDbKvStore(Database::open(path, options)?))
     }
 }
