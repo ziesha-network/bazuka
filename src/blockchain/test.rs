@@ -457,6 +457,11 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let mempool = vec![t1];
     let mut draft = chain.draft_block(1650000000, &mempool, &wallet_miner)?;
 
+    assert!(matches!(
+        chain.apply_block(&draft.block, false),
+        Err(BlockchainError::DifficultyTargetUnmet)
+    ));
+
     mine_block(&chain, &mut draft)?;
     chain.apply_block(&draft.block, false)?;
 
