@@ -71,18 +71,18 @@ fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
     assert_eq!(fork2.get_height()?, 3);
 
     let mut fork3 = chain.fork_on_ram();
-    let mut blk1_wrong_num = blk1.clone();
-    blk1_wrong_num.block.header.parent_hash = Default::default();
+    let mut blk1_wrong = blk1.clone();
+    blk1_wrong.block.header.parent_hash = Default::default();
     assert!(matches!(
-        fork3.extend(1, &[blk1_wrong_num.block, blk2.block.clone()]),
+        fork3.extend(1, &[blk1_wrong.block, blk2.block.clone()]),
         Err(BlockchainError::InvalidParentHash)
     ));
 
     let mut fork4 = chain.fork_on_ram();
-    let mut blk2_wrong_num = blk2.clone();
-    blk2_wrong_num.block.header.parent_hash = Default::default();
+    let mut blk2_wrong = blk2.clone();
+    blk2_wrong.block.header.parent_hash = Default::default();
     assert!(matches!(
-        fork4.extend(1, &[blk1.block, blk2_wrong_num.block.clone()]),
+        fork4.extend(1, &[blk1.block, blk2_wrong.block.clone()]),
         Err(BlockchainError::InvalidParentHash)
     ));
 
