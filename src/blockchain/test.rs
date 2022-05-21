@@ -22,6 +22,52 @@ fn easy_genesis() -> BlockAndPatch {
 }
 
 #[test]
+fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+
+    let mut fork1 = chain.fork_on_ram();
+    fork1.apply_block(&fork1.draft_block(10, &[], &miner)?.block, false)?;
+    assert!(matches!(
+        fork1.draft_block(
+            5, // 5 < 10
+            &[],
+            &miner,
+        ),
+        Err(BlockchainError::InvalidTimestamp)
+    ));
+    fork1.apply_block(
+        &fork1
+            .draft_block(
+                10, // 10, again, should be fine
+                &[],
+                &miner,
+            )?
+            .block,
+        false,
+    )?;
+
+    for i in 11..30 {
+        fork1.apply_block(&fork1.draft_block(i, &[], &miner)?.block, false)?;
+    }
+
+    // 10 last timestamps are: 29 28 27 26 25 24 23 22 21 20
+    // Median is: 25
+    // 24 should fail. 25 should be fine.
+    assert!(matches!(
+        fork1.draft_block(
+            24, // 24 < 25
+            &[],
+            &miner,
+        ),
+        Err(BlockchainError::InvalidTimestamp)
+    ));
+    fork1.apply_block(&fork1.draft_block(25, &[], &miner)?.block, false)?;
+
+    Ok(())
+}
+
+#[test]
 fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
