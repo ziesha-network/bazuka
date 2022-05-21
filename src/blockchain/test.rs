@@ -22,6 +22,30 @@ fn easy_genesis() -> BlockAndPatch {
 }
 
 #[test]
+fn test_pow_key_correctness() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let block0_hash = chain.get_block(0)?.header.hash();
+    for i in 0..100 {
+        let mut draft = chain.draft_block(i, &[], &miner)?;
+        mine_block(&chain, &mut draft)?;
+        chain.apply_block(&draft.block, false)?;
+        chain.update_states(&draft.patch)?;
+        let pow_key = chain.pow_key(i as u64)?;
+        if i < 64 {
+            assert_eq!(
+                pow_key,
+                vec![66, 65, 90, 85, 75, 65, 32, 66, 65, 83, 69, 32, 75, 69, 89]
+            );
+        } else {
+            assert_eq!(pow_key, block0_hash);
+        }
+    }
+
+    Ok(())
+}
+
+#[test]
 fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
