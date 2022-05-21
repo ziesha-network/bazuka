@@ -19,8 +19,20 @@ pub enum KvStoreError {
     LevelDb(#[from] leveldb::error::Error),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, std::hash::Hash)]
 pub struct StringKey(String);
+
+impl PartialOrd for StringKey {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for StringKey {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
 
 impl StringKey {
     pub fn new(s: &str) -> StringKey {
@@ -115,7 +127,12 @@ pub enum WriteOp {
 pub trait KvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError>;
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError>;
-    fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError>;
+    fn pairs(&self) -> Result<HashMap<StringKey, Blob>, KvStoreError>;
+    fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
+        let mut kvs: Vec<_> = self.pairs()?.into_iter().collect();
+        kvs.sort_by_key(|(k, _)| k.clone());
+        Ok(H::hash(&bincode::serialize(&kvs).unwrap()))
+    }
     fn rollback_of(&self, ops: &[WriteOp]) -> Result<Vec<WriteOp>, KvStoreError> {
         let mut rollback = Vec::new();
         for op in ops.iter() {
@@ -135,7 +152,7 @@ pub trait KvStore {
 
 pub struct RamMirrorKvStore<'a, K: KvStore> {
     store: &'a K,
-    overwrite: HashMap<String, Option<Blob>>,
+    overwrite: HashMap<StringKey, Option<Blob>>,
 }
 impl<'a, K: KvStore> RamMirrorKvStore<'a, K> {
     pub fn new(store: &'a K) -> Self {
@@ -157,8 +174,8 @@ impl<'a, K: KvStore> RamMirrorKvStore<'a, K> {
 
 impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError> {
-        if self.overwrite.contains_key(&k.0) {
-            Ok(self.overwrite.get(&k.0).cloned().unwrap())
+        if self.overwrite.contains_key(&k) {
+            Ok(self.overwrite.get(&k).cloned().unwrap())
         } else {
             self.store.get(k)
         }
@@ -166,14 +183,22 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError> {
         for op in ops.iter() {
             match op {
-                WriteOp::Remove(k) => self.overwrite.insert(k.0.clone(), None),
-                WriteOp::Put(k, v) => self.overwrite.insert(k.0.clone(), Some(v.clone())),
+                WriteOp::Remove(k) => self.overwrite.insert(k.clone(), None),
+                WriteOp::Put(k, v) => self.overwrite.insert(k.clone(), Some(v.clone())),
             };
         }
         Ok(())
     }
-    fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
-        self.store.checksum::<H>()
+    fn pairs(&self) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
+        let mut res = self.store.pairs()?;
+        for (k, v) in self.overwrite.iter() {
+            if let Some(v) = v {
+                res.insert(k.clone(), v.clone());
+            } else {
+                res.remove(k);
+            }
+        }
+        Ok(res)
     }
 }
 

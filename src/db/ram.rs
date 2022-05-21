@@ -27,9 +27,12 @@ impl KvStore for RamKvStore {
         }
         Ok(())
     }
-    fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
-        let mut kvs: Vec<_> = self.0.clone().into_iter().collect();
-        kvs.sort_by_key(|(k, _)| k.clone());
-        Ok(H::hash(&bincode::serialize(&kvs).unwrap()))
+    fn pairs(&self) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
+        Ok(self
+            .0
+            .clone()
+            .into_iter()
+            .map(|(k, v)| (StringKey::new(&k), v))
+            .collect())
     }
 }

@@ -42,9 +42,13 @@ impl KvStore for LevelDbKvStore {
             Err(_) => Err(KvStoreError::Failure),
         }
     }
-    fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
-        let mut kvs: Vec<_> = self.0.iter(ReadOptions::new()).collect();
-        kvs.sort_by_key(|(k, _)| k.0.clone());
-        Ok(H::hash(&bincode::serialize(&kvs).unwrap()))
+    fn pairs(&self) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
+        Ok(self
+            .0
+            .iter(ReadOptions::new())
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|(k, v)| (k, Blob(v)))
+            .collect())
     }
 }
