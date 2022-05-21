@@ -1,6 +1,6 @@
 use super::*;
 use crate::config::genesis;
-use crate::core::{Address, Signature, TransactionData};
+use crate::core::{Address, Hasher, Signature, TransactionData};
 use crate::crypto::{EdDSA, SignatureScheme};
 use crate::db;
 
@@ -693,6 +693,8 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
 
     mine_block(&chain, &mut draft)?;
 
+    let prev_checksum = chain.database.checksum::<Hasher>()?;
+
     chain.apply_block(&draft.block, false)?;
 
     let height = chain.get_height()?;
@@ -707,7 +709,14 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
         }
     );
 
+    let after_checksum = chain.database.checksum::<Hasher>()?;
+
     chain.rollback_block()?;
+
+    let rollbacked_checksum = chain.database.checksum::<Hasher>()?;
+
+    assert_ne!(prev_checksum, after_checksum);
+    assert_eq!(prev_checksum, rollbacked_checksum);
 
     let height = chain.get_height()?;
     assert_eq!(2, height);

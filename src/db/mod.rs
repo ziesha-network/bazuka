@@ -1,4 +1,4 @@
-use crate::core::{Account, Block, ContractId, Hasher};
+use crate::core::{hash::Hash, Account, Block, ContractId, Hasher};
 use crate::crypto::merkle::MerkleTree;
 use crate::zk::{ZkCompressedState, ZkContract, ZkState};
 use db_key::Key;
@@ -117,6 +117,7 @@ pub enum WriteOp {
 pub trait KvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError>;
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError>;
+    fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError>;
     fn rollback_of(&self, ops: &[WriteOp]) -> Result<Vec<WriteOp>, KvStoreError> {
         let mut rollback = Vec::new();
         for op in ops.iter() {
@@ -168,6 +169,9 @@ impl<K: KvStore> KvStore for LruCacheKvStore<K> {
         }
         self.store.update(ops)
     }
+    fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
+        self.store.checksum::<H>()
+    }
 }
 
 pub struct RamMirrorKvStore<'a, K: KvStore> {
@@ -208,6 +212,9 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
             };
         }
         Ok(())
+    }
+    fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
+        self.store.checksum::<H>()
     }
 }
 

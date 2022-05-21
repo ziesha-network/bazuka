@@ -39,4 +39,7 @@ impl KvStore for LevelDbKvStore {
             Err(_) => Err(KvStoreError::Failure),
         }
     }
+    fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
+        unimplemented!();
+    }
 }
