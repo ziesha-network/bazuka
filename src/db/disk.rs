@@ -2,6 +2,7 @@ use super::*;
 use leveldb::batch::Batch;
 use leveldb::database::batch::Writebatch;
 use leveldb::database::Database;
+use leveldb::iterator::Iterable;
 use leveldb::kv::KV;
 use leveldb::options::{Options, ReadOptions, WriteOptions};
 use std::fs;
@@ -40,6 +41,8 @@ impl KvStore for LevelDbKvStore {
         }
     }
     fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
-        unimplemented!();
+        let mut kvs: Vec<_> = self.0.iter(ReadOptions::new()).collect();
+        kvs.sort_by_key(|(k, _)| k.0.clone());
+        Ok(H::hash(&bincode::serialize(&kvs).unwrap()))
     }
 }
