@@ -36,6 +36,9 @@ leveldb = { version = "0.8.6", optional = true }
 structopt = { version = "0.3", default-features = false, optional = true }
 async-trait = { version = "0.1.53", optional = true }
 
+[dev-dependencies]
+tempdir = "0.3.7"
+
 [features]
 default = ["node"]
 node = ["tokio", "hyper", "leveldb", "futures", "structopt", "async-trait"]

@@ -225,3 +225,6 @@ pub use ram::*;
 mod disk;
 #[cfg(feature = "node")]
 pub use disk::*;
+
+#[cfg(test)]
+mod test;
