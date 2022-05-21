@@ -4,13 +4,96 @@ use crate::core::{Address, Signature, TransactionData};
 use crate::crypto::{EdDSA, SignatureScheme};
 use crate::db;
 
+fn easy_genesis() -> BlockAndPatch {
+    let alice = Wallet::new(Vec::from("ABC"));
+    let mut genesis_block = genesis::get_test_genesis_block();
+    genesis_block.block.header.proof_of_work.target = 0x00ffffff;
+    genesis_block.block.body = vec![Transaction {
+        src: Address::Treasury,
+        data: TransactionData::RegularSend {
+            dst: alice.get_address(),
+            amount: 10_000,
+        },
+        nonce: 1,
+        fee: 0,
+        sig: Signature::Unsigned,
+    }];
+    genesis_block
+}
+
+#[test]
+fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let mut fork1 = chain.fork_on_ram();
+    let blk1 = fork1.draft_block(0, &[], &miner)?;
+    fork1.extend(1, &[blk1.block.clone()])?;
+    let blk2 = fork1.draft_block(1, &[], &miner)?;
+    fork1.extend(2, &[blk2.block.clone()])?;
+    assert_eq!(fork1.get_height()?, 3);
+
+    let mut fork2 = chain.fork_on_ram();
+    fork2.extend(1, &[blk1.block.clone(), blk2.block.clone()])?;
+    assert_eq!(fork2.get_height()?, 3);
+
+    let mut fork3 = chain.fork_on_ram();
+    let mut blk1_wrong_num = blk1.clone();
+    blk1_wrong_num.block.header.number += 1;
+    assert!(matches!(
+        fork3.extend(1, &[blk1_wrong_num.block, blk2.block.clone()]),
+        Err(BlockchainError::InvalidBlockNumber)
+    ));
+
+    let mut fork4 = chain.fork_on_ram();
+    let mut blk2_wrong_num = blk2.clone();
+    blk2_wrong_num.block.header.number += 1;
+    assert!(matches!(
+        fork4.extend(1, &[blk1.block, blk2_wrong_num.block.clone()]),
+        Err(BlockchainError::InvalidBlockNumber)
+    ));
+
+    Ok(())
+}
+
+#[test]
+fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let mut fork1 = chain.fork_on_ram();
+    let blk1 = fork1.draft_block(0, &[], &miner)?;
+    fork1.extend(1, &[blk1.block.clone()])?;
+    let blk2 = fork1.draft_block(1, &[], &miner)?;
+    fork1.extend(2, &[blk2.block.clone()])?;
+    assert_eq!(fork1.get_height()?, 3);
+
+    let mut fork2 = chain.fork_on_ram();
+    fork2.extend(1, &[blk1.block.clone(), blk2.block.clone()])?;
+    assert_eq!(fork2.get_height()?, 3);
+
+    let mut fork3 = chain.fork_on_ram();
+    let mut blk1_wrong_num = blk1.clone();
+    blk1_wrong_num.block.header.parent_hash = Default::default();
+    assert!(matches!(
+        fork3.extend(1, &[blk1_wrong_num.block, blk2.block.clone()]),
+        Err(BlockchainError::InvalidParentHash)
+    ));
+
+    let mut fork4 = chain.fork_on_ram();
+    let mut blk2_wrong_num = blk2.clone();
+    blk2_wrong_num.block.header.parent_hash = Default::default();
+    assert!(matches!(
+        fork4.extend(1, &[blk1.block, blk2_wrong_num.block.clone()]),
+        Err(BlockchainError::InvalidParentHash)
+    ));
+
+    Ok(())
+}
+
 #[test]
 fn test_contract_create_patch() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
-    let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.block.header.proof_of_work.target = 0x00ffffff;
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
     let state_model = zk::ZkStateModel::new(1, 3);
     let full_state = zk::ZkState::default();
@@ -46,20 +129,8 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
-    let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.block.header.proof_of_work.target = 0x00ffffff;
-    genesis_block.block.body = vec![Transaction {
-        src: Address::Treasury,
-        data: TransactionData::RegularSend {
-            dst: alice.get_address(),
-            amount: 10_000,
-        },
-        nonce: 1,
-        fee: 0,
-        sig: Signature::Unsigned,
-    }];
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
     // Alice: 10000 Bob: 0
     assert_eq!(chain.get_account(alice.get_address())?.balance, 10000);
@@ -93,20 +164,7 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
 
-    let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.block.header.proof_of_work.target = 0x00ffffff;
-    genesis_block.block.body = vec![Transaction {
-        src: Address::Treasury,
-        data: TransactionData::RegularSend {
-            dst: alice.get_address(),
-            amount: 10_000,
-        },
-        nonce: 1,
-        fee: 0,
-        sig: Signature::Unsigned,
-    }];
-
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
     // Alice: 10000 Bob: 0
     assert_eq!(chain.get_account(alice.get_address())?.balance, 10000);
@@ -136,20 +194,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
 
-    let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.block.header.proof_of_work.target = 0x00ffffff;
-    genesis_block.block.body = vec![Transaction {
-        src: Address::Treasury,
-        data: TransactionData::RegularSend {
-            dst: alice.get_address(),
-            amount: 10_000,
-        },
-        nonce: 1,
-        fee: 0,
-        sig: Signature::Unsigned,
-    }];
-
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
     // Create unsigned signed tx
     let unsigned_tx = Transaction {
@@ -186,20 +231,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
 
-    let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.block.header.proof_of_work.target = 0x00ffffff;
-    genesis_block.block.body = vec![Transaction {
-        src: Address::Treasury,
-        data: TransactionData::RegularSend {
-            dst: alice.get_address(),
-            amount: 10_000,
-        },
-        nonce: 1,
-        fee: 0,
-        sig: Signature::Unsigned,
-    }];
-
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
     // Create unsigned tx
     let (_, sk) = EdDSA::generate_keys(&Vec::from("ABC"));
@@ -241,20 +273,8 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
-    let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.block.header.proof_of_work.target = 0x00ffffff;
-    genesis_block.block.body = vec![Transaction {
-        src: Address::Treasury,
-        data: TransactionData::RegularSend {
-            dst: alice.get_address(),
-            amount: 10_000,
-        },
-        nonce: 1,
-        fee: 0,
-        sig: Signature::Unsigned,
-    }];
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
     // Alice: 10000 Bob: 0
     assert_eq!(chain.get_account(alice.get_address())?.balance, 10000);
