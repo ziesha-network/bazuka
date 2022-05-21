@@ -90,6 +90,51 @@ fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
 }
 
 #[test]
+fn test_merkle_root_check() -> Result<(), BlockchainError> {
+    let alice = Wallet::new(Vec::from("ABC"));
+    let miner = Wallet::new(Vec::from("MINER"));
+    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let blk1 = chain
+        .draft_block(
+            1,
+            &[
+                alice.create_transaction(miner.get_address(), 100, 0, 1),
+                alice.create_transaction(miner.get_address(), 200, 0, 2),
+            ],
+            &miner,
+        )?
+        .block;
+    let blk2 = chain
+        .draft_block(
+            1,
+            &[
+                alice.create_transaction(miner.get_address(), 200, 0, 1),
+                alice.create_transaction(miner.get_address(), 100, 0, 2),
+            ],
+            &miner,
+        )?
+        .block;
+
+    let mut fork1 = chain.fork_on_ram();
+    let mut fork2 = chain.fork_on_ram();
+
+    fork1.apply_block(&blk1, false)?;
+    assert_eq!(fork1.get_account(alice.get_address())?.balance, 9700);
+
+    fork2.apply_block(&blk2, false)?;
+    assert_eq!(fork2.get_account(alice.get_address())?.balance, 9700);
+
+    let mut blk_wrong = blk1.clone();
+    blk_wrong.header.block_root = Default::default();
+    assert!(matches!(
+        chain.fork_on_ram().apply_block(&blk_wrong, false),
+        Err(BlockchainError::InvalidMerkleRoot)
+    ));
+
+    Ok(())
+}
+
+#[test]
 fn test_contract_create_patch() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
