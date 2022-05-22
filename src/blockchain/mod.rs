@@ -529,12 +529,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 return Err(BlockchainError::InvalidTimestamp);
             }
 
-            if check_pow && !h.meets_target(&pow_key) {
-                return Err(BlockchainError::DifficultyTargetUnmet);
-            }
-
             if last_pow.target != h.proof_of_work.target {
                 return Err(BlockchainError::DifficultyTargetWrong);
+            }
+
+            if check_pow && !h.meets_target(&pow_key) {
+                return Err(BlockchainError::DifficultyTargetUnmet);
             }
 
             if h.number != last_header.number + 1 {

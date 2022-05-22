@@ -21,6 +21,25 @@ fn easy_genesis() -> BlockAndPatch {
     genesis_block
 }
 
+#[test]
+fn test_correct_target_calculation() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+
+    chain.apply_block(&chain.draft_block(60, &[], &miner)?.block, true)?;
+
+    let mut wrong_pow = chain.draft_block(120, &[], &miner)?;
+    wrong_pow.block.header.proof_of_work.target = 0x01ffffff;
+    assert!(matches!(
+        chain.apply_block(&wrong_pow.block, true),
+        Err(BlockchainError::DifficultyTargetWrong)
+    ));
+
+    // TODO: Add more blocks to check correct difficulty recalculation
+
+    Ok(())
+}
+
 #[ignore]
 #[test]
 fn test_pow_key_correctness() -> Result<(), BlockchainError> {
