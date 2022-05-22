@@ -162,19 +162,6 @@ impl<K: KvStore> KvStoreChain<K> {
         }
     }
 
-    fn get_difficulty_for_block(&self, header: &Header) -> Result<ProofOfWork, BlockchainError> {
-        if header.number % config::DIFFICULTY_CALC_INTERVAL == 0 {
-            Ok(header.proof_of_work)
-        } else {
-            let last_adjust_number =
-                header.number - (header.number % config::DIFFICULTY_CALC_INTERVAL);
-            if last_adjust_number > self.get_height()? {
-                return Err(BlockchainError::BlockNotFound);
-            }
-            Ok(self.get_block(last_adjust_number)?.header.proof_of_work)
-        }
-    }
-
     fn get_block(&self, index: u64) -> Result<Block, BlockchainError> {
         if index >= self.get_height()? {
             return Err(BlockchainError::BlockNotFound);
@@ -525,15 +512,21 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .try_into()?;
 
         let mut last_header = self.get_block(from - 1)?.header;
-        let mut prev_diff_adjust_pow = self.get_difficulty_for_block(&last_header)?;
+        let mut last_pow = self
+            .get_block(
+                last_header.number - (last_header.number % config::DIFFICULTY_CALC_INTERVAL),
+            )?
+            .header
+            .proof_of_work;
+
         for h in headers.iter() {
             if h.number % config::DIFFICULTY_CALC_INTERVAL == 0 {
                 if h.proof_of_work.target
-                    != utils::calc_pow_difficulty(&last_header.proof_of_work, &prev_diff_adjust_pow)
+                    != utils::calc_pow_difficulty(&last_header.proof_of_work, &last_pow)
                 {
                     return Err(BlockchainError::DifficultyTargetWrong);
                 }
-                prev_diff_adjust_pow = h.proof_of_work.clone();
+                last_pow = h.proof_of_work;
             }
 
             let pow_key = self.pow_key(h.number)?;
@@ -546,7 +539,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 return Err(BlockchainError::DifficultyTargetUnmet);
             }
 
-            if prev_diff_adjust_pow.target != h.proof_of_work.target {
+            if last_pow.target != h.proof_of_work.target {
                 return Err(BlockchainError::DifficultyTargetWrong);
             }
 
