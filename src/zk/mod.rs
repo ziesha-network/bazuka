@@ -73,6 +73,12 @@ impl ZkState {
     }
 }
 
+impl ZkCompressedState {
+    pub fn size(&self) -> u32 {
+        self.state_size
+    }
+}
+
 impl ZkState {
     pub fn compress(&self, _model: ZkStateModel) -> ZkCompressedState {
         let root = ZkScalar(ram::ZkRam::from_state(self).root());

@@ -64,6 +64,8 @@ pub enum BlockchainError {
     StatesOutdated,
     #[error("contract states at requested height are unavailable")]
     StatesUnavailable,
+    #[error("block too big")]
+    BlockTooBig,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -76,6 +78,15 @@ pub enum ZkBlockchainPatch {
 pub struct BlockAndPatch {
     pub block: Block,
     pub patch: ZkBlockchainPatch,
+}
+
+pub enum TxSideEffect {
+    StateChange {
+        contract_id: ContractId,
+        new_state: zk::ZkCompressedState,
+        size_delta: isize,
+    },
+    Nothing,
 }
 
 pub trait Blockchain {
@@ -186,8 +197,8 @@ impl<K: KvStore> KvStoreChain<K> {
         &mut self,
         tx: &Transaction,
         allow_treasury: bool,
-    ) -> Result<Option<(ContractId, zk::ZkCompressedState)>, BlockchainError> {
-        let mut state_update = None;
+    ) -> Result<TxSideEffect, BlockchainError> {
+        let mut side_effect = TxSideEffect::Nothing;
 
         let mut ops = Vec::new();
 
@@ -240,7 +251,11 @@ impl<K: KvStore> KvStoreChain<K> {
                     format!("contract_compressed_state_{}", contract_id).into(),
                     contract.initial_state.into(),
                 ));
-                state_update = Some((contract_id, contract.initial_state));
+                side_effect = TxSideEffect::StateChange {
+                    contract_id,
+                    new_state: contract.initial_state,
+                    size_delta: contract.initial_state.size() as isize,
+                };
             }
             TransactionData::DepositWithdraw {
                 contract_id,
@@ -253,11 +268,15 @@ impl<K: KvStore> KvStoreChain<K> {
                 if !zk::check_proof(&contract.deposit_withdraw, &prev_state, next_state, proof) {
                     return Err(BlockchainError::IncorrectZkProof);
                 }
-                state_update = Some((*contract_id, *next_state));
                 ops.push(WriteOp::Put(
                     format!("contract_compressed_state_{}", contract_id).into(),
                     (*next_state).into(),
                 ));
+                side_effect = TxSideEffect::StateChange {
+                    contract_id: *contract_id,
+                    new_state: *next_state,
+                    size_delta: next_state.size() as isize - prev_state.size() as isize,
+                };
             }
             TransactionData::Update {
                 contract_id,
@@ -274,11 +293,15 @@ impl<K: KvStore> KvStoreChain<K> {
                 if !zk::check_proof(vk, &prev_state, next_state, proof) {
                     return Err(BlockchainError::IncorrectZkProof);
                 }
-                state_update = Some((*contract_id, *next_state));
                 ops.push(WriteOp::Put(
                     format!("contract_compressed_state_{}", contract_id).into(),
                     (*next_state).into(),
                 ));
+                side_effect = TxSideEffect::StateChange {
+                    contract_id: *contract_id,
+                    new_state: *next_state,
+                    size_delta: next_state.size() as isize - prev_state.size() as isize,
+                };
             }
         }
 
@@ -288,7 +311,7 @@ impl<K: KvStore> KvStoreChain<K> {
         ));
 
         self.database.update(&ops)?;
-        Ok(state_update)
+        Ok(side_effect)
     }
 
     fn get_changed_states(
@@ -397,12 +420,25 @@ impl<K: KvStore> KvStoreChain<K> {
             &block.body[..]
         };
 
+        let mut body_size = 0usize;
+        let mut state_size_delta = 0isize;
         let mut state_updates: HashMap<ContractId, zk::ZkCompressedState> = HashMap::new();
         for tx in txs.iter() {
+            body_size += tx.size();
             // All genesis block txs are allowed to get from Treasury
-            if let Some((contract_id, compressed_state)) = fork.apply_tx(tx, is_genesis)? {
-                state_updates.insert(contract_id, compressed_state);
+            if let TxSideEffect::StateChange {
+                contract_id,
+                new_state,
+                size_delta,
+            } = fork.apply_tx(tx, is_genesis)?
+            {
+                state_size_delta += size_delta;
+                state_updates.insert(contract_id, new_state);
             }
+        }
+
+        if (body_size as isize + state_size_delta) as usize > config::MAX_DELTA_SIZE {
+            return Err(BlockchainError::BlockTooBig);
         }
 
         let mut changes = fork.database.to_ops();

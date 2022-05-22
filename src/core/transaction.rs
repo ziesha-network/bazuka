@@ -91,6 +91,9 @@ impl<H: Hash, S: SignatureScheme> PartialEq<TransactionAndDelta<H, S>>
 }
 
 impl<H: Hash, S: SignatureScheme> Transaction<H, S> {
+    pub fn size(&self) -> usize {
+        bincode::serialize(self).unwrap().len()
+    }
     pub fn hash(&self) -> H::Output {
         H::hash(&bincode::serialize(self).unwrap())
     }
