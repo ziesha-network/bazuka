@@ -105,6 +105,9 @@ pub async fn sync_blocks<B: Blockchain>(
             .await?;
         let mut ctx = context.write().await;
         ctx.blockchain.extend(headers[0].number, &resp.blocks)?;
+    } else {
+        let mut ctx = context.write().await;
+        ctx.punish(most_powerful.address, punish::INCORRECT_POWER_PUNISH);
     }
 
     Ok(())

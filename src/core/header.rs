@@ -2,7 +2,7 @@ use rust_randomx::Difficulty;
 
 use super::hash::Hash;
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize)]
 pub struct ProofOfWork {
     /// when the miner started mining this block
     pub timestamp: u32,
