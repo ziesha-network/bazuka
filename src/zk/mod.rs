@@ -1,5 +1,6 @@
 pub mod ram;
 
+use ff::Field;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use zeekit::Fr;
@@ -43,21 +44,15 @@ impl ZkStateModel {
 pub struct ZkState(HashMap<u32, ZkScalar>);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ZkStateDelta(HashMap<u32, Option<ZkScalar>>);
+pub struct ZkStateDelta(HashMap<u32, ZkScalar>);
 
 impl ZkState {
     pub fn as_delta(&self) -> ZkStateDelta {
-        ZkStateDelta(
-            self.0
-                .clone()
-                .into_iter()
-                .map(|(k, v)| (k, Some(v)))
-                .collect(),
-        )
+        ZkStateDelta(self.0.clone())
     }
     pub fn apply_patch(&mut self, patch: &ZkStateDelta) {
         for (k, v) in patch.0.iter() {
-            if let Some(v) = v {
+            if v.0.is_zero().into() {
                 self.0.insert(*k, *v);
             } else {
                 self.0.remove(k);
