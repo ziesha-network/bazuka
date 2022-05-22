@@ -30,7 +30,7 @@ fn test_pow_key_correctness() -> Result<(), BlockchainError> {
     for i in 0..2500 {
         let mut draft = chain.draft_block(i * 60, &[], &miner)?;
         mine_block(&chain, &mut draft)?;
-        chain.apply_block(&draft.block, false)?;
+        chain.apply_block(&draft.block, true)?;
         chain.update_states(&draft.patch)?;
         let pow_key = chain.pow_key(i as u64)?;
         if i < 64 {
@@ -56,7 +56,7 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
     let chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
     let mut fork1 = chain.fork_on_ram();
-    fork1.apply_block(&fork1.draft_block(10, &[], &miner)?.block, false)?;
+    fork1.apply_block(&fork1.draft_block(10, &[], &miner)?.block, true)?;
     assert!(matches!(
         fork1.draft_block(
             5, // 5 < 10
@@ -73,11 +73,11 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
                 &miner,
             )?
             .block,
-        false,
+        true,
     )?;
 
     for i in 11..30 {
-        fork1.apply_block(&fork1.draft_block(i, &[], &miner)?.block, false)?;
+        fork1.apply_block(&fork1.draft_block(i, &[], &miner)?.block, true)?;
     }
 
     // 10 last timestamps are: 29 28 27 26 25 24 23 22 21 20
@@ -91,7 +91,7 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
         ),
         Err(BlockchainError::InvalidTimestamp)
     ));
-    fork1.apply_block(&fork1.draft_block(25, &[], &miner)?.block, false)?;
+    fork1.apply_block(&fork1.draft_block(25, &[], &miner)?.block, true)?;
 
     Ok(())
 }
@@ -193,16 +193,16 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
     let mut fork1 = chain.fork_on_ram();
     let mut fork2 = chain.fork_on_ram();
 
-    fork1.apply_block(&blk1, false)?;
+    fork1.apply_block(&blk1, true)?;
     assert_eq!(fork1.get_account(alice.get_address())?.balance, 9700);
 
-    fork2.apply_block(&blk2, false)?;
+    fork2.apply_block(&blk2, true)?;
     assert_eq!(fork2.get_account(alice.get_address())?.balance, 9700);
 
     let mut blk_wrong = blk1.clone();
     blk_wrong.header.block_root = Default::default();
     assert!(matches!(
-        chain.fork_on_ram().apply_block(&blk_wrong, false),
+        chain.fork_on_ram().apply_block(&blk_wrong, true),
         Err(BlockchainError::InvalidMerkleRoot)
     ));
 
@@ -231,7 +231,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
     );
 
     let draft = chain.draft_block(1, &[tx.clone()], &miner)?;
-    chain.apply_block(&draft.block, false)?;
+    chain.apply_block(&draft.block, true)?;
 
     assert_eq!(chain.get_height()?, 2);
     assert_eq!(chain.get_state_height()?, 1);
@@ -259,19 +259,19 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     let tx = alice.create_transaction(bob.get_address(), 2700, 300, 1);
 
     // Alice -> 2700 -> Bob (Fee 300)
-    chain.apply_block(&chain.draft_block(1, &[tx.clone()], &miner)?.block, false)?;
+    chain.apply_block(&chain.draft_block(1, &[tx.clone()], &miner)?.block, true)?;
     assert_eq!(chain.get_account(alice.get_address())?.balance, 7000);
     assert_eq!(chain.get_account(bob.get_address())?.balance, 2700);
 
     // Alice -> 2700 -> Bob (Fee 300) (NOT APPLIED: DUPLICATED TRANSACTION!)
-    chain.apply_block(&chain.draft_block(1, &[tx.clone()], &miner)?.block, false)?;
+    chain.apply_block(&chain.draft_block(1, &[tx.clone()], &miner)?.block, true)?;
     assert_eq!(chain.get_account(alice.get_address())?.balance, 7000);
     assert_eq!(chain.get_account(bob.get_address())?.balance, 2700);
 
     let tx2 = alice.create_transaction(bob.get_address(), 2700, 300, 2);
 
     // Alice -> 2700 -> Bob (Fee 300)
-    chain.apply_block(&chain.draft_block(1, &[tx2], &miner)?.block, false)?;
+    chain.apply_block(&chain.draft_block(1, &[tx2], &miner)?.block, true)?;
     assert_eq!(chain.get_account(alice.get_address())?.balance, 4000);
     assert_eq!(chain.get_account(bob.get_address())?.balance, 5400);
 
@@ -302,7 +302,7 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
     }
 
     // Ensure tx is not included in block and bob has not received funds
-    chain.apply_block(&chain.draft_block(1, &[tx], &miner)?.block, false)?;
+    chain.apply_block(&chain.draft_block(1, &[tx], &miner)?.block, true)?;
     assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
 
     Ok(())
@@ -339,7 +339,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     }
 
     // Ensure tx is not included in block and bob has not received funds
-    chain.apply_block(&chain.draft_block(1, &[unsigned_tx], &miner)?.block, false)?;
+    chain.apply_block(&chain.draft_block(1, &[unsigned_tx], &miner)?.block, true)?;
     assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
 
     Ok(())
@@ -382,7 +382,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     }
 
     // Ensure tx is not included in block and bob has not received funds
-    chain.apply_block(&chain.draft_block(1, &[tx], &miner)?.block, false)?;
+    chain.apply_block(&chain.draft_block(1, &[tx], &miner)?.block, true)?;
     assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
 
     Ok(())
@@ -409,7 +409,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
                 &miner,
             )?
             .block,
-        false,
+        true,
     )?;
     assert_eq!(chain.get_account(alice.get_address())?.balance, 7000);
     assert_eq!(chain.get_account(bob.get_address())?.balance, 2700);
@@ -423,7 +423,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
                 &miner,
             )?
             .block,
-        false,
+        true,
     )?;
     assert_eq!(chain.get_account(alice.get_address())?.balance, 7000);
     assert_eq!(chain.get_account(bob.get_address())?.balance, 2700);
@@ -437,7 +437,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
                 &miner,
             )?
             .block,
-        false,
+        true,
     )?;
     assert_eq!(chain.get_account(alice.get_address())?.balance, 9600);
     assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
@@ -451,7 +451,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
                 &miner,
             )?
             .block,
-        false,
+        true,
     )?;
     assert_eq!(chain.get_account(alice.get_address())?.balance, 9400);
     assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
@@ -465,7 +465,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
                 &miner,
             )?
             .block,
-        false,
+        true,
     )?;
     assert_eq!(chain.get_account(alice.get_address())?.balance, 9400);
     assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
@@ -479,7 +479,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
                 &miner,
             )?
             .block,
-        false,
+        true,
     )?;
     assert_eq!(chain.get_account(alice.get_address())?.balance, 1000);
     assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
@@ -533,12 +533,12 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let mut draft = chain.draft_block(1650000000, &mempool, &wallet_miner)?;
 
     assert!(matches!(
-        chain.apply_block(&draft.block, false),
+        chain.apply_block(&draft.block, true),
         Err(BlockchainError::DifficultyTargetUnmet)
     ));
 
     mine_block(&chain, &mut draft)?;
-    chain.apply_block(&draft.block, false)?;
+    chain.apply_block(&draft.block, true)?;
 
     let height = chain.get_height()?;
     assert_eq!(2, height);
@@ -646,7 +646,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
 
     mine_block(&chain, &mut draft)?;
 
-    chain.apply_block(&draft.block, false)?;
+    chain.apply_block(&draft.block, true)?;
 
     assert_eq!(3, draft.block.body.len());
 
@@ -684,7 +684,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
 
     mine_block(&chain, &mut draft)?;
 
-    chain.apply_block(&draft.block, false)?;
+    chain.apply_block(&draft.block, true)?;
 
     let t2 = wallet1.create_transaction(wallet2.get_address(), 500_000, 0, 2);
     mempool.push(t2);
@@ -695,7 +695,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
 
     let prev_checksum = chain.database.checksum::<Hasher>()?;
 
-    chain.apply_block(&draft.block, false)?;
+    chain.apply_block(&draft.block, true)?;
 
     let height = chain.get_height()?;
     assert_eq!(3, height);

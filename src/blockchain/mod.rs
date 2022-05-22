@@ -83,7 +83,12 @@ pub trait Blockchain {
         -> Result<bool, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn next_reward(&self) -> Result<Money, BlockchainError>;
-    fn will_extend(&self, from: u64, headers: &[Header]) -> Result<bool, BlockchainError>;
+    fn will_extend(
+        &self,
+        from: u64,
+        headers: &[Header],
+        check_pow: bool,
+    ) -> Result<bool, BlockchainError>;
     fn extend(&mut self, from: u64, blocks: &[Block]) -> Result<(), BlockchainError>;
     fn draft_block(
         &self,
@@ -113,18 +118,19 @@ pub trait Blockchain {
 }
 
 pub struct KvStoreChain<K: KvStore> {
+    genesis: BlockAndPatch,
     database: K,
 }
 
 impl<K: KvStore> KvStoreChain<K> {
-    pub fn new(
-        kv_store: K,
-        genesis_block: BlockAndPatch,
-    ) -> Result<KvStoreChain<K>, BlockchainError> {
-        let mut chain = KvStoreChain::<K> { database: kv_store };
+    pub fn new(database: K, genesis: BlockAndPatch) -> Result<KvStoreChain<K>, BlockchainError> {
+        let mut chain = KvStoreChain::<K> {
+            database,
+            genesis: genesis.clone(),
+        };
         if chain.get_height()? == 0 {
-            chain.apply_block(&genesis_block.block, false)?;
-            chain.update_states(&genesis_block.patch)?;
+            chain.apply_block(&genesis.block, true)?;
+            chain.update_states(&genesis.patch)?;
         }
         Ok(chain)
     }
@@ -132,6 +138,7 @@ impl<K: KvStore> KvStoreChain<K> {
     fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
         KvStoreChain {
             database: RamMirrorKvStore::new(&self.database),
+            genesis: self.genesis.clone(),
         }
     }
 
@@ -344,35 +351,17 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(result)
     }
 
-    fn apply_block(&mut self, block: &Block, draft: bool) -> Result<(), BlockchainError> {
+    fn apply_block(&mut self, block: &Block, check_pow: bool) -> Result<(), BlockchainError> {
         let curr_height = self.get_height()?;
         let is_genesis = block.header.number == 0;
         let next_reward = self.next_reward()?;
 
-        let pow_key = self.pow_key(block.header.number)?;
-
         if curr_height > 0 {
-            let last_block = self.get_block(curr_height - 1)?;
-
-            if block.header.proof_of_work.timestamp < self.median_timestamp(curr_height - 1)? {
-                return Err(BlockchainError::InvalidTimestamp);
-            }
-
-            if !draft && !block.header.meets_target(&pow_key) {
-                return Err(BlockchainError::DifficultyTargetUnmet);
-            }
-
-            if block.header.number != curr_height {
-                return Err(BlockchainError::InvalidBlockNumber);
-            }
-
-            if block.header.parent_hash != last_block.header.hash() {
-                return Err(BlockchainError::InvalidParentHash);
-            }
-
-            if block.header.block_root != block.merkle_tree().root() {
+            if block.merkle_tree().root() != block.header.block_root {
                 return Err(BlockchainError::InvalidMerkleRoot);
             }
+
+            self.will_extend(curr_height, &[block.header.clone()], check_pow)?;
         }
 
         let mut fork = self.fork_on_ram();
@@ -496,7 +485,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
 
-    fn will_extend(&self, from: u64, headers: &[Header]) -> Result<bool, BlockchainError> {
+    fn will_extend(
+        &self,
+        from: u64,
+        headers: &[Header],
+        check_pow: bool,
+    ) -> Result<bool, BlockchainError> {
         let current_power = self.get_power()?;
 
         if from == 0 {
@@ -535,7 +529,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 return Err(BlockchainError::InvalidTimestamp);
             }
 
-            if !h.meets_target(&pow_key) {
+            if check_pow && !h.meets_target(&pow_key) {
                 return Err(BlockchainError::DifficultyTargetUnmet);
             }
 
@@ -573,7 +567,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }
 
         for block in blocks.iter() {
-            forked.apply_block(block, false)?;
+            forked.apply_block(block, true)?;
         }
         let ops = forked.database.to_ops();
 
@@ -684,7 +678,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         blk.header.block_root = blk.merkle_tree().root();
 
         let mut ram_fork = self.fork_on_ram();
-        ram_fork.apply_block(&blk, true)?; // Check if everything is ok
+        ram_fork.apply_block(&blk, false)?; // Check if everything is ok
         ram_fork.update_states(&block_delta)?;
         Ok(BlockAndPatch {
             block: blk,

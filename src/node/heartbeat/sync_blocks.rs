@@ -88,7 +88,7 @@ pub async fn sync_blocks<B: Blockchain>(
     let will_extend = {
         let ctx = context.read().await;
         ctx.blockchain
-            .will_extend(headers[0].number, &headers)
+            .will_extend(headers[0].number, &headers, true)
             .unwrap_or(false)
     };
 
