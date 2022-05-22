@@ -165,8 +165,8 @@ impl<'a, K: KvStore> RamMirrorKvStore<'a, K> {
         self.overwrite
             .into_iter()
             .map(|(k, v)| match v {
-                Some(b) => WriteOp::Put(k.into(), b),
-                None => WriteOp::Remove(k.into()),
+                Some(b) => WriteOp::Put(k, b),
+                None => WriteOp::Remove(k),
             })
             .collect()
     }
