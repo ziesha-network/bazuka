@@ -11,7 +11,7 @@ pub async fn sync_state<B: Blockchain>(
     let state_height = ctx.blockchain.get_state_height()?;
 
     if state_height != height {
-        // Find clients which their state_height is equal with out height
+        // Find clients which their state_height is equal with our height
         let same_height_peers = ctx.active_peers().into_iter().filter(|p| {
             p.info
                 .as_ref()

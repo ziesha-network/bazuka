@@ -42,6 +42,8 @@ pub enum BlockchainError {
     InvalidTimestamp,
     #[error("unmet difficulty target")]
     DifficultyTargetUnmet,
+    #[error("wrong difficulty target on blocks")]
+    DifficultyTargetWrong,
     #[error("miner reward not present")]
     MinerRewardNotFound,
     #[error("illegal access to treasury funds")]
@@ -151,16 +153,25 @@ impl<K: KvStore> KvStoreChain<K> {
             let prev_block = self
                 .get_block(height - config::DIFFICULTY_CALC_INTERVAL)?
                 .header;
-            let time_delta =
-                last_block.proof_of_work.timestamp - prev_block.proof_of_work.timestamp;
-            let avg_block_time = time_delta / (config::DIFFICULTY_CALC_INTERVAL - 1) as u32;
-            let diff_change =
-                (config::BLOCK_TIME as f32 / avg_block_time as f32).clamp(0.5f32, 2f32);
-            let new_diff =
-                rust_randomx::Difficulty::new(last_block.proof_of_work.target).scale(diff_change);
-            Ok(new_diff.to_u32())
+            Ok(utils::calc_pow_difficulty(
+                &last_block.proof_of_work,
+                &prev_block.proof_of_work,
+            ))
         } else {
             Ok(last_block.proof_of_work.target)
+        }
+    }
+
+    fn get_difficulty_for_block(&self, header: &Header) -> Result<ProofOfWork, BlockchainError> {
+        if header.number % config::DIFFICULTY_CALC_INTERVAL == 0 {
+            Ok(header.proof_of_work)
+        } else {
+            let last_adjust_number =
+                header.number - (header.number % config::DIFFICULTY_CALC_INTERVAL);
+            if last_adjust_number > self.get_height()? {
+                return Err(BlockchainError::BlockNotFound);
+            }
+            Ok(self.get_block(last_adjust_number)?.header.proof_of_work)
         }
     }
 
@@ -512,8 +523,19 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .get(format!("power_{:010}", from - 1).into())?
             .ok_or(BlockchainError::Inconsistency)?
             .try_into()?;
+
         let mut last_header = self.get_block(from - 1)?.header;
+        let mut prev_diff_adjust_pow = self.get_difficulty_for_block(&last_header)?;
         for h in headers.iter() {
+            if h.number % config::DIFFICULTY_CALC_INTERVAL == 0 {
+                if h.proof_of_work.target
+                    != utils::calc_pow_difficulty(&last_header.proof_of_work, &prev_diff_adjust_pow)
+                {
+                    return Err(BlockchainError::DifficultyTargetWrong);
+                }
+                prev_diff_adjust_pow = h.proof_of_work.clone();
+            }
+
             let pow_key = self.pow_key(h.number)?;
 
             if h.proof_of_work.timestamp < self.median_timestamp(from - 1)? {
@@ -522,6 +544,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
             if !h.meets_target(&pow_key) {
                 return Err(BlockchainError::DifficultyTargetUnmet);
+            }
+
+            if prev_diff_adjust_pow.target != h.proof_of_work.target {
+                return Err(BlockchainError::DifficultyTargetWrong);
             }
 
             if h.number != last_header.number + 1 {
