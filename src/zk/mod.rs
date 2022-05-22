@@ -43,7 +43,7 @@ impl ZkStateModel {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkState(HashMap<u32, ZkScalar>);
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkStateDelta(HashMap<u32, ZkScalar>);
 
 impl ZkState {
@@ -76,6 +76,20 @@ impl ZkState {
 impl ZkCompressedState {
     pub fn size(&self) -> u32 {
         self.state_size
+    }
+}
+
+impl ZkStateDelta {
+    pub fn size(&self) -> isize {
+        let mut sz = 0isize;
+        for (_, v) in self.0.iter() {
+            if v.0.is_zero().into() {
+                sz -= 1;
+            } else {
+                sz += 1;
+            }
+        }
+        sz
     }
 }
 

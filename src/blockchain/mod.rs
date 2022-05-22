@@ -366,9 +366,14 @@ impl<K: KvStore> KvStoreChain<K> {
         sorted.sort_by(|t1, t2| t1.tx.nonce.cmp(&t2.tx.nonce));
         let mut fork = self.fork_on_ram();
         let mut result = Vec::new();
+        let mut sz = 0isize;
         for tx in sorted.into_iter() {
-            if fork.apply_tx(&tx.tx, false).is_ok() {
-                result.push(tx);
+            let delta = tx.tx.size() as isize + tx.state_delta.clone().unwrap_or_default().size();
+            if sz + delta <= config::MAX_DELTA_SIZE as isize {
+                if fork.apply_tx(&tx.tx, false).is_ok() {
+                    sz += delta;
+                    result.push(tx);
+                }
             }
         }
         Ok(result)
