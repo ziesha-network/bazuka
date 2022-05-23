@@ -304,7 +304,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let tx = alice.create_contract_update(
         cid,
         0,
-        state_delta,
+        state_delta.clone(),
         full_state.compress(state_model),
         zk::ZkProof::Dummy(true),
         0,
@@ -314,10 +314,110 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let draft = chain.draft_block(1, &[tx.clone()], &miner)?;
 
     chain.apply_block(&draft.block, true)?;
+
+    assert!(matches!(
+        chain
+            .fork_on_ram()
+            .update_states(&ZkBlockchainPatch::Delta(HashMap::new())),
+        Err(BlockchainError::FullStateNotFound)
+    ));
+    assert!(matches!(
+        chain.fork_on_ram().update_states(&ZkBlockchainPatch::Delta(
+            [(
+                cid,
+                zk::ZkStateDelta::new([(100, zk::ZkScalar::from(200))].into_iter().collect())
+            )]
+            .into_iter()
+            .collect()
+        )),
+        Err(BlockchainError::FullStateNotValid)
+    ));
+
+    chain
+        .fork_on_ram()
+        .update_states(&ZkBlockchainPatch::Delta(
+            [(cid, state_delta.clone())].into_iter().collect(),
+        ))?;
+
     chain.update_states(&draft.patch)?;
 
     assert_eq!(chain.get_height()?, 2);
     assert_eq!(chain.get_state_height()?, 2);
+
+    assert!(matches!(
+        chain.apply_tx(
+            &alice
+                .create_contract_update(
+                    cid,
+                    0,
+                    state_delta.clone(),
+                    full_state.compress(state_model),
+                    zk::ZkProof::Dummy(true),
+                    0,
+                    1,
+                )
+                .tx,
+            false
+        ),
+        Err(BlockchainError::InvalidTransactionNonce)
+    ));
+
+    assert!(matches!(
+        chain.apply_tx(
+            &alice
+                .create_contract_update(
+                    ContractId::from_str(
+                        "0000000000000000000000000000000000000000000000000000000000000000"
+                    )
+                    .unwrap(),
+                    0,
+                    state_delta.clone(),
+                    full_state.compress(state_model),
+                    zk::ZkProof::Dummy(true),
+                    0,
+                    2,
+                )
+                .tx,
+            false
+        ),
+        Err(BlockchainError::ContractNotFound)
+    ));
+
+    assert!(matches!(
+        chain.apply_tx(
+            &alice
+                .create_contract_update(
+                    cid,
+                    1,
+                    state_delta.clone(),
+                    full_state.compress(state_model),
+                    zk::ZkProof::Dummy(true),
+                    0,
+                    2,
+                )
+                .tx,
+            false
+        ),
+        Err(BlockchainError::ContractFunctionNotFound)
+    ));
+
+    assert!(matches!(
+        chain.apply_tx(
+            &alice
+                .create_contract_update(
+                    cid,
+                    0,
+                    state_delta,
+                    full_state.compress(state_model),
+                    zk::ZkProof::Dummy(false),
+                    0,
+                    2,
+                )
+                .tx,
+            false
+        ),
+        Err(BlockchainError::IncorrectZkProof)
+    ));
 
     Ok(())
 }
