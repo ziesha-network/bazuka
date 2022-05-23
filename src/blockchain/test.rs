@@ -5,6 +5,7 @@ use crate::crypto::{EdDSA, SignatureScheme};
 use crate::db;
 
 fn easy_genesis() -> BlockAndPatch {
+    let mpn_creator = Wallet::new(Vec::from("MPN"));
     let alice = Wallet::new(Vec::from("ABC"));
     let mut genesis_block = genesis::get_test_genesis_block();
     genesis_block.block.header.proof_of_work.target = 0x00ffffff;
@@ -18,6 +19,27 @@ fn easy_genesis() -> BlockAndPatch {
         fee: 0,
         sig: Signature::Unsigned,
     }];
+
+    let state_model = zk::ZkStateModel::new(1, 3);
+    let full_state = zk::ZkState::default();
+    let tx = mpn_creator.create_contract(
+        zk::ZkContract {
+            state_model,
+            initial_state: full_state.compress(state_model),
+            deposit_withdraw: zk::ZkVerifierKey::Dummy,
+            update: Vec::new(),
+        },
+        full_state.clone(),
+        0,
+        1,
+    );
+    genesis_block.block.body.push(tx.tx.clone());
+    genesis_block.patch = ZkBlockchainPatch::Full(
+        [(ContractId::new(&tx.tx), full_state.clone())]
+            .into_iter()
+            .collect(),
+    );
+
     genesis_block
 }
 
