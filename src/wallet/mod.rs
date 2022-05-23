@@ -1,4 +1,6 @@
-use crate::core::{Address, Money, Signature, Transaction, TransactionAndDelta, TransactionData};
+use crate::core::{
+    Address, ContractId, Money, Signature, Transaction, TransactionAndDelta, TransactionData,
+};
 use crate::crypto::{EdDSA, SignatureScheme};
 use crate::zk;
 
@@ -57,6 +59,36 @@ impl Wallet {
         TransactionAndDelta {
             tx,
             state_delta: Some(initial_state.as_delta()),
+        }
+    }
+    pub fn create_contract_update(
+        &self,
+        contract_id: ContractId,
+        function_id: u32,
+        state_delta: zk::ZkStateDelta,
+        next_state: zk::ZkCompressedState,
+        proof: zk::ZkProof,
+        fee: Money,
+        nonce: u32,
+    ) -> TransactionAndDelta {
+        let (_, sk) = EdDSA::generate_keys(&self.seed);
+        let mut tx = Transaction {
+            src: self.get_address(),
+            data: TransactionData::Update {
+                contract_id,
+                function_id,
+                next_state,
+                proof,
+            },
+            nonce,
+            fee,
+            sig: Signature::Unsigned,
+        };
+        let bytes = bincode::serialize(&tx).unwrap();
+        tx.sig = Signature::Signed(EdDSA::sign(&sk, &bytes));
+        TransactionAndDelta {
+            tx,
+            state_delta: Some(state_delta),
         }
     }
 }

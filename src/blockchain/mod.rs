@@ -287,7 +287,7 @@ impl<K: KvStore> KvStoreChain<K> {
             }
             TransactionData::Update {
                 contract_id,
-                circuit_index,
+                function_id,
                 next_state,
                 proof,
             } => {
@@ -296,7 +296,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 let aux_data = zk::ZkCompressedState::empty();
                 let vk = contract
                     .update
-                    .get(*circuit_index as usize)
+                    .get(*function_id as usize)
                     .ok_or(BlockchainError::ContractFunctionNotFound)?;
                 if !zk::check_proof(vk, &prev_state, &aux_data, next_state, proof) {
                     return Err(BlockchainError::IncorrectZkProof);

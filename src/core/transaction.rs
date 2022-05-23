@@ -4,10 +4,19 @@ use super::Money;
 use crate::crypto::SignatureScheme;
 use crate::zk::{ZkCompressedState, ZkContract, ZkProof, ZkStateDelta};
 
+use std::str::FromStr;
+use thiserror::Error;
+
 #[derive(
     serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy, Eq, std::hash::Hash,
 )]
 pub struct ContractId<H: Hash>(H::Output);
+
+#[derive(Error, Debug)]
+pub enum ParseContractIdError {
+    #[error("contract-id invalid")]
+    Invalid,
+}
 
 impl<H: Hash> ContractId<H> {
     pub fn new<S: SignatureScheme>(tx: &Transaction<H, S>) -> Self {
@@ -18,6 +27,15 @@ impl<H: Hash> ContractId<H> {
 impl<H: Hash> std::fmt::Display for ContractId<H> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", hex::encode(self.0))
+    }
+}
+
+impl<H: Hash> FromStr for ContractId<H> {
+    type Err = ParseContractIdError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let bytes = hex::decode(s).map_err(|_| ParseContractIdError::Invalid)?;
+        let hash_output = H::Output::try_from(bytes).map_err(|_| ParseContractIdError::Invalid)?;
+        Ok(Self(hash_output))
     }
 }
 
@@ -61,7 +79,7 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
     // Proof for UpdateCircuit[circuit_index](curr_state, next_state)
     Update {
         contract_id: ContractId<H>,
-        circuit_index: u32,
+        function_id: u32,
         next_state: ZkCompressedState,
         proof: ZkProof,
     },
