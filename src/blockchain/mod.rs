@@ -377,11 +377,10 @@ impl<K: KvStore> KvStoreChain<K> {
         let mut sz = 0isize;
         for tx in sorted.into_iter() {
             let delta = tx.tx.size() as isize + tx.state_delta.clone().unwrap_or_default().size();
-            if sz + delta <= config::MAX_DELTA_SIZE as isize {
-                if fork.apply_tx(&tx.tx, false).is_ok() {
-                    sz += delta;
-                    result.push(tx);
-                }
+            if sz + delta <= config::MAX_DELTA_SIZE as isize && fork.apply_tx(&tx.tx, false).is_ok()
+            {
+                sz += delta;
+                result.push(tx);
             }
         }
         Ok(result)

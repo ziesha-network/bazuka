@@ -133,7 +133,7 @@ impl ZkState {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ZkVerifierKey {
-    Groth16(zeekit::Groth16VerifyingKey),
+    Groth16(Box<zeekit::Groth16VerifyingKey>),
     Plonk(u8),
     #[cfg(test)]
     Dummy,
@@ -149,7 +149,7 @@ pub struct ZkContract {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ZkProof {
-    Groth16(zeekit::Groth16Proof),
+    Groth16(Box<zeekit::Groth16Proof>),
     Plonk(u8),
     #[cfg(test)]
     Dummy(bool),
