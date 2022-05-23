@@ -241,7 +241,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
         zk::ZkContract {
             state_model,
             initial_state: full_state.compress(state_model),
-            deposit_withdraw: zk::ZkVerifierKey::Groth16(vec![]),
+            deposit_withdraw: zk::ZkVerifierKey::Dummy,
             update: Vec::new(),
         },
         full_state.clone(),
