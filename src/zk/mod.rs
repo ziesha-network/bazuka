@@ -75,6 +75,9 @@ pub struct ZkState(HashMap<u32, ZkScalar>);
 pub struct ZkStateDelta(HashMap<u32, ZkScalar>);
 
 impl ZkState {
+    pub fn new(data: HashMap<u32, ZkScalar>) -> Self {
+        Self(data)
+    }
     pub fn as_delta(&self) -> ZkStateDelta {
         ZkStateDelta(self.0.clone())
     }

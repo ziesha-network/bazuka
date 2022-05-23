@@ -23,7 +23,7 @@ fn easy_genesis() -> BlockAndPatch {
     }];
 
     let state_model = zk::ZkStateModel::new(1, 3);
-    let full_state = zk::ZkState::default();
+    let full_state = zk::ZkState::new([(100, zk::ZkScalar::from(200))].into_iter().collect());
     let tx = mpn_creator.create_contract(
         zk::ZkContract {
             state_model,
@@ -292,12 +292,12 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
     let cid =
-        ContractId::from_str("518317ab64eb3f937f341d42aa2ca2d6cca0243fd08f097600989b4e958ee593")
+        ContractId::from_str("797c7e8e2801d7f73798a7673393e2208c0fb055d5fad5cf3d921dd228031cee")
             .unwrap();
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
     let state_model = zk::ZkStateModel::new(1, 3);
-    let mut full_state = zk::ZkState::default();
+    let mut full_state = zk::ZkState::new([(100, zk::ZkScalar::from(200))].into_iter().collect());
     let state_delta = zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect());
     full_state.apply_patch(&state_delta);
 
@@ -325,19 +325,50 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.fork_on_ram().update_states(&ZkBlockchainPatch::Delta(
             [(
                 cid,
-                zk::ZkStateDelta::new([(100, zk::ZkScalar::from(200))].into_iter().collect())
+                zk::ZkStateDelta::new([(123, zk::ZkScalar::from(321))].into_iter().collect())
             )]
             .into_iter()
             .collect()
         )),
         Err(BlockchainError::FullStateNotValid)
     ));
-
     chain
         .fork_on_ram()
         .update_states(&ZkBlockchainPatch::Delta(
             [(cid, state_delta.clone())].into_iter().collect(),
         ))?;
+    assert!(matches!(
+        chain
+            .fork_on_ram()
+            .update_states(&ZkBlockchainPatch::Full(HashMap::new())),
+        Err(BlockchainError::FullStateNotFound)
+    ));
+    assert!(matches!(
+        chain.fork_on_ram().update_states(&ZkBlockchainPatch::Full(
+            [(
+                cid,
+                zk::ZkState::new([(100, zk::ZkScalar::from(200))].into_iter().collect())
+            )]
+            .into_iter()
+            .collect()
+        )),
+        Err(BlockchainError::FullStateNotValid)
+    ));
+    chain.fork_on_ram().update_states(&ZkBlockchainPatch::Full(
+        [(
+            cid,
+            zk::ZkState::new(
+                [
+                    (100, zk::ZkScalar::from(200)),
+                    (123, zk::ZkScalar::from(234)),
+                ]
+                .into_iter()
+                .collect(),
+            ),
+        )]
+        .into_iter()
+        .collect(),
+    ))?;
 
     chain.update_states(&draft.patch)?;
 
