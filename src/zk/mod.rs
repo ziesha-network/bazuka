@@ -44,6 +44,12 @@ pub fn check_proof(
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkScalar(Fr);
 
+impl From<u64> for ZkScalar {
+    fn from(val: u64) -> Self {
+        Self(Fr::from(val))
+    }
+}
+
 // Each leaf of the target sparse merkle tree will be the
 // result of consecutive hash of `leaf_size` cells.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -75,9 +81,9 @@ impl ZkState {
     pub fn apply_patch(&mut self, patch: &ZkStateDelta) {
         for (k, v) in patch.0.iter() {
             if v.0.is_zero().into() {
-                self.0.insert(*k, *v);
-            } else {
                 self.0.remove(k);
+            } else {
+                self.0.insert(*k, *v);
             }
         }
     }
@@ -108,6 +114,9 @@ impl ZkCompressedState {
 }
 
 impl ZkStateDelta {
+    pub fn new(data: HashMap<u32, ZkScalar>) -> Self {
+        Self(data)
+    }
     pub fn size(&self) -> isize {
         let mut sz = 0isize;
         for (_, v) in self.0.iter() {

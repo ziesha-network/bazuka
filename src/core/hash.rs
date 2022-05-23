@@ -14,7 +14,8 @@ pub trait Hash: Debug + Clone + Serialize + 'static {
         + AsMut<[u8]>
         + Default
         + Copy
-        + PartialOrd;
+        + PartialOrd
+        + TryFrom<Vec<u8>>;
 
     fn hash(s: &[u8]) -> Self::Output;
 }

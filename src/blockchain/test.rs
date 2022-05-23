@@ -4,6 +4,8 @@ use crate::core::{Address, Hasher, Signature, TransactionData};
 use crate::crypto::{EdDSA, SignatureScheme};
 use crate::db;
 
+use std::str::FromStr;
+
 fn easy_genesis() -> BlockAndPatch {
     let mpn_creator = Wallet::new(Vec::from("MPN"));
     let alice = Wallet::new(Vec::from("ABC"));
@@ -27,7 +29,7 @@ fn easy_genesis() -> BlockAndPatch {
             state_model,
             initial_state: full_state.compress(state_model),
             deposit_withdraw: zk::ZkVerifierKey::Dummy,
-            update: Vec::new(),
+            update: vec![zk::ZkVerifierKey::Dummy],
         },
         full_state.clone(),
         0,
@@ -277,6 +279,41 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
     assert_eq!(chain.get_height()?, 2);
     assert_eq!(chain.get_state_height()?, 1);
 
+    chain.update_states(&draft.patch)?;
+
+    assert_eq!(chain.get_height()?, 2);
+    assert_eq!(chain.get_state_height()?, 2);
+
+    Ok(())
+}
+
+#[test]
+fn test_contract_update() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let alice = Wallet::new(Vec::from("ABC"));
+    let cid =
+        ContractId::from_str("518317ab64eb3f937f341d42aa2ca2d6cca0243fd08f097600989b4e958ee593")
+            .unwrap();
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+
+    let state_model = zk::ZkStateModel::new(1, 3);
+    let mut full_state = zk::ZkState::default();
+    let state_delta = zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect());
+    full_state.apply_patch(&state_delta);
+
+    let tx = alice.create_contract_update(
+        cid,
+        0,
+        state_delta,
+        full_state.compress(state_model),
+        zk::ZkProof::Dummy(true),
+        0,
+        1,
+    );
+
+    let draft = chain.draft_block(1, &[tx.clone()], &miner)?;
+
+    chain.apply_block(&draft.block, true)?;
     chain.update_states(&draft.patch)?;
 
     assert_eq!(chain.get_height()?, 2);
