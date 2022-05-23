@@ -23,7 +23,7 @@ thiserror = "1.0"
 num-bigint = "0.4"
 num-integer = "0.1"
 hex = "0.4.3"
-zeekit = "0.5.2"
+zeekit = { version = "0.6.1", features = ["groth16"] }
 colored = "2.0.0"
 rust-randomx = "0.5.6"
 

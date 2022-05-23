@@ -7,19 +7,41 @@ use zeekit::Fr;
 
 pub fn check_proof(
     vk: &ZkVerifierKey,
-    _prev_state: &ZkCompressedState,
-    _next_state: &ZkCompressedState,
-    _proof: &ZkProof,
+    prev_state: &ZkCompressedState,
+    aux_data: &ZkCompressedState,
+    next_state: &ZkCompressedState,
+    proof: &ZkProof,
 ) -> bool {
     match vk {
+        ZkVerifierKey::Groth16(vk) => {
+            if let ZkProof::Groth16(proof) = proof {
+                zeekit::groth16_verify(
+                    vk,
+                    prev_state.state_hash.0,
+                    aux_data.state_hash.0,
+                    next_state.state_hash.0,
+                    proof,
+                )
+            } else {
+                false
+            }
+        }
         #[cfg(test)]
-        ZkVerifierKey::Dummy => _proof.0.len() > 0,
-        _ => unimplemented!(),
+        ZkVerifierKey::Dummy => {
+            if let ZkProof::Dummy(result) = proof {
+                *result
+            } else {
+                false
+            }
+        }
+        _ => {
+            unimplemented!()
+        }
     }
 }
 
 // A single state cell
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkScalar(Fr);
 
 // Each leaf of the target sparse merkle tree will be the
@@ -77,6 +99,12 @@ impl ZkCompressedState {
     pub fn size(&self) -> u32 {
         self.state_size
     }
+    pub fn empty() -> Self {
+        Self {
+            state_hash: ZkScalar::default(),
+            state_size: 0,
+        }
+    }
 }
 
 impl ZkStateDelta {
@@ -105,7 +133,8 @@ impl ZkState {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ZkVerifierKey {
-    Groth16(#[serde(with = "serde_bytes")] Vec<u8>),
+    Groth16(Box<zeekit::Groth16VerifyingKey>),
+    Plonk(u8),
     #[cfg(test)]
     Dummy,
 }
@@ -119,4 +148,9 @@ pub struct ZkContract {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ZkProof(#[serde(with = "serde_bytes")] Vec<u8>);
+pub enum ZkProof {
+    Groth16(Box<zeekit::Groth16Proof>),
+    Plonk(u8),
+    #[cfg(test)]
+    Dummy(bool),
+}

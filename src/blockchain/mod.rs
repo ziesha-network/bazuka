@@ -265,7 +265,14 @@ impl<K: KvStore> KvStoreChain<K> {
             } => {
                 let contract = self.get_contract(*contract_id)?;
                 let prev_state = self.get_compressed_state(*contract_id)?;
-                if !zk::check_proof(&contract.deposit_withdraw, &prev_state, next_state, proof) {
+                let aux_data = zk::ZkCompressedState::empty();
+                if !zk::check_proof(
+                    &contract.deposit_withdraw,
+                    &prev_state,
+                    &aux_data,
+                    next_state,
+                    proof,
+                ) {
                     return Err(BlockchainError::IncorrectZkProof);
                 }
                 ops.push(WriteOp::Put(
@@ -286,11 +293,12 @@ impl<K: KvStore> KvStoreChain<K> {
             } => {
                 let contract = self.get_contract(*contract_id)?;
                 let prev_state = self.get_compressed_state(*contract_id)?;
+                let aux_data = zk::ZkCompressedState::empty();
                 let vk = contract
                     .update
                     .get(*circuit_index as usize)
                     .ok_or(BlockchainError::ContractFunctionNotFound)?;
-                if !zk::check_proof(vk, &prev_state, next_state, proof) {
+                if !zk::check_proof(vk, &prev_state, &aux_data, next_state, proof) {
                     return Err(BlockchainError::IncorrectZkProof);
                 }
                 ops.push(WriteOp::Put(
@@ -369,11 +377,10 @@ impl<K: KvStore> KvStoreChain<K> {
         let mut sz = 0isize;
         for tx in sorted.into_iter() {
             let delta = tx.tx.size() as isize + tx.state_delta.clone().unwrap_or_default().size();
-            if sz + delta <= config::MAX_DELTA_SIZE as isize {
-                if fork.apply_tx(&tx.tx, false).is_ok() {
-                    sz += delta;
-                    result.push(tx);
-                }
+            if sz + delta <= config::MAX_DELTA_SIZE as isize && fork.apply_tx(&tx.tx, false).is_ok()
+            {
+                sz += delta;
+                result.push(tx);
             }
         }
         Ok(result)
