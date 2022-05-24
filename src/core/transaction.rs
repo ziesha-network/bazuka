@@ -56,6 +56,13 @@ pub struct ContractPayment<H: Hash, S: SignatureScheme> {
     sig: Signature<S>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct ContractAccount {
+    pub balance: Money,
+    pub compressed_state: ZkCompressedState,
+    pub height: u64,
+}
+
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
