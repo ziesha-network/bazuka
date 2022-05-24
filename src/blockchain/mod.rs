@@ -194,6 +194,7 @@ impl<K: KvStore> KvStoreChain<K> {
         })
     }
 
+    #[allow(dead_code)]
     fn get_compressed_state_at(
         &self,
         contract_id: ContractId,
@@ -844,7 +845,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         for (cid, comp_state) in self.get_outdated_states()? {
             let contract = self.get_contract(cid)?;
-            let contract_account = self.get_contract_account(cid)?;
+            let _contract_account = self.get_contract_account(cid)?;
             let full_state = match &patch {
                 ZkBlockchainPatch::Full(states) => {
                     let full = states
@@ -856,7 +857,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 ZkBlockchainPatch::Delta(deltas) => {
                     let mut state = self.get_state(cid)?;
                     let delta = deltas.get(&cid).ok_or(BlockchainError::FullStateNotFound)?;
-                    state.apply_patch(delta);
+                    state.apply_delta(delta);
                     state
                 }
             };
