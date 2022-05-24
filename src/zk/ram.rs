@@ -39,7 +39,7 @@ impl Default for ZkRam {
 impl ZkRam {
     pub fn from_state(state: &ZkState) -> Self {
         let mut r = Self::new();
-        for (k, v) in state.0.iter() {
+        for (k, v) in state.state.iter() {
             r.set(*k, v.0);
         }
         r

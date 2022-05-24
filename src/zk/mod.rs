@@ -1,5 +1,6 @@
 pub mod ram;
 
+use crate::config;
 use ff::Field;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -69,26 +70,40 @@ impl ZkStateModel {
 
 // Full state of a contract
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct ZkState(HashMap<u32, ZkScalar>);
+pub struct ZkState {
+    patches: Vec<ZkStateDelta>,
+    state: HashMap<u32, ZkScalar>,
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkStateDelta(HashMap<u32, ZkScalar>);
 
 impl ZkState {
+    pub fn size(&self) -> u32 {
+        self.state.len() as u32
+    }
     pub fn new(data: HashMap<u32, ZkScalar>) -> Self {
-        Self(data)
+        Self {
+            state: data,
+            patches: Vec::new(),
+        }
     }
     pub fn as_delta(&self) -> ZkStateDelta {
-        ZkStateDelta(self.0.clone())
+        ZkStateDelta(self.state.clone())
     }
     pub fn apply_patch(&mut self, patch: &ZkStateDelta) {
+        self.patches.insert(0, patch.clone());
+        self.patches.truncate(config::NUM_STATE_DELTAS_KEEP);
         for (k, v) in patch.0.iter() {
             if v.0.is_zero().into() {
-                self.0.remove(k);
+                self.state.remove(k);
             } else {
-                self.0.insert(*k, *v);
+                self.state.insert(*k, *v);
             }
         }
+    }
+    pub fn delta_of(&self, away: usize) -> Option<&ZkStateDelta> {
+        self.patches.get(away - 1)
     }
 }
 
@@ -96,12 +111,6 @@ impl ZkState {
 pub struct ZkCompressedState {
     state_hash: ZkScalar,
     state_size: u32,
-}
-
-impl ZkState {
-    pub fn size(&self) -> u32 {
-        self.0.len() as u32
-    }
 }
 
 impl ZkCompressedState {
