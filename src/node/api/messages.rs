@@ -87,7 +87,7 @@ pub struct GetBlocksResponse {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetStatesRequest {
     pub from: u64,
-    pub to: u64,
+    pub to: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

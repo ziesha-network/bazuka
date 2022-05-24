@@ -35,4 +35,6 @@ pub enum NodeError {
     TimeoutError(#[from] tokio::time::error::Elapsed),
     #[error("http body size limit error")]
     SizeLimitError,
+    #[error("bad input")]
+    InputError,
 }

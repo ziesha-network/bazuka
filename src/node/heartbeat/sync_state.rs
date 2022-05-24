@@ -8,6 +8,7 @@ pub async fn sync_state<B: Blockchain>(
     let net = ctx.outgoing.clone();
 
     let height = ctx.blockchain.get_height()?;
+    let last_header_hash = ctx.blockchain.get_tip()?.hash();
     let state_height = ctx.blockchain.get_state_height()?;
 
     if state_height != height {
@@ -26,7 +27,7 @@ pub async fn sync_state<B: Blockchain>(
                     format!("{}/bincode/states", peer.address),
                     GetStatesRequest {
                         from: state_height,
-                        to: height,
+                        to: hex::encode(last_header_hash),
                     },
                     Limit::default().size(1024 * 1024).time(1000),
                 )

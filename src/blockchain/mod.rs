@@ -3,8 +3,8 @@ use thiserror::Error;
 use crate::config;
 use crate::config::TOTAL_SUPPLY;
 use crate::core::{
-    Account, Address, Block, ContractId, Header, Money, ProofOfWork, Signature, Transaction,
-    TransactionAndDelta, TransactionData,
+    hash::Hash, Account, Address, Block, ContractId, Hasher, Header, Money, ProofOfWork, Signature,
+    Transaction, TransactionAndDelta, TransactionData,
 };
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
@@ -108,6 +108,7 @@ pub trait Blockchain {
         wallet: &Wallet,
     ) -> Result<BlockAndPatch, BlockchainError>;
     fn get_height(&self) -> Result<u64, BlockchainError>;
+    fn get_tip(&self) -> Result<Header, BlockchainError>;
     fn get_headers(&self, since: u64, until: Option<u64>) -> Result<Vec<Header>, BlockchainError>;
     fn get_blocks(&self, since: u64, until: Option<u64>) -> Result<Vec<Block>, BlockchainError>;
     fn get_power(&self) -> Result<u128, BlockchainError>;
@@ -124,7 +125,7 @@ pub trait Blockchain {
     fn generate_state_patch(
         &self,
         from: u64,
-        to: u64,
+        to: <Hasher as Hash>::Output,
     ) -> Result<ZkBlockchainPatch, BlockchainError>;
 }
 
@@ -491,6 +492,9 @@ impl<K: KvStore> KvStoreChain<K> {
 }
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
+    fn get_tip(&self) -> Result<Header, BlockchainError> {
+        Ok(self.get_block(self.get_height()? - 1)?.header)
+    }
     fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError> {
         let k = format!("contract_{}", contract_id).into();
         Ok(self
@@ -805,13 +809,16 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn generate_state_patch(
         &self,
         from: u64,
-        to: u64,
+        to: <Hasher as Hash>::Output,
     ) -> Result<ZkBlockchainPatch, BlockchainError> {
-        if to != self.get_state_height()? {
+        let state_height = self.get_state_height()?;
+        let last_state_header = self.get_block(state_height - 1)?.header;
+
+        if last_state_header.hash() != to {
             return Err(BlockchainError::StatesUnavailable);
         }
         let mut changes = HashMap::new();
-        for i in from..to {
+        for i in from..state_height {
             let block_changes = self.get_changed_states(i)?;
             changes.extend(block_changes.into_iter());
         }

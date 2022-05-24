@@ -373,8 +373,9 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         .collect(),
     ))?;
     assert_eq!(updated_fork.get_state_height()?, 2);
+    let updated_tip_hash = updated_fork.get_tip()?.hash();
     assert_eq!(unupdated_fork.get_state_height()?, 1);
-    unupdated_fork.update_states(&updated_fork.generate_state_patch(1, 2)?)?;
+    unupdated_fork.update_states(&updated_fork.generate_state_patch(1, updated_tip_hash)?)?;
     assert_eq!(unupdated_fork.get_state_height()?, 2);
 
     chain.update_states(&draft.patch)?;
