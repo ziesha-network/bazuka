@@ -354,7 +354,10 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         )),
         Err(BlockchainError::FullStateNotValid)
     ));
-    chain.fork_on_ram().update_states(&ZkBlockchainPatch::Full(
+
+    let mut unupdated_fork = chain.fork_on_ram();
+    let mut updated_fork = chain.fork_on_ram();
+    updated_fork.update_states(&ZkBlockchainPatch::Full(
         [(
             cid,
             zk::ZkState::new(
@@ -369,6 +372,10 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         .into_iter()
         .collect(),
     ))?;
+    assert_eq!(updated_fork.get_state_height()?, 2);
+    assert_eq!(unupdated_fork.get_state_height()?, 1);
+    unupdated_fork.update_states(&updated_fork.generate_state_patch(1, 2)?)?;
+    assert_eq!(unupdated_fork.get_state_height()?, 2);
 
     chain.update_states(&draft.patch)?;
 
