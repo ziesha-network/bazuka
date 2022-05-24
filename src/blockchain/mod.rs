@@ -835,11 +835,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let delta_states: Option<HashMap<ContractId, zk::ZkStateDelta>> = full_states
             .iter()
             .map(|(cid, state)| {
-                if let Some(delta) = state.delta_of(away as usize) {
-                    Some((*cid, delta.clone()))
-                } else {
-                    None
-                }
+                state
+                    .delta_of(away as usize)
+                    .map(|delta| (*cid, delta.clone()))
             })
             .collect();
 
