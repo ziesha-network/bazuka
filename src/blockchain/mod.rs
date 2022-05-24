@@ -167,7 +167,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn next_difficulty(&self) -> Result<u32, BlockchainError> {
         let height = self.get_height()?;
-        let last_block = self.get_block(height - 1)?.header;
+        let last_block = self.get_header(height - 1)?;
         if height % config::DIFFICULTY_CALC_INTERVAL == 0 {
             let prev_block = self
                 .get_block(height - config::DIFFICULTY_CALC_INTERVAL)?
@@ -187,6 +187,19 @@ impl<K: KvStore> KvStoreChain<K> {
         }
         let block_key: StringKey = format!("block_{:010}", index).into();
         Ok(match self.database.get(block_key)? {
+            Some(b) => b.try_into()?,
+            None => {
+                return Err(BlockchainError::Inconsistency);
+            }
+        })
+    }
+
+    fn get_header(&self, index: u64) -> Result<Header, BlockchainError> {
+        if index >= self.get_height()? {
+            return Err(BlockchainError::BlockNotFound);
+        }
+        let header_key: StringKey = format!("header_{:010}", index).into();
+        Ok(match self.database.get(header_key)? {
             Some(b) => b.try_into()?,
             None => {
                 return Err(BlockchainError::Inconsistency);
@@ -357,6 +370,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::Inconsistency);
             }
         };
+        rollback.push(WriteOp::Remove(format!("header_{:010}", height - 1).into()));
         rollback.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
         rollback.push(WriteOp::Remove(format!("merkle_{:010}", height - 1).into()));
         rollback.push(WriteOp::Remove(
@@ -474,6 +488,10 @@ impl<K: KvStore> KvStoreChain<K> {
             self.database.rollback_of(&changes)?.into(),
         ));
         changes.push(WriteOp::Put(
+            format!("header_{:010}", block.header.number).into(),
+            block.header.clone().into(),
+        ));
+        changes.push(WriteOp::Put(
             format!("block_{:010}", block.header.number).into(),
             block.into(),
         ));
@@ -493,7 +511,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_tip(&self) -> Result<Header, BlockchainError> {
-        Ok(self.get_block(self.get_height()? - 1)?.header)
+        self.get_header(self.get_height()? - 1)
     }
     fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError> {
         let k = format!("contract_{}", contract_id).into();
@@ -557,7 +575,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .ok_or(BlockchainError::Inconsistency)?
             .try_into()?;
 
-        let mut last_header = self.get_block(from - 1)?.header;
+        let mut last_header = self.get_header(from - 1)?;
         let mut last_pow = self
             .get_block(
                 last_header.number - (last_header.number % config::DIFFICULTY_CALC_INTERVAL),
@@ -639,11 +657,15 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
     fn get_headers(&self, since: u64, until: Option<u64>) -> Result<Vec<Header>, BlockchainError> {
-        Ok(self
-            .get_blocks(since, until)?
-            .into_iter()
-            .map(|b| b.header)
-            .collect())
+        let mut blks: Vec<Header> = Vec::new();
+        let height = self.get_height()?;
+        for i in since..until.unwrap_or(height) {
+            if i >= height {
+                break;
+            }
+            blks.push(self.get_header(i)?);
+        }
+        Ok(blks)
     }
     fn get_blocks(&self, since: u64, until: Option<u64>) -> Result<Vec<Block>, BlockchainError> {
         let mut blks: Vec<Block> = Vec::new();
@@ -652,12 +674,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             if i >= height {
                 break;
             }
-            blks.push(
-                self.database
-                    .get(format!("block_{:010}", i).into())?
-                    .ok_or(BlockchainError::Inconsistency)?
-                    .try_into()?,
-            );
+            blks.push(self.get_block(i)?);
         }
         Ok(blks)
     }
@@ -758,7 +775,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             let reference = ((index - config::POW_KEY_CHANGE_DELAY)
                 / config::POW_KEY_CHANGE_INTERVAL)
                 * config::POW_KEY_CHANGE_INTERVAL;
-            self.get_block(reference)?.header.hash().to_vec()
+            self.get_header(reference)?.hash().to_vec()
         })
     }
 
@@ -815,7 +832,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         to: <Hasher as Hash>::Output,
     ) -> Result<ZkBlockchainPatch, BlockchainError> {
         let state_height = self.get_state_height()?;
-        let last_state_header = self.get_block(state_height - 1)?.header;
+        let last_state_header = self.get_header(state_height - 1)?;
 
         if last_state_header.hash() != to {
             return Err(BlockchainError::StatesUnavailable);

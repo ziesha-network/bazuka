@@ -1,5 +1,5 @@
 use crate::blockchain::ZkBlockchainPatch;
-use crate::core::{hash::Hash, Account, Block, ContractId, Hasher};
+use crate::core::{hash::Hash, Account, Block, ContractId, Hasher, Header};
 use crate::crypto::merkle::MerkleTree;
 use crate::zk::{ZkCompressedState, ZkContract, ZkState};
 use db_key::Key;
@@ -75,6 +75,7 @@ gen_try_into!(
     u128,
     usize,
     Account,
+    Header,
     Block,
     Vec<WriteOp>,
     MerkleTree<Hasher>,
@@ -90,6 +91,7 @@ gen_from!(
     u128,
     usize,
     Account,
+    Header,
     &Block,
     Vec<WriteOp>,
     MerkleTree<Hasher>,
