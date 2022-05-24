@@ -202,8 +202,12 @@ impl<K: KvStore> KvStoreChain<K> {
         contract_id: ContractId,
         index: u64,
     ) -> Result<zk::ZkCompressedState, BlockchainError> {
+        let state_model = self.get_contract(contract_id)?.state_model;
         if index >= self.get_contract_account(contract_id)?.height {
             return Err(BlockchainError::CompressedStateNotFound);
+        }
+        if index == 0 {
+            return Ok(zk::ZkState::default().compress(state_model));
         }
         let header_key: StringKey =
             format!("contract_compressed_state_{}_{}", contract_id, index).into();
@@ -292,7 +296,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     .into(),
                 ));
                 ops.push(WriteOp::Put(
-                    format!("contract_compressed_state_{}_{}", contract_id, 0).into(),
+                    format!("contract_compressed_state_{}_{}", contract_id, 1).into(),
                     contract.initial_state.into(),
                 ));
                 side_effect = TxSideEffect::StateChange {
@@ -331,7 +335,8 @@ impl<K: KvStore> KvStoreChain<K> {
                 ops.push(WriteOp::Put(
                     format!(
                         "contract_compressed_state_{}_{}",
-                        contract_id, prev_account.height
+                        contract_id,
+                        prev_account.height + 1
                     )
                     .into(),
                     (*next_state).into(),
@@ -377,7 +382,8 @@ impl<K: KvStore> KvStoreChain<K> {
                 ops.push(WriteOp::Put(
                     format!(
                         "contract_compressed_state_{}_{}",
-                        contract_id, prev_account.height
+                        contract_id,
+                        prev_account.height + 1
                     )
                     .into(),
                     (*next_state).into(),
@@ -854,17 +860,14 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         .get(&cid)
                         .ok_or(BlockchainError::FullStateNotFound)?
                         .clone();
-                    for (i, prev_state) in full
+                    for (i, calc_state) in full
                         .compress_prev_states(contract.state_model)
                         .into_iter()
                         .enumerate()
                     {
-                        if prev_state
-                            != self.get_compressed_state_at(
-                                cid,
-                                contract_account.height - 1 - i as u64,
-                            )?
-                        {
+                        let actual_state = self
+                            .get_compressed_state_at(cid, contract_account.height - 1 - i as u64)?;
+                        if calc_state != actual_state {
                             return Err(BlockchainError::DeltasInvalid);
                         }
                     }
