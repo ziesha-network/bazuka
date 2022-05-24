@@ -760,38 +760,31 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError> {
         let mut ops = Vec::new();
-        match &patch {
-            ZkBlockchainPatch::Full(states) => {
-                for (cid, comp_state) in self.get_outdated_states()? {
-                    let contract = self.get_contract(cid)?;
-                    let full_state = states.get(&cid).ok_or(BlockchainError::FullStateNotFound)?;
-                    if full_state.compress(contract.state_model) == comp_state {
-                        ops.push(WriteOp::Put(
-                            format!("contract_state_{}", cid).into(),
-                            full_state.into(),
-                        ));
-                    } else {
-                        return Err(BlockchainError::FullStateNotValid);
-                    }
-                }
-            }
-            ZkBlockchainPatch::Delta(deltas) => {
-                for (cid, comp_state) in self.get_outdated_states()? {
-                    let contract = self.get_contract(cid)?;
+
+        for (cid, comp_state) in self.get_outdated_states()? {
+            let contract = self.get_contract(cid)?;
+            let full_state = match &patch {
+                ZkBlockchainPatch::Full(states) => states
+                    .get(&cid)
+                    .ok_or(BlockchainError::FullStateNotFound)?
+                    .clone(),
+                ZkBlockchainPatch::Delta(deltas) => {
                     let mut state = self.get_state(cid)?;
                     let delta = deltas.get(&cid).ok_or(BlockchainError::FullStateNotFound)?;
                     state.apply_patch(delta);
-                    if state.compress(contract.state_model) == comp_state {
-                        ops.push(WriteOp::Put(
-                            format!("contract_state_{}", cid).into(),
-                            (&state).into(),
-                        ));
-                    } else {
-                        return Err(BlockchainError::FullStateNotValid);
-                    }
+                    state
                 }
+            };
+            if full_state.compress(contract.state_model) == comp_state {
+                ops.push(WriteOp::Put(
+                    format!("contract_state_{}", cid).into(),
+                    (&full_state).into(),
+                ));
+            } else {
+                return Err(BlockchainError::FullStateNotValid);
             }
         }
+
         ops.push(WriteOp::Put(
             "state_height".into(),
             self.get_height()?.into(),
