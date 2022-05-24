@@ -66,6 +66,8 @@ pub enum BlockchainError {
     StatesUnavailable,
     #[error("block too big")]
     BlockTooBig,
+    #[error("compressed-state at specified height not found")]
+    CompressedStateNotFound,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -185,6 +187,24 @@ impl<K: KvStore> KvStoreChain<K> {
         }
         let block_key: StringKey = format!("block_{:010}", index).into();
         Ok(match self.database.get(block_key)? {
+            Some(b) => b.try_into()?,
+            None => {
+                return Err(BlockchainError::Inconsistency);
+            }
+        })
+    }
+
+    fn get_compressed_state_at(
+        &self,
+        contract_id: ContractId,
+        index: u64,
+    ) -> Result<Header, BlockchainError> {
+        if index >= self.get_contract_account(contract_id)?.height {
+            return Err(BlockchainError::CompressedStateNotFound);
+        }
+        let header_key: StringKey =
+            format!("contract_compressed_state_{}_{}", contract_id, index).into();
+        Ok(match self.database.get(header_key)? {
             Some(b) => b.try_into()?,
             None => {
                 return Err(BlockchainError::Inconsistency);
@@ -824,6 +844,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         for (cid, comp_state) in self.get_outdated_states()? {
             let contract = self.get_contract(cid)?;
+            let contract_account = self.get_contract_account(cid)?;
             let full_state = match &patch {
                 ZkBlockchainPatch::Full(states) => {
                     let full = states

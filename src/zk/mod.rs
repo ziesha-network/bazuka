@@ -102,6 +102,13 @@ impl ZkState {
             }
         }
     }
+    pub fn compress(&self, _model: ZkStateModel) -> ZkCompressedState {
+        let root = ZkScalar(ram::ZkRam::from_state(self).root());
+        ZkCompressedState {
+            state_hash: root,
+            state_size: self.size(),
+        }
+    }
     pub fn delta_of(&self, away: usize) -> Option<&ZkStateDelta> {
         self.patches.get(away - 1)
     }
@@ -139,16 +146,6 @@ impl ZkStateDelta {
             }
         }
         sz
-    }
-}
-
-impl ZkState {
-    pub fn compress(&self, _model: ZkStateModel) -> ZkCompressedState {
-        let root = ZkScalar(ram::ZkRam::from_state(self).root());
-        ZkCompressedState {
-            state_hash: root,
-            state_size: self.size(),
-        }
     }
 }
 
