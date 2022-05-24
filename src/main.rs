@@ -25,7 +25,7 @@ use {
     bazuka::blockchain::Blockchain,
     bazuka::blockchain::KvStoreChain,
     bazuka::core::Address,
-    bazuka::core::{Signature, Transaction, TransactionData},
+    bazuka::core::{Signature, Transaction, TransactionAndDelta, TransactionData},
     bazuka::db::RamKvStore,
     bazuka::wallet::Wallet,
 };
@@ -182,17 +182,20 @@ fn main() {
     chain
         .draft_block(
             0,
-            &vec![Transaction {
-                src: Address::Treasury,
-                data: TransactionData::RegularSend {
-                    dst: "0x215d9af3a1bfa2a87929b6e8265e95c61c36f91493f3dbd702215255f68742552"
-                        .parse()
-                        .unwrap(),
-                    amount: 123,
+            &[TransactionAndDelta {
+                tx: Transaction {
+                    src: Address::Treasury,
+                    data: TransactionData::RegularSend {
+                        dst: "0x215d9af3a1bfa2a87929b6e8265e95c61c36f91493f3dbd702215255f68742552"
+                            .parse()
+                            .unwrap(),
+                        amount: 123,
+                    },
+                    nonce: 1,
+                    fee: 0,
+                    sig: Signature::Unsigned,
                 },
-                nonce: 1,
-                fee: 0,
-                sig: Signature::Unsigned,
+                state_delta: None,
             }],
             &WALLET,
         )
@@ -205,5 +208,5 @@ fn main() {
     );
 
     let tx = WALLET.create_transaction(Address::Treasury, 123, 0, 1);
-    log::info!("Verify tx signature: {}", tx.verify_signature());
+    log::info!("Verify tx signature: {}", tx.tx.verify_signature());
 }
