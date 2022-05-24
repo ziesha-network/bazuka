@@ -158,8 +158,8 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(utils::median(
             &(0..std::cmp::min(index + 1, config::MEDIAN_TIMESTAMP_COUNT))
                 .map(|i| {
-                    self.get_block(index - i)
-                        .map(|b| b.header.proof_of_work.timestamp)
+                    self.get_header(index - i)
+                        .map(|b| b.proof_of_work.timestamp)
                 })
                 .collect::<Result<Vec<u32>, BlockchainError>>()?,
         ))
@@ -169,9 +169,7 @@ impl<K: KvStore> KvStoreChain<K> {
         let height = self.get_height()?;
         let last_block = self.get_header(height - 1)?;
         if height % config::DIFFICULTY_CALC_INTERVAL == 0 {
-            let prev_block = self
-                .get_block(height - config::DIFFICULTY_CALC_INTERVAL)?
-                .header;
+            let prev_block = self.get_header(height - config::DIFFICULTY_CALC_INTERVAL)?;
             Ok(utils::calc_pow_difficulty(
                 &last_block.proof_of_work,
                 &prev_block.proof_of_work,
@@ -577,10 +575,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         let mut last_header = self.get_header(from - 1)?;
         let mut last_pow = self
-            .get_block(
+            .get_header(
                 last_header.number - (last_header.number % config::DIFFICULTY_CALC_INTERVAL),
             )?
-            .header
             .proof_of_work;
 
         for h in headers.iter() {
@@ -695,7 +692,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             return Err(BlockchainError::StatesOutdated);
         }
 
-        let last_block = self.get_block(height - 1)?;
+        let last_header = self.get_header(height - 1)?;
         let treasury_nonce = self.get_account(Address::Treasury)?.nonce;
 
         let mut txs = vec![Transaction {
@@ -733,7 +730,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         let mut blk = Block {
             header: Header {
-                parent_hash: last_block.header.hash(),
+                parent_hash: last_header.hash(),
                 number: height as u64,
                 block_root: Default::default(),
                 proof_of_work: ProofOfWork {
