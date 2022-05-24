@@ -91,7 +91,7 @@ impl ZkState {
     pub fn as_delta(&self) -> ZkStateDelta {
         ZkStateDelta(self.state.clone())
     }
-    pub fn apply_patch(&mut self, patch: &ZkStateDelta) {
+    pub fn apply_delta(&mut self, patch: &ZkStateDelta) {
         self.patches.insert(0, patch.clone());
         self.patches.truncate(config::NUM_STATE_DELTAS_KEEP);
         for (k, v) in patch.0.iter() {

@@ -299,7 +299,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let state_model = zk::ZkStateModel::new(1, 3);
     let mut full_state = zk::ZkState::new([(100, zk::ZkScalar::from(200))].into_iter().collect());
     let state_delta = zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect());
-    full_state.apply_patch(&state_delta);
+    full_state.apply_delta(&state_delta);
 
     let tx = alice.create_contract_update(
         cid,
