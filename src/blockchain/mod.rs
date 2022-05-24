@@ -124,7 +124,7 @@ pub trait Blockchain {
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError>;
     fn generate_state_patch(
         &self,
-        from: u64,
+        away: u64,
         to: <Hasher as Hash>::Output,
     ) -> Result<ZkBlockchainPatch, BlockchainError>;
 }
@@ -486,6 +486,9 @@ impl<K: KvStore> KvStoreChain<K> {
             state_updates.into(),
         ));
 
+        // Invalidate state delta
+        changes.push(WriteOp::Remove("delta_1".into()));
+
         self.database.update(&changes)?;
         Ok(())
     }
@@ -763,19 +766,29 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError> {
+        let state_height = self.get_state_height()?;
+        let height = self.get_height()?;
+
         let mut ops = Vec::new();
 
         for (cid, comp_state) in self.get_outdated_states()? {
             let contract = self.get_contract(cid)?;
             let full_state = match &patch {
-                ZkBlockchainPatch::Full(states) => states
-                    .get(&cid)
-                    .ok_or(BlockchainError::FullStateNotFound)?
-                    .clone(),
+                ZkBlockchainPatch::Full(states) => {
+                    let full = states
+                        .get(&cid)
+                        .ok_or(BlockchainError::FullStateNotFound)?
+                        .clone();
+                    ops.push(WriteOp::Remove("delta_1".into()));
+                    full
+                }
                 ZkBlockchainPatch::Delta(deltas) => {
                     let mut state = self.get_state(cid)?;
                     let delta = deltas.get(&cid).ok_or(BlockchainError::FullStateNotFound)?;
                     state.apply_patch(delta);
+                    if state_height == height - 1 {
+                        ops.push(WriteOp::Put("delta_1".into(), patch.into()));
+                    }
                     state
                 }
             };
@@ -789,10 +802,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             }
         }
 
-        ops.push(WriteOp::Put(
-            "state_height".into(),
-            self.get_height()?.into(),
-        ));
+        ops.push(WriteOp::Put("state_height".into(), height.into()));
         self.database.update(&ops)?;
         Ok(())
     }
@@ -808,17 +818,28 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
     fn generate_state_patch(
         &self,
-        from: u64,
+        away: u64,
         to: <Hasher as Hash>::Output,
     ) -> Result<ZkBlockchainPatch, BlockchainError> {
+        let height = self.get_height()?;
         let state_height = self.get_state_height()?;
         let last_state_header = self.get_block(state_height - 1)?.header;
 
         if last_state_header.hash() != to {
             return Err(BlockchainError::StatesUnavailable);
         }
+
+        if state_height == height && away == 1 {
+            return Ok(match self.database.get("delta_1".into())? {
+                Some(b) => b.try_into()?,
+                None => {
+                    return Err(BlockchainError::Inconsistency);
+                }
+            });
+        }
+
         let mut changes = HashMap::new();
-        for i in from..state_height {
+        for i in (state_height - away)..state_height {
             let block_changes = self.get_changed_states(i)?;
             changes.extend(block_changes.into_iter());
         }

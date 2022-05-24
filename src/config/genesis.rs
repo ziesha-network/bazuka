@@ -30,7 +30,7 @@ pub fn get_genesis_block() -> BlockAndPatch {
     blk.header.block_root = blk.merkle_tree().root();
     BlockAndPatch {
         block: blk,
-        patch: ZkBlockchainPatch::Full(HashMap::new()),
+        patch: ZkBlockchainPatch::Delta(HashMap::new()),
     }
 }
 
@@ -51,6 +51,6 @@ pub fn get_test_genesis_block() -> BlockAndPatch {
     blk.header.block_root = blk.merkle_tree().root();
     BlockAndPatch {
         block: blk,
-        patch: ZkBlockchainPatch::Full(HashMap::new()),
+        patch: ZkBlockchainPatch::Delta(HashMap::new()),
     }
 }

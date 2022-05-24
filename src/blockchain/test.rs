@@ -36,8 +36,8 @@ fn easy_genesis() -> BlockAndPatch {
         1,
     );
     genesis_block.block.body.push(tx.tx.clone());
-    genesis_block.patch = ZkBlockchainPatch::Full(
-        [(ContractId::new(&tx.tx), full_state.clone())]
+    genesis_block.patch = ZkBlockchainPatch::Delta(
+        [(ContractId::new(&tx.tx), full_state.as_delta())]
             .into_iter()
             .collect(),
     );
@@ -354,10 +354,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         )),
         Err(BlockchainError::FullStateNotValid)
     ));
-
-    let mut unupdated_fork = chain.fork_on_ram();
-    let mut updated_fork = chain.fork_on_ram();
-    updated_fork.update_states(&ZkBlockchainPatch::Full(
+    chain.fork_on_ram().update_states(&ZkBlockchainPatch::Full(
         [(
             cid,
             zk::ZkState::new(
@@ -368,6 +365,17 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                 .into_iter()
                 .collect(),
             ),
+        )]
+        .into_iter()
+        .collect(),
+    ))?;
+
+    let mut unupdated_fork = chain.fork_on_ram();
+    let mut updated_fork = chain.fork_on_ram();
+    updated_fork.update_states(&ZkBlockchainPatch::Delta(
+        [(
+            cid,
+            zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect()),
         )]
         .into_iter()
         .collect(),
