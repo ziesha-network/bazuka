@@ -71,12 +71,20 @@ impl ZkStateModel {
 // Full state of a contract
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkState {
-    patches: Vec<ZkStateDelta>,
+    deltas: Vec<ZkStateBiDelta>,
     state: HashMap<u32, ZkScalar>,
 }
 
+// One-way delta
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkStateDelta(HashMap<u32, ZkScalar>);
+
+// One-way delta
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ZkStateBiDelta {
+    forth: ZkStateDelta,
+    back: ZkStateDelta,
+}
 
 impl ZkState {
     pub fn size(&self) -> u32 {
@@ -85,22 +93,34 @@ impl ZkState {
     pub fn new(data: HashMap<u32, ZkScalar>) -> Self {
         Self {
             state: data,
-            patches: Vec::new(),
+            deltas: Vec::new(),
         }
     }
     pub fn as_delta(&self) -> ZkStateDelta {
         ZkStateDelta(self.state.clone())
     }
     pub fn apply_delta(&mut self, patch: &ZkStateDelta) {
-        self.patches.insert(0, patch.clone());
-        self.patches.truncate(config::NUM_STATE_DELTAS_KEEP);
+        let mut rev_delta = ZkStateDelta(HashMap::new());
         for (k, v) in patch.0.iter() {
+            match self.state.get(k) {
+                Some(prev_v) => rev_delta.0.insert(*k, *prev_v),
+                None => rev_delta.0.insert(*k, ZkScalar(Fr::zero())),
+            };
+
             if v.0.is_zero().into() {
                 self.state.remove(k);
             } else {
                 self.state.insert(*k, *v);
             }
         }
+        self.deltas.insert(
+            0,
+            ZkStateBiDelta {
+                forth: patch.clone(),
+                back: rev_delta,
+            },
+        );
+        self.deltas.truncate(config::NUM_STATE_DELTAS_KEEP);
     }
     pub fn compress(&self, _model: ZkStateModel) -> ZkCompressedState {
         let root = ZkScalar(ram::ZkRam::from_state(self).root());
@@ -109,8 +129,17 @@ impl ZkState {
             state_size: self.size(),
         }
     }
+    pub fn compress_prev_states(&self, model: ZkStateModel) -> Vec<ZkCompressedState> {
+        let mut res = Vec::new();
+        let mut curr = self.clone();
+        for patch in self.deltas.iter() {
+            curr.apply_delta(&patch.back); // WARN: Deltas are being created
+            res.push(curr.compress(model));
+        }
+        res
+    }
     pub fn delta_of(&self, away: usize) -> Option<&ZkStateDelta> {
-        self.patches.get(away - 1)
+        self.deltas.get(away - 1).map(|v| &v.forth)
     }
 }
 

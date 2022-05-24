@@ -68,6 +68,8 @@ pub enum BlockchainError {
     BlockTooBig,
     #[error("compressed-state at specified height not found")]
     CompressedStateNotFound,
+    #[error("full-state has invalid deltas")]
+    DeltasInvalid,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -199,7 +201,7 @@ impl<K: KvStore> KvStoreChain<K> {
         &self,
         contract_id: ContractId,
         index: u64,
-    ) -> Result<Header, BlockchainError> {
+    ) -> Result<zk::ZkCompressedState, BlockchainError> {
         if index >= self.get_contract_account(contract_id)?.height {
             return Err(BlockchainError::CompressedStateNotFound);
         }
@@ -845,13 +847,27 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         for (cid, comp_state) in self.get_outdated_states()? {
             let contract = self.get_contract(cid)?;
-            let _contract_account = self.get_contract_account(cid)?;
+            let contract_account = self.get_contract_account(cid)?;
             let full_state = match &patch {
                 ZkBlockchainPatch::Full(states) => {
                     let full = states
                         .get(&cid)
                         .ok_or(BlockchainError::FullStateNotFound)?
                         .clone();
+                    for (i, prev_state) in full
+                        .compress_prev_states(contract.state_model)
+                        .into_iter()
+                        .enumerate()
+                    {
+                        if prev_state
+                            != self.get_compressed_state_at(
+                                cid,
+                                contract_account.height - 1 - i as u64,
+                            )?
+                        {
+                            return Err(BlockchainError::DeltasInvalid);
+                        }
+                    }
                     full
                 }
                 ZkBlockchainPatch::Delta(deltas) => {
