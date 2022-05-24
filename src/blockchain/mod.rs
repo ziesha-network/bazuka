@@ -268,6 +268,10 @@ impl<K: KvStore> KvStoreChain<K> {
                     }
                     .into(),
                 ));
+                ops.push(WriteOp::Put(
+                    format!("contract_compressed_state_{}_{}", contract_id, 0).into(),
+                    contract.initial_state.into(),
+                ));
                 side_effect = TxSideEffect::StateChange {
                     contract_id,
                     new_state: contract.initial_state,
@@ -300,6 +304,14 @@ impl<K: KvStore> KvStoreChain<K> {
                         balance: 0,
                     }
                     .into(),
+                ));
+                ops.push(WriteOp::Put(
+                    format!(
+                        "contract_compressed_state_{}_{}",
+                        contract_id, prev_account.height
+                    )
+                    .into(),
+                    (*next_state).into(),
                 ));
                 side_effect = TxSideEffect::StateChange {
                     contract_id: *contract_id,
@@ -338,6 +350,14 @@ impl<K: KvStore> KvStoreChain<K> {
                         balance: 0,
                     }
                     .into(),
+                ));
+                ops.push(WriteOp::Put(
+                    format!(
+                        "contract_compressed_state_{}_{}",
+                        contract_id, prev_account.height
+                    )
+                    .into(),
+                    (*next_state).into(),
                 ));
                 side_effect = TxSideEffect::StateChange {
                     contract_id: *contract_id,
