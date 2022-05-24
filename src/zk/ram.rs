@@ -1,7 +1,6 @@
 use super::ZkState;
 use crate::config::LOG_ZK_RAM_SIZE;
 use ff::Field;
-use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 use zeekit::mimc;
 use zeekit::Fr;
@@ -12,14 +11,6 @@ use zeekit::Fr;
 pub struct ZkRam {
     defaults: Vec<Fr>,
     layers: Vec<HashMap<u32, Fr>>,
-}
-
-// Represents delta of two ZkRam states
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Patch {
-    for_root: Fr,
-    new_root: Fr,
-    delta: HashMap<u32, Fr>,
 }
 
 #[derive(Debug, Clone)]
@@ -53,19 +44,6 @@ impl ZkRam {
             defaults,
             layers: vec![HashMap::new(); LOG_ZK_RAM_SIZE + 1],
         }
-    }
-    pub fn apply_patch(&mut self, patch: &Patch) {
-        if patch.for_root == self.root() {
-            let mut new_ram = self.clone();
-            for (k, v) in patch.delta.iter() {
-                new_ram.set(*k, *v);
-            }
-            if patch.new_root == new_ram.root() {
-                *self = new_ram;
-                return;
-            }
-        }
-        panic!("Invalid patch!");
     }
     pub fn root(&self) -> Fr {
         *self.layers[LOG_ZK_RAM_SIZE]
