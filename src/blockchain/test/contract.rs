@@ -41,7 +41,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
     let cid =
-        ContractId::from_str("797c7e8e2801d7f73798a7673393e2208c0fb055d5fad5cf3d921dd228031cee")
+        ContractId::from_str("bb166322700fe9b73ce42bc8a85a669163cdc0f3fd5077686d426a048d3a14ad")
             .unwrap();
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
@@ -148,7 +148,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     chain.update_states(&draft.patch)?;
 
     assert_eq!(chain.get_height()?, 2);
-    assert_eq!(updated_fork.get_outdated_states()?.len(), 0);
+    assert_eq!(chain.get_outdated_states()?.len(), 0);
 
     assert!(matches!(
         chain.apply_tx(
@@ -228,12 +228,12 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     chain.rollback_block()?;
 
     assert_eq!(chain.get_height()?, 1);
-    assert_eq!(updated_fork.get_outdated_states()?.len(), 0);
+    assert_eq!(chain.get_outdated_states()?.len(), 0);
 
     chain.rollback_block()?;
 
     assert_eq!(chain.get_height()?, 0);
-    assert_eq!(updated_fork.get_outdated_states()?.len(), 0);
+    assert_eq!(chain.get_outdated_states()?.len(), 0);
 
     Ok(())
 }
