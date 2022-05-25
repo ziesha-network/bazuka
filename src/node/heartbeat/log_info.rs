@@ -11,8 +11,8 @@ pub async fn log_info<B: Blockchain>(
             ctx.blockchain.get_height()?.to_string(),
         ),
         (
-            "State Height".to_string(),
-            ctx.blockchain.get_state_height()?.to_string(),
+            "Outdated states".to_string(),
+            ctx.blockchain.get_outdated_states()?.len().to_string(),
         ),
         ("Timestamp".to_string(), ctx.network_timestamp().to_string()),
         (

@@ -1,5 +1,7 @@
 use crate::blockchain::ZkBlockchainPatch;
-use crate::core::{Address, Block, Header, Money, TransactionAndDelta};
+use crate::core::{Address, Block, ContractId, Header, Money, TransactionAndDelta};
+use crate::zk;
+use std::collections::HashMap;
 
 use super::{Peer, PeerAddress, PeerInfo};
 use serde_derive::{Deserialize, Serialize};
@@ -10,7 +12,6 @@ pub struct GetStatsRequest {}
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetStatsResponse {
     pub height: u64,
-    pub state_height: u64,
     pub power: u128,
     pub next_reward: Money,
     pub timestamp: u32,
@@ -86,7 +87,7 @@ pub struct GetBlocksResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetStatesRequest {
-    pub from: u64,
+    pub outdated_states: HashMap<ContractId, zk::ZkCompressedState>,
     pub to: String,
 }
 

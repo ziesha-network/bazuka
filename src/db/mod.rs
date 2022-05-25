@@ -82,6 +82,7 @@ gen_try_into!(
     MerkleTree<Hasher>,
     ZkContract,
     ZkCompressedState,
+    HashMap<ContractId, ZkCompressedState>,
     HashMap<ContractId, ZkCompressedStateChange>,
     ZkState,
     ZkBlockchainPatch
@@ -99,6 +100,7 @@ gen_from!(
     MerkleTree<Hasher>,
     ZkContract,
     ZkCompressedState,
+    HashMap<ContractId, ZkCompressedState>,
     HashMap<ContractId, ZkCompressedStateChange>,
     &ZkState,
     &ZkBlockchainPatch

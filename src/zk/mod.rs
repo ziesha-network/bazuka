@@ -79,6 +79,7 @@ impl ZkStateModel {
 // Full state of a contract
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkState {
+    height: u64,
     deltas: Vec<ZkStateBiDelta>,
     state: HashMap<u32, ZkScalar>,
 }
@@ -95,11 +96,15 @@ pub struct ZkStateBiDelta {
 }
 
 impl ZkState {
+    pub fn height(&self) -> u64 {
+        self.height
+    }
     pub fn size(&self) -> u32 {
         self.state.len() as u32
     }
     pub fn new(data: HashMap<u32, ZkScalar>) -> Self {
         Self {
+            height: 1,
             state: data,
             deltas: Vec::new(),
         }
@@ -137,6 +142,7 @@ impl ZkState {
     pub fn compress(&self, _model: ZkStateModel) -> ZkCompressedState {
         let root = ZkScalar(ram::ZkRam::from_state(self).root());
         ZkCompressedState {
+            height: self.height,
             state_hash: root,
             state_size: self.size(),
         }
@@ -177,11 +183,15 @@ impl ZkState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkCompressedState {
+    height: u64,
     state_hash: ZkScalar,
     state_size: u32,
 }
 
 impl ZkCompressedState {
+    pub fn height(&self) -> u64 {
+        self.height
+    }
     pub fn size(&self) -> u32 {
         self.state_size
     }

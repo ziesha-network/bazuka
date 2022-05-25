@@ -13,6 +13,8 @@ pub async fn get_states<B: Blockchain>(
     let to =
         <Hasher as Hash>::Output::try_from(hex::decode(req.to).map_err(|_| NodeError::InputError)?)
             .map_err(|_| NodeError::InputError)?;
-    let patch = context.blockchain.generate_state_patch(req.from, to)?;
+    let patch = context
+        .blockchain
+        .generate_state_patch(req.outdated_states, to)?;
     Ok(GetStatesResponse { patch })
 }
