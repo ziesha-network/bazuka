@@ -215,5 +215,15 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         Err(BlockchainError::IncorrectZkProof)
     ));
 
+    chain.rollback_block()?;
+
+    assert_eq!(chain.get_height()?, 1);
+    assert_eq!(chain.get_state_height()?, 1);
+
+    chain.rollback_block()?;
+
+    assert_eq!(chain.get_height()?, 0);
+    assert_eq!(chain.get_state_height()?, 0);
+
     Ok(())
 }

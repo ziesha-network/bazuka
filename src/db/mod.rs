@@ -1,4 +1,4 @@
-use crate::blockchain::ZkBlockchainPatch;
+use crate::blockchain::{ZkBlockchainPatch, ZkCompressedStateChange};
 use crate::core::{hash::Hash, Account, Block, ContractAccount, ContractId, Hasher, Header};
 use crate::crypto::merkle::MerkleTree;
 use crate::zk::{ZkCompressedState, ZkContract, ZkState};
@@ -82,7 +82,7 @@ gen_try_into!(
     MerkleTree<Hasher>,
     ZkContract,
     ZkCompressedState,
-    HashMap<ContractId, ZkCompressedState>,
+    HashMap<ContractId, ZkCompressedStateChange>,
     ZkState,
     ZkBlockchainPatch
 );
@@ -99,7 +99,7 @@ gen_from!(
     MerkleTree<Hasher>,
     ZkContract,
     ZkCompressedState,
-    HashMap<ContractId, ZkCompressedState>,
+    HashMap<ContractId, ZkCompressedStateChange>,
     &ZkState,
     &ZkBlockchainPatch
 );

@@ -70,12 +70,20 @@ pub enum BlockchainError {
     CompressedStateNotFound,
     #[error("full-state has invalid deltas")]
     DeltasInvalid,
+    #[error("zk error happened")]
+    ZkError(#[from] zk::ZkError),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ZkBlockchainPatch {
     Full(HashMap<ContractId, zk::ZkState>),
     Delta(HashMap<ContractId, zk::ZkStateDelta>),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ZkCompressedStateChange {
+    prev_state: zk::ZkCompressedState,
+    state: zk::ZkCompressedState,
 }
 
 #[derive(Clone)]
@@ -87,8 +95,7 @@ pub struct BlockAndPatch {
 pub enum TxSideEffect {
     StateChange {
         contract_id: ContractId,
-        new_state: zk::ZkCompressedState,
-        size_delta: isize,
+        state_change: ZkCompressedStateChange,
     },
     Nothing,
 }
@@ -301,8 +308,10 @@ impl<K: KvStore> KvStoreChain<K> {
                 ));
                 side_effect = TxSideEffect::StateChange {
                     contract_id,
-                    new_state: contract.initial_state,
-                    size_delta: contract.initial_state.size() as isize,
+                    state_change: ZkCompressedStateChange {
+                        prev_state: zk::ZkState::default().compress(contract.state_model),
+                        state: contract.initial_state,
+                    },
                 };
             }
             TransactionData::DepositWithdraw {
@@ -313,7 +322,7 @@ impl<K: KvStore> KvStoreChain<K> {
             } => {
                 let contract = self.get_contract(*contract_id)?;
                 let prev_account = self.get_contract_account(*contract_id)?;
-                let aux_data = zk::ZkCompressedState::empty();
+                let aux_data = zk::ZkCompressedState::default();
                 if !zk::check_proof(
                     &contract.deposit_withdraw,
                     &prev_account.compressed_state,
@@ -343,9 +352,10 @@ impl<K: KvStore> KvStoreChain<K> {
                 ));
                 side_effect = TxSideEffect::StateChange {
                     contract_id: *contract_id,
-                    new_state: *next_state,
-                    size_delta: next_state.size() as isize
-                        - prev_account.compressed_state.size() as isize,
+                    state_change: ZkCompressedStateChange {
+                        prev_state: prev_account.compressed_state,
+                        state: *next_state,
+                    },
                 };
             }
             TransactionData::Update {
@@ -356,7 +366,7 @@ impl<K: KvStore> KvStoreChain<K> {
             } => {
                 let contract = self.get_contract(*contract_id)?;
                 let prev_account = self.get_contract_account(*contract_id)?;
-                let aux_data = zk::ZkCompressedState::empty();
+                let aux_data = zk::ZkCompressedState::default();
                 let vk = contract
                     .update
                     .get(*function_id as usize)
@@ -390,9 +400,10 @@ impl<K: KvStore> KvStoreChain<K> {
                 ));
                 side_effect = TxSideEffect::StateChange {
                     contract_id: *contract_id,
-                    new_state: *next_state,
-                    size_delta: next_state.size() as isize
-                        - prev_account.compressed_state.size() as isize,
+                    state_change: ZkCompressedStateChange {
+                        prev_state: prev_account.compressed_state,
+                        state: *next_state,
+                    },
                 };
             }
         }
@@ -409,7 +420,7 @@ impl<K: KvStore> KvStoreChain<K> {
     fn get_changed_states(
         &self,
         index: u64,
-    ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError> {
+    ) -> Result<HashMap<ContractId, ZkCompressedStateChange>, BlockchainError> {
         let k = format!("contract_updates_{:010}", index).into();
         Ok(self
             .database
@@ -420,7 +431,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn get_outdated_states(
         &self,
-    ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError> {
+    ) -> Result<HashMap<ContractId, ZkCompressedStateChange>, BlockchainError> {
         let height = self.get_height()?;
         let state_height = self.get_state_height()?;
         let mut changes = HashMap::new();
@@ -429,6 +440,30 @@ impl<K: KvStore> KvStoreChain<K> {
             changes.extend(block_changes.into_iter());
         }
         Ok(changes)
+    }
+
+    pub fn rollback_states(&mut self) -> Result<(), BlockchainError> {
+        let mut rollback: Vec<WriteOp> = Vec::new();
+        let state_height = self.get_state_height()?;
+        let changed_states = self.get_changed_states(state_height - 1)?;
+        for (cid, comp) in changed_states {
+            let contract = self.get_contract(cid)?;
+            let mut state = self.get_state(cid)?;
+            state.rollback()?;
+            if state.compress(contract.state_model) != comp.prev_state {
+                return Err(BlockchainError::Inconsistency);
+            }
+            rollback.push(WriteOp::Put(
+                format!("contract_state_{}", cid).into(),
+                (&state).into(),
+            ));
+        }
+        rollback.push(WriteOp::Put(
+            "state_height".into(),
+            (state_height - 1).into(),
+        ));
+        self.database.update(&rollback)?;
+        Ok(())
     }
 
     pub fn rollback_block(&mut self) -> Result<(), BlockchainError> {
@@ -440,6 +475,15 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::Inconsistency);
             }
         };
+
+        // State-chain should not be more updated than block-chain.
+        let state_height = self.get_state_height()?;
+        if state_height == height {
+            let mut fork = self.fork_on_ram();
+            fork.rollback_states()?;
+            rollback.extend(fork.database.to_ops());
+        }
+
         rollback.push(WriteOp::Remove(format!("header_{:010}", height - 1).into()));
         rollback.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
         rollback.push(WriteOp::Remove(format!("merkle_{:010}", height - 1).into()));
@@ -519,18 +563,18 @@ impl<K: KvStore> KvStoreChain<K> {
 
         let mut body_size = 0usize;
         let mut state_size_delta = 0isize;
-        let mut state_updates: HashMap<ContractId, zk::ZkCompressedState> = HashMap::new();
+        let mut state_updates: HashMap<ContractId, ZkCompressedStateChange> = HashMap::new();
         for tx in txs.iter() {
             body_size += tx.size();
             // All genesis block txs are allowed to get from Treasury
             if let TxSideEffect::StateChange {
                 contract_id,
-                new_state,
-                size_delta,
+                state_change,
             } = fork.apply_tx(tx, is_genesis)?
             {
-                state_size_delta += size_delta;
-                state_updates.insert(contract_id, new_state);
+                state_size_delta +=
+                    state_change.state.size() as isize - state_change.prev_state.size() as isize;
+                state_updates.insert(contract_id, state_change);
             }
         }
 
@@ -876,11 +920,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 ZkBlockchainPatch::Delta(deltas) => {
                     let mut state = self.get_state(cid)?;
                     let delta = deltas.get(&cid).ok_or(BlockchainError::FullStateNotFound)?;
-                    state.apply_delta(delta);
+                    state.push_delta(delta);
                     state
                 }
             };
-            if full_state.compress(contract.state_model) == comp_state {
+            if full_state.compress(contract.state_model) == comp_state.state {
                 ops.push(WriteOp::Put(
                     format!("contract_state_{}", cid).into(),
                     (&full_state).into(),
