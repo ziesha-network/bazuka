@@ -147,6 +147,9 @@ impl ZkState {
         res
     }
     pub fn delta_of(&self, away: usize) -> Result<ZkStateDelta, ZkError> {
+        if away == 0 {
+            return Ok(ZkStateDelta::default());
+        }
         let mut acc = self
             .deltas
             .get(0)
