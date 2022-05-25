@@ -152,12 +152,12 @@ impl ZkState {
         }
         let mut acc = self
             .deltas
-            .get(0)
+            .get(away - 1)
             .ok_or(ZkError::DeltaNotFound)?
             .forth
             .clone();
-        for i in 1..away {
-            acc.combine(&self.deltas.get(i).ok_or(ZkError::DeltaNotFound)?.forth);
+        for i in away - 1..0 {
+            acc.combine(&self.deltas.get(i - 1).ok_or(ZkError::DeltaNotFound)?.forth);
         }
         Ok(acc)
     }
