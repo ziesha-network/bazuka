@@ -6,6 +6,14 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use zeekit::Fr;
 
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ZkError {
+    #[error("delta not found")]
+    DeltaNotFound,
+}
+
 pub fn check_proof(
     vk: &ZkVerifierKey,
     prev_state: &ZkCompressedState,
@@ -138,8 +146,17 @@ impl ZkState {
         }
         res
     }
-    pub fn delta_of(&self, away: usize) -> Option<&ZkStateDelta> {
-        self.deltas.get(away - 1).map(|v| &v.forth)
+    pub fn delta_of(&self, away: usize) -> Result<ZkStateDelta, ZkError> {
+        let mut acc = self
+            .deltas
+            .get(0)
+            .ok_or(ZkError::DeltaNotFound)?
+            .forth
+            .clone();
+        for i in 1..away {
+            acc.combine(&self.deltas.get(i).ok_or(ZkError::DeltaNotFound)?.forth);
+        }
+        Ok(acc)
     }
 }
 
@@ -164,6 +181,15 @@ impl ZkCompressedState {
 impl ZkStateDelta {
     pub fn new(data: HashMap<u32, ZkScalar>) -> Self {
         Self(data)
+    }
+    pub fn combine(&mut self, other: &Self) {
+        for (k, v) in other.0.iter() {
+            if v.0.is_zero().into() {
+                self.0.remove(k);
+            } else {
+                self.0.insert(*k, *v);
+            }
+        }
     }
     pub fn size(&self) -> isize {
         let mut sz = 0isize;

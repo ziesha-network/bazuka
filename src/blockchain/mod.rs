@@ -930,7 +930,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             full_states.insert(cid, self.get_state(cid)?);
         }
 
-        let delta_states: Option<HashMap<ContractId, zk::ZkStateDelta>> = full_states
+        let delta_states: Result<HashMap<ContractId, zk::ZkStateDelta>, zk::ZkError> = full_states
             .iter()
             .map(|(cid, state)| {
                 state
@@ -939,7 +939,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             })
             .collect();
 
-        if let Some(delta_states) = delta_states {
+        if let Ok(delta_states) = delta_states {
             Ok(ZkBlockchainPatch::Delta(delta_states))
         } else {
             Ok(ZkBlockchainPatch::Full(full_states))
