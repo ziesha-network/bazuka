@@ -447,22 +447,26 @@ impl<K: KvStore> KvStoreChain<K> {
             }
         };
 
+        let mut outdated = self.get_outdated_states()?;
         let changed_states = self.get_changed_states(height - 1)?;
         for (cid, comp) in changed_states {
-            let contract = self.get_contract(cid)?;
-            let mut state = self.get_state(cid)?;
-            if state.rollback().is_ok() {
-                if state.compress(contract.state_model) != comp.prev_state {
-                    return Err(BlockchainError::Inconsistency);
+            if !outdated.contains_key(&cid) {
+                let contract = self.get_contract(cid)?;
+                let mut state = self.get_state(cid)?;
+                if state.rollback().is_ok() {
+                    if state.compress(contract.state_model) != comp.prev_state {
+                        return Err(BlockchainError::Inconsistency);
+                    }
+                    rollback.push(WriteOp::Put(
+                        format!("contract_state_{}", cid).into(),
+                        (&state).into(),
+                    ));
+                } else if comp.prev_state.height() > 0 {
+                    outdated.insert(cid, comp.prev_state);
                 }
-                rollback.push(WriteOp::Put(
-                    format!("contract_state_{}", cid).into(),
-                    (&state).into(),
-                ));
-            } else {
-                unimplemented!();
             }
         }
+        rollback.push(WriteOp::Put("outdated".into(), outdated.clone().into()));
 
         rollback.push(WriteOp::Remove(format!("header_{:010}", height - 1).into()));
         rollback.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
@@ -598,6 +602,17 @@ impl<K: KvStore> KvStoreChain<K> {
 
         self.database.update(&changes)?;
         Ok(())
+    }
+    pub fn get_outdated_states_request(
+        &self,
+    ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError> {
+        let outdated = self.get_outdated_states()?;
+        let mut ret = HashMap::new();
+        for (cid, _) in outdated {
+            let contract = self.get_contract(cid)?;
+            ret.insert(cid, self.get_state(cid)?.compress(contract.state_model));
+        }
+        Ok(ret)
     }
 }
 

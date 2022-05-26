@@ -160,7 +160,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     assert_eq!(updated_fork.get_outdated_states()?.len(), 0);
     let updated_tip_hash = updated_fork.get_tip()?.hash();
 
-    let outdated_states = unupdated_fork.get_outdated_states()?;
+    let outdated_states = unupdated_fork.get_outdated_states_request()?;
     assert_eq!(outdated_states.len(), 1);
 
     let gen_state_patch = updated_fork.generate_state_patch(outdated_states, updated_tip_hash)?;
@@ -255,6 +255,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     chain.rollback_block()?;
 
     assert_eq!(chain.get_height()?, 0);
+
+    println!("{:?}", chain.get_outdated_states()?);
     assert_eq!(chain.get_outdated_states()?.len(), 0);
 
     Ok(())
