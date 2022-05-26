@@ -605,11 +605,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_outdated_states(
         &self,
     ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError> {
-        Ok(self
-            .database
-            .get("outdated".into())?
-            .map(|b| b.try_into())
-            .ok_or(BlockchainError::Inconsistency)??)
+        Ok(match self.database.get("outdated".into())? {
+            Some(b) => b.try_into()?,
+            None => HashMap::new(),
+        })
     }
     fn get_tip(&self) -> Result<Header, BlockchainError> {
         self.get_header(self.get_height()? - 1)

@@ -46,7 +46,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
     let state_model = zk::ZkStateModel::new(1, 3);
-    let mut full_state = zk::ZkState::new([(100, zk::ZkScalar::from(200))].into_iter().collect());
+    let mut full_state =
+        zk::ZkState::new(1, [(100, zk::ZkScalar::from(200))].into_iter().collect());
     let state_delta = zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect());
     full_state.apply_delta(&state_delta);
 
@@ -99,7 +100,27 @@ fn test_contract_update() -> Result<(), BlockchainError> {
             patches: [(
                 cid,
                 ZkStatePatch::Full(zk::ZkState::new(
+                    2,
                     [(100, zk::ZkScalar::from(200))].into_iter().collect()
+                ))
+            )]
+            .into_iter()
+            .collect()
+        }),
+        Err(BlockchainError::FullStateNotValid)
+    ));
+    assert!(matches!(
+        chain.fork_on_ram().update_states(&ZkBlockchainPatch {
+            patches: [(
+                cid,
+                ZkStatePatch::Full(zk::ZkState::new(
+                    1,
+                    [
+                        (100, zk::ZkScalar::from(200)),
+                        (123, zk::ZkScalar::from(234))
+                    ]
+                    .into_iter()
+                    .collect()
                 ))
             )]
             .into_iter()
@@ -111,6 +132,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         patches: [(
             cid,
             ZkStatePatch::Full(zk::ZkState::new(
+                2,
                 [
                     (100, zk::ZkScalar::from(200)),
                     (123, zk::ZkScalar::from(234)),
@@ -137,13 +159,13 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     })?;
     assert_eq!(updated_fork.get_outdated_states()?.len(), 0);
     let updated_tip_hash = updated_fork.get_tip()?.hash();
-    assert_eq!(updated_fork.get_outdated_states()?.len(), 1);
 
     let outdated_states = unupdated_fork.get_outdated_states()?;
+    assert_eq!(outdated_states.len(), 1);
 
-    unupdated_fork
-        .update_states(&updated_fork.generate_state_patch(outdated_states, updated_tip_hash)?)?;
-    assert_eq!(updated_fork.get_outdated_states()?.len(), 0);
+    let gen_state_patch = updated_fork.generate_state_patch(outdated_states, updated_tip_hash)?;
+    unupdated_fork.update_states(&gen_state_patch)?;
+    assert_eq!(unupdated_fork.get_outdated_states()?.len(), 0);
 
     chain.update_states(&draft.patch)?;
 
