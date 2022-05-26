@@ -8,7 +8,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
     let state_model = zk::ZkStateModel::new(1, 3);
-    let full_state = zk::ZkState::default();
+    let full_state = zk::ZkState::new(1, HashMap::new());
 
     let tx = alice.create_contract(
         zk::ZkContract {
