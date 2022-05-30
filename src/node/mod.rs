@@ -11,8 +11,6 @@ pub mod upnp;
 use context::{NodeContext, TransactionStats};
 pub use errors::NodeError;
 
-use context::Miner;
-
 use crate::blockchain::Blockchain;
 use crate::utils;
 use crate::wallet::Wallet;
@@ -91,17 +89,6 @@ async fn node_service<B: Blockchain>(
         (Method::POST, "/miner/solution") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
                 &api::post_miner_solution(
-                    Arc::clone(&context),
-                    serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
-                )
-                .await?,
-            )?);
-        }
-
-        // Register the miner software as a webhook.
-        (Method::POST, "/miner") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::post_miner(
                     Arc::clone(&context),
                     serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
                 )
@@ -341,7 +328,7 @@ pub async fn node_create<B: Blockchain>(
             .collect(),
         timestamp_offset,
 
-        miner: None,
+        miner_puzzle: None,
     }));
 
     let server_future = async {

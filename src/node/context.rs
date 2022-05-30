@@ -17,11 +17,6 @@ pub struct TransactionStats {
 
 pub type BlockPuzzle = (BlockAndPatch, Puzzle);
 
-pub struct Miner {
-    pub block_puzzle: Option<BlockPuzzle>,
-    pub webhook: Option<String>,
-}
-
 pub struct NodeContext<B: Blockchain> {
     pub address: PeerAddress,
     pub shutdown: bool,
@@ -32,7 +27,7 @@ pub struct NodeContext<B: Blockchain> {
     pub peers: HashMap<PeerAddress, Peer>,
     pub timestamp_offset: i32,
 
-    pub miner: Option<Miner>,
+    pub miner_puzzle: Option<BlockPuzzle>,
 }
 
 impl<B: Blockchain> NodeContext<B> {

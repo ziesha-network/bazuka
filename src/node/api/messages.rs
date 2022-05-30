@@ -38,14 +38,6 @@ pub struct Puzzle {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct RegisterMinerRequest {
-    pub webhook: Option<String>,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct RegisterMinerResponse {}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostPeerRequest {
     pub address: PeerAddress,
     pub info: PeerInfo,

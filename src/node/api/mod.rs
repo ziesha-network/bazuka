@@ -21,16 +21,7 @@ pub use transact::*;
 mod shutdown;
 pub use shutdown::*;
 
-use super::Miner;
-
-mod post_miner;
-
-pub use post_miner::*;
-
 mod get_miner_puzzle;
-
 pub use get_miner_puzzle::*;
-
 mod post_miner_solution;
-
 pub use post_miner_solution::*;

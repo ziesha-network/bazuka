@@ -137,7 +137,6 @@ async fn test_blocks_get_synced() {
         ],
     );
     let test_logic = async {
-        chans[0].set_miner(None).await.unwrap();
         chans[0].mine().await.unwrap();
         assert_eq!(chans[0].stats().await.unwrap().height, 2);
         chans[0].mine().await.unwrap();
@@ -145,7 +144,6 @@ async fn test_blocks_get_synced() {
         chans[0].mine().await.unwrap();
         assert_eq!(chans[0].stats().await.unwrap().height, 4);
 
-        chans[1].set_miner(None).await.unwrap();
         chans[1].mine().await.unwrap();
         assert_eq!(chans[1].stats().await.unwrap().height, 2);
         chans[1].mine().await.unwrap();

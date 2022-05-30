@@ -13,10 +13,7 @@ pub async fn post_miner_solution<B: Blockchain>(
     let mut nonce_bytes = [0u8; 8];
     nonce_bytes.copy_from_slice(&hex::decode(req.nonce).unwrap());
     let (mut draft, _) = context
-        .miner
-        .as_ref()
-        .ok_or(NodeError::NoMinerError)?
-        .block_puzzle
+        .miner_puzzle
         .as_ref()
         .ok_or(NodeError::NoCurrentlyMiningBlockError)?
         .clone();
@@ -26,7 +23,7 @@ pub async fn post_miner_solution<B: Blockchain>(
         .extend(draft.block.header.number, &[draft.block])
         .is_ok()
     {
-        context.miner.as_mut().unwrap().block_puzzle = None;
+        context.miner_puzzle = None;
     }
     Ok(PostMinerSolutionResponse {})
 }

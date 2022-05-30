@@ -1,6 +1,5 @@
 mod log_info;
 
-mod send_mining_puzzle;
 mod sync_blocks;
 mod sync_clock;
 mod sync_peers;
@@ -26,8 +25,6 @@ pub async fn heartbeat<B: Blockchain>(
     sync_peers::sync_peers(&context).await?;
     sync_blocks::sync_blocks(&context).await?;
     sync_state::sync_state(&context).await?;
-
-    send_mining_puzzle::send_mining_puzzle(&context).await?;
     Ok(())
 }
 

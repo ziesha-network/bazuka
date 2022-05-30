@@ -164,17 +164,6 @@ impl SenderWrapper {
             .await
     }
 
-    pub async fn set_miner(
-        &self,
-        webhook: Option<String>,
-    ) -> Result<RegisterMinerResponse, NodeError> {
-        self.json_post::<RegisterMinerRequest, RegisterMinerResponse>(
-            "miner",
-            RegisterMinerRequest { webhook },
-        )
-        .await
-    }
-
     pub async fn mine(&self) -> Result<PostMinerSolutionResponse, NodeError> {
         let puzzle = self
             .json_get::<GetMinerPuzzleRequest, Puzzle>("miner/puzzle", GetMinerPuzzleRequest {})
