@@ -140,8 +140,8 @@ impl ZkState {
         }
         self.height += 1;
     }
-    pub fn compress(&self, _model: ZkStateModel) -> ZkCompressedState {
-        let root = ZkScalar(ram::ZkRam::from_state(self).root());
+    pub fn compress(&self, model: ZkStateModel) -> ZkCompressedState {
+        let root = ZkScalar(ram::ZkRam::from_state(self, model).root());
         ZkCompressedState {
             height: self.height,
             state_hash: root,

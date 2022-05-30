@@ -29,8 +29,5 @@ pub const POW_KEY_CHANGE_INTERVAL: u64 = 2048; // Blocks
 // timestamp of 10 previous blocks
 pub const MEDIAN_TIMESTAMP_COUNT: u64 = 10;
 
-// Our Zero-Knowledge RAM will have 2^32 memory cells
-pub const LOG_ZK_RAM_SIZE: usize = 32;
-
 // Number of ZkStateDeltas we want to keep in our ZkStates
 pub const NUM_STATE_DELTAS_KEEP: usize = 5;

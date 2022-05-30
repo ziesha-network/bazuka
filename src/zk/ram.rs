@@ -1,5 +1,4 @@
-use super::ZkState;
-use crate::config::LOG_ZK_RAM_SIZE;
+use super::{ZkState, ZkStateModel};
 use ff::Field;
 use std::collections::HashMap;
 use zeekit::mimc;
@@ -9,46 +8,36 @@ use zeekit::Fr;
 // based on a Sparse Merkle Tree.
 #[derive(Debug, Clone)]
 pub struct ZkRam {
+    state_model: ZkStateModel,
     defaults: Vec<Fr>,
     layers: Vec<HashMap<u32, Fr>>,
 }
 
-#[derive(Debug, Clone)]
-pub struct Proof(pub [Fr; LOG_ZK_RAM_SIZE]);
-impl Default for Proof {
-    fn default() -> Self {
-        Self([Fr::zero(); LOG_ZK_RAM_SIZE])
-    }
-}
-
-impl Default for ZkRam {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+#[derive(Debug, Clone, Default)]
+pub struct Proof(Vec<Fr>);
 
 impl ZkRam {
-    pub fn from_state(state: &ZkState) -> Self {
-        let mut r = Self::new();
+    pub fn from_state(state: &ZkState, state_model: ZkStateModel) -> Self {
+        let mut r = Self::new(state_model);
         for (k, v) in state.state.iter() {
             r.set(*k, v.0);
         }
         r
     }
-    pub fn new() -> Self {
+    pub fn new(state_model: ZkStateModel) -> Self {
         let mut defaults = vec![Fr::zero()];
-        for i in 0..LOG_ZK_RAM_SIZE {
+        for i in 0..state_model.tree_depth as usize {
             defaults.push(mimc::mimc(&[defaults[i], defaults[i]]));
         }
         Self {
+            state_model,
             defaults,
-            layers: vec![HashMap::new(); LOG_ZK_RAM_SIZE + 1],
+            layers: vec![HashMap::new(); state_model.tree_depth as usize + 1],
         }
     }
     pub fn root(&self) -> Fr {
-        *self.layers[LOG_ZK_RAM_SIZE]
-            .get(&0)
-            .unwrap_or(&self.defaults[LOG_ZK_RAM_SIZE])
+        let depth = self.state_model.tree_depth as usize;
+        *self.layers[depth].get(&0).unwrap_or(&self.defaults[depth])
     }
     fn get(&self, level: usize, index: u32) -> Fr {
         self.layers[level]
@@ -57,10 +46,10 @@ impl ZkRam {
             .unwrap_or(self.defaults[level])
     }
     pub fn prove(&self, mut index: u32) -> Proof {
-        let mut proof = [Fr::zero(); LOG_ZK_RAM_SIZE];
-        for (level, value) in proof.iter_mut().enumerate() {
+        let mut proof = Vec::new();
+        for level in 0..self.state_model.tree_depth as usize {
             let neigh = if index & 1 == 0 { index + 1 } else { index - 1 };
-            *value = self.get(level, neigh as u32);
+            proof.push(self.get(level, neigh as u32));
             index >>= 1;
         }
         Proof(proof)
@@ -77,7 +66,7 @@ impl ZkRam {
         value == root
     }
     pub fn set(&mut self, mut index: u32, mut value: Fr) {
-        for level in 0..(LOG_ZK_RAM_SIZE + 1) {
+        for level in 0..(self.state_model.tree_depth as usize + 1) {
             self.layers[level].insert(index, value);
             let neigh = if index & 1 == 0 { index + 1 } else { index - 1 };
             let neigh_val = self.get(level, neigh);

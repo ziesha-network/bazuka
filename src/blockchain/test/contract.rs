@@ -7,7 +7,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
-    let state_model = zk::ZkStateModel::new(1, 3);
+    let state_model = zk::ZkStateModel::new(1, 10);
     let full_state = zk::ZkState::new(1, HashMap::new());
 
     let tx = alice.create_contract(
@@ -41,11 +41,11 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
     let cid =
-        ContractId::from_str("bb166322700fe9b73ce42bc8a85a669163cdc0f3fd5077686d426a048d3a14ad")
+        ContractId::from_str("ac8172140e8ad67651c0be0b14210489d59c51890ef7db60541b3f050247b338")
             .unwrap();
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
-    let state_model = zk::ZkStateModel::new(1, 3);
+    let state_model = zk::ZkStateModel::new(1, 10);
     let mut full_state =
         zk::ZkState::new(1, [(100, zk::ZkScalar::from(200))].into_iter().collect());
     let state_delta = zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect());
@@ -255,8 +255,6 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     chain.rollback_block()?;
 
     assert_eq!(chain.get_height()?, 0);
-
-    println!("{:?}", chain.get_outdated_states()?);
     assert_eq!(chain.get_outdated_states()?.len(), 0);
 
     Ok(())

@@ -22,7 +22,7 @@ fn easy_genesis() -> BlockAndPatch {
         sig: Signature::Unsigned,
     }];
 
-    let state_model = zk::ZkStateModel::new(1, 3);
+    let state_model = zk::ZkStateModel::new(1, 10);
     let full_state = zk::ZkState::new(1, [(100, zk::ZkScalar::from(200))].into_iter().collect());
     let tx = mpn_creator.create_contract(
         zk::ZkContract {
