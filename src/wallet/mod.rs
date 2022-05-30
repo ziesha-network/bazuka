@@ -74,7 +74,7 @@ impl Wallet {
         let (_, sk) = EdDSA::generate_keys(&self.seed);
         let mut tx = Transaction {
             src: self.get_address(),
-            data: TransactionData::Update {
+            data: TransactionData::FunctionCall {
                 contract_id,
                 function_id,
                 next_state,

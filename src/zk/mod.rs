@@ -245,8 +245,8 @@ pub enum ZkVerifierKey {
 pub struct ZkContract {
     pub initial_state: ZkCompressedState, // 32byte
     pub state_model: ZkStateModel,
-    pub deposit_withdraw: ZkVerifierKey, // VK f(prev_state, io_txs (L1)) -> next_state
-    pub update: Vec<ZkVerifierKey>,      // Vec<VK> f(prev_state) -> next_state
+    pub deposit_withdraw_function: ZkVerifierKey, // VK f(prev_state, io_txs (L1)) -> next_state
+    pub functions: Vec<ZkVerifierKey>,            // Vec<VK> f(prev_state) -> next_state
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

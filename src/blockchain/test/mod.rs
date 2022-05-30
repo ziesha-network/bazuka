@@ -32,8 +32,8 @@ fn easy_genesis() -> BlockAndPatch {
         zk::ZkContract {
             state_model,
             initial_state: full_state.compress(),
-            deposit_withdraw: zk::ZkVerifierKey::Dummy,
-            update: vec![zk::ZkVerifierKey::Dummy],
+            deposit_withdraw_function: zk::ZkVerifierKey::Dummy,
+            functions: vec![zk::ZkVerifierKey::Dummy],
         },
         full_state.clone(),
         0,

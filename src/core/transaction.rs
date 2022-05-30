@@ -83,8 +83,8 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
         next_state: ZkCompressedState,
         proof: ZkProof,
     },
-    // Proof for UpdateCircuit[circuit_index](curr_state, next_state)
-    Update {
+    // Proof for FunctionCallCircuits[function_id](curr_state, next_state)
+    FunctionCall {
         contract_id: ContractId<H>,
         function_id: u32,
         next_state: ZkCompressedState,

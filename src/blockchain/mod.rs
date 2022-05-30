@@ -332,7 +332,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 let prev_account = self.get_contract_account(*contract_id)?;
                 let aux_data = zk::ZkCompressedState::default();
                 if !zk::check_proof(
-                    &contract.deposit_withdraw,
+                    &contract.deposit_withdraw_function,
                     &prev_account.compressed_state,
                     &aux_data,
                     next_state,
@@ -366,7 +366,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     },
                 };
             }
-            TransactionData::Update {
+            TransactionData::FunctionCall {
                 contract_id,
                 function_id,
                 next_state,
@@ -376,7 +376,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 let prev_account = self.get_contract_account(*contract_id)?;
                 let aux_data = zk::ZkCompressedState::default();
                 let vk = contract
-                    .update
+                    .functions
                     .get(*function_id as usize)
                     .ok_or(BlockchainError::ContractFunctionNotFound)?;
                 if !zk::check_proof(
@@ -822,7 +822,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             if let Some(contract_id) = match &tx_delta.tx.data {
                 TransactionData::CreateContract { .. } => Some(ContractId::new(&tx_delta.tx)),
                 TransactionData::DepositWithdraw { contract_id, .. } => Some(*contract_id),
-                TransactionData::Update { contract_id, .. } => Some(*contract_id),
+                TransactionData::FunctionCall { contract_id, .. } => Some(*contract_id),
                 _ => None,
             } {
                 block_delta.insert(
