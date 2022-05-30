@@ -77,9 +77,10 @@ impl ZkStateModel {
 }
 
 // Full state of a contract
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZkState {
     height: u64,
+    state_model: ZkStateModel,
     deltas: Vec<ZkStateBiDelta>,
     state: HashMap<u32, ZkScalar>,
 }
@@ -102,9 +103,10 @@ impl ZkState {
     pub fn size(&self) -> u32 {
         self.state.len() as u32
     }
-    pub fn new(height: u64, data: HashMap<u32, ZkScalar>) -> Self {
+    pub fn new(height: u64, state_model: ZkStateModel, data: HashMap<u32, ZkScalar>) -> Self {
         Self {
             height,
+            state_model,
             state: data,
             deltas: Vec::new(),
         }
@@ -140,8 +142,8 @@ impl ZkState {
         }
         self.height += 1;
     }
-    pub fn compress(&self, model: ZkStateModel) -> ZkCompressedState {
-        let root = ZkScalar(ram::ZkRam::from_state(self, model).root());
+    pub fn compress(&self) -> ZkCompressedState {
+        let root = ZkScalar(ram::ZkRam::from_state(self).root());
         ZkCompressedState {
             height: self.height,
             state_hash: root,
@@ -157,12 +159,12 @@ impl ZkState {
         self.height -= 2; // Height is advanced when applying block, so step back by 2
         Ok(())
     }
-    pub fn compress_prev_states(&self, model: ZkStateModel) -> Vec<ZkCompressedState> {
+    pub fn compress_prev_states(&self) -> Vec<ZkCompressedState> {
         let mut res = Vec::new();
         let mut curr = self.clone();
         while !curr.deltas.is_empty() {
             curr.rollback().unwrap();
-            res.push(curr.compress(model));
+            res.push(curr.compress());
         }
         res
     }

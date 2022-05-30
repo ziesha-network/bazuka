@@ -23,11 +23,15 @@ fn easy_genesis() -> BlockAndPatch {
     }];
 
     let state_model = zk::ZkStateModel::new(1, 10);
-    let full_state = zk::ZkState::new(1, [(100, zk::ZkScalar::from(200))].into_iter().collect());
+    let full_state = zk::ZkState::new(
+        1,
+        state_model,
+        [(100, zk::ZkScalar::from(200))].into_iter().collect(),
+    );
     let tx = mpn_creator.create_contract(
         zk::ZkContract {
             state_model,
-            initial_state: full_state.compress(state_model),
+            initial_state: full_state.compress(),
             deposit_withdraw: zk::ZkVerifierKey::Dummy,
             update: vec![zk::ZkVerifierKey::Dummy],
         },

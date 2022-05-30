@@ -17,8 +17,8 @@ pub struct ZkRam {
 pub struct Proof(Vec<Fr>);
 
 impl ZkRam {
-    pub fn from_state(state: &ZkState, state_model: ZkStateModel) -> Self {
-        let mut r = Self::new(state_model);
+    pub fn from_state(state: &ZkState) -> Self {
+        let mut r = Self::new(state.state_model);
         for (k, v) in state.state.iter() {
             r.set(*k, v.0);
         }

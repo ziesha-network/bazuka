@@ -222,7 +222,7 @@ impl<K: KvStore> KvStoreChain<K> {
             return Err(BlockchainError::CompressedStateNotFound);
         }
         if index == 0 {
-            return Ok(zk::ZkState::default().compress(state_model));
+            return Ok(zk::ZkState::new(0, state_model, HashMap::new()).compress());
         }
         let header_key: StringKey =
             format!("contract_compressed_state_{}_{}", contract_id, index).into();
@@ -317,7 +317,8 @@ impl<K: KvStore> KvStoreChain<K> {
                 side_effect = TxSideEffect::StateChange {
                     contract_id,
                     state_change: ZkCompressedStateChange {
-                        prev_state: zk::ZkState::default().compress(contract.state_model),
+                        prev_state: zk::ZkState::new(0, contract.state_model, HashMap::new())
+                            .compress(),
                         state: contract.initial_state,
                     },
                 };
@@ -451,10 +452,9 @@ impl<K: KvStore> KvStoreChain<K> {
         let changed_states = self.get_changed_states(height - 1)?;
         for (cid, comp) in changed_states {
             if !outdated.contains_key(&cid) {
-                let contract = self.get_contract(cid)?;
                 let mut state = self.get_state(cid)?;
                 if state.rollback().is_ok() {
-                    if state.compress(contract.state_model) != comp.prev_state {
+                    if state.compress() != comp.prev_state {
                         return Err(BlockchainError::Inconsistency);
                     }
                     rollback.push(WriteOp::Put(
@@ -609,8 +609,7 @@ impl<K: KvStore> KvStoreChain<K> {
         let outdated = self.get_outdated_states()?;
         let mut ret = HashMap::new();
         for (cid, _) in outdated {
-            let contract = self.get_contract(cid)?;
-            ret.insert(cid, self.get_state(cid)?.compress(contract.state_model));
+            ret.insert(cid, self.get_state(cid)?.compress());
         }
         Ok(ret)
     }
@@ -648,10 +647,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .ok_or(BlockchainError::ContractNotFound)??)
     }
     fn get_state(&self, contract_id: ContractId) -> Result<zk::ZkState, BlockchainError> {
+        let contract = self.get_contract(contract_id)?;
         let k = format!("contract_state_{}", contract_id).into();
         Ok(match self.database.get(k)? {
             Some(b) => b.try_into()?,
-            None => zk::ZkState::default(),
+            None => zk::ZkState::new(0, contract.state_model, HashMap::new()),
         })
     }
 
@@ -896,7 +896,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let mut outdated_states = self.get_outdated_states()?;
 
         for (cid, comp_state) in outdated_states.clone() {
-            let contract = self.get_contract(cid)?;
             let contract_account = self.get_contract_account(cid)?;
             let patch = patch
                 .patches
@@ -904,11 +903,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 .ok_or(BlockchainError::FullStateNotFound)?;
             let full_state = match &patch {
                 ZkStatePatch::Full(full) => {
-                    for (i, calc_state) in full
-                        .compress_prev_states(contract.state_model)
-                        .into_iter()
-                        .enumerate()
-                    {
+                    for (i, calc_state) in full.compress_prev_states().into_iter().enumerate() {
                         let actual_state = self
                             .get_compressed_state_at(cid, contract_account.height - 1 - i as u64)?;
                         if calc_state != actual_state {
@@ -923,7 +918,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     state
                 }
             };
-            if full_state.compress(contract.state_model) == comp_state {
+            if full_state.compress() == comp_state {
                 ops.push(WriteOp::Put(
                     format!("contract_state_{}", cid).into(),
                     (&full_state).into(),
