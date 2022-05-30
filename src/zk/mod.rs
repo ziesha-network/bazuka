@@ -79,6 +79,7 @@ impl ZkStateModel {
 // Full state of a contract
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkState {
+    height: u64,
     deltas: Vec<ZkStateBiDelta>,
     state: HashMap<u32, ZkScalar>,
 }
@@ -95,11 +96,15 @@ pub struct ZkStateBiDelta {
 }
 
 impl ZkState {
+    pub fn height(&self) -> u64 {
+        self.height
+    }
     pub fn size(&self) -> u32 {
         self.state.len() as u32
     }
-    pub fn new(data: HashMap<u32, ZkScalar>) -> Self {
+    pub fn new(height: u64, data: HashMap<u32, ZkScalar>) -> Self {
         Self {
+            height,
             state: data,
             deltas: Vec::new(),
         }
@@ -133,10 +138,12 @@ impl ZkState {
                 self.state.insert(*k, *v);
             }
         }
+        self.height += 1;
     }
     pub fn compress(&self, _model: ZkStateModel) -> ZkCompressedState {
         let root = ZkScalar(ram::ZkRam::from_state(self).root());
         ZkCompressedState {
+            height: self.height,
             state_hash: root,
             state_size: self.size(),
         }
@@ -147,13 +154,14 @@ impl ZkState {
         }
         let back = self.deltas.remove(0).back;
         self.apply_delta(&back);
+        self.height -= 2; // Height is advanced when applying block, so step back by 2
         Ok(())
     }
     pub fn compress_prev_states(&self, model: ZkStateModel) -> Vec<ZkCompressedState> {
         let mut res = Vec::new();
         let mut curr = self.clone();
-        for patch in self.deltas.iter() {
-            curr.apply_delta(&patch.back);
+        while !curr.deltas.is_empty() {
+            curr.rollback().unwrap();
             res.push(curr.compress(model));
         }
         res
@@ -177,11 +185,15 @@ impl ZkState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkCompressedState {
+    height: u64,
     state_hash: ZkScalar,
     state_size: u32,
 }
 
 impl ZkCompressedState {
+    pub fn height(&self) -> u64 {
+        self.height
+    }
     pub fn size(&self) -> u32 {
         self.state_size
     }

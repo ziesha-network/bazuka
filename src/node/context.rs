@@ -47,7 +47,6 @@ impl<B: Blockchain> NodeContext<B> {
     pub fn get_info(&self) -> Result<PeerInfo, BlockchainError> {
         Ok(PeerInfo {
             height: self.blockchain.get_height()?,
-            state_height: self.blockchain.get_state_height()?,
             power: self.blockchain.get_power()?,
         })
     }

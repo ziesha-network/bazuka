@@ -23,7 +23,7 @@ fn easy_genesis() -> BlockAndPatch {
     }];
 
     let state_model = zk::ZkStateModel::new(1, 3);
-    let full_state = zk::ZkState::new([(100, zk::ZkScalar::from(200))].into_iter().collect());
+    let full_state = zk::ZkState::new(1, [(100, zk::ZkScalar::from(200))].into_iter().collect());
     let tx = mpn_creator.create_contract(
         zk::ZkContract {
             state_model,
@@ -36,11 +36,11 @@ fn easy_genesis() -> BlockAndPatch {
         1,
     );
     genesis_block.block.body.push(tx.tx.clone());
-    genesis_block.patch = ZkBlockchainPatch::Delta(
-        [(ContractId::new(&tx.tx), full_state.as_delta())]
+    genesis_block.patch = ZkBlockchainPatch {
+        patches: [(ContractId::new(&tx.tx), ZkStatePatch::Full(full_state))]
             .into_iter()
             .collect(),
-    );
+    };
 
     genesis_block
 }
