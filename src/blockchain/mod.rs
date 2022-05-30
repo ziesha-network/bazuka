@@ -222,7 +222,7 @@ impl<K: KvStore> KvStoreChain<K> {
             return Err(BlockchainError::CompressedStateNotFound);
         }
         if index == 0 {
-            return Ok(zk::ZkState::new(0, state_model, HashMap::new()).compress());
+            return Ok(zk::ZkState::empty(state_model).compress());
         }
         let header_key: StringKey =
             format!("contract_compressed_state_{}_{}", contract_id, index).into();
@@ -317,8 +317,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 side_effect = TxSideEffect::StateChange {
                     contract_id,
                     state_change: ZkCompressedStateChange {
-                        prev_state: zk::ZkState::new(0, contract.state_model, HashMap::new())
-                            .compress(),
+                        prev_state: zk::ZkState::empty(contract.state_model).compress(),
                         state: contract.initial_state,
                     },
                 };
@@ -651,7 +650,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let k = format!("contract_state_{}", contract_id).into();
         Ok(match self.database.get(k)? {
             Some(b) => b.try_into()?,
-            None => zk::ZkState::new(0, contract.state_model, HashMap::new()),
+            None => zk::ZkState::empty(contract.state_model),
         })
     }
 

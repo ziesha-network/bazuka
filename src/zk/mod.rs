@@ -111,6 +111,12 @@ impl ZkState {
             deltas: Vec::new(),
         }
     }
+    pub fn empty(state_model: ZkStateModel) -> Self {
+        Self::new(0, state_model, HashMap::new())
+    }
+    pub fn genesis(state_model: ZkStateModel, data: HashMap<u32, ZkScalar>) -> Self {
+        Self::new(1, state_model, data)
+    }
     pub fn as_delta(&self) -> ZkStateDelta {
         ZkStateDelta(self.state.clone())
     }
