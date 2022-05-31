@@ -75,14 +75,8 @@ pub enum BlockchainError {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum ZkStatePatch {
-    Full(zk::ZkStateFull),
-    Delta(zk::ZkStateDelta),
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ZkBlockchainPatch {
-    pub patches: HashMap<ContractId, ZkStatePatch>,
+    pub patches: HashMap<ContractId, zk::ZkStatePatch>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -793,7 +787,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }];
 
         let tx_and_deltas = self.select_transactions(mempool)?;
-        let mut block_delta: HashMap<ContractId, ZkStatePatch> = HashMap::new();
+        let mut block_delta: HashMap<ContractId, zk::ZkStatePatch> = HashMap::new();
         for tx_delta in tx_and_deltas.iter() {
             if let Some(contract_id) = match &tx_delta.tx.data {
                 TransactionData::CreateContract { .. } => Some(ContractId::new(&tx_delta.tx)),
@@ -802,7 +796,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             } {
                 block_delta.insert(
                     contract_id,
-                    ZkStatePatch::Delta(
+                    zk::ZkStatePatch::Delta(
                         tx_delta
                             .state_delta
                             .clone()
@@ -876,7 +870,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 .get(&cid)
                 .ok_or(BlockchainError::FullStateNotFound)?;
             let full_state = match &patch {
-                ZkStatePatch::Full(full) => {
+                zk::ZkStatePatch::Full(full) => {
                     let full = zk::ZkState::from_full(full);
                     for (i, calc_state) in full.compress_prev_states().into_iter().enumerate() {
                         let actual_state = self
@@ -887,7 +881,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     }
                     full.clone()
                 }
-                ZkStatePatch::Delta(delta) => {
+                zk::ZkStatePatch::Delta(delta) => {
                     let mut state = self.get_state(cid)?;
                     state.push_delta(delta);
                     state
@@ -943,9 +937,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 blockchain_patch.patches.insert(
                     cid,
                     if let Ok(delta) = state.delta_of(away as usize) {
-                        ZkStatePatch::Delta(delta)
+                        zk::ZkStatePatch::Delta(delta)
                     } else {
-                        ZkStatePatch::Full(state.as_full())
+                        zk::ZkStatePatch::Full(state.as_full())
                     },
                 );
             }

@@ -43,7 +43,7 @@ fn easy_genesis() -> BlockAndPatch {
     genesis_block.patch = ZkBlockchainPatch {
         patches: [(
             ContractId::new(&tx.tx),
-            ZkStatePatch::Full(full_state.as_full()),
+            zk::ZkStatePatch::Full(full_state.as_full()),
         )]
         .into_iter()
         .collect(),

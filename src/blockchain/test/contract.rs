@@ -78,7 +78,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.fork_on_ram().update_states(&ZkBlockchainPatch {
             patches: [(
                 cid,
-                ZkStatePatch::Delta(zk::ZkStateDelta::new(
+                zk::ZkStatePatch::Delta(zk::ZkStateDelta::new(
                     [(123, zk::ZkScalar::from(321))].into_iter().collect()
                 ))
             )]
@@ -88,7 +88,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         Err(BlockchainError::FullStateNotValid)
     ));
     chain.fork_on_ram().update_states(&ZkBlockchainPatch {
-        patches: [(cid, ZkStatePatch::Delta(state_delta.clone()))]
+        patches: [(cid, zk::ZkStatePatch::Delta(state_delta.clone()))]
             .into_iter()
             .collect(),
     })?;
@@ -102,7 +102,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.fork_on_ram().update_states(&ZkBlockchainPatch {
             patches: [(
                 cid,
-                ZkStatePatch::Full(
+                zk::ZkStatePatch::Full(
                     zk::ZkState::new(
                         2,
                         state_model,
@@ -120,7 +120,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.fork_on_ram().update_states(&ZkBlockchainPatch {
             patches: [(
                 cid,
-                ZkStatePatch::Full(
+                zk::ZkStatePatch::Full(
                     zk::ZkState::new(
                         1,
                         state_model,
@@ -142,7 +142,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     chain.fork_on_ram().update_states(&ZkBlockchainPatch {
         patches: [(
             cid,
-            ZkStatePatch::Full(
+            zk::ZkStatePatch::Full(
                 zk::ZkState::new(
                     2,
                     state_model,
@@ -165,7 +165,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     updated_fork.update_states(&ZkBlockchainPatch {
         patches: [(
             cid,
-            ZkStatePatch::Delta(zk::ZkStateDelta::new(
+            zk::ZkStatePatch::Delta(zk::ZkStateDelta::new(
                 [(123, zk::ZkScalar::from(234))].into_iter().collect(),
             )),
         )]

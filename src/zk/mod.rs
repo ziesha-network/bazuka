@@ -60,6 +60,12 @@ impl From<u64> for ZkScalar {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum ZkStatePatch {
+    Full(ZkStateFull),
+    Delta(ZkStateDelta),
+}
+
 // Each leaf of the target sparse merkle tree will be the
 // result of consecutive hash of `leaf_size` cells.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
