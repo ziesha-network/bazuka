@@ -9,9 +9,9 @@ pub async fn sync_state<B: Blockchain>(
 
     let height = ctx.blockchain.get_height()?;
     let last_header_hash = ctx.blockchain.get_tip()?.hash();
-    let outdated_states = ctx.blockchain.get_outdated_states()?;
+    let outdated_states = ctx.blockchain.get_outdated_states_request()?;
 
-    if outdated_states.len() > 0 {
+    if !outdated_states.is_empty() {
         // Find clients which their height is equal with our height
         let same_height_peers = ctx
             .active_peers()

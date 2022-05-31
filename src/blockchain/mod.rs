@@ -135,6 +135,10 @@ pub trait Blockchain {
     fn get_outdated_states(
         &self,
     ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError>;
+
+    fn get_outdated_states_request(
+        &self,
+    ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError>;
     fn generate_state_patch(
         &self,
         aways: HashMap<ContractId, zk::ZkCompressedState>,
@@ -421,6 +425,7 @@ impl<K: KvStore> KvStoreChain<K> {
         let mut outdated = self.get_outdated_states()?;
         let changed_states = self.get_changed_states(height - 1)?;
         for (cid, comp) in changed_states {
+            #[allow(clippy::map_entry)]
             if !outdated.contains_key(&cid) {
                 let mut state = self.get_state(cid)?;
                 if state.rollback().is_ok() {
@@ -573,7 +578,10 @@ impl<K: KvStore> KvStoreChain<K> {
         self.database.update(&changes)?;
         Ok(())
     }
-    pub fn get_outdated_states_request(
+}
+
+impl<K: KvStore> Blockchain for KvStoreChain<K> {
+    fn get_outdated_states_request(
         &self,
     ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError> {
         let outdated = self.get_outdated_states()?;
@@ -583,9 +591,6 @@ impl<K: KvStore> KvStoreChain<K> {
         }
         Ok(ret)
     }
-}
-
-impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_outdated_states(
         &self,
     ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError> {
@@ -769,7 +774,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let height = self.get_height()?;
         let outdated_states = self.get_outdated_states()?;
 
-        if outdated_states.len() > 0 {
+        if !outdated_states.is_empty() {
             return Err(BlockchainError::StatesOutdated);
         }
 

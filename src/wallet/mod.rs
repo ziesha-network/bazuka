@@ -62,6 +62,8 @@ impl Wallet {
             state_delta: Some(initial_state.as_delta()),
         }
     }
+
+    #[allow(clippy::too_many_arguments)]
     pub fn call_function(
         &self,
         contract_id: ContractId,
