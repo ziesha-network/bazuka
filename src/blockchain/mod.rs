@@ -76,7 +76,7 @@ pub enum BlockchainError {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ZkStatePatch {
-    Full(zk::ZkState),
+    Full(zk::ZkStateFull),
     Delta(zk::ZkStateDelta),
 }
 
@@ -877,6 +877,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 .ok_or(BlockchainError::FullStateNotFound)?;
             let full_state = match &patch {
                 ZkStatePatch::Full(full) => {
+                    let full = zk::ZkState::from_full(full);
                     for (i, calc_state) in full.compress_prev_states().into_iter().enumerate() {
                         let actual_state = self
                             .get_compressed_state_at(cid, contract_account.height - 1 - i as u64)?;
@@ -944,7 +945,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     if let Ok(delta) = state.delta_of(away as usize) {
                         ZkStatePatch::Delta(delta)
                     } else {
-                        ZkStatePatch::Full(state)
+                        ZkStatePatch::Full(state.as_full())
                     },
                 );
             }

@@ -87,11 +87,20 @@ pub struct ZkState {
     layers: Vec<HashMap<u32, ZkScalar>>,
 }
 
+// Full state
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ZkStateFull {
+    height: u64,
+    state_model: ZkStateModel,
+    state: HashMap<u32, ZkScalar>,
+    deltas: Vec<ZkStateBiDelta>,
+}
+
 // One-way delta
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkStateDelta(HashMap<u32, ZkScalar>);
 
-// One-way delta
+// Two-way delta
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkStateBiDelta {
     forth: ZkStateDelta,
@@ -104,6 +113,11 @@ impl ZkState {
     }
     pub fn size(&self) -> u32 {
         self.layers[0].len() as u32
+    }
+    pub fn from_full(full: &ZkStateFull) -> Self {
+        let mut tree = Self::new(full.height, full.state_model, full.state.clone());
+        tree.deltas = full.deltas.clone();
+        tree
     }
     pub fn new(height: u64, state_model: ZkStateModel, data: HashMap<u32, ZkScalar>) -> Self {
         let mut defaults = vec![ZkScalar::default()];
@@ -130,6 +144,14 @@ impl ZkState {
     }
     pub fn as_delta(&self) -> ZkStateDelta {
         ZkStateDelta(self.layers[0].clone())
+    }
+    pub fn as_full(&self) -> ZkStateFull {
+        ZkStateFull {
+            height: self.height,
+            state_model: self.state_model,
+            state: self.layers[0].clone(),
+            deltas: self.deltas.clone(),
+        }
     }
     pub fn push_delta(&mut self, patch: &ZkStateDelta) {
         let mut rev_delta = ZkStateDelta(HashMap::new());

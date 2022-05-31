@@ -102,11 +102,14 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.fork_on_ram().update_states(&ZkBlockchainPatch {
             patches: [(
                 cid,
-                ZkStatePatch::Full(zk::ZkState::new(
-                    2,
-                    state_model,
-                    [(100, zk::ZkScalar::from(200))].into_iter().collect()
-                ))
+                ZkStatePatch::Full(
+                    zk::ZkState::new(
+                        2,
+                        state_model,
+                        [(100, zk::ZkScalar::from(200))].into_iter().collect()
+                    )
+                    .as_full()
+                )
             )]
             .into_iter()
             .collect()
@@ -117,16 +120,19 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.fork_on_ram().update_states(&ZkBlockchainPatch {
             patches: [(
                 cid,
-                ZkStatePatch::Full(zk::ZkState::new(
-                    1,
-                    state_model,
-                    [
-                        (100, zk::ZkScalar::from(200)),
-                        (123, zk::ZkScalar::from(234))
-                    ]
-                    .into_iter()
-                    .collect()
-                ))
+                ZkStatePatch::Full(
+                    zk::ZkState::new(
+                        1,
+                        state_model,
+                        [
+                            (100, zk::ZkScalar::from(200)),
+                            (123, zk::ZkScalar::from(234))
+                        ]
+                        .into_iter()
+                        .collect()
+                    )
+                    .as_full()
+                )
             )]
             .into_iter()
             .collect()
@@ -136,16 +142,19 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     chain.fork_on_ram().update_states(&ZkBlockchainPatch {
         patches: [(
             cid,
-            ZkStatePatch::Full(zk::ZkState::new(
-                2,
-                state_model,
-                [
-                    (100, zk::ZkScalar::from(200)),
-                    (123, zk::ZkScalar::from(234)),
-                ]
-                .into_iter()
-                .collect(),
-            )),
+            ZkStatePatch::Full(
+                zk::ZkState::new(
+                    2,
+                    state_model,
+                    [
+                        (100, zk::ZkScalar::from(200)),
+                        (123, zk::ZkScalar::from(234)),
+                    ]
+                    .into_iter()
+                    .collect(),
+                )
+                .as_full(),
+            ),
         )]
         .into_iter()
         .collect(),
