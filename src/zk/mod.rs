@@ -1,10 +1,8 @@
-pub mod ram;
-
 use crate::config;
 use ff::Field;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use zeekit::Fr;
+use zeekit::{mimc, Fr};
 
 use thiserror::Error;
 
@@ -13,6 +11,9 @@ pub enum ZkError {
     #[error("delta not found")]
     DeltaNotFound,
 }
+
+#[derive(Debug, Clone, Default)]
+pub struct ZkStateProof(Vec<ZkScalar>);
 
 pub fn check_proof(
     vk: &ZkVerifierKey,
@@ -82,7 +83,8 @@ pub struct ZkState {
     height: u64,
     state_model: ZkStateModel,
     deltas: Vec<ZkStateBiDelta>,
-    state: HashMap<u32, ZkScalar>,
+    defaults: Vec<ZkScalar>,
+    layers: Vec<HashMap<u32, ZkScalar>>,
 }
 
 // One-way delta
@@ -101,15 +103,24 @@ impl ZkState {
         self.height
     }
     pub fn size(&self) -> u32 {
-        self.state.len() as u32
+        self.layers[0].len() as u32
     }
     pub fn new(height: u64, state_model: ZkStateModel, data: HashMap<u32, ZkScalar>) -> Self {
-        Self {
+        let mut defaults = vec![ZkScalar::default()];
+        for i in 0..state_model.tree_depth as usize {
+            defaults.push(ZkScalar(mimc::mimc(&[defaults[i].0, defaults[i].0])));
+        }
+        let mut tree = Self {
             height,
             state_model,
-            state: data,
             deltas: Vec::new(),
+            defaults,
+            layers: vec![HashMap::new(); state_model.tree_depth as usize + 1],
+        };
+        for (k, v) in data {
+            tree.set(k, v);
         }
+        tree
     }
     pub fn empty(state_model: ZkStateModel) -> Self {
         Self::new(0, state_model, HashMap::new())
@@ -118,15 +129,12 @@ impl ZkState {
         Self::new(1, state_model, data)
     }
     pub fn as_delta(&self) -> ZkStateDelta {
-        ZkStateDelta(self.state.clone())
+        ZkStateDelta(self.layers[0].clone())
     }
     pub fn push_delta(&mut self, patch: &ZkStateDelta) {
         let mut rev_delta = ZkStateDelta(HashMap::new());
         for (k, _) in patch.0.iter() {
-            match self.state.get(k) {
-                Some(prev_v) => rev_delta.0.insert(*k, *prev_v),
-                None => rev_delta.0.insert(*k, ZkScalar(Fr::zero())),
-            };
+            rev_delta.0.insert(*k, self.get(0, *k));
         }
         self.apply_delta(patch);
         self.deltas.insert(
@@ -140,16 +148,13 @@ impl ZkState {
     }
     pub fn apply_delta(&mut self, patch: &ZkStateDelta) {
         for (k, v) in patch.0.iter() {
-            if v.0.is_zero().into() {
-                self.state.remove(k);
-            } else {
-                self.state.insert(*k, *v);
-            }
+            self.set(*k, *v);
         }
         self.height += 1;
     }
     pub fn compress(&self) -> ZkCompressedState {
-        let root = ZkScalar(ram::ZkRam::from_state(self).root());
+        let depth = self.state_model.tree_depth as usize;
+        let root = *self.layers[depth].get(&0).unwrap_or(&self.defaults[depth]);
         ZkCompressedState {
             height: self.height,
             state_hash: root,
@@ -188,6 +193,54 @@ impl ZkState {
             acc.combine(&self.deltas.get(i - 1).ok_or(ZkError::DeltaNotFound)?.forth);
         }
         Ok(acc)
+    }
+    fn get(&self, level: usize, index: u32) -> ZkScalar {
+        self.layers[level]
+            .get(&index)
+            .cloned()
+            .unwrap_or(self.defaults[level])
+    }
+    pub fn prove(&self, mut index: u32) -> ZkStateProof {
+        let mut proof = Vec::new();
+        for level in 0..self.state_model.tree_depth as usize {
+            let neigh = if index & 1 == 0 { index + 1 } else { index - 1 };
+            proof.push(self.get(level, neigh as u32));
+            index >>= 1;
+        }
+        ZkStateProof(proof)
+    }
+    pub fn verify(
+        mut index: u32,
+        mut value: ZkScalar,
+        proof: ZkStateProof,
+        root: ZkScalar,
+    ) -> bool {
+        for p in proof.0 {
+            value = ZkScalar(if index & 1 == 0 {
+                mimc::mimc(&[value.0, p.0])
+            } else {
+                mimc::mimc(&[p.0, value.0])
+            });
+            index >>= 1;
+        }
+        value == root
+    }
+    pub fn set(&mut self, mut index: u32, mut value: ZkScalar) {
+        for level in 0..(self.state_model.tree_depth as usize + 1) {
+            if value.0.is_zero().into() {
+                self.layers[level].remove(&index);
+            } else {
+                self.layers[level].insert(index, value);
+            }
+            let neigh = if index & 1 == 0 { index + 1 } else { index - 1 };
+            let neigh_val = self.get(level, neigh);
+            value = ZkScalar(if index & 1 == 0 {
+                mimc::mimc(&[value.0, neigh_val.0])
+            } else {
+                mimc::mimc(&[neigh_val.0, value.0])
+            });
+            index >>= 1;
+        }
     }
 }
 
