@@ -118,6 +118,14 @@ pub struct TransactRequest {
 pub struct TransactResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct TransactZeroRequest {
+    pub tx: zk::ZeroTransaction,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TransactZeroResponse {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ShutdownRequest {}
 
 #[derive(Deserialize, Serialize, Debug)]

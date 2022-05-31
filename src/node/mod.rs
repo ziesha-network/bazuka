@@ -133,6 +133,15 @@ async fn node_service<B: Blockchain>(
                 .await?,
             )?);
         }
+        (Method::POST, "/bincode/transact/zero") => {
+            *response.body_mut() = Body::from(serde_json::to_vec(
+                &api::transact_zero(
+                    Arc::clone(&context),
+                    serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
+                )
+                .await?,
+            )?);
+        }
         (Method::GET, "/bincode/headers") => {
             *response.body_mut() = Body::from(bincode::serialize(
                 &api::get_headers(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
@@ -313,6 +322,7 @@ pub async fn node_create<B: Blockchain>(
         blockchain,
         wallet,
         mempool: HashMap::new(),
+        zero_mempool: HashMap::new(),
         peers: bootstrap
             .into_iter()
             .map(|addr| {

@@ -322,6 +322,9 @@ pub enum ZkVerifierKey {
     Dummy,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash)]
+pub struct ZeroTransaction;
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ZkContract {
     pub initial_state: ZkCompressedState, // 32byte

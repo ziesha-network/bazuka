@@ -100,6 +100,7 @@ pub enum TxSideEffect {
 }
 
 pub trait Blockchain {
+    fn validate_zero_transaction(&self, tx: &zk::ZeroTransaction) -> Result<bool, BlockchainError>;
     fn validate_transaction(&self, tx_delta: &TransactionAndDelta)
         -> Result<bool, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
@@ -902,6 +903,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         self.database.update(&ops)?;
         Ok(())
+    }
+
+    fn validate_zero_transaction(
+        &self,
+        _tx: &zk::ZeroTransaction,
+    ) -> Result<bool, BlockchainError> {
+        Ok(true)
     }
 
     fn validate_transaction(

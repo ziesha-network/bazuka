@@ -3,6 +3,7 @@ use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError};
 use crate::core::TransactionAndDelta;
 use crate::utils;
 use crate::wallet::Wallet;
+use crate::zk;
 use rand::seq::IteratorRandom;
 use rand::RngCore;
 use std::collections::HashMap;
@@ -23,11 +24,12 @@ pub struct NodeContext<B: Blockchain> {
     pub outgoing: Arc<OutgoingSender>,
     pub blockchain: B,
     pub wallet: Option<Wallet>,
-    pub mempool: HashMap<TransactionAndDelta, TransactionStats>,
     pub peers: HashMap<PeerAddress, Peer>,
     pub timestamp_offset: i32,
-
     pub miner_puzzle: Option<BlockPuzzle>,
+
+    pub mempool: HashMap<TransactionAndDelta, TransactionStats>,
+    pub zero_mempool: HashMap<zk::ZeroTransaction, TransactionStats>,
 }
 
 impl<B: Blockchain> NodeContext<B> {

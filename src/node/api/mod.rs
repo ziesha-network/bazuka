@@ -18,6 +18,8 @@ mod get_headers;
 pub use get_headers::*;
 mod transact;
 pub use transact::*;
+mod transact_zero;
+pub use transact_zero::*;
 mod shutdown;
 pub use shutdown::*;
 
