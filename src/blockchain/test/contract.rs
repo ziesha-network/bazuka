@@ -54,7 +54,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let state_delta = zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect());
     full_state.apply_delta(&state_delta);
 
-    let tx = alice.create_contract_update(
+    let tx = alice.call_function(
         cid,
         0,
         state_delta.clone(),
@@ -181,7 +181,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     assert!(matches!(
         chain.apply_tx(
             &alice
-                .create_contract_update(
+                .call_function(
                     cid,
                     0,
                     state_delta.clone(),
@@ -199,7 +199,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     assert!(matches!(
         chain.apply_tx(
             &alice
-                .create_contract_update(
+                .call_function(
                     ContractId::from_str(
                         "0000000000000000000000000000000000000000000000000000000000000000"
                     )
@@ -220,7 +220,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     assert!(matches!(
         chain.apply_tx(
             &alice
-                .create_contract_update(
+                .call_function(
                     cid,
                     1,
                     state_delta.clone(),
@@ -238,7 +238,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     assert!(matches!(
         chain.apply_tx(
             &alice
-                .create_contract_update(
+                .call_function(
                     cid,
                     0,
                     state_delta,

@@ -1,5 +1,6 @@
 use crate::core::{
-    Address, ContractId, Money, Signature, Transaction, TransactionAndDelta, TransactionData,
+    Address, ContractId, ContractUpdate, Money, Signature, Transaction, TransactionAndDelta,
+    TransactionData,
 };
 use crate::crypto::{EdDSA, SignatureScheme};
 use crate::zk;
@@ -61,7 +62,7 @@ impl Wallet {
             state_delta: Some(initial_state.as_delta()),
         }
     }
-    pub fn create_contract_update(
+    pub fn call_function(
         &self,
         contract_id: ContractId,
         function_id: u32,
@@ -74,11 +75,13 @@ impl Wallet {
         let (_, sk) = EdDSA::generate_keys(&self.seed);
         let mut tx = Transaction {
             src: self.get_address(),
-            data: TransactionData::FunctionCall {
+            data: TransactionData::UpdateContract {
                 contract_id,
-                function_id,
-                next_state,
-                proof,
+                updates: vec![ContractUpdate::FunctionCall {
+                    function_id,
+                    next_state,
+                    proof,
+                }],
             },
             nonce,
             fee,

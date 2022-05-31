@@ -15,6 +15,7 @@ pub type Signature = address::Signature<Signer>;
 pub type Transaction = transaction::Transaction<Hasher, Signer>;
 pub type TransactionData = transaction::TransactionData<Hasher, Signer>;
 pub type ContractAccount = transaction::ContractAccount;
+pub type ContractUpdate = transaction::ContractUpdate<Hasher, Signer>;
 pub type Header = header::Header<Hasher>;
 pub type Block = blocks::Block<Hasher, Signer>;
 

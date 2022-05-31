@@ -63,6 +63,22 @@ pub struct ContractAccount {
     pub height: u64,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
+    // Proof for DepositWithdrawCircuit(curr_state, next_state, hash(entries))
+    DepositWithdraw {
+        deposit_withdraws: Vec<ContractPayment<H, S>>,
+        next_state: ZkCompressedState,
+        proof: ZkProof,
+    },
+    // Proof for FunctionCallCircuits[function_id](curr_state, next_state)
+    FunctionCall {
+        function_id: u32,
+        next_state: ZkCompressedState,
+        proof: ZkProof,
+    },
+}
+
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
@@ -76,19 +92,10 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
     CreateContract {
         contract: ZkContract,
     },
-    // Proof for DepositWithdrawCircuit(curr_state, next_state, hash(entries))
-    DepositWithdraw {
+    // Collection of contract updates
+    UpdateContract {
         contract_id: ContractId<H>,
-        deposit_withdraws: Vec<ContractPayment<H, S>>,
-        next_state: ZkCompressedState,
-        proof: ZkProof,
-    },
-    // Proof for FunctionCallCircuits[function_id](curr_state, next_state)
-    FunctionCall {
-        contract_id: ContractId<H>,
-        function_id: u32,
-        next_state: ZkCompressedState,
-        proof: ZkProof,
+        updates: Vec<ContractUpdate<H, S>>,
     },
 }
 
