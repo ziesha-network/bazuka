@@ -111,7 +111,7 @@ pub struct GetBalanceResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TransactRequest {
-    pub tx_patch: TransactionAndDelta,
+    pub tx_delta: TransactionAndDelta,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

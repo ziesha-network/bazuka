@@ -150,6 +150,20 @@ impl SenderWrapper {
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }
+    pub async fn bincode_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
+        &self,
+        url: &str,
+        req: Req,
+    ) -> Result<Resp, NodeError> {
+        let req = Request::builder()
+            .method(Method::POST)
+            .uri(format!("{}/{}", self.peer, url))
+            .header("content-type", "application/octet-stream")
+            .body(Body::from(bincode::serialize(&req)?))?;
+        let body = self.raw(req).await?;
+        let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
+        Ok(resp)
+    }
     pub async fn shutdown(&self) -> Result<(), NodeError> {
         self.json_post::<ShutdownRequest, ShutdownResponse>("shutdown", ShutdownRequest {})
             .await?;
@@ -162,6 +176,17 @@ impl SenderWrapper {
     pub async fn peers(&self) -> Result<GetPeersResponse, NodeError> {
         self.json_get::<GetPeersRequest, GetPeersResponse>("peers", GetPeersRequest {})
             .await
+    }
+
+    pub async fn transact(
+        &self,
+        tx_delta: TransactionAndDelta,
+    ) -> Result<TransactResponse, NodeError> {
+        self.bincode_post::<TransactRequest, TransactResponse>(
+            "transact",
+            TransactRequest { tx_delta },
+        )
+        .await
     }
 
     pub async fn mine(&self) -> Result<PostMinerSolutionResponse, NodeError> {

@@ -11,10 +11,10 @@ pub async fn transact<B: Blockchain>(
     let mut context = context.write().await;
     let now = context.network_timestamp();
     // Prevent spamming mempool
-    if context.blockchain.validate_transaction(&req.tx_patch)? {
+    if context.blockchain.validate_transaction(&req.tx_delta)? {
         context
             .mempool
-            .insert(req.tx_patch, TransactionStats { first_seen: now });
+            .insert(req.tx_delta, TransactionStats { first_seen: now });
     }
     Ok(TransactResponse {})
 }
