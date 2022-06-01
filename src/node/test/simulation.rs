@@ -150,6 +150,24 @@ impl SenderWrapper {
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
     }
+    pub async fn bincode_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
+        &self,
+        url: &str,
+        req: Req,
+    ) -> Result<Resp, NodeError> {
+        let req = Request::builder()
+            .method(Method::GET)
+            .uri(format!(
+                "{}/{}?{}",
+                self.peer,
+                url,
+                serde_qs::to_string(&req)?
+            ))
+            .body(Body::empty())?;
+        let body = self.raw(req).await?;
+        let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
+        Ok(resp)
+    }
     pub async fn bincode_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
         &self,
         url: &str,
@@ -178,12 +196,20 @@ impl SenderWrapper {
             .await
     }
 
+    pub async fn outdated_states(&self) -> Result<GetOutdatedStatesResponse, NodeError> {
+        self.bincode_get::<GetOutdatedStatesRequest, GetOutdatedStatesResponse>(
+            "bincode/states/outdated",
+            GetOutdatedStatesRequest {},
+        )
+        .await
+    }
+
     pub async fn transact(
         &self,
         tx_delta: TransactionAndDelta,
     ) -> Result<TransactResponse, NodeError> {
         self.bincode_post::<TransactRequest, TransactResponse>(
-            "transact",
+            "bincode/transact",
             TransactRequest { tx_delta },
         )
         .await

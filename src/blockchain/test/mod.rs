@@ -7,47 +7,8 @@ use crate::db;
 mod contract;
 
 fn easy_genesis() -> BlockAndPatch {
-    let mpn_creator = Wallet::new(Vec::from("MPN"));
-    let alice = Wallet::new(Vec::from("ABC"));
     let mut genesis_block = genesis::get_test_genesis_block();
     genesis_block.block.header.proof_of_work.target = 0x00ffffff;
-    genesis_block.block.body = vec![Transaction {
-        src: Address::Treasury,
-        data: TransactionData::RegularSend {
-            dst: alice.get_address(),
-            amount: 10_000,
-        },
-        nonce: 1,
-        fee: 0,
-        sig: Signature::Unsigned,
-    }];
-
-    let state_model = zk::ZkStateModel::new(1, 10);
-    let full_state = zk::ZkState::new(
-        1,
-        state_model,
-        [(100, zk::ZkScalar::from(200))].into_iter().collect(),
-    );
-    let tx = mpn_creator.create_contract(
-        zk::ZkContract {
-            state_model,
-            initial_state: full_state.compress(),
-            deposit_withdraw_function: zk::ZkVerifierKey::Dummy,
-            functions: vec![zk::ZkVerifierKey::Dummy],
-        },
-        full_state.clone(),
-        0,
-        1,
-    );
-    genesis_block.block.body.push(tx.tx.clone());
-    genesis_block.patch = ZkBlockchainPatch {
-        patches: [(
-            ContractId::new(&tx.tx),
-            zk::ZkStatePatch::Full(full_state.as_full()),
-        )]
-        .into_iter()
-        .collect(),
-    };
 
     genesis_block
 }

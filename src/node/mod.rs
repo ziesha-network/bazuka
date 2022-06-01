@@ -125,19 +125,19 @@ async fn node_service<B: Blockchain>(
             )?);
         }
         (Method::POST, "/bincode/transact") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(
+            *response.body_mut() = Body::from(bincode::serialize(
                 &api::transact(
                     Arc::clone(&context),
-                    serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
+                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
                 )
                 .await?,
             )?);
         }
         (Method::POST, "/bincode/transact/zero") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(
+            *response.body_mut() = Body::from(bincode::serialize(
                 &api::transact_zero(
                     Arc::clone(&context),
-                    serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
+                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
                 )
                 .await?,
             )?);
@@ -164,6 +164,11 @@ async fn node_service<B: Blockchain>(
         (Method::GET, "/bincode/states") => {
             *response.body_mut() = Body::from(bincode::serialize(
                 &api::get_states(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+            )?);
+        }
+        (Method::GET, "/bincode/states/outdated") => {
+            *response.body_mut() = Body::from(bincode::serialize(
+                &api::get_outdated_states(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
             )?);
         }
         _ => {

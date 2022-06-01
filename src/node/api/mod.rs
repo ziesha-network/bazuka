@@ -14,6 +14,8 @@ mod get_blocks;
 pub use get_blocks::*;
 mod get_states;
 pub use get_states::*;
+mod get_outdated_states;
+pub use get_outdated_states::*;
 mod get_headers;
 pub use get_headers::*;
 mod transact;

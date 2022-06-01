@@ -78,6 +78,14 @@ pub struct GetBlocksResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetOutdatedStatesRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetOutdatedStatesResponse {
+    pub outdated_states: HashMap<ContractId, zk::ZkCompressedState>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetStatesRequest {
     pub outdated_states: HashMap<ContractId, zk::ZkCompressedState>,
     pub to: String,

@@ -203,10 +203,10 @@ async fn test_states_get_synced() {
         ],
     );
     let test_logic = async {
-        let updater = Wallet::new(Vec::from("UPDATER"));
+        let updater = Wallet::new(Vec::from("ABC"));
 
         let cid = ContractId::from_str(
-            "ac8172140e8ad67651c0be0b14210489d59c51890ef7db60541b3f050247b338",
+            "ee439600bcd11a41d068c6bc7f5d55aa1cc6a73174b2594ee1e38c54abdf2a31",
         )
         .unwrap();
         let state_model = zk::ZkStateModel::new(1, 10);
@@ -232,6 +232,9 @@ async fn test_states_get_synced() {
 
         chans[0].mine().await.unwrap();
         assert_eq!(chans[0].stats().await.unwrap().height, 2);
+
+        let outdated_states = chans[0].outdated_states().await.unwrap();
+        assert_eq!(outdated_states.outdated_states.len(), 1);
 
         // Still not synced...
         sleep(Duration::from_millis(2000)).await;

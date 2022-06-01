@@ -41,7 +41,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
     let cid =
-        ContractId::from_str("ac8172140e8ad67651c0be0b14210489d59c51890ef7db60541b3f050247b338")
+        ContractId::from_str("ee439600bcd11a41d068c6bc7f5d55aa1cc6a73174b2594ee1e38c54abdf2a31")
             .unwrap();
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
 
