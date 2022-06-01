@@ -68,14 +68,30 @@ pub enum ZkStatePatch {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ZkDataType {
+    // Allocate 1
     Scalar,
+    // Allocate sum(size(data_type) for data_type in field_types)
     Struct {
         field_types: Vec<ZkDataType>,
     },
+    // Allocate 2^log_size * size(item_type)
     List {
         log_size: u8,
         item_type: Box<ZkDataType>,
     },
+}
+
+impl ZkDataType {
+    pub fn size(&self) -> usize {
+        match self {
+            ZkDataType::Scalar => 1,
+            ZkDataType::Struct { field_types } => field_types.iter().map(|t| t.size()).sum(),
+            ZkDataType::List {
+                log_size,
+                item_type,
+            } => item_type.size() << log_size,
+        }
+    }
 }
 
 // Each leaf of the target sparse merkle tree will be the
