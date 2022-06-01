@@ -157,13 +157,8 @@ impl SenderWrapper {
     ) -> Result<Resp, NodeError> {
         let req = Request::builder()
             .method(Method::GET)
-            .uri(format!(
-                "{}/{}?{}",
-                self.peer,
-                url,
-                serde_qs::to_string(&req)?
-            ))
-            .body(Body::empty())?;
+            .uri(format!("{}/{}", self.peer, url,))
+            .body(Body::from(bincode::serialize(&req)?))?;
         let body = self.raw(req).await?;
         let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)

@@ -23,6 +23,7 @@ pub async fn post_miner_solution<B: Blockchain>(
         .extend(draft.block.header.number, &[draft.block])
         .is_ok()
     {
+        let _ = context.blockchain.update_states(&draft.patch);
         context.miner_puzzle = None;
     }
     Ok(PostMinerSolutionResponse {})

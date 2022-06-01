@@ -144,12 +144,20 @@ async fn node_service<B: Blockchain>(
         }
         (Method::GET, "/bincode/headers") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_headers(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                &api::get_headers(
+                    Arc::clone(&context),
+                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
+                )
+                .await?,
             )?);
         }
         (Method::GET, "/bincode/blocks") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_blocks(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                &api::get_blocks(
+                    Arc::clone(&context),
+                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
+                )
+                .await?,
             )?);
         }
         (Method::POST, "/bincode/blocks") => {
@@ -163,12 +171,20 @@ async fn node_service<B: Blockchain>(
         }
         (Method::GET, "/bincode/states") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_states(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                &api::get_states(
+                    Arc::clone(&context),
+                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
+                )
+                .await?,
             )?);
         }
         (Method::GET, "/bincode/states/outdated") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_outdated_states(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                &api::get_outdated_states(
+                    Arc::clone(&context),
+                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
+                )
+                .await?,
             )?);
         }
         _ => {
@@ -254,8 +270,8 @@ impl OutgoingSender {
     ) -> Result<Resp, NodeError> {
         let req = Request::builder()
             .method(Method::GET)
-            .uri(format!("{}?{}", addr, serde_qs::to_string(&req)?))
-            .body(Body::empty())?;
+            .uri(&addr)
+            .body(Body::from(bincode::serialize(&req)?))?;
         let body = self.raw(req, limit).await?;
         let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)

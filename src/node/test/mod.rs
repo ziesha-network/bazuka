@@ -233,8 +233,15 @@ async fn test_states_get_synced() {
         chans[0].mine().await.unwrap();
         assert_eq!(chans[0].stats().await.unwrap().height, 2);
 
-        let outdated_states = chans[0].outdated_states().await.unwrap();
-        assert_eq!(outdated_states.outdated_states.len(), 1);
+        assert_eq!(
+            chans[0]
+                .outdated_states()
+                .await
+                .unwrap()
+                .outdated_states
+                .len(),
+            0
+        );
 
         // Still not synced...
         sleep(Duration::from_millis(2000)).await;
@@ -246,6 +253,25 @@ async fn test_states_get_synced() {
         sleep(Duration::from_millis(10000)).await;
         assert_eq!(chans[0].stats().await.unwrap().height, 2);
         assert_eq!(chans[1].stats().await.unwrap().height, 2);
+
+        assert_eq!(
+            chans[0]
+                .outdated_states()
+                .await
+                .unwrap()
+                .outdated_states
+                .len(),
+            0
+        );
+        assert_eq!(
+            chans[1]
+                .outdated_states()
+                .await
+                .unwrap()
+                .outdated_states
+                .len(),
+            0
+        );
 
         for chan in chans.iter() {
             chan.shutdown().await.unwrap();
