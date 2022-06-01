@@ -66,6 +66,18 @@ pub enum ZkStatePatch {
     Delta(ZkStateDelta),
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ZkDataType {
+    Scalar,
+    Struct {
+        field_types: Vec<ZkDataType>,
+    },
+    List {
+        log_size: u8,
+        item_type: Box<ZkDataType>,
+    },
+}
+
 // Each leaf of the target sparse merkle tree will be the
 // result of consecutive hash of `leaf_size` cells.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
