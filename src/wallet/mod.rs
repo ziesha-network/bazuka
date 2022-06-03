@@ -2,21 +2,27 @@ use crate::core::{
     Address, ContractId, ContractUpdate, Money, Signature, Transaction, TransactionAndDelta,
     TransactionData,
 };
-use crate::crypto::{EdDSA, SignatureScheme};
+use crate::crypto::{EdDSA, PrivateKey, SignatureScheme};
 use crate::zk;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Wallet {
     seed: Vec<u8>,
+    private_key: PrivateKey,
+    address: Address,
 }
 
 impl Wallet {
     pub fn new(seed: Vec<u8>) -> Self {
-        Self { seed }
+        let (pk, sk) = EdDSA::generate_keys(&seed);
+        Self {
+            seed,
+            address: Address::PublicKey(pk),
+            private_key: sk,
+        }
     }
     pub fn get_address(&self) -> Address {
-        let (pk, _) = EdDSA::generate_keys(&self.seed);
-        Address::PublicKey(pk)
+        self.address.clone()
     }
     pub fn create_transaction(
         &self,
@@ -25,7 +31,6 @@ impl Wallet {
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
-        let (_, sk) = EdDSA::generate_keys(&self.seed);
         let mut tx = Transaction {
             src: self.get_address(),
             data: TransactionData::RegularSend { dst, amount },
@@ -34,7 +39,7 @@ impl Wallet {
             sig: Signature::Unsigned,
         };
         let bytes = bincode::serialize(&tx).unwrap();
-        tx.sig = Signature::Signed(EdDSA::sign(&sk, &bytes));
+        tx.sig = Signature::Signed(EdDSA::sign(&self.private_key, &bytes));
         TransactionAndDelta {
             tx,
             state_delta: None,

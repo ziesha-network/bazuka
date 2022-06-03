@@ -22,12 +22,8 @@ use {
 use bazuka::config::genesis;
 #[cfg(not(feature = "node"))]
 use {
-    bazuka::blockchain::Blockchain,
-    bazuka::blockchain::KvStoreChain,
-    bazuka::core::Address,
-    bazuka::core::{Signature, Transaction, TransactionAndDelta, TransactionData},
-    bazuka::db::RamKvStore,
-    bazuka::wallet::Wallet,
+    bazuka::blockchain::Blockchain, bazuka::blockchain::KvStoreChain, bazuka::core::Address,
+    bazuka::db::RamKvStore, bazuka::wallet::Wallet,
 };
 
 #[cfg(feature = "node")]
@@ -169,44 +165,29 @@ async fn main() -> Result<(), NodeError> {
 
 #[cfg(not(feature = "node"))]
 fn main() {
-    let genesis_block = genesis::get_genesis_block();
+    env_logger::init();
+
+    let mut genesis_block = genesis::get_genesis_block();
+    genesis_block.block.header.proof_of_work.target = 0x00ffffff;
+
     let mut chain = KvStoreChain::new(RamKvStore::new(), genesis_block).unwrap();
 
-    log::info!("Bazuka!");
-    log::info!("Your address is: {}", WALLET.get_address());
+    let mut nonce = 1;
 
-    {
-        log::info!("Chain power: {}", chain.get_power().unwrap());
+    let abc = Wallet::new(Vec::from("ABC"));
+
+    loop {
+        log::info!("Creating txs...");
+        let mut txs = Vec::new();
+        for _ in 0..500 {
+            txs.push(abc.create_transaction(Address::Treasury, 0, 0, nonce));
+            nonce += 1;
+        }
+
+        log::info!("Creating block...");
+        let blk = chain.draft_block(0, &txs, &WALLET).unwrap().block;
+
+        log::info!("Applying block ({} txs)...", blk.body.len());
+        chain.extend(chain.get_height().unwrap(), &[blk]).unwrap();
     }
-
-    chain
-        .draft_block(
-            0,
-            &[TransactionAndDelta {
-                tx: Transaction {
-                    src: Address::Treasury,
-                    data: TransactionData::RegularSend {
-                        dst: "0x215d9af3a1bfa2a87929b6e8265e95c61c36f91493f3dbd702215255f68742552"
-                            .parse()
-                            .unwrap(),
-                        amount: 123,
-                    },
-                    nonce: 1,
-                    fee: 0,
-                    sig: Signature::Unsigned,
-                },
-                state_delta: None,
-            }],
-            &WALLET,
-        )
-        .unwrap();
-
-    chain.rollback_block().unwrap();
-    log::info!(
-        "Balance: {:?}",
-        chain.get_account(WALLET.get_address()).unwrap()
-    );
-
-    let tx = WALLET.create_transaction(Address::Treasury, 123, 0, 1);
-    log::info!("Verify tx signature: {}", tx.tx.verify_signature());
 }
