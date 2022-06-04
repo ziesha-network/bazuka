@@ -1,5 +1,7 @@
-use super::messages::{PostMinerSolutionRequest, PostMinerSolutionResponse};
-use super::{NodeContext, NodeError};
+use super::messages::{
+    PostBlockRequest, PostBlockResponse, PostMinerSolutionRequest, PostMinerSolutionResponse,
+};
+use super::{http, Limit, NodeContext, NodeError, NUM_PEERS};
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -9,6 +11,7 @@ pub async fn post_miner_solution<B: Blockchain>(
     req: PostMinerSolutionRequest,
 ) -> Result<PostMinerSolutionResponse, NodeError> {
     let mut context = context.write().await;
+    let net = context.outgoing.clone();
 
     let mut nonce_bytes = [0u8; 8];
     nonce_bytes.copy_from_slice(&hex::decode(req.nonce).unwrap());
@@ -20,10 +23,24 @@ pub async fn post_miner_solution<B: Blockchain>(
     draft.block.header.proof_of_work.nonce = u64::from_le_bytes(nonce_bytes);
     if context
         .blockchain
-        .extend(draft.block.header.number, &[draft.block])
+        .extend(draft.block.header.number, &[draft.block.clone()])
         .is_ok()
     {
-        let _ = context.blockchain.update_states(&draft.patch);
+        let _ = context.blockchain.update_states(&draft.patch.clone());
+
+        let peer_addresses = context.random_peers(&mut rand::thread_rng(), NUM_PEERS);
+        http::group_request(&peer_addresses, |peer| {
+            net.bincode_post::<PostBlockRequest, PostBlockResponse>(
+                format!("{}/bincode/blocks", peer.address),
+                PostBlockRequest {
+                    block: draft.block.clone(),
+                    patch: draft.patch.clone(),
+                },
+                Limit::default().size(1024 * 1024).time(1000),
+            )
+        })
+        .await;
+
         context.miner_puzzle = None;
     }
     Ok(PostMinerSolutionResponse {})

@@ -1,12 +1,12 @@
-use super::PeerAddress;
+use super::Peer;
 use futures::future::join_all;
 
 pub async fn group_request<F, R>(
-    peers: &[PeerAddress],
+    peers: &[Peer],
     f: F,
-) -> Vec<(PeerAddress, <R as futures::Future>::Output)>
+) -> Vec<(Peer, <R as futures::Future>::Output)>
 where
-    F: Fn(PeerAddress) -> R,
+    F: Fn(Peer) -> R,
     R: futures::Future,
 {
     peers

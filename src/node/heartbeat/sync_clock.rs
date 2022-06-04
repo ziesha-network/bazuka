@@ -10,17 +10,13 @@ pub async fn sync_clock<B: Blockchain>(
 
     let timestamp = ctx.network_timestamp();
     let info = ctx.get_info()?;
-    let peer_addresses = ctx
-        .random_peers(&mut rand::thread_rng(), NUM_PEERS)
-        .into_iter()
-        .map(|p| p.address)
-        .collect::<Vec<PeerAddress>>();
+    let peer_addresses = ctx.random_peers(&mut rand::thread_rng(), NUM_PEERS);
     drop(ctx);
 
-    let peer_responses: Vec<(PeerAddress, Result<PostPeerResponse, NodeError>)> =
+    let peer_responses: Vec<(Peer, Result<PostPeerResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
             net.json_post::<PostPeerRequest, PostPeerResponse>(
-                format!("{}/peers", peer),
+                format!("{}/peers", peer.address),
                 PostPeerRequest {
                     address,
                     timestamp,

@@ -7,17 +7,13 @@ pub async fn sync_peers<B: Blockchain>(
 
     let net = ctx.outgoing.clone();
 
-    let peer_addresses = ctx
-        .random_peers(&mut rand::thread_rng(), NUM_PEERS)
-        .into_iter()
-        .map(|p| p.address)
-        .collect::<Vec<PeerAddress>>();
+    let peer_addresses = ctx.random_peers(&mut rand::thread_rng(), NUM_PEERS);
     drop(ctx);
 
-    let peer_responses: Vec<(PeerAddress, Result<GetPeersResponse, NodeError>)> =
+    let peer_responses: Vec<(Peer, Result<GetPeersResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
             net.json_get::<GetPeersRequest, GetPeersResponse>(
-                format!("{}/peers", peer),
+                format!("{}/peers", peer.address),
                 GetPeersRequest {},
                 Limit::default().size(1024 * 1024).time(1000),
             )

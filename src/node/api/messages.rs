@@ -61,6 +61,7 @@ pub struct GetPeersResponse {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostBlockRequest {
     pub block: Block,
+    pub patch: ZkBlockchainPatch,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

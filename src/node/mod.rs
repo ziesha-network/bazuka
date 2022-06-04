@@ -31,6 +31,8 @@ use tokio::try_join;
 
 pub type Timestamp = u32;
 
+const NUM_PEERS: usize = 8;
+
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerAddress(pub SocketAddr); // ip, port
 

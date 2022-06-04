@@ -6,7 +6,7 @@ mod sync_peers;
 mod sync_state;
 
 use super::api::messages::*;
-use super::{http, Limit, NodeContext, NodeError, Peer, PeerAddress};
+use super::{http, Limit, NodeContext, NodeError, Peer, PeerAddress, NUM_PEERS};
 use crate::blockchain::Blockchain;
 use crate::config::punish;
 use crate::utils;
@@ -14,8 +14,6 @@ use std::sync::Arc;
 use tokio::join;
 use tokio::sync::{RwLock, RwLockWriteGuard};
 use tokio::time::{sleep, Duration};
-
-const NUM_PEERS: usize = 8;
 
 pub async fn heartbeat<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
@@ -48,15 +46,15 @@ pub async fn heartbeater<B: Blockchain>(
 
 fn punish_non_responding<B: Blockchain, R: Clone, E>(
     ctx: &mut RwLockWriteGuard<'_, NodeContext<B>>,
-    resps: &[(PeerAddress, Result<R, E>)],
+    resps: &[(Peer, Result<R, E>)],
 ) -> Vec<(PeerAddress, R)> {
     resps
         .iter()
         .filter_map(|(peer, resp)| {
             if let Ok(resp) = resp {
-                Some((*peer, resp.clone()))
+                Some((peer.address, resp.clone()))
             } else {
-                ctx.punish(*peer, punish::NO_RESPONSE_PUNISH);
+                ctx.punish(peer.address, punish::NO_RESPONSE_PUNISH);
                 None
             }
         })
