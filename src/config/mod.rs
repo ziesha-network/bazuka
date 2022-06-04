@@ -8,7 +8,7 @@ pub const TOTAL_SUPPLY: u64 = 2_000_000_000_000_000_000_u64; // 2 Billion ZIK
 pub const REWARD_RATIO: u64 = 100_000; // 1/100_000 -> 0.01% of Treasury Supply per block
 
 // Delta means: block size + state size changes
-pub const MAX_DELTA_SIZE: usize = 1024 * 1024 * 1024; // Bytes
+pub const MAX_DELTA_SIZE: usize = 1024 * 1024; // Bytes
 
 // Every n blocks, recalculate difficulty
 pub const BLOCK_TIME: usize = 60; // Seconds
