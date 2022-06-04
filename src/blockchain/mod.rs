@@ -1,7 +1,5 @@
 use thiserror::Error;
 
-use crate::config;
-use crate::config::TOTAL_SUPPLY;
 use crate::core::{
     hash::Hash, Account, Address, Block, ContractAccount, ContractId, ContractUpdate, Hasher,
     Header, Money, ProofOfWork, Signature, Transaction, TransactionAndDelta, TransactionData,
@@ -13,6 +11,20 @@ use crate::zk;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+#[derive(Clone)]
+pub struct BlockchainConfig {
+    pub genesis: BlockAndPatch,
+    pub total_supply: u64,
+    pub reward_ratio: u64,
+    pub max_delta_size: usize,
+    pub block_time: usize,
+    pub difficulty_calc_interval: u64,
+    pub pow_base_key: &'static [u8],
+    pub pow_key_change_delay: u64,
+    pub pow_key_change_interval: u64,
+    pub median_timestamp_count: u64,
+}
 
 #[derive(Error, Debug)]
 pub enum BlockchainError {
@@ -150,19 +162,19 @@ pub trait Blockchain {
 }
 
 pub struct KvStoreChain<K: KvStore> {
-    genesis: BlockAndPatch,
+    config: BlockchainConfig,
     database: K,
 }
 
 impl<K: KvStore> KvStoreChain<K> {
-    pub fn new(database: K, genesis: BlockAndPatch) -> Result<KvStoreChain<K>, BlockchainError> {
+    pub fn new(database: K, config: BlockchainConfig) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> {
             database,
-            genesis: genesis.clone(),
+            config: config.clone(),
         };
         if chain.get_height()? == 0 {
-            chain.apply_block(&genesis.block, true)?;
-            chain.update_states(&genesis.patch)?;
+            chain.apply_block(&config.genesis.block, true)?;
+            chain.update_states(&config.genesis.patch)?;
         }
         Ok(chain)
     }
@@ -170,13 +182,13 @@ impl<K: KvStore> KvStoreChain<K> {
     fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
         KvStoreChain {
             database: RamMirrorKvStore::new(&self.database),
-            genesis: self.genesis.clone(),
+            config: self.config.clone(),
         }
     }
 
     fn median_timestamp(&self, index: u64) -> Result<u32, BlockchainError> {
         Ok(utils::median(
-            &(0..std::cmp::min(index + 1, config::MEDIAN_TIMESTAMP_COUNT))
+            &(0..std::cmp::min(index + 1, self.config.median_timestamp_count))
                 .map(|i| {
                     self.get_header(index - i)
                         .map(|b| b.proof_of_work.timestamp)
@@ -188,9 +200,11 @@ impl<K: KvStore> KvStoreChain<K> {
     fn next_difficulty(&self) -> Result<u32, BlockchainError> {
         let height = self.get_height()?;
         let last_block = self.get_header(height - 1)?;
-        if height % config::DIFFICULTY_CALC_INTERVAL == 0 {
-            let prev_block = self.get_header(height - config::DIFFICULTY_CALC_INTERVAL)?;
+        if height % self.config.difficulty_calc_interval == 0 {
+            let prev_block = self.get_header(height - self.config.difficulty_calc_interval)?;
             Ok(utils::calc_pow_difficulty(
+                self.config.difficulty_calc_interval,
+                self.config.block_time,
                 &last_block.proof_of_work,
                 &prev_block.proof_of_work,
             ))
@@ -467,7 +481,8 @@ impl<K: KvStore> KvStoreChain<K> {
         let mut sz = 0isize;
         for tx in sorted.into_iter() {
             let delta = tx.tx.size() as isize + tx.state_delta.clone().unwrap_or_default().size();
-            if sz + delta <= config::MAX_DELTA_SIZE as isize && fork.apply_tx(&tx.tx, false).is_ok()
+            if sz + delta <= self.config.max_delta_size as isize
+                && fork.apply_tx(&tx.tx, false).is_ok()
             {
                 sz += delta;
                 result.push(tx);
@@ -542,7 +557,7 @@ impl<K: KvStore> KvStoreChain<K> {
             }
         }
 
-        if (body_size as isize + state_size_delta) as usize > config::MAX_DELTA_SIZE {
+        if (body_size as isize + state_size_delta) as usize > self.config.max_delta_size {
             return Err(BlockchainError::BlockTooBig);
         }
 
@@ -641,7 +656,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             Some(b) => b.try_into()?,
             None => Account {
                 balance: if addr == Address::Treasury {
-                    TOTAL_SUPPLY
+                    self.config.total_supply
                 } else {
                     0
                 },
@@ -673,14 +688,19 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let mut last_header = self.get_header(from - 1)?;
         let mut last_pow = self
             .get_header(
-                last_header.number - (last_header.number % config::DIFFICULTY_CALC_INTERVAL),
+                last_header.number - (last_header.number % self.config.difficulty_calc_interval),
             )?
             .proof_of_work;
 
         for h in headers.iter() {
-            if h.number % config::DIFFICULTY_CALC_INTERVAL == 0 {
+            if h.number % self.config.difficulty_calc_interval == 0 {
                 if h.proof_of_work.target
-                    != utils::calc_pow_difficulty(&last_header.proof_of_work, &last_pow)
+                    != utils::calc_pow_difficulty(
+                        self.config.difficulty_calc_interval,
+                        self.config.block_time,
+                        &last_header.proof_of_work,
+                        &last_pow,
+                    )
                 {
                     return Err(BlockchainError::DifficultyTargetWrong);
                 }
@@ -768,7 +788,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
     fn next_reward(&self) -> Result<Money, BlockchainError> {
         let supply = self.get_account(Address::Treasury)?.balance;
-        Ok(supply / config::REWARD_RATIO)
+        Ok(supply / self.config.reward_ratio)
     }
     fn draft_block(
         &self,
@@ -860,12 +880,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     fn pow_key(&self, index: u64) -> Result<Vec<u8>, BlockchainError> {
-        Ok(if index < config::POW_KEY_CHANGE_DELAY {
-            config::POW_BASE_KEY.to_vec()
+        Ok(if index < self.config.pow_key_change_delay {
+            self.config.pow_base_key.to_vec()
         } else {
-            let reference = ((index - config::POW_KEY_CHANGE_DELAY)
-                / config::POW_KEY_CHANGE_INTERVAL)
-                * config::POW_KEY_CHANGE_INTERVAL;
+            let reference = ((index - self.config.pow_key_change_delay)
+                / self.config.pow_key_change_interval)
+                * self.config.pow_key_change_interval;
             self.get_header(reference)?.hash().to_vec()
         })
     }

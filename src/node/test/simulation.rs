@@ -1,7 +1,7 @@
 use super::*;
 
 use super::api::messages::*;
-use crate::blockchain::{BlockAndPatch, KvStoreChain};
+use crate::blockchain::{BlockchainConfig, KvStoreChain};
 use crate::db::RamKvStore;
 use crate::wallet::Wallet;
 
@@ -15,7 +15,7 @@ struct Node {
 }
 
 pub struct NodeOpts {
-    pub genesis: BlockAndPatch,
+    pub config: BlockchainConfig,
     pub wallet: Option<Wallet>,
     pub addr: u16,
     pub bootstrap: Vec<u16>,
@@ -26,7 +26,7 @@ fn create_test_node(
     opts: NodeOpts,
 ) -> (impl futures::Future<Output = Result<(), NodeError>>, Node) {
     let addr = PeerAddress(SocketAddr::from(([127, 0, 0, 1], opts.addr)));
-    let chain = KvStoreChain::new(RamKvStore::new(), opts.genesis).unwrap();
+    let chain = KvStoreChain::new(RamKvStore::new(), opts.config).unwrap();
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
     let node = node_create(

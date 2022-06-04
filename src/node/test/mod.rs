@@ -21,27 +21,27 @@ async fn test_peers_find_each_other() {
     init();
 
     let enabled = Arc::new(RwLock::new(true));
-    let genesis = genesis::get_genesis_block();
+    let conf = genesis::get_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&enabled),
         vec![
             NodeOpts {
-                genesis: genesis.clone(),
+                config: conf.clone(),
                 wallet: None,
                 addr: 3030,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
-                genesis: genesis.clone(),
+                config: conf.clone(),
                 wallet: None,
                 addr: 3031,
                 bootstrap: vec![3030],
                 timestamp_offset: 10,
             },
             NodeOpts {
-                genesis: genesis.clone(),
+                config: conf.clone(),
                 wallet: None,
                 addr: 3032,
                 bootstrap: vec![3031],
@@ -68,27 +68,27 @@ async fn test_timestamps_are_sync() {
     init();
 
     let enabled = Arc::new(RwLock::new(true));
-    let genesis = genesis::get_genesis_block();
+    let conf = genesis::get_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&enabled),
         vec![
             NodeOpts {
-                genesis: genesis.clone(),
+                config: conf.clone(),
                 wallet: None,
                 addr: 3030,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
-                genesis: genesis.clone(),
+                config: conf.clone(),
                 wallet: None,
                 addr: 3031,
                 bootstrap: vec![3030],
                 timestamp_offset: 10,
             },
             NodeOpts {
-                genesis: genesis.clone(),
+                config: conf.clone(),
                 wallet: None,
                 addr: 3032,
                 bootstrap: vec![3031],
@@ -118,20 +118,20 @@ async fn test_blocks_get_synced() {
     init();
 
     let enabled = Arc::new(RwLock::new(false));
-    let genesis = genesis::get_test_genesis_block();
+    let conf = genesis::get_test_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&enabled),
         vec![
             NodeOpts {
-                genesis: genesis.clone(),
+                config: conf.clone(),
                 wallet: Some(Wallet::new(Vec::from("ABC"))),
                 addr: 3030,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
-                genesis: genesis.clone(),
+                config: conf.clone(),
                 wallet: Some(Wallet::new(Vec::from("CBA"))),
                 addr: 3031,
                 bootstrap: vec![3030],
@@ -186,20 +186,20 @@ async fn test_states_get_synced() {
     init();
 
     let enabled = Arc::new(RwLock::new(false));
-    let genesis = genesis::get_test_genesis_block();
+    let conf = genesis::get_test_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&enabled),
         vec![
             NodeOpts {
-                genesis: genesis.clone(),
+                config: conf.clone(),
                 wallet: Some(Wallet::new(Vec::from("ABC"))),
                 addr: 3030,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
-                genesis: genesis.clone(),
+                config: conf.clone(),
                 wallet: Some(Wallet::new(Vec::from("CBA"))),
                 addr: 3031,
                 bootstrap: vec![3030],

@@ -103,7 +103,7 @@ async fn main() -> Result<(), NodeError> {
                 64,
             )
             .unwrap(),
-            genesis::get_genesis_block(),
+            genesis::get_config(),
         )
         .unwrap(),
         0,
@@ -170,10 +170,10 @@ async fn main() -> Result<(), NodeError> {
 fn main() {
     env_logger::init();
 
-    let mut genesis_block = genesis::get_genesis_block();
-    genesis_block.block.header.proof_of_work.target = 0x00ffffff;
+    let mut conf = genesis::get_config();
+    conf.genesis.block.header.proof_of_work.target = 0x00ffffff;
 
-    let mut chain = KvStoreChain::new(RamKvStore::new(), genesis_block).unwrap();
+    let mut chain = KvStoreChain::new(RamKvStore::new(), conf).unwrap();
 
     let mut nonce = 1;
 

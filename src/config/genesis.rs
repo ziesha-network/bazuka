@@ -1,4 +1,4 @@
-use crate::blockchain::{BlockAndPatch, ZkBlockchainPatch};
+use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::core::{
     Address, Block, ContractId, Header, ProofOfWork, Signature, Transaction, TransactionAndDelta,
     TransactionData,
@@ -49,7 +49,7 @@ pub fn get_test_mpn_contract() -> TransactionAndDelta {
     mpn_tx_delta
 }
 
-pub fn get_genesis_block() -> BlockAndPatch {
+pub fn get_config() -> BlockchainConfig {
     let mpn_tx_delta = get_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
@@ -81,29 +81,49 @@ pub fn get_genesis_block() -> BlockAndPatch {
         ],
     };
 
-    BlockAndPatch {
-        block: blk,
-        patch: ZkBlockchainPatch {
-            patches: [(
-                mpn_contract_id,
-                zk::ZkStatePatch::Delta(mpn_tx_delta.state_delta.unwrap()),
-            )]
-            .into_iter()
-            .collect(),
+    BlockchainConfig {
+        genesis: BlockAndPatch {
+            block: blk,
+            patch: ZkBlockchainPatch {
+                patches: [(
+                    mpn_contract_id,
+                    zk::ZkStatePatch::Delta(mpn_tx_delta.state_delta.unwrap()),
+                )]
+                .into_iter()
+                .collect(),
+            },
         },
+        total_supply: 2_000_000_000_000_000_000_u64, // 2 Billion ZIK
+        reward_ratio: 100_000, // 1/100_000 -> 0.01% of Treasury Supply per block
+        max_delta_size: 1024 * 1024, // Bytes
+        block_time: 60,        // Seconds
+        difficulty_calc_interval: 128, // Blocks
+
+        // 0 63 -> BAZUKA BASE KEY
+        // 64 2111 -> hash(blk#0)
+        // 2112 4159 -> hash(blk#2048)
+        // 4160 6207 -> hash(blk#4096)
+        // ...
+        pow_base_key: b"BAZUKA BASE KEY",
+        pow_key_change_delay: 64,      // Blocks
+        pow_key_change_interval: 2048, // Blocks
+
+        // New block's timestamp should be higher than median
+        // timestamp of 10 previous blocks
+        median_timestamp_count: 10,
     }
 }
 
 #[cfg(test)]
-pub fn get_test_genesis_block() -> BlockAndPatch {
+pub fn get_test_config() -> BlockchainConfig {
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
-    let mut genesis = get_genesis_block();
-    genesis.block.header.proof_of_work.target = 0x007fffff;
-    genesis.block.body[1] = get_test_mpn_contract().tx;
+    let mut conf = get_config();
+    conf.genesis.block.header.proof_of_work.target = 0x007fffff;
+    conf.genesis.block.body[1] = get_test_mpn_contract().tx;
     let abc = Wallet::new(Vec::from("ABC"));
-    genesis.block.body.push(Transaction {
+    conf.genesis.block.body.push(Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: abc.get_address(),
@@ -113,7 +133,7 @@ pub fn get_test_genesis_block() -> BlockAndPatch {
         fee: 0,
         sig: Signature::Unsigned,
     });
-    genesis.patch = ZkBlockchainPatch {
+    conf.genesis.patch = ZkBlockchainPatch {
         patches: [(
             mpn_contract_id,
             zk::ZkStatePatch::Delta(mpn_tx_delta.state_delta.unwrap()),
@@ -121,5 +141,5 @@ pub fn get_test_genesis_block() -> BlockAndPatch {
         .into_iter()
         .collect(),
     };
-    genesis
+    conf
 }

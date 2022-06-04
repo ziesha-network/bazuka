@@ -6,17 +6,17 @@ use crate::db;
 
 mod contract;
 
-fn easy_genesis() -> BlockAndPatch {
-    let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.block.header.proof_of_work.target = 0x00ffffff;
+fn easy_config() -> BlockchainConfig {
+    let mut conf = genesis::get_test_config();
+    conf.genesis.block.header.proof_of_work.target = 0x00ffffff;
 
-    genesis_block
+    conf
 }
 
 #[test]
 fn test_correct_target_calculation() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     chain.apply_block(&chain.draft_block(60, &[], &miner)?.block, true)?;
 
@@ -36,7 +36,7 @@ fn test_correct_target_calculation() -> Result<(), BlockchainError> {
 #[test]
 fn test_pow_key_correctness() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     for i in 0..2500 {
         let mut draft = chain.draft_block(i * 60, &[], &miner)?;
@@ -64,7 +64,7 @@ fn test_pow_key_correctness() -> Result<(), BlockchainError> {
 #[test]
 fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
-    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     let mut fork1 = chain.fork_on_ram();
     fork1.apply_block(&fork1.draft_block(10, &[], &miner)?.block, true)?;
@@ -110,7 +110,7 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
 #[test]
 fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
-    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let mut fork1 = chain.fork_on_ram();
     let blk1 = fork1.draft_block(0, &[], &miner)?;
     fork1.extend(1, &[blk1.block.clone()])?;
@@ -144,7 +144,7 @@ fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
 #[test]
 fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
-    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let mut fork1 = chain.fork_on_ram();
     let blk1 = fork1.draft_block(0, &[], &miner)?;
     fork1.extend(1, &[blk1.block.clone()])?;
@@ -179,7 +179,7 @@ fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
 fn test_merkle_root_check() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let miner = Wallet::new(Vec::from("MINER"));
-    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let blk1 = chain
         .draft_block(
             1,
@@ -226,7 +226,7 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     // Alice: 10000 Bob: 0
     assert_eq!(chain.get_account(alice.get_address())?.balance, 10000);
@@ -260,7 +260,7 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     // Alice: 10000 Bob: 0
     assert_eq!(chain.get_account(alice.get_address())?.balance, 10000);
@@ -290,7 +290,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     // Create unsigned signed tx
     let unsigned_tx = Transaction {
@@ -327,7 +327,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     // Create unsigned tx
     let (_, sk) = EdDSA::generate_keys(&Vec::from("ABC"));
@@ -370,7 +370,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let bob = Wallet::new(Vec::from("CBA"));
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_genesis())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     // Alice: 10000 Bob: 0
     assert_eq!(chain.get_account(alice.get_address())?.balance, 10000);
@@ -465,18 +465,18 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_genesis_is_not_replaceable() -> Result<(), BlockchainError> {
-    let genesis_block = genesis::get_genesis_block();
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block.clone())?;
+    let conf = genesis::get_config();
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf.clone())?;
     assert_eq!(1, chain.get_height()?);
 
     let first_block = chain.get_block(0)?;
-    assert_eq!(genesis_block.block.header.hash(), first_block.header.hash());
+    assert_eq!(conf.genesis.block.header.hash(), first_block.header.hash());
 
-    let mut another_genesis_block = genesis_block.clone();
-    another_genesis_block.block.header.proof_of_work.timestamp += 1;
+    let mut another_conf = conf.clone();
+    another_conf.genesis.block.header.proof_of_work.timestamp += 1;
 
     assert!(matches!(
-        chain.extend(0, &[another_genesis_block.block]),
+        chain.extend(0, &[another_conf.genesis.block]),
         Err(BlockchainError::ExtendFromGenesis)
     ));
 
@@ -489,9 +489,9 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut genesis_block = genesis::get_genesis_block();
-    genesis_block.block.header.proof_of_work.target = 0x0000ffff;
-    genesis_block.block.body = vec![Transaction {
+    let mut conf = genesis::get_config();
+    conf.genesis.block.header.proof_of_work.target = 0x0000ffff;
+    conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: wallet1.get_address(),
@@ -502,7 +502,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
         sig: Signature::Unsigned,
     }];
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     let t1 = wallet1.create_transaction(wallet2.get_address(), 100, 0, 1);
     let mempool = vec![t1];
@@ -542,8 +542,8 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.block.body = vec![Transaction {
+    let mut conf = genesis::get_test_config();
+    conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: wallet1.get_address(),
@@ -554,7 +554,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
         sig: Signature::Unsigned,
     }];
 
-    let chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
+    let chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     let t_valid = wallet1.create_transaction(wallet2.get_address(), 200, 0, 1);
     let t_invalid_unsigned = TransactionAndDelta {
@@ -600,8 +600,8 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.block.body = vec![Transaction {
+    let mut conf = genesis::get_test_config();
+    conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: wallet1.get_address(),
@@ -612,7 +612,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
         sig: Signature::Unsigned,
     }];
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     let t1 = wallet1.create_transaction(wallet2.get_address(), 3000, 0, 1);
     let t2 = wallet1.create_transaction(wallet2.get_address(), 4000, 0, 2);
@@ -640,8 +640,8 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut genesis_block = genesis::get_test_genesis_block();
-    genesis_block.block.body = vec![Transaction {
+    let mut conf = genesis::get_test_config();
+    conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: wallet1.get_address(),
@@ -652,7 +652,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
         sig: Signature::Unsigned,
     }];
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), genesis_block)?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     let t1 = wallet1.create_transaction(wallet2.get_address(), 1_000_000, 0, 1);
     let mut mempool = vec![t1];
