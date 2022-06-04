@@ -37,7 +37,7 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let mut conf = easy_config();
     conf.difficulty_calc_interval = 3;
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf.clone())?;
 
     let mut draft = chain.draft_block(40, &[], &miner)?;
     mine_block(&chain, &mut draft)?;
@@ -92,6 +92,9 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     chain.extend(12, &[draft.block])?;
 
     // TODO: Check difficulty overflow (One can't make 0x00ffffff easier)
+
+    let chain2 = KvStoreChain::new(db::RamKvStore::new(), conf)?;
+    assert!(chain2.will_extend(1, &chain.get_headers(1, None)?, true)?);
 
     Ok(())
 }
