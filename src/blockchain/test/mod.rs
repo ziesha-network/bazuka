@@ -9,8 +9,6 @@ mod contract;
 fn easy_config() -> BlockchainConfig {
     let mut conf = genesis::get_test_config();
     conf.genesis.block.header.proof_of_work.target = 0x00ffffff;
-    conf.pow_key_change_delay = 4;
-    conf.pow_key_change_interval = 8;
 
     conf
 }
@@ -37,7 +35,10 @@ fn test_correct_target_calculation() -> Result<(), BlockchainError> {
 #[test]
 fn test_pow_key_correctness() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut conf = easy_config();
+    conf.pow_key_change_delay = 4;
+    conf.pow_key_change_interval = 8;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     for i in 0..25 {
         let mut draft = chain.draft_block(i * 60, &[], &miner)?;
