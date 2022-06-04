@@ -33,6 +33,70 @@ fn test_correct_target_calculation() -> Result<(), BlockchainError> {
 }
 
 #[test]
+fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let mut conf = easy_config();
+    conf.difficulty_calc_interval = 3;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
+
+    let mut draft = chain.draft_block(40, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
+    chain.extend(1, &[draft.block])?;
+    draft = chain.draft_block(80, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
+    chain.extend(2, &[draft.block])?;
+    draft = chain.draft_block(120, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x00aaaaaa);
+    chain.extend(3, &[draft.block])?;
+
+    draft = chain.draft_block(210, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x00aaaaaa);
+    chain.extend(4, &[draft.block])?;
+    draft = chain.draft_block(300, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x00aaaaaa);
+    chain.extend(5, &[draft.block])?;
+    draft = chain.draft_block(390, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
+    chain.extend(6, &[draft.block])?;
+
+    draft = chain.draft_block(391, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
+    chain.extend(7, &[draft.block])?;
+    draft = chain.draft_block(392, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
+    chain.extend(8, &[draft.block])?;
+    draft = chain.draft_block(393, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x007fffff);
+    chain.extend(9, &[draft.block])?;
+
+    draft = chain.draft_block(1000, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x007fffff);
+    chain.extend(10, &[draft.block])?;
+    draft = chain.draft_block(2000, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x007fffff);
+    chain.extend(11, &[draft.block])?;
+    draft = chain.draft_block(3000, &[], &miner)?;
+    mine_block(&chain, &mut draft)?;
+    assert_eq!(draft.block.header.proof_of_work.target, 0x00fffffe);
+    chain.extend(12, &[draft.block])?;
+
+    // TODO: Check difficulty overflow (One can't make 0x00ffffff easier)
+
+    Ok(())
+}
+
+#[test]
 fn test_pow_key_correctness() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let mut conf = easy_config();
