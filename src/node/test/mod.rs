@@ -169,6 +169,11 @@ async fn test_blocks_get_synced() {
         assert_eq!(chans[0].stats().await.unwrap().height, 6);
         assert_eq!(chans[1].stats().await.unwrap().height, 6);
 
+        // Now nodes should immediately sync with post_block
+        chans[1].mine().await.unwrap();
+        assert_eq!(chans[0].stats().await.unwrap().height, 7);
+        assert_eq!(chans[1].stats().await.unwrap().height, 7);
+
         for chan in chans.iter() {
             chan.shutdown().await.unwrap();
         }
