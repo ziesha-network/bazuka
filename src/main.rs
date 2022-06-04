@@ -40,10 +40,12 @@ struct NodeOptions {
     bootstrap: Vec<String>,
 }
 
+#[cfg(not(tarpaulin_include))]
 lazy_static! {
     static ref WALLET: Wallet = Wallet::new(b"random seed".to_vec());
 }
 
+#[cfg(not(tarpaulin_include))]
 #[cfg(feature = "node")]
 #[tokio::main]
 async fn main() -> Result<(), NodeError> {
@@ -163,6 +165,7 @@ async fn main() -> Result<(), NodeError> {
     Ok(())
 }
 
+#[cfg(not(tarpaulin_include))]
 #[cfg(not(feature = "node"))]
 fn main() {
     env_logger::init();
