@@ -128,7 +128,17 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     // TODO: Check difficulty overflow (One can't make 0x00ffffff easier)
 
     let chain2 = KvStoreChain::new(db::RamKvStore::new(), conf)?;
-    assert!(chain2.will_extend(1, &chain.get_headers(1, None)?, true)?);
+    let headers = chain.get_headers(1, None)?;
+    assert!(chain2.will_extend(1, &headers, true)?);
+
+    for i in 0..headers.len() {
+        let mut broken_headers = headers.clone();
+        broken_headers[i].proof_of_work.target = 0x00aabbcc;
+        assert!(matches!(
+            chain2.will_extend(1, &broken_headers, true),
+            Err(BlockchainError::DifficultyTargetWrong)
+        ));
+    }
 
     Ok(())
 }
