@@ -22,7 +22,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
         1,
     );
 
-    let draft = chain.draft_block(1, &[tx.clone()], &miner)?;
+    let draft = chain.draft_block(1, &mut with_dummy_stats(&[tx.clone()]), &miner)?;
     chain.apply_block(&draft.block, true)?;
 
     assert_eq!(chain.get_height()?, 2);
@@ -64,7 +64,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         1,
     );
 
-    let draft = chain.draft_block(1, &[tx.clone()], &miner)?;
+    let draft = chain.draft_block(1, &mut with_dummy_stats(&[tx.clone()]), &miner)?;
 
     chain.apply_block(&draft.block, true)?;
 
