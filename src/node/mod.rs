@@ -79,6 +79,17 @@ async fn node_service<B: Blockchain>(
     let qs = req.uri().query().unwrap_or("").to_string();
     let body = req.into_body();
 
+    // Disallow large requests
+    if body
+        .size_hint()
+        .upper()
+        .map(|u| u > 1024 * 1024)
+        .unwrap_or(true)
+    {
+        *response.status_mut() = StatusCode::PAYLOAD_TOO_LARGE;
+        return Ok(response);
+    }
+
     match (method, &path[..]) {
         // Miner will call this to fetch new PoW work.
         (Method::GET, "/miner/puzzle") => {
