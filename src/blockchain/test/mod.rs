@@ -24,9 +24,7 @@ fn test_get_header_and_get_block() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
-    let new_block = chain
-        .draft_block(60, &mut with_dummy_stats(&[]), &miner)?
-        .block;
+    let new_block = chain.draft_block(60, &mut HashMap::new(), &miner)?.block;
     chain.extend(1, &[new_block.clone()])?;
 
     assert_eq!(chain.get_block(1)?, new_block);
@@ -61,13 +59,11 @@ fn test_correct_target_calculation() -> Result<(), BlockchainError> {
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     chain.apply_block(
-        &chain
-            .draft_block(60, &mut with_dummy_stats(&[]), &miner)?
-            .block,
+        &chain.draft_block(60, &mut HashMap::new(), &miner)?.block,
         true,
     )?;
 
-    let mut wrong_pow = chain.draft_block(120, &mut with_dummy_stats(&[]), &miner)?;
+    let mut wrong_pow = chain.draft_block(120, &mut HashMap::new(), &miner)?;
     wrong_pow.block.header.proof_of_work.target = 0x01ffffff;
     assert!(matches!(
         chain.apply_block(&wrong_pow.block, true),
@@ -86,54 +82,54 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     conf.difficulty_calc_interval = 3;
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf.clone())?;
 
-    let mut draft = chain.draft_block(40, &mut with_dummy_stats(&[]), &miner)?;
+    let mut draft = chain.draft_block(40, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
     chain.extend(1, &[draft.block])?;
-    draft = chain.draft_block(80, &mut with_dummy_stats(&[]), &miner)?;
+    draft = chain.draft_block(80, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
     chain.extend(2, &[draft.block])?;
-    draft = chain.draft_block(120, &mut with_dummy_stats(&[]), &miner)?;
+    draft = chain.draft_block(120, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x00aaaaaa);
     chain.extend(3, &[draft.block])?;
 
-    draft = chain.draft_block(210, &mut with_dummy_stats(&[]), &miner)?;
+    draft = chain.draft_block(210, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x00aaaaaa);
     chain.extend(4, &[draft.block])?;
-    draft = chain.draft_block(300, &mut with_dummy_stats(&[]), &miner)?;
+    draft = chain.draft_block(300, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x00aaaaaa);
     chain.extend(5, &[draft.block])?;
-    draft = chain.draft_block(390, &mut with_dummy_stats(&[]), &miner)?;
+    draft = chain.draft_block(390, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
     chain.extend(6, &[draft.block])?;
 
-    draft = chain.draft_block(391, &mut with_dummy_stats(&[]), &miner)?;
+    draft = chain.draft_block(391, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
     chain.extend(7, &[draft.block])?;
-    draft = chain.draft_block(392, &mut with_dummy_stats(&[]), &miner)?;
+    draft = chain.draft_block(392, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
     chain.extend(8, &[draft.block])?;
-    draft = chain.draft_block(393, &mut with_dummy_stats(&[]), &miner)?;
+    draft = chain.draft_block(393, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x007fffff);
     chain.extend(9, &[draft.block])?;
 
-    draft = chain.draft_block(1000, &mut with_dummy_stats(&[]), &miner)?;
+    draft = chain.draft_block(1000, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x007fffff);
     chain.extend(10, &[draft.block])?;
-    draft = chain.draft_block(2000, &mut with_dummy_stats(&[]), &miner)?;
+    draft = chain.draft_block(2000, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x007fffff);
     chain.extend(11, &[draft.block])?;
-    draft = chain.draft_block(3000, &mut with_dummy_stats(&[]), &miner)?;
+    draft = chain.draft_block(3000, &mut HashMap::new(), &miner)?;
     mine_block(&chain, &mut draft)?;
     assert_eq!(draft.block.header.proof_of_work.target, 0x00fffffe);
     chain.extend(12, &[draft.block])?;
@@ -165,7 +161,7 @@ fn test_pow_key_correctness() -> Result<(), BlockchainError> {
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     for i in 0..25 {
-        let mut draft = chain.draft_block(i * 60, &mut with_dummy_stats(&[]), &miner)?;
+        let mut draft = chain.draft_block(i * 60, &mut HashMap::new(), &miner)?;
         mine_block(&chain, &mut draft)?;
         chain.apply_block(&draft.block, true)?;
         chain.update_states(&draft.patch)?;
@@ -197,15 +193,13 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
 
     let mut fork1 = chain.fork_on_ram();
     fork1.apply_block(
-        &fork1
-            .draft_block(10, &mut with_dummy_stats(&[]), &miner)?
-            .block,
+        &fork1.draft_block(10, &mut HashMap::new(), &miner)?.block,
         true,
     )?;
     assert!(matches!(
         fork1.draft_block(
             5, // 5 < 10
-            &mut with_dummy_stats(&[]),
+            &mut HashMap::new(),
             &miner,
         ),
         Err(BlockchainError::InvalidTimestamp)
@@ -214,7 +208,7 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
         &fork1
             .draft_block(
                 10, // 10, again, should be fine
-                &mut with_dummy_stats(&[]),
+                &mut HashMap::new(),
                 &miner,
             )?
             .block,
@@ -223,9 +217,7 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
 
     for i in 11..30 {
         fork1.apply_block(
-            &fork1
-                .draft_block(i, &mut with_dummy_stats(&[]), &miner)?
-                .block,
+            &fork1.draft_block(i, &mut HashMap::new(), &miner)?.block,
             true,
         )?;
     }
@@ -236,15 +228,13 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
     assert!(matches!(
         fork1.draft_block(
             24, // 24 < 25
-            &mut with_dummy_stats(&[]),
+            &mut HashMap::new(),
             &miner,
         ),
         Err(BlockchainError::InvalidTimestamp)
     ));
     fork1.apply_block(
-        &fork1
-            .draft_block(25, &mut with_dummy_stats(&[]), &miner)?
-            .block,
+        &fork1.draft_block(25, &mut HashMap::new(), &miner)?.block,
         true,
     )?;
 
@@ -256,9 +246,9 @@ fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let mut fork1 = chain.fork_on_ram();
-    let blk1 = fork1.draft_block(0, &mut with_dummy_stats(&[]), &miner)?;
+    let blk1 = fork1.draft_block(0, &mut HashMap::new(), &miner)?;
     fork1.extend(1, &[blk1.block.clone()])?;
-    let blk2 = fork1.draft_block(1, &mut with_dummy_stats(&[]), &miner)?;
+    let blk2 = fork1.draft_block(1, &mut HashMap::new(), &miner)?;
     fork1.extend(2, &[blk2.block.clone()])?;
     assert_eq!(fork1.get_height()?, 3);
 
@@ -290,9 +280,9 @@ fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let mut fork1 = chain.fork_on_ram();
-    let blk1 = fork1.draft_block(0, &mut with_dummy_stats(&[]), &miner)?;
+    let blk1 = fork1.draft_block(0, &mut HashMap::new(), &miner)?;
     fork1.extend(1, &[blk1.block.clone()])?;
-    let blk2 = fork1.draft_block(1, &mut with_dummy_stats(&[]), &miner)?;
+    let blk2 = fork1.draft_block(1, &mut HashMap::new(), &miner)?;
     fork1.extend(2, &[blk2.block.clone()])?;
     assert_eq!(fork1.get_height()?, 3);
 
