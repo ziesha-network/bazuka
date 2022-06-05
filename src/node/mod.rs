@@ -8,7 +8,7 @@ mod heartbeat;
 mod http;
 pub mod seeds;
 pub mod upnp;
-use context::{NodeContext, TransactionStats};
+use context::NodeContext;
 pub use errors::NodeError;
 
 use crate::blockchain::Blockchain;

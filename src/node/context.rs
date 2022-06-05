@@ -1,5 +1,5 @@
 use super::{OutgoingSender, Peer, PeerAddress, PeerInfo};
-use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError};
+use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, TransactionStats};
 use crate::core::TransactionAndDelta;
 use crate::utils;
 use crate::wallet::Wallet;
@@ -10,11 +10,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use super::api::messages::Puzzle;
-
-#[derive(Debug, Clone)]
-pub struct TransactionStats {
-    pub first_seen: u32,
-}
 
 pub type BlockPuzzle = (BlockAndPatch, Puzzle);
 
@@ -62,10 +57,11 @@ impl<B: Blockchain> NodeContext<B> {
             .collect()
     }
 
-    pub fn get_puzzle(&self, wallet: Wallet) -> Result<BlockPuzzle, BlockchainError> {
-        let txs = self.mempool.keys().cloned().collect::<Vec<_>>();
+    pub fn get_puzzle(&mut self, wallet: Wallet) -> Result<BlockPuzzle, BlockchainError> {
         let ts = self.network_timestamp();
-        let draft = self.blockchain.draft_block(ts, &txs, &wallet)?;
+        let draft = self
+            .blockchain
+            .draft_block(ts, &mut self.mempool, &wallet)?;
         let puzzle = Puzzle {
             key: hex::encode(self.blockchain.pow_key(draft.block.header.number)?),
             blob: hex::encode(bincode::serialize(&draft.block.header).unwrap()),

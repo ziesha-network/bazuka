@@ -1,6 +1,6 @@
 use super::messages::{TransactZeroRequest, TransactZeroResponse};
-use super::{NodeContext, NodeError, TransactionStats};
-use crate::blockchain::Blockchain;
+use super::{NodeContext, NodeError};
+use crate::blockchain::{Blockchain, TransactionStats};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 

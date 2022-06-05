@@ -26,6 +26,11 @@ pub struct BlockchainConfig {
     pub median_timestamp_count: u64,
 }
 
+#[derive(Debug, Clone)]
+pub struct TransactionStats {
+    pub first_seen: u32,
+}
+
 #[derive(Error, Debug)]
 pub enum BlockchainError {
     #[error("kvstore error happened: {0}")]
@@ -133,7 +138,7 @@ pub trait Blockchain {
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &[TransactionAndDelta],
+        mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
         wallet: &Wallet,
     ) -> Result<BlockAndPatch, BlockchainError>;
     fn get_height(&self) -> Result<u64, BlockchainError>;
@@ -471,9 +476,9 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn select_transactions(
         &self,
-        txs: &[TransactionAndDelta],
+        txs: &mut HashMap<TransactionAndDelta, TransactionStats>,
     ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
-        let mut sorted = txs.to_vec();
+        let mut sorted = txs.keys().cloned().collect::<Vec<_>>();
         sorted.sort_by(|t1, t2| t1.tx.nonce.cmp(&t2.tx.nonce));
         let mut fork = self.fork_on_ram();
         let mut result = Vec::new();
@@ -483,6 +488,7 @@ impl<K: KvStore> KvStoreChain<K> {
             if sz + delta <= self.config.max_delta_size as isize
                 && fork.apply_tx(&tx.tx, false).is_ok()
             {
+                txs.remove(&tx);
                 sz += delta;
                 result.push(tx);
             }
@@ -794,7 +800,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &[TransactionAndDelta],
+        mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
         wallet: &Wallet,
     ) -> Result<BlockAndPatch, BlockchainError> {
         let height = self.get_height()?;
