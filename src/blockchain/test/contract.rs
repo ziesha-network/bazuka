@@ -51,8 +51,11 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         state_model,
         [(100, zk::ZkScalar::from(200))].into_iter().collect(),
     );
+    let mut full_state_with_delta = full_state.clone();
+
     let state_delta = zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect());
     full_state.apply_delta(&state_delta);
+    full_state_with_delta.push_delta(&state_delta);
 
     let tx = alice.call_function(
         cid,
@@ -158,6 +161,11 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         )]
         .into_iter()
         .collect(),
+    })?;
+    chain.fork_on_ram().update_states(&ZkBlockchainPatch {
+        patches: [(cid, zk::ZkStatePatch::Full(full_state_with_delta.as_full()))]
+            .into_iter()
+            .collect(),
     })?;
 
     let mut unupdated_fork = chain.fork_on_ram();
