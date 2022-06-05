@@ -135,6 +135,7 @@ pub trait Blockchain {
         check_pow: bool,
     ) -> Result<bool, BlockchainError>;
     fn extend(&mut self, from: u64, blocks: &[Block]) -> Result<(), BlockchainError>;
+    fn rollback(&mut self) -> Result<(), BlockchainError>;
     fn draft_block(
         &self,
         timestamp: u32,
@@ -432,48 +433,6 @@ impl<K: KvStore> KvStoreChain<K> {
             .ok_or(BlockchainError::Inconsistency)??)
     }
 
-    pub fn rollback_block(&mut self) -> Result<(), BlockchainError> {
-        let height = self.get_height()?;
-        let rollback_key: StringKey = format!("rollback_{:010}", height - 1).into();
-        let mut rollback: Vec<WriteOp> = match self.database.get(rollback_key.clone())? {
-            Some(b) => b.try_into()?,
-            None => {
-                return Err(BlockchainError::Inconsistency);
-            }
-        };
-
-        let mut outdated = self.get_outdated_states()?;
-        let changed_states = self.get_changed_states(height - 1)?;
-        for (cid, comp) in changed_states {
-            #[allow(clippy::map_entry)]
-            if !outdated.contains_key(&cid) {
-                let mut state = self.get_state(cid)?;
-                if state.rollback().is_ok() {
-                    if state.compress() != comp.prev_state {
-                        return Err(BlockchainError::Inconsistency);
-                    }
-                    rollback.push(WriteOp::Put(
-                        format!("contract_state_{}", cid).into(),
-                        (&state).into(),
-                    ));
-                } else if comp.prev_state.height() > 0 {
-                    outdated.insert(cid, comp.prev_state);
-                }
-            }
-        }
-        rollback.push(WriteOp::Put("outdated".into(), outdated.clone().into()));
-
-        rollback.push(WriteOp::Remove(format!("header_{:010}", height - 1).into()));
-        rollback.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
-        rollback.push(WriteOp::Remove(format!("merkle_{:010}", height - 1).into()));
-        rollback.push(WriteOp::Remove(
-            format!("contract_updates_{:010}", height - 1).into(),
-        ));
-        rollback.push(WriteOp::Remove(rollback_key));
-        self.database.update(&rollback)?;
-        Ok(())
-    }
-
     fn select_transactions(
         &self,
         txs: &mut HashMap<TransactionAndDelta, TransactionStats>,
@@ -603,6 +562,48 @@ impl<K: KvStore> KvStoreChain<K> {
 }
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
+    fn rollback(&mut self) -> Result<(), BlockchainError> {
+        let height = self.get_height()?;
+        let rollback_key: StringKey = format!("rollback_{:010}", height - 1).into();
+        let mut rollback: Vec<WriteOp> = match self.database.get(rollback_key.clone())? {
+            Some(b) => b.try_into()?,
+            None => {
+                return Err(BlockchainError::Inconsistency);
+            }
+        };
+
+        let mut outdated = self.get_outdated_states()?;
+        let changed_states = self.get_changed_states(height - 1)?;
+        for (cid, comp) in changed_states {
+            #[allow(clippy::map_entry)]
+            if !outdated.contains_key(&cid) {
+                let mut state = self.get_state(cid)?;
+                if state.rollback().is_ok() {
+                    if state.compress() != comp.prev_state {
+                        return Err(BlockchainError::Inconsistency);
+                    }
+                    rollback.push(WriteOp::Put(
+                        format!("contract_state_{}", cid).into(),
+                        (&state).into(),
+                    ));
+                } else if comp.prev_state.height() > 0 {
+                    outdated.insert(cid, comp.prev_state);
+                }
+            }
+        }
+        rollback.push(WriteOp::Put("outdated".into(), outdated.clone().into()));
+
+        rollback.push(WriteOp::Remove(format!("header_{:010}", height - 1).into()));
+        rollback.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
+        rollback.push(WriteOp::Remove(format!("merkle_{:010}", height - 1).into()));
+        rollback.push(WriteOp::Remove(
+            format!("contract_updates_{:010}", height - 1).into(),
+        ));
+        rollback.push(WriteOp::Remove(rollback_key));
+        self.database.update(&rollback)?;
+        Ok(())
+    }
+
     unsafe fn update_raw(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
         self.database.update(ops)
     }
@@ -754,7 +755,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let mut forked = self.fork_on_ram();
 
         while forked.get_height()? > from {
-            forked.rollback_block()?;
+            forked.rollback()?;
         }
 
         for block in blocks.iter() {

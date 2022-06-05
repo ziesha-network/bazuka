@@ -371,6 +371,7 @@ pub async fn node_create<B: Blockchain>(
             })
             .collect(),
         timestamp_offset,
+        banned_headers: Vec::new(),
 
         miner_puzzle: None,
     }));

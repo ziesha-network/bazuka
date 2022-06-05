@@ -1,6 +1,6 @@
 use super::{OutgoingSender, Peer, PeerAddress, PeerInfo};
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, TransactionStats};
-use crate::core::TransactionAndDelta;
+use crate::core::{Header, TransactionAndDelta};
 use crate::utils;
 use crate::wallet::Wallet;
 use crate::zk;
@@ -25,6 +25,8 @@ pub struct NodeContext<B: Blockchain> {
 
     pub mempool: HashMap<TransactionAndDelta, TransactionStats>,
     pub zero_mempool: HashMap<zk::ZeroTransaction, TransactionStats>,
+
+    pub banned_headers: Vec<Header>,
 }
 
 impl<B: Blockchain> NodeContext<B> {

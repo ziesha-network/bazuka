@@ -871,7 +871,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
 
     let after_checksum = chain.database.checksum::<Hasher>()?;
 
-    chain.rollback_block()?;
+    chain.rollback()?;
 
     let rollbacked_checksum = chain.database.checksum::<Hasher>()?;
 
