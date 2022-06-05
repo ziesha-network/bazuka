@@ -116,7 +116,7 @@ impl ZkStateModel {
 pub struct ZkState {
     height: u64,
     state_model: ZkStateModel,
-    deltas: Vec<ZkStateBiDelta>,
+    deltas: Vec<ZkStateDelta>,
     defaults: Vec<ZkScalar>,
     layers: Vec<HashMap<u32, ZkScalar>>,
 }
@@ -127,19 +127,12 @@ pub struct ZkStateFull {
     height: u64,
     state_model: ZkStateModel,
     state: HashMap<u32, ZkScalar>,
-    deltas: Vec<ZkStateBiDelta>,
+    deltas: Vec<ZkStateDelta>,
 }
 
 // One-way delta
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkStateDelta(HashMap<u32, ZkScalar>);
-
-// Two-way delta
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct ZkStateBiDelta {
-    forth: ZkStateDelta,
-    back: ZkStateDelta,
-}
 
 impl ZkState {
     pub fn height(&self) -> u64 {
@@ -193,13 +186,7 @@ impl ZkState {
             rev_delta.0.insert(*k, self.get(0, *k));
         }
         self.apply_delta(patch);
-        self.deltas.insert(
-            0,
-            ZkStateBiDelta {
-                forth: patch.clone(),
-                back: rev_delta,
-            },
-        );
+        self.deltas.insert(0, rev_delta);
         self.deltas.truncate(config::NUM_STATE_DELTAS_KEEP);
     }
     pub fn apply_delta(&mut self, patch: &ZkStateDelta) {
@@ -221,7 +208,7 @@ impl ZkState {
         if self.deltas.is_empty() {
             return Err(ZkError::DeltaNotFound);
         }
-        let back = self.deltas.remove(0).back;
+        let back = self.deltas.remove(0);
         self.apply_delta(&back);
         self.height -= 2; // Height is advanced when applying block, so step back by 2
         Ok(())
@@ -239,16 +226,17 @@ impl ZkState {
         if away == 0 {
             return Ok(ZkStateDelta::default());
         }
-        let mut acc = self
-            .deltas
-            .get(away - 1)
-            .ok_or(ZkError::DeltaNotFound)?
-            .forth
-            .clone();
-        for i in away - 1..0 {
-            acc.combine(&self.deltas.get(i - 1).ok_or(ZkError::DeltaNotFound)?.forth);
+        let mut back = self.deltas.get(0).ok_or(ZkError::DeltaNotFound)?.clone();
+        for i in 1..away {
+            back.combine(self.deltas.get(i).ok_or(ZkError::DeltaNotFound)?);
         }
-        Ok(acc)
+
+        let mut forth = ZkStateDelta(HashMap::new());
+        for (k, _) in back.0.iter() {
+            forth.0.insert(*k, self.get(0, *k));
+        }
+
+        Ok(forth)
     }
     fn get(&self, level: usize, index: u32) -> ZkScalar {
         self.layers[level]
