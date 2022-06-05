@@ -14,6 +14,40 @@ fn easy_config() -> BlockchainConfig {
 }
 
 #[test]
+fn test_get_header_and_get_block() -> Result<(), BlockchainError> {
+    let miner = Wallet::new(Vec::from("MINER"));
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+
+    let new_block = chain.draft_block(60, &[], &miner)?.block;
+    chain.extend(1, &[new_block.clone()])?;
+
+    assert_eq!(chain.get_block(1)?, new_block);
+    assert_eq!(chain.get_header(1)?, new_block.header);
+
+    assert!(matches!(
+        chain.get_block(2),
+        Err(BlockchainError::BlockNotFound)
+    ));
+    assert!(matches!(
+        chain.get_header(2),
+        Err(BlockchainError::BlockNotFound)
+    ));
+
+    unsafe { chain.update_raw(&vec![WriteOp::Put("height".into(), 3u64.into())])? };
+
+    assert!(matches!(
+        chain.get_block(2),
+        Err(BlockchainError::Inconsistency)
+    ));
+    assert!(matches!(
+        chain.get_header(2),
+        Err(BlockchainError::Inconsistency)
+    ));
+
+    Ok(())
+}
+
+#[test]
 fn test_correct_target_calculation() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;

@@ -99,7 +99,7 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
     },
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
 pub struct Transaction<H: Hash, S: SignatureScheme> {
     pub src: Address<S>,
     pub nonce: u32,
