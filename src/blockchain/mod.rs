@@ -226,7 +226,6 @@ impl<K: KvStore> KvStoreChain<K> {
         })
     }
 
-    #[allow(dead_code)]
     fn get_compressed_state_at(
         &self,
         contract_id: ContractId,
@@ -607,7 +606,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let outdated = self.get_outdated_states()?;
         let mut ret = HashMap::new();
         for (cid, _) in outdated {
-            ret.insert(cid, self.get_state(cid)?.compress());
+            let contract_height = self.get_contract_account(cid)?.height;
+            let compressed_state = self.get_compressed_state_at(cid, contract_height - 1)?;
+            ret.insert(cid, compressed_state);
         }
         Ok(ret)
     }
