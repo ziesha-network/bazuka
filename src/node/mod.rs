@@ -42,6 +42,7 @@ impl std::fmt::Display for PeerAddress {
 pub struct NodeOptions {
     pub heartbeat_interval: Duration,
     pub num_peers: usize,
+    pub outdated_states_threshold: u32,
     pub no_response_punish: u32,
     pub invalid_data_punish: u32,
     pub incorrect_power_punish: u32,
@@ -380,6 +381,7 @@ pub async fn node_create<B: Blockchain>(
             .collect(),
         timestamp_offset,
         banned_headers: Vec::new(),
+        outdated_since: None,
 
         miner_puzzle: None,
     }));

@@ -3,7 +3,7 @@ use super::*;
 pub async fn sync_state<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
-    let ctx = context.read().await;
+    let mut ctx = context.write().await;
 
     let net = ctx.outgoing.clone();
 
@@ -11,20 +11,26 @@ pub async fn sync_state<B: Blockchain>(
     let height = ctx.blockchain.get_height()?;
     let last_header = ctx.blockchain.get_tip()?;
     let outdated_states = ctx.blockchain.get_outdated_states_request()?;
+    if !outdated_states.is_empty() && ctx.outdated_since.is_none() {
+        ctx.outdated_since = Some(ts);
+    }
     // Find clients which their height is equal with our height
     let same_height_peers = ctx
         .active_peers()
         .into_iter()
         .filter(|p| p.info.as_ref().map(|i| i.height == height).unwrap_or(false));
-    drop(ctx);
 
-    // TODO: Put better rollback condition
-    if (ts as i64 - last_header.proof_of_work.timestamp as i64) > 200 && !outdated_states.is_empty()
-    {
-        let mut ctx = context.write().await;
-        ctx.banned_headers.push(last_header);
-        ctx.blockchain.rollback()?;
-    } else if !outdated_states.is_empty() {
+    if !outdated_states.is_empty() {
+        if let Some(outdated_since) = ctx.outdated_since {
+            if (ts as i64 - outdated_since as i64) > ctx.opts.outdated_states_threshold as i64 {
+                let mut ctx = context.write().await;
+                ctx.banned_headers.push(last_header);
+                ctx.blockchain.rollback()?;
+                return Ok(());
+            }
+        }
+
+        drop(ctx);
         for peer in same_height_peers {
             let patch = net
                 .bincode_get::<GetStatesRequest, GetStatesResponse>(

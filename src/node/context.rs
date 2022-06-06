@@ -1,4 +1,4 @@
-use super::{NodeOptions, OutgoingSender, Peer, PeerAddress, PeerInfo};
+use super::{NodeOptions, OutgoingSender, Peer, PeerAddress, PeerInfo, Timestamp};
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, TransactionStats};
 use crate::core::{Header, TransactionAndDelta};
 use crate::utils;
@@ -27,6 +27,7 @@ pub struct NodeContext<B: Blockchain> {
     pub mempool: HashMap<TransactionAndDelta, TransactionStats>,
     pub zero_mempool: HashMap<zk::ZeroTransaction, TransactionStats>,
 
+    pub outdated_since: Option<Timestamp>,
     pub banned_headers: Vec<Header>,
 }
 
