@@ -50,7 +50,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
         ],
     );
     let test_logic = async {
-        sleep(Duration::from_millis(5000)).await;
+        sleep(Duration::from_millis(1000)).await;
 
         for chan in chans.iter() {
             assert_eq!(chan.peers().await?.peers.len(), 2);
@@ -99,7 +99,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
         ],
     );
     let test_logic = async {
-        sleep(Duration::from_millis(5000)).await;
+        sleep(Duration::from_millis(1000)).await;
 
         let mut timestamps = Vec::new();
         for chan in chans.iter() {
@@ -121,12 +121,14 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
 async fn test_blocks_get_synced() -> Result<(), NodeError> {
     init();
 
+    // Allow sync of clocks but no block transfer
     let rules = Arc::new(RwLock::new(vec![Rule {
         from: Endpoint::Any,
         to: Endpoint::Any,
-        url: "".into(),
+        url: "block".into(),
         action: Action::Drop,
     }]));
+
     let conf = blockchain::get_test_blockchain_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
@@ -149,6 +151,9 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
         ],
     );
     let test_logic = async {
+        // Wait till clocks sync
+        sleep(Duration::from_millis(1000)).await;
+
         chans[0].mine().await?;
         assert_eq!(chans[0].stats().await?.height, 2);
         chans[0].mine().await?;
@@ -168,13 +173,13 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
         assert_eq!(chans[1].stats().await?.height, 6);
 
         // Still not synced...
-        sleep(Duration::from_millis(3000)).await;
+        sleep(Duration::from_millis(1000)).await;
         assert_eq!(chans[0].stats().await?.height, 4);
         assert_eq!(chans[1].stats().await?.height, 6);
 
         // Now we open the connections...
         rules.write().await.clear();
-        sleep(Duration::from_millis(3000)).await;
+        sleep(Duration::from_millis(1000)).await;
         assert_eq!(chans[0].stats().await?.height, 6);
         assert_eq!(chans[1].stats().await?.height, 6);
 
@@ -260,7 +265,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
 
         // Still not synced...
-        sleep(Duration::from_millis(3000)).await;
+        sleep(Duration::from_millis(1000)).await;
         assert_eq!(chans[0].stats().await?.height, 2);
         assert_eq!(chans[1].stats().await?.height, 1);
 
@@ -271,7 +276,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
             url: "state".into(),
             action: Action::Drop,
         }];
-        sleep(Duration::from_millis(3000)).await;
+        sleep(Duration::from_millis(1000)).await;
         assert_eq!(chans[0].stats().await?.height, 2);
         assert_eq!(chans[1].stats().await?.height, 2);
 
@@ -280,7 +285,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
 
         // Now we open transmission of everything
         rules.write().await.clear();
-        sleep(Duration::from_millis(3000)).await;
+        sleep(Duration::from_millis(1000)).await;
         assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
 

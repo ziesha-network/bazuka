@@ -14,11 +14,11 @@ pub fn get_node_options() -> NodeOptions {
 
 pub fn get_test_node_options() -> NodeOptions {
     NodeOptions {
-        heartbeat_interval: Duration::from_secs(1),
+        heartbeat_interval: Duration::from_millis(300),
         num_peers: 8,
-        no_reponse_punish: 1,
-        invalid_data_punish: 1,
-        incorrect_power_punish: 1,
-        max_punish: 1,
+        no_reponse_punish: 0,
+        invalid_data_punish: 0,
+        incorrect_power_punish: 0,
+        max_punish: 0,
     }
 }
