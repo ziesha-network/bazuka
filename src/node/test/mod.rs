@@ -1,7 +1,7 @@
 use super::*;
 
 mod simulation;
-use simulation::NodeOpts;
+use simulation::*;
 
 use crate::config::genesis;
 use crate::core::{ContractId, TransactionAndDelta};
@@ -20,11 +20,11 @@ fn init() {
 async fn test_peers_find_each_other() {
     init();
 
-    let enabled = Arc::new(RwLock::new(true));
+    let rules = Arc::new(RwLock::new(Vec::new()));
     let conf = genesis::get_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
-        Arc::clone(&enabled),
+        Arc::clone(&rules),
         vec![
             NodeOpts {
                 config: conf.clone(),
@@ -67,11 +67,11 @@ async fn test_peers_find_each_other() {
 async fn test_timestamps_are_sync() {
     init();
 
-    let enabled = Arc::new(RwLock::new(true));
+    let rules = Arc::new(RwLock::new(Vec::new()));
     let conf = genesis::get_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
-        Arc::clone(&enabled),
+        Arc::clone(&rules),
         vec![
             NodeOpts {
                 config: conf.clone(),
@@ -117,11 +117,16 @@ async fn test_timestamps_are_sync() {
 async fn test_blocks_get_synced() {
     init();
 
-    let enabled = Arc::new(RwLock::new(false));
+    let rules = Arc::new(RwLock::new(vec![Rule {
+        from: Endpoint::Any,
+        to: Endpoint::Any,
+        url: "".into(),
+        action: Action::Drop,
+    }]));
     let conf = genesis::get_test_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
-        Arc::clone(&enabled),
+        Arc::clone(&rules),
         vec![
             NodeOpts {
                 config: conf.clone(),
@@ -164,7 +169,7 @@ async fn test_blocks_get_synced() {
         assert_eq!(chans[1].stats().await.unwrap().height, 6);
 
         // Now we open the connections...
-        *enabled.write().await = true;
+        rules.write().await.clear();
         sleep(Duration::from_millis(10000)).await;
         assert_eq!(chans[0].stats().await.unwrap().height, 6);
         assert_eq!(chans[1].stats().await.unwrap().height, 6);
@@ -185,11 +190,16 @@ async fn test_blocks_get_synced() {
 async fn test_states_get_synced() {
     init();
 
-    let enabled = Arc::new(RwLock::new(false));
+    let rules = Arc::new(RwLock::new(vec![Rule {
+        from: Endpoint::Any,
+        to: Endpoint::Any,
+        url: "".into(),
+        action: Action::Drop,
+    }]));
     let conf = genesis::get_test_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
-        Arc::clone(&enabled),
+        Arc::clone(&rules),
         vec![
             NodeOpts {
                 config: conf.clone(),
@@ -254,7 +264,7 @@ async fn test_states_get_synced() {
         assert_eq!(chans[1].stats().await.unwrap().height, 1);
 
         // Now we open the connections...
-        *enabled.write().await = true;
+        rules.write().await.clear();
         sleep(Duration::from_millis(10000)).await;
         assert_eq!(chans[0].stats().await.unwrap().height, 2);
         assert_eq!(chans[1].stats().await.unwrap().height, 2);
