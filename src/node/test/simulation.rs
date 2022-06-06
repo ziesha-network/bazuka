@@ -2,6 +2,7 @@ use super::*;
 
 use super::api::messages::*;
 use crate::blockchain::{BlockchainConfig, KvStoreChain};
+use crate::config;
 use crate::db::RamKvStore;
 use crate::wallet::Wallet;
 
@@ -31,6 +32,7 @@ fn create_test_node(
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
     let node = node_create(
+        config::node::get_test_node_options(),
         addr,
         opts.bootstrap
             .iter()

@@ -19,7 +19,7 @@ use {
     tokio::try_join,
 };
 
-use bazuka::config::blockchain;
+use bazuka::config;
 #[cfg(not(feature = "node"))]
 use {
     bazuka::blockchain::Blockchain, bazuka::blockchain::KvStoreChain, bazuka::core::Address,
@@ -93,6 +93,7 @@ async fn main() -> Result<(), NodeError> {
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
     let node = node_create(
+        config::node::get_node_options(),
         address,
         bootstrap_nodes,
         KvStoreChain::new(
@@ -103,7 +104,7 @@ async fn main() -> Result<(), NodeError> {
                 64,
             )
             .unwrap(),
-            blockchain::get_blockchain_config(),
+            config::blockchain::get_blockchain_config(),
         )
         .unwrap(),
         0,

@@ -1,7 +1,7 @@
 use super::messages::{
     PostBlockRequest, PostBlockResponse, PostMinerSolutionRequest, PostMinerSolutionResponse,
 };
-use super::{http, Limit, NodeContext, NodeError, NUM_PEERS};
+use super::{http, Limit, NodeContext, NodeError};
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -28,7 +28,7 @@ pub async fn post_miner_solution<B: Blockchain>(
     {
         let _ = context.blockchain.update_states(&draft.patch.clone());
 
-        let peer_addresses = context.random_peers(&mut rand::thread_rng(), NUM_PEERS);
+        let peer_addresses = context.random_peers(&mut rand::thread_rng(), context.opts.num_peers);
         http::group_request(&peer_addresses, |peer| {
             net.bincode_post::<PostBlockRequest, PostBlockResponse>(
                 format!("{}/bincode/blocks", peer.address),

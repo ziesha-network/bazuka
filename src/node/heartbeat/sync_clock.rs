@@ -5,12 +5,13 @@ pub async fn sync_clock<B: Blockchain>(
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
     let address = ctx.address;
+    let opts = ctx.opts.clone();
 
     let net = ctx.outgoing.clone();
 
     let timestamp = ctx.network_timestamp();
     let info = ctx.get_info()?;
-    let peer_addresses = ctx.random_peers(&mut rand::thread_rng(), NUM_PEERS);
+    let peer_addresses = ctx.random_peers(&mut rand::thread_rng(), opts.num_peers);
     drop(ctx);
 
     let peer_responses: Vec<(Peer, Result<PostPeerResponse, NodeError>)> =
@@ -29,7 +30,7 @@ pub async fn sync_clock<B: Blockchain>(
 
     {
         let mut ctx = context.write().await;
-        let timestamps = punish_non_responding(&mut ctx, &peer_responses)
+        let timestamps = punish_non_responding(&mut ctx, &peer_responses, opts.no_reponse_punish)
             .into_iter()
             .map(|(_, r)| r.timestamp)
             .collect::<Vec<_>>();

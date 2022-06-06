@@ -168,13 +168,13 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
         assert_eq!(chans[1].stats().await?.height, 6);
 
         // Still not synced...
-        sleep(Duration::from_millis(2000)).await;
+        sleep(Duration::from_millis(3000)).await;
         assert_eq!(chans[0].stats().await?.height, 4);
         assert_eq!(chans[1].stats().await?.height, 6);
 
         // Now we open the connections...
         rules.write().await.clear();
-        sleep(Duration::from_millis(10000)).await;
+        sleep(Duration::from_millis(3000)).await;
         assert_eq!(chans[0].stats().await?.height, 6);
         assert_eq!(chans[1].stats().await?.height, 6);
 
@@ -260,7 +260,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
 
         // Still not synced...
-        sleep(Duration::from_millis(2000)).await;
+        sleep(Duration::from_millis(3000)).await;
         assert_eq!(chans[0].stats().await?.height, 2);
         assert_eq!(chans[1].stats().await?.height, 1);
 
@@ -271,7 +271,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
             url: "state".into(),
             action: Action::Drop,
         }];
-        sleep(Duration::from_millis(10000)).await;
+        sleep(Duration::from_millis(3000)).await;
         assert_eq!(chans[0].stats().await?.height, 2);
         assert_eq!(chans[1].stats().await?.height, 2);
 

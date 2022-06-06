@@ -1,4 +1,4 @@
-use super::{http, Limit, NodeContext, NodeError, Peer, PeerAddress, PeerInfo, NUM_PEERS};
+use super::{http, Limit, NodeContext, NodeError, Peer, PeerAddress, PeerInfo};
 
 pub mod messages;
 

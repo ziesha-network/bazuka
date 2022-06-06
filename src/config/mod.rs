@@ -1,7 +1,7 @@
 pub mod blockchain;
 
 #[cfg(feature = "node")]
-pub mod punish;
+pub mod node;
 
 pub const SYMBOL: &str = "ZIK";
 pub const MAX_BLOCK_FETCH: u64 = 16; // Blocks

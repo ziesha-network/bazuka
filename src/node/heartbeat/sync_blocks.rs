@@ -6,6 +6,7 @@ pub async fn sync_blocks<B: Blockchain>(
     let ctx = context.read().await;
     let power = ctx.blockchain.get_power()?;
     let net = ctx.outgoing.clone();
+    let opts = ctx.opts.clone();
 
     let height = ctx.blockchain.get_height()?;
 
@@ -110,7 +111,7 @@ pub async fn sync_blocks<B: Blockchain>(
         ctx.blockchain.extend(headers[0].number, &resp.blocks)?;
     } else {
         let mut ctx = context.write().await;
-        ctx.punish(most_powerful.address, punish::INCORRECT_POWER_PUNISH);
+        ctx.punish(most_powerful.address, opts.incorrect_power_punish);
     }
 
     Ok(())

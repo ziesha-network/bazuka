@@ -22,16 +22,12 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::timeout;
 
-use crate::config::punish;
-
 use serde_derive::{Deserialize, Serialize};
 
 use tokio::sync::RwLock;
 use tokio::try_join;
 
 pub type Timestamp = u32;
-
-const NUM_PEERS: usize = 8;
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerAddress(pub SocketAddr); // ip, port
@@ -40,6 +36,16 @@ impl std::fmt::Display for PeerAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "http://{}", self.0)
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct NodeOptions {
+    pub heartbeat_interval: Duration,
+    pub num_peers: usize,
+    pub no_reponse_punish: u32,
+    pub invalid_data_punish: u32,
+    pub incorrect_power_punish: u32,
+    pub max_punish: u32,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -59,11 +65,11 @@ impl Peer {
     pub fn is_punished(&self) -> bool {
         utils::local_timestamp() < self.punished_until
     }
-    pub fn punish(&mut self, secs: u32) {
+    pub fn punish(&mut self, secs: u32, max_punish: u32) {
         let now = utils::local_timestamp();
         self.punished_until = std::cmp::min(
             std::cmp::max(self.punished_until, now) + secs,
-            now + punish::MAX_PUNISH,
+            now + max_punish,
         );
     }
 }
@@ -341,6 +347,7 @@ impl OutgoingSender {
 }
 
 pub async fn node_create<B: Blockchain>(
+    opts: NodeOptions,
     address: PeerAddress,
     bootstrap: Vec<PeerAddress>,
     blockchain: B,
@@ -350,6 +357,7 @@ pub async fn node_create<B: Blockchain>(
     outgoing: mpsc::UnboundedSender<OutgoingRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
+        opts,
         address,
         shutdown: false,
         outgoing: Arc::new(OutgoingSender { chan: outgoing }),

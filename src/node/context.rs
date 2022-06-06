@@ -1,4 +1,4 @@
-use super::{OutgoingSender, Peer, PeerAddress, PeerInfo};
+use super::{NodeOptions, OutgoingSender, Peer, PeerAddress, PeerInfo};
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, TransactionStats};
 use crate::core::{Header, TransactionAndDelta};
 use crate::utils;
@@ -14,6 +14,7 @@ use super::api::messages::Puzzle;
 pub type BlockPuzzle = (BlockAndPatch, Puzzle);
 
 pub struct NodeContext<B: Blockchain> {
+    pub opts: NodeOptions,
     pub address: PeerAddress,
     pub shutdown: bool,
     pub outgoing: Arc<OutgoingSender>,
@@ -36,7 +37,7 @@ impl<B: Blockchain> NodeContext<B> {
     pub fn punish(&mut self, bad_peer: PeerAddress, secs: u32) {
         self.peers
             .entry(bad_peer)
-            .and_modify(|stats| stats.punish(secs));
+            .and_modify(|stats| stats.punish(secs, self.opts.max_punish));
     }
     pub fn get_info(&self) -> Result<PeerInfo, BlockchainError> {
         Ok(PeerInfo {
