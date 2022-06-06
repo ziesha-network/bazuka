@@ -1,4 +1,4 @@
-pub mod genesis;
+pub mod blockchain;
 
 #[cfg(feature = "node")]
 pub mod punish;

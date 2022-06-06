@@ -1,5 +1,5 @@
 use super::*;
-use crate::config::genesis;
+use crate::config::blockchain;
 use crate::core::{Address, Hasher, Signature, TransactionData};
 use crate::crypto::{EdDSA, SignatureScheme};
 use crate::db;
@@ -7,7 +7,7 @@ use crate::db;
 mod contract;
 
 fn easy_config() -> BlockchainConfig {
-    let mut conf = genesis::get_test_config();
+    let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = 0x00ffffff;
 
     conf
@@ -644,7 +644,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_genesis_is_not_replaceable() -> Result<(), BlockchainError> {
-    let conf = genesis::get_config();
+    let conf = blockchain::get_blockchain_config();
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf.clone())?;
     assert_eq!(1, chain.get_height()?);
 
@@ -668,7 +668,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut conf = genesis::get_config();
+    let mut conf = blockchain::get_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = 0x0000ffff;
     conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
@@ -722,7 +722,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut conf = genesis::get_test_config();
+    let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
@@ -781,7 +781,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut conf = genesis::get_test_config();
+    let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
@@ -822,7 +822,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut conf = genesis::get_test_config();
+    let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {

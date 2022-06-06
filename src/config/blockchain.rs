@@ -8,7 +8,7 @@ use crate::zk;
 #[cfg(test)]
 use crate::wallet::Wallet;
 
-pub fn get_mpn_contract() -> TransactionAndDelta {
+fn get_mpn_contract() -> TransactionAndDelta {
     let mpn_state_model = zk::ZkStateModel::new(1, 10);
     let mpn_initial_state = zk::ZkState::new(
         1,
@@ -37,7 +37,7 @@ pub fn get_mpn_contract() -> TransactionAndDelta {
 }
 
 #[cfg(test)]
-pub fn get_test_mpn_contract() -> TransactionAndDelta {
+fn get_test_mpn_contract() -> TransactionAndDelta {
     let mut mpn_tx_delta = get_mpn_contract();
     match &mut mpn_tx_delta.tx.data {
         TransactionData::CreateContract { contract } => {
@@ -49,7 +49,7 @@ pub fn get_test_mpn_contract() -> TransactionAndDelta {
     mpn_tx_delta
 }
 
-pub fn get_config() -> BlockchainConfig {
+pub fn get_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
@@ -115,11 +115,11 @@ pub fn get_config() -> BlockchainConfig {
 }
 
 #[cfg(test)]
-pub fn get_test_config() -> BlockchainConfig {
+pub fn get_test_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
-    let mut conf = get_config();
+    let mut conf = get_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = 0x007fffff;
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;
     let abc = Wallet::new(Vec::from("ABC"));

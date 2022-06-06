@@ -19,7 +19,7 @@ use {
     tokio::try_join,
 };
 
-use bazuka::config::genesis;
+use bazuka::config::blockchain;
 #[cfg(not(feature = "node"))]
 use {
     bazuka::blockchain::Blockchain, bazuka::blockchain::KvStoreChain, bazuka::core::Address,
@@ -103,7 +103,7 @@ async fn main() -> Result<(), NodeError> {
                 64,
             )
             .unwrap(),
-            genesis::get_config(),
+            blockchain::get_blockchain_config(),
         )
         .unwrap(),
         0,
@@ -170,7 +170,7 @@ async fn main() -> Result<(), NodeError> {
 fn main() {
     env_logger::init();
 
-    let mut conf = genesis::get_config();
+    let mut conf = blockchain::get_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = 0x00ffffff;
 
     let mut chain = KvStoreChain::new(RamKvStore::new(), conf).unwrap();
