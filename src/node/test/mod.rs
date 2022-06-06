@@ -263,12 +263,39 @@ async fn test_states_get_synced() {
         assert_eq!(chans[0].stats().await.unwrap().height, 2);
         assert_eq!(chans[1].stats().await.unwrap().height, 1);
 
-        // Now we open the connections...
-        rules.write().await.clear();
+        // Now we open the connections but prevent transmission of states...
+        *rules.write().await = vec![Rule {
+            from: Endpoint::Any,
+            to: Endpoint::Any,
+            url: "state".into(),
+            action: Action::Drop,
+        }];
         sleep(Duration::from_millis(10000)).await;
         assert_eq!(chans[0].stats().await.unwrap().height, 2);
         assert_eq!(chans[1].stats().await.unwrap().height, 2);
 
+        assert_eq!(
+            chans[0]
+                .outdated_states()
+                .await
+                .unwrap()
+                .outdated_states
+                .len(),
+            0
+        );
+        assert_eq!(
+            chans[1]
+                .outdated_states()
+                .await
+                .unwrap()
+                .outdated_states
+                .len(),
+            1
+        );
+
+        // Now we open transmission of everything
+        rules.write().await.clear();
+        sleep(Duration::from_millis(3000)).await;
         assert_eq!(
             chans[0]
                 .outdated_states()
