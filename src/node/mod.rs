@@ -42,7 +42,7 @@ impl std::fmt::Display for PeerAddress {
 pub struct NodeOptions {
     pub heartbeat_interval: Duration,
     pub num_peers: usize,
-    pub no_reponse_punish: u32,
+    pub no_response_punish: u32,
     pub invalid_data_punish: u32,
     pub incorrect_power_punish: u32,
     pub max_punish: u32,

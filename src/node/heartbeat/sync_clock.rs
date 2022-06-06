@@ -30,7 +30,7 @@ pub async fn sync_clock<B: Blockchain>(
 
     {
         let mut ctx = context.write().await;
-        let timestamps = punish_non_responding(&mut ctx, &peer_responses, opts.no_reponse_punish)
+        let timestamps = punish_non_responding(&mut ctx, &peer_responses, opts.no_response_punish)
             .into_iter()
             .map(|(_, r)| r.timestamp)
             .collect::<Vec<_>>();
