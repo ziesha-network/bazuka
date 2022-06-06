@@ -98,10 +98,12 @@ async fn route(
             .chan
             .send(inc_req)
             .map_err(|_| NodeError::NotListeningError)?;
-        req.resp
-            .send(resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)?)
-            .await
-            .map_err(|_| NodeError::NotListeningError)?;
+        if let Some(answer) = resp_rcv.recv().await {
+            req.resp
+                .send(answer)
+                .await
+                .map_err(|_| NodeError::NotListeningError)?;
+        }
     }
 
     Ok(())
