@@ -96,9 +96,7 @@ async fn route(
         };
         if incs[&dst].chan.send(inc_req).is_ok() {
             if let Some(answer) = resp_rcv.recv().await {
-                if req.resp.send(answer).await.is_err() {
-                    break;
-                }
+                let _ = req.resp.send(answer).await;
             }
         }
     }

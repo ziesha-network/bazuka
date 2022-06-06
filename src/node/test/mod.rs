@@ -193,6 +193,31 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
     Ok(())
 }
 
+fn sample_contract_call() -> TransactionAndDelta {
+    let updater = Wallet::new(Vec::from("ABC"));
+
+    let cid =
+        ContractId::from_str("ee439600bcd11a41d068c6bc7f5d55aa1cc6a73174b2594ee1e38c54abdf2a31")
+            .unwrap();
+    let state_model = zk::ZkStateModel::new(1, 10);
+    let mut full_state = zk::ZkState::new(
+        1,
+        state_model,
+        [(100, zk::ZkScalar::from(200))].into_iter().collect(),
+    );
+    let state_delta = zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect());
+    full_state.apply_delta(&state_delta);
+    updater.call_function(
+        cid,
+        0,
+        state_delta.clone(),
+        full_state.compress(),
+        zk::ZkProof::Dummy(true),
+        0,
+        1,
+    )
+}
+
 #[tokio::test]
 async fn test_states_get_synced() -> Result<(), NodeError> {
     init();
@@ -225,30 +250,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         ],
     );
     let test_logic = async {
-        let updater = Wallet::new(Vec::from("ABC"));
-
-        let cid = ContractId::from_str(
-            "ee439600bcd11a41d068c6bc7f5d55aa1cc6a73174b2594ee1e38c54abdf2a31",
-        )
-        .unwrap();
-        let state_model = zk::ZkStateModel::new(1, 10);
-        let mut full_state = zk::ZkState::new(
-            1,
-            state_model,
-            [(100, zk::ZkScalar::from(200))].into_iter().collect(),
-        );
-        let state_delta =
-            zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect());
-        full_state.apply_delta(&state_delta);
-        let tx_delta = updater.call_function(
-            cid,
-            0,
-            state_delta.clone(),
-            full_state.compress(),
-            zk::ZkProof::Dummy(true),
-            0,
-            1,
-        );
+        let tx_delta = sample_contract_call();
 
         chans[0].transact(tx_delta).await?;
 
