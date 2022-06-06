@@ -17,7 +17,7 @@ fn init() {
 }
 
 #[tokio::test]
-async fn test_peers_find_each_other() {
+async fn test_peers_find_each_other() -> Result<(), NodeError> {
     init();
 
     let rules = Arc::new(RwLock::new(Vec::new()));
@@ -53,18 +53,20 @@ async fn test_peers_find_each_other() {
         sleep(Duration::from_millis(5000)).await;
 
         for chan in chans.iter() {
-            assert_eq!(chan.peers().await.unwrap().peers.len(), 2);
+            assert_eq!(chan.peers().await?.peers.len(), 2);
         }
 
         for chan in chans.iter() {
-            chan.shutdown().await.unwrap();
+            chan.shutdown().await?;
         }
+        Ok::<(), NodeError>(())
     };
-    tokio::join!(node_futs, route_futs, test_logic);
+    tokio::try_join!(node_futs, route_futs, test_logic)?;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_timestamps_are_sync() {
+async fn test_timestamps_are_sync() -> Result<(), NodeError> {
     init();
 
     let rules = Arc::new(RwLock::new(Vec::new()));
@@ -101,20 +103,22 @@ async fn test_timestamps_are_sync() {
 
         let mut timestamps = Vec::new();
         for chan in chans.iter() {
-            timestamps.push(chan.stats().await.unwrap().timestamp);
+            timestamps.push(chan.stats().await?.timestamp);
         }
         let first = timestamps.first().unwrap();
         assert!(timestamps.iter().all(|t| t == first));
 
         for chan in chans.iter() {
-            chan.shutdown().await.unwrap();
+            chan.shutdown().await?;
         }
+        Ok::<(), NodeError>(())
     };
-    tokio::join!(node_futs, route_futs, test_logic);
+    tokio::try_join!(node_futs, route_futs, test_logic)?;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_blocks_get_synced() {
+async fn test_blocks_get_synced() -> Result<(), NodeError> {
     init();
 
     let rules = Arc::new(RwLock::new(vec![Rule {
@@ -145,49 +149,52 @@ async fn test_blocks_get_synced() {
         ],
     );
     let test_logic = async {
-        chans[0].mine().await.unwrap();
-        assert_eq!(chans[0].stats().await.unwrap().height, 2);
-        chans[0].mine().await.unwrap();
-        assert_eq!(chans[0].stats().await.unwrap().height, 3);
-        chans[0].mine().await.unwrap();
-        assert_eq!(chans[0].stats().await.unwrap().height, 4);
+        chans[0].mine().await?;
+        assert_eq!(chans[0].stats().await?.height, 2);
+        chans[0].mine().await?;
+        assert_eq!(chans[0].stats().await?.height, 3);
+        chans[0].mine().await?;
+        assert_eq!(chans[0].stats().await?.height, 4);
 
-        chans[1].mine().await.unwrap();
-        assert_eq!(chans[1].stats().await.unwrap().height, 2);
-        chans[1].mine().await.unwrap();
-        assert_eq!(chans[1].stats().await.unwrap().height, 3);
-        chans[1].mine().await.unwrap();
-        assert_eq!(chans[1].stats().await.unwrap().height, 4);
-        chans[1].mine().await.unwrap();
-        assert_eq!(chans[1].stats().await.unwrap().height, 5);
-        chans[1].mine().await.unwrap();
-        assert_eq!(chans[1].stats().await.unwrap().height, 6);
+        chans[1].mine().await?;
+        assert_eq!(chans[1].stats().await?.height, 2);
+        chans[1].mine().await?;
+        assert_eq!(chans[1].stats().await?.height, 3);
+        chans[1].mine().await?;
+        assert_eq!(chans[1].stats().await?.height, 4);
+        chans[1].mine().await?;
+        assert_eq!(chans[1].stats().await?.height, 5);
+        chans[1].mine().await?;
+        assert_eq!(chans[1].stats().await?.height, 6);
 
         // Still not synced...
         sleep(Duration::from_millis(2000)).await;
-        assert_eq!(chans[0].stats().await.unwrap().height, 4);
-        assert_eq!(chans[1].stats().await.unwrap().height, 6);
+        assert_eq!(chans[0].stats().await?.height, 4);
+        assert_eq!(chans[1].stats().await?.height, 6);
 
         // Now we open the connections...
         rules.write().await.clear();
         sleep(Duration::from_millis(10000)).await;
-        assert_eq!(chans[0].stats().await.unwrap().height, 6);
-        assert_eq!(chans[1].stats().await.unwrap().height, 6);
+        assert_eq!(chans[0].stats().await?.height, 6);
+        assert_eq!(chans[1].stats().await?.height, 6);
 
         // Now nodes should immediately sync with post_block
-        chans[1].mine().await.unwrap();
-        assert_eq!(chans[0].stats().await.unwrap().height, 7);
-        assert_eq!(chans[1].stats().await.unwrap().height, 7);
+        chans[1].mine().await?;
+        assert_eq!(chans[0].stats().await?.height, 7);
+        assert_eq!(chans[1].stats().await?.height, 7);
 
         for chan in chans.iter() {
-            chan.shutdown().await.unwrap();
+            chan.shutdown().await?;
         }
+
+        Ok::<(), NodeError>(())
     };
-    tokio::join!(node_futs, route_futs, test_logic);
+    tokio::try_join!(node_futs, route_futs, test_logic)?;
+    Ok(())
 }
 
 #[tokio::test]
-async fn test_states_get_synced() {
+async fn test_states_get_synced() -> Result<(), NodeError> {
     init();
 
     let rules = Arc::new(RwLock::new(vec![Rule {
@@ -243,25 +250,17 @@ async fn test_states_get_synced() {
             1,
         );
 
-        chans[0].transact(tx_delta).await.unwrap();
+        chans[0].transact(tx_delta).await?;
 
-        chans[0].mine().await.unwrap();
-        assert_eq!(chans[0].stats().await.unwrap().height, 2);
+        chans[0].mine().await?;
+        assert_eq!(chans[0].stats().await?.height, 2);
 
-        assert_eq!(
-            chans[0]
-                .outdated_states()
-                .await
-                .unwrap()
-                .outdated_states
-                .len(),
-            0
-        );
+        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
 
         // Still not synced...
         sleep(Duration::from_millis(2000)).await;
-        assert_eq!(chans[0].stats().await.unwrap().height, 2);
-        assert_eq!(chans[1].stats().await.unwrap().height, 1);
+        assert_eq!(chans[0].stats().await?.height, 2);
+        assert_eq!(chans[1].stats().await?.height, 1);
 
         // Now we open the connections but prevent transmission of states...
         *rules.write().await = vec![Rule {
@@ -271,53 +270,24 @@ async fn test_states_get_synced() {
             action: Action::Drop,
         }];
         sleep(Duration::from_millis(10000)).await;
-        assert_eq!(chans[0].stats().await.unwrap().height, 2);
-        assert_eq!(chans[1].stats().await.unwrap().height, 2);
+        assert_eq!(chans[0].stats().await?.height, 2);
+        assert_eq!(chans[1].stats().await?.height, 2);
 
-        assert_eq!(
-            chans[0]
-                .outdated_states()
-                .await
-                .unwrap()
-                .outdated_states
-                .len(),
-            0
-        );
-        assert_eq!(
-            chans[1]
-                .outdated_states()
-                .await
-                .unwrap()
-                .outdated_states
-                .len(),
-            1
-        );
+        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
+        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 1);
 
         // Now we open transmission of everything
         rules.write().await.clear();
         sleep(Duration::from_millis(3000)).await;
-        assert_eq!(
-            chans[0]
-                .outdated_states()
-                .await
-                .unwrap()
-                .outdated_states
-                .len(),
-            0
-        );
-        assert_eq!(
-            chans[1]
-                .outdated_states()
-                .await
-                .unwrap()
-                .outdated_states
-                .len(),
-            0
-        );
+        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
+        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
 
         for chan in chans.iter() {
-            chan.shutdown().await.unwrap();
+            chan.shutdown().await?;
         }
+
+        Ok::<(), NodeError>(())
     };
-    tokio::join!(node_futs, route_futs, test_logic);
+    tokio::try_join!(node_futs, route_futs, test_logic)?;
+    Ok(())
 }

@@ -292,8 +292,8 @@ pub fn test_network(
     rules: Arc<RwLock<Vec<Rule>>>,
     node_opts: Vec<NodeOpts>,
 ) -> (
-    impl futures::Future,
-    impl futures::Future,
+    impl futures::Future<Output = Result<Vec<()>, NodeError>>,
+    impl futures::Future<Output = Result<Vec<()>, NodeError>>,
     Vec<SenderWrapper>,
 ) {
     let (node_futs, nodes): (Vec<_>, Vec<Node>) = node_opts
@@ -307,8 +307,8 @@ pub fn test_network(
         .collect::<Vec<_>>();
 
     (
-        futures::future::join_all(node_futs),
-        futures::future::join_all(route_futs),
+        futures::future::try_join_all(node_futs),
+        futures::future::try_join_all(route_futs),
         incs.into_values().collect(),
     )
 }
