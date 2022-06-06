@@ -94,15 +94,12 @@ async fn route(
             body: req.body,
             resp: resp_snd,
         };
-        incs[&dst]
-            .chan
-            .send(inc_req)
-            .map_err(|_| NodeError::NotListeningError)?;
-        if let Some(answer) = resp_rcv.recv().await {
-            req.resp
-                .send(answer)
-                .await
-                .map_err(|_| NodeError::NotListeningError)?;
+        if incs[&dst].chan.send(inc_req).is_ok() {
+            if let Some(answer) = resp_rcv.recv().await {
+                if req.resp.send(answer).await.is_err() {
+                    break;
+                }
+            }
         }
     }
 
