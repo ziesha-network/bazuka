@@ -89,6 +89,8 @@ pub enum BlockchainError {
     DeltasInvalid,
     #[error("wrong contract height supplied")]
     WrongContractHeight,
+    #[error("no blocks to roll back")]
+    NoBlocksToRollback,
     #[error("zk error happened")]
     ZkError(#[from] zk::ZkError),
 }
@@ -581,6 +583,11 @@ impl<K: KvStore> KvStoreChain<K> {
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn rollback(&mut self) -> Result<(), BlockchainError> {
         let height = self.get_height()?;
+
+        if height == 0 {
+            return Err(BlockchainError::NoBlocksToRollback);
+        }
+
         let rollback_key: StringKey = format!("rollback_{:010}", height - 1).into();
         let mut rollback: Vec<WriteOp> = match self.database.get(rollback_key.clone())? {
             Some(b) => b.try_into()?,
