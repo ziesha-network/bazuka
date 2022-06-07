@@ -331,11 +331,13 @@ impl<K: KvStore> KvStoreChain<K> {
                     format!("contract_{}", contract_id).into(),
                     contract.clone().into(),
                 ));
+                let compressed_empty = zk::ZkState::empty(contract.state_model).compress();
                 ops.push(WriteOp::Put(
                     format!("contract_account_{}", contract_id).into(),
                     ContractAccount {
                         compressed_state: contract.initial_state,
                         balance: 0,
+                        local_compressed_state: compressed_empty,
                     }
                     .into(),
                 ));
@@ -346,7 +348,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 side_effect = TxSideEffect::StateChange {
                     contract_id,
                     state_change: ZkCompressedStateChange {
-                        prev_state: zk::ZkState::empty(contract.state_model).compress(),
+                        prev_state: compressed_empty,
                         state: contract.initial_state,
                     },
                 };
@@ -402,6 +404,7 @@ impl<K: KvStore> KvStoreChain<K> {
                         ContractAccount {
                             compressed_state: *next_state,
                             balance: 0,
+                            local_compressed_state: prev_account.local_compressed_state,
                         }
                         .into(),
                     ));
@@ -590,11 +593,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         for (cid, comp) in changed_states {
             #[allow(clippy::map_entry)]
             if !outdated.contains_key(&cid) {
+                let mut account = self.get_contract_account(cid)?;
                 let mut state = self.get_state(cid)?;
                 if state.rollback().is_ok() {
                     if state.compress() != comp.prev_state {
                         return Err(BlockchainError::Inconsistency);
                     }
+                    account.local_compressed_state = account.compressed_state;
+                    rollback.push(WriteOp::Put(
+                        format!("contract_account_{}", cid).into(),
+                        account.into(),
+                    ));
                     rollback.push(WriteOp::Put(
                         format!("contract_state_{}", cid).into(),
                         (&state).into(),
@@ -916,7 +925,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let mut outdated_states = self.get_outdated_states()?;
 
         for (cid, comp_state) in outdated_states.clone() {
-            let contract_account = self.get_contract_account(cid)?;
+            let mut contract_account = self.get_contract_account(cid)?;
             let patch = patch
                 .patches
                 .get(&cid)
@@ -942,6 +951,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 }
             };
             if full_state.compress() == comp_state {
+                contract_account.local_compressed_state = contract_account.compressed_state;
+                ops.push(WriteOp::Put(
+                    format!("contract_account_{}", cid).into(),
+                    contract_account.into(),
+                ));
                 ops.push(WriteOp::Put(
                     format!("contract_state_{}", cid).into(),
                     (&full_state).into(),
