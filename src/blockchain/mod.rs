@@ -592,7 +592,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let mut outdated = self.get_outdated_contracts()?;
         let changed_states = self.get_changed_states(height - 1)?;
         for (cid, comp) in changed_states {
-            #[allow(clippy::map_entry)]
             if !outdated.contains(&cid) {
                 let mut state = self.get_local_state(cid)?;
                 if state.rollback().is_ok() {
@@ -609,6 +608,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     ));
                 } else if comp.prev_state.height() > 0 {
                     outdated.push(cid);
+                }
+            } else {
+                let local_compressed_state = self.get_local_compressed_state(cid)?;
+                if local_compressed_state == comp.prev_state {
+                    outdated.retain(|&x| x != cid);
                 }
             }
         }

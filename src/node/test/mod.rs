@@ -287,7 +287,6 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
     Ok(())
 }
 
-#[ignore]
 #[tokio::test]
 async fn test_chain_rolls_back() -> Result<(), NodeError> {
     init();
@@ -342,6 +341,8 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         ));
 
         sleep(Duration::from_millis(4000)).await;
+
+        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
 
         for chan in chans.iter() {
             chan.shutdown().await?;
