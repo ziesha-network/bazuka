@@ -673,7 +673,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
     fn get_outdated_contracts(&self) -> Result<Vec<ContractId>, BlockchainError> {
         Ok(match self.database.get("outdated".into())? {
-            Some(b) => b.try_into()?,
+            Some(b) => {
+                let val: Vec<ContractId> = b.try_into()?;
+                if val.is_empty() {
+                    return Err(BlockchainError::Inconsistency);
+                }
+                val
+            }
             None => Vec::new(),
         })
     }
