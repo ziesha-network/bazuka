@@ -33,6 +33,8 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
     assert_eq!(chain.get_height()?, 2);
     assert_eq!(chain.get_outdated_contracts()?.len(), 0);
 
+    rollback_till_empty(&mut chain)?;
+
     Ok(())
 }
 

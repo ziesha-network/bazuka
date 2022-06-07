@@ -170,6 +170,8 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
         ));
     }
 
+    rollback_till_empty(&mut chain)?;
+
     Ok(())
 }
 
@@ -204,13 +206,15 @@ fn test_pow_key_correctness() -> Result<(), BlockchainError> {
         }
     }
 
+    rollback_till_empty(&mut chain)?;
+
     Ok(())
 }
 
 #[test]
 fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
-    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     let mut fork1 = chain.fork_on_ram();
     fork1.apply_block(
@@ -259,13 +263,17 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
         true,
     )?;
 
+    rollback_till_empty(&mut fork1)?;
+    drop(fork1);
+    rollback_till_empty(&mut chain)?;
+
     Ok(())
 }
 
 #[test]
 fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
-    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let mut fork1 = chain.fork_on_ram();
     let blk1 = fork1.draft_block(0, &mut HashMap::new(), &miner)?;
     fork1.extend(1, &[blk1.block.clone()])?;
@@ -293,13 +301,20 @@ fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
         Err(BlockchainError::InvalidBlockNumber)
     ));
 
+    rollback_till_empty(&mut fork1)?;
+    rollback_till_empty(&mut fork2)?;
+    rollback_till_empty(&mut fork3)?;
+    rollback_till_empty(&mut fork4)?;
+    drop((fork1, fork2, fork3, fork4));
+    rollback_till_empty(&mut chain)?;
+
     Ok(())
 }
 
 #[test]
 fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
-    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let mut fork1 = chain.fork_on_ram();
     let blk1 = fork1.draft_block(0, &mut HashMap::new(), &miner)?;
     fork1.extend(1, &[blk1.block.clone()])?;
@@ -327,6 +342,13 @@ fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
         Err(BlockchainError::InvalidParentHash)
     ));
 
+    rollback_till_empty(&mut fork1)?;
+    rollback_till_empty(&mut fork2)?;
+    rollback_till_empty(&mut fork3)?;
+    rollback_till_empty(&mut fork4)?;
+    drop((fork1, fork2, fork3, fork4));
+    rollback_till_empty(&mut chain)?;
+
     Ok(())
 }
 
@@ -334,7 +356,7 @@ fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
 fn test_merkle_root_check() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let miner = Wallet::new(Vec::from("MINER"));
-    let chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let blk1 = chain
         .draft_block(
             1,
@@ -371,6 +393,11 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
         chain.fork_on_ram().apply_block(&blk_wrong, true),
         Err(BlockchainError::InvalidMerkleRoot)
     ));
+
+    rollback_till_empty(&mut fork1)?;
+    rollback_till_empty(&mut fork2)?;
+    drop((fork1, fork2));
+    rollback_till_empty(&mut chain)?;
 
     Ok(())
 }
@@ -421,6 +448,8 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     assert_eq!(chain.get_account(alice.get_address())?.balance, 4000);
     assert_eq!(chain.get_account(bob.get_address())?.balance, 5400);
 
+    rollback_till_empty(&mut chain)?;
+
     Ok(())
 }
 
@@ -455,6 +484,8 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
+
+    rollback_till_empty(&mut chain)?;
 
     Ok(())
 }
@@ -497,6 +528,8 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
+
+    rollback_till_empty(&mut chain)?;
 
     Ok(())
 }
@@ -545,6 +578,8 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
+
+    rollback_till_empty(&mut chain)?;
 
     Ok(())
 }
@@ -660,6 +695,8 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
     assert_eq!(chain.get_account(alice.get_address())?.balance, 1000);
     assert_eq!(chain.get_account(bob.get_address())?.balance, 0);
 
+    rollback_till_empty(&mut chain)?;
+
     Ok(())
 }
 
@@ -679,6 +716,8 @@ fn test_genesis_is_not_replaceable() -> Result<(), BlockchainError> {
         chain.extend(0, &[another_conf.genesis.block]),
         Err(BlockchainError::ExtendFromGenesis)
     ));
+
+    rollback_till_empty(&mut chain)?;
 
     Ok(())
 }
@@ -734,6 +773,8 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     assert_eq!(100, account.balance);
     assert_eq!(0, account.nonce);
 
+    rollback_till_empty(&mut chain)?;
+
     Ok(())
 }
 
@@ -755,7 +796,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
         sig: Signature::Unsigned,
     }];
 
-    let chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
+    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     let t_valid = wallet1.create_transaction(wallet2.get_address(), 200, 0, 1);
     let t_invalid_unsigned = TransactionAndDelta {
@@ -792,6 +833,8 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
 
     assert_eq!(2, draft.block.body.len());
     assert_eq!(wallet1.get_address(), draft.block.body[1].src);
+
+    rollback_till_empty(&mut chain)?;
 
     Ok(())
 }
@@ -833,6 +876,8 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
     let account2 = chain.get_account(wallet2.get_address())?;
     assert_eq!(10_000_000 - 7000, account1.balance);
     assert_eq!(7000, account2.balance);
+
+    rollback_till_empty(&mut chain)?;
 
     Ok(())
 }
@@ -905,6 +950,8 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let account = chain.get_account(wallet2.get_address())?;
     assert_eq!(1_000_000, account.balance);
     assert_eq!(0, account.nonce);
+
+    rollback_till_empty(&mut chain)?;
 
     Ok(())
 }
