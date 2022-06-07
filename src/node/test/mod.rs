@@ -17,6 +17,24 @@ fn init() {
     let _ = env_logger::builder().is_test(true).try_init();
 }
 
+const MAX_WAIT_FOR_CHANGE: usize = 20;
+
+async fn catch_change<F: Fn() -> Fut, T, Fut>(f: F) -> Result<T, NodeError>
+where
+    Fut: futures::Future<Output = Result<T, NodeError>>,
+    T: std::fmt::Display + PartialEq,
+{
+    let prev_val = f().await?;
+    for _ in 0..MAX_WAIT_FOR_CHANGE {
+        sleep(Duration::from_secs(1)).await;
+        let new_val = f().await?;
+        if new_val != prev_val {
+            return Ok(new_val);
+        }
+    }
+    Ok(prev_val)
+}
+
 #[tokio::test]
 async fn test_peers_find_each_other() -> Result<(), NodeError> {
     init();
@@ -177,8 +195,10 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
 
         // Now we open the connections...
         rules.write().await.clear();
-        sleep(Duration::from_millis(4000)).await;
-        assert_eq!(chans[0].stats().await?.height, 6);
+        assert_eq!(
+            catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
+            6
+        );
         assert_eq!(chans[1].stats().await?.height, 6);
 
         // Now nodes should immediately sync with post_block
@@ -264,18 +284,23 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
 
         // Now we open the connections but prevent transmission of states...
         *rules.write().await = vec![Rule::drop_url("state")];
-        sleep(Duration::from_millis(1000)).await;
         assert_eq!(chans[0].stats().await?.height, 2);
-        assert_eq!(chans[1].stats().await?.height, 2);
+        assert_eq!(
+            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            2
+        );
 
         assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 1);
 
         // Now we open transmission of everything
         rules.write().await.clear();
-        sleep(Duration::from_millis(1000)).await;
         assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
-        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
+        assert_eq!(
+            catch_change(|| async { Ok(chans[1].outdated_states().await?.outdated_states.len()) })
+                .await?,
+            0
+        );
 
         for chan in chans.iter() {
             chan.shutdown().await?;
@@ -319,12 +344,13 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         chans[0].transact(tx_delta).await?;
 
         chans[0].mine().await?;
-        sleep(Duration::from_millis(1000)).await;
         assert_eq!(chans[0].stats().await?.height, 2);
 
         *rules.write().await = vec![Rule::drop_url("state")];
-        sleep(Duration::from_millis(4000)).await;
-        assert_eq!(chans[1].stats().await?.height, 2);
+        assert_eq!(
+            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            2
+        );
         assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 1);
 
@@ -333,20 +359,23 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
             Err(NodeError::BlockchainError(BlockchainError::StatesOutdated))
         ));
 
-        sleep(Duration::from_millis(10000)).await;
-
-        assert_eq!(chans[1].stats().await?.height, 1);
+        assert_eq!(
+            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            1
+        );
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
 
         chans[1].mine().await?;
         chans[1].mine().await?;
-
-        sleep(Duration::from_millis(2000)).await;
-
-        assert_eq!(chans[0].stats().await?.height, 3);
         assert_eq!(chans[1].stats().await?.height, 3);
-        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
+
+        assert_eq!(
+            catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
+            3
+        );
+        assert_eq!(chans[0].stats().await?.height, 3);
+        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
 
         for chan in chans.iter() {
             chan.shutdown().await?;
