@@ -323,7 +323,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         assert_eq!(chans[0].stats().await?.height, 2);
 
         *rules.write().await = vec![Rule::drop_url("state")];
-        sleep(Duration::from_millis(1000)).await;
+        sleep(Duration::from_millis(4000)).await;
         assert_eq!(chans[1].stats().await?.height, 2);
         assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 1);
