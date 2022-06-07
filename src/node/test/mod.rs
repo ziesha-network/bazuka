@@ -171,13 +171,13 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
         assert_eq!(chans[1].stats().await?.height, 6);
 
         // Still not synced...
-        sleep(Duration::from_millis(1000)).await;
+        sleep(Duration::from_millis(2000)).await;
         assert_eq!(chans[0].stats().await?.height, 4);
         assert_eq!(chans[1].stats().await?.height, 6);
 
         // Now we open the connections...
         rules.write().await.clear();
-        sleep(Duration::from_millis(1000)).await;
+        sleep(Duration::from_millis(2000)).await;
         assert_eq!(chans[0].stats().await?.height, 6);
         assert_eq!(chans[1].stats().await?.height, 6);
 
