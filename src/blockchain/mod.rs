@@ -573,7 +573,12 @@ impl<K: KvStore> KvStoreChain<K> {
             format!("contract_updates_{:010}", block.header.number).into(),
             state_updates.into(),
         ));
-        changes.push(WriteOp::Put("outdated".into(), outdated_states.into()));
+
+        changes.push(if outdated_states.is_empty() {
+            WriteOp::Remove("outdated".into())
+        } else {
+            WriteOp::Put("outdated".into(), outdated_states.clone().into())
+        });
 
         self.database.update(&changes)?;
         Ok(())
@@ -1000,7 +1005,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             outdated_states.retain(|&x| x != cid);
         }
 
-        ops.push(WriteOp::Put("outdated".into(), outdated_states.into()));
+        ops.push(if outdated_states.is_empty() {
+            WriteOp::Remove("outdated".into())
+        } else {
+            WriteOp::Put("outdated".into(), outdated_states.clone().into())
+        });
 
         self.database.update(&ops)?;
         Ok(())
