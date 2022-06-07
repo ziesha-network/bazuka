@@ -3,6 +3,7 @@ use super::*;
 mod simulation;
 use simulation::*;
 
+use crate::blockchain::BlockchainError;
 use crate::config::blockchain;
 use crate::core::{ContractId, TransactionAndDelta};
 use crate::zk;
@@ -122,12 +123,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
     init();
 
     // Allow sync of clocks but no block transfer
-    let rules = Arc::new(RwLock::new(vec![Rule {
-        from: Endpoint::Any,
-        to: Endpoint::Any,
-        url: "block".into(),
-        action: Action::Drop,
-    }]));
+    let rules = Arc::new(RwLock::new(vec![Rule::drop_all()]));
 
     let conf = blockchain::get_test_blockchain_config();
 
@@ -227,12 +223,7 @@ fn sample_contract_call() -> TransactionAndDelta {
 async fn test_states_get_synced() -> Result<(), NodeError> {
     init();
 
-    let rules = Arc::new(RwLock::new(vec![Rule {
-        from: Endpoint::Any,
-        to: Endpoint::Any,
-        url: "".into(),
-        action: Action::Drop,
-    }]));
+    let rules = Arc::new(RwLock::new(vec![Rule::drop_all()]));
     let conf = blockchain::get_test_blockchain_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
@@ -270,12 +261,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         assert_eq!(chans[1].stats().await?.height, 1);
 
         // Now we open the connections but prevent transmission of states...
-        *rules.write().await = vec![Rule {
-            from: Endpoint::Any,
-            to: Endpoint::Any,
-            url: "state".into(),
-            action: Action::Drop,
-        }];
+        *rules.write().await = vec![Rule::drop_url("state")];
         sleep(Duration::from_millis(1000)).await;
         assert_eq!(chans[0].stats().await?.height, 2);
         assert_eq!(chans[1].stats().await?.height, 2);
@@ -288,6 +274,71 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         sleep(Duration::from_millis(1000)).await;
         assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
+
+        for chan in chans.iter() {
+            chan.shutdown().await?;
+        }
+
+        Ok::<(), NodeError>(())
+    };
+    tokio::try_join!(node_futs, route_futs, test_logic)?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_chain_rolls_back() -> Result<(), NodeError> {
+    init();
+
+    let rules = Arc::new(RwLock::new(vec![Rule::drop_all()]));
+    let conf = blockchain::get_test_blockchain_config();
+
+    let (node_futs, route_futs, chans) = simulation::test_network(
+        Arc::clone(&rules),
+        vec![
+            NodeOpts {
+                config: conf.clone(),
+                wallet: Some(Wallet::new(Vec::from("ABC"))),
+                addr: 3030,
+                bootstrap: vec![],
+                timestamp_offset: 5,
+            },
+            NodeOpts {
+                config: conf.clone(),
+                wallet: Some(Wallet::new(Vec::from("CBA"))),
+                addr: 3031,
+                bootstrap: vec![3030],
+                timestamp_offset: 10,
+            },
+        ],
+    );
+    let test_logic = async {
+        let tx_delta = sample_contract_call();
+
+        chans[0].transact(tx_delta).await?;
+
+        chans[0].mine().await?;
+        sleep(Duration::from_millis(1000)).await;
+        assert_eq!(chans[0].stats().await?.height, 2);
+
+        *rules.write().await = vec![Rule::drop_url("state")];
+        sleep(Duration::from_millis(1000)).await;
+        assert_eq!(chans[1].stats().await?.height, 2);
+        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
+        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 1);
+
+        assert!(matches!(
+            chans[1].mine().await,
+            Err(NodeError::BlockchainError(BlockchainError::StatesOutdated))
+        ));
+
+        sleep(Duration::from_millis(3000)).await;
+
+        assert!(matches!(
+            chans[1].mine().await,
+            Err(NodeError::BlockchainError(BlockchainError::StatesOutdated))
+        ));
+
+        sleep(Duration::from_millis(4000)).await;
 
         for chan in chans.iter() {
             chan.shutdown().await?;

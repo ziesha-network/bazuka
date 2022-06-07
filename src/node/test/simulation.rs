@@ -134,6 +134,25 @@ pub struct Rule {
 }
 
 impl Rule {
+    pub fn drop_all() -> Self {
+        Rule {
+            from: Endpoint::Any,
+            to: Endpoint::Any,
+            url: "".into(),
+            action: Action::Drop,
+        }
+    }
+    pub fn drop_url(url: &str) -> Self {
+        Rule {
+            from: Endpoint::Any,
+            to: Endpoint::Any,
+            url: url.into(),
+            action: Action::Drop,
+        }
+    }
+}
+
+impl Rule {
     fn applies(&self, req: &Request<Body>, req_from: PeerAddress, req_to: PeerAddress) -> bool {
         req.uri().to_string().contains(&self.url)
             && match self.from {

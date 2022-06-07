@@ -13,6 +13,8 @@ pub async fn sync_state<B: Blockchain>(
     let outdated_states = ctx.blockchain.get_outdated_states_request()?;
     if !outdated_states.is_empty() && ctx.outdated_since.is_none() {
         ctx.outdated_since = Some(ts);
+    } else if outdated_states.is_empty() && ctx.outdated_since.is_some() {
+        ctx.outdated_since = None;
     }
     // Find clients which their height is equal with our height
     let same_height_peers = ctx
@@ -23,9 +25,9 @@ pub async fn sync_state<B: Blockchain>(
     if !outdated_states.is_empty() {
         if let Some(outdated_since) = ctx.outdated_since {
             if (ts as i64 - outdated_since as i64) > ctx.opts.outdated_states_threshold as i64 {
-                let mut ctx = context.write().await;
                 ctx.banned_headers.push(last_header);
                 ctx.blockchain.rollback()?;
+                ctx.outdated_since = None;
                 return Ok(());
             }
         }
