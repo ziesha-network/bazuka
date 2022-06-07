@@ -123,7 +123,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
     init();
 
     // Allow sync of clocks but no block transfer
-    let rules = Arc::new(RwLock::new(vec![Rule::drop_all()]));
+    let rules = Arc::new(RwLock::new(vec![]));
 
     let conf = blockchain::get_test_blockchain_config();
 
@@ -149,6 +149,8 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
     let test_logic = async {
         // Wait till clocks sync
         sleep(Duration::from_millis(1000)).await;
+
+        *rules.write().await = vec![Rule::drop_all()];
 
         chans[0].mine().await?;
         assert_eq!(chans[0].stats().await?.height, 2);
@@ -285,6 +287,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
     Ok(())
 }
 
+#[ignore]
 #[tokio::test]
 async fn test_chain_rolls_back() -> Result<(), NodeError> {
     init();
