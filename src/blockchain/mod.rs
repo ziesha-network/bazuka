@@ -87,6 +87,8 @@ pub enum BlockchainError {
     CompressedStateNotFound,
     #[error("full-state has invalid deltas")]
     DeltasInvalid,
+    #[error("wrong contract height supplied")]
+    WrongContractHeight,
     #[error("zk error happened")]
     ZkError(#[from] zk::ZkError),
 }
@@ -238,7 +240,12 @@ impl<K: KvStore> KvStoreChain<K> {
         index: u64,
     ) -> Result<zk::ZkCompressedState, BlockchainError> {
         let state_model = self.get_contract(contract_id)?.state_model;
-        if index >= self.get_contract_account(contract_id)?.height {
+        if index
+            >= self
+                .get_contract_account(contract_id)?
+                .compressed_state
+                .height()
+        {
             return Err(BlockchainError::CompressedStateNotFound);
         }
         if index == 0 {
@@ -316,6 +323,9 @@ impl<K: KvStore> KvStoreChain<K> {
                 }
             }
             TransactionData::CreateContract { contract } => {
+                if contract.initial_state.height() != 1 {
+                    return Err(BlockchainError::WrongContractHeight);
+                }
                 let contract_id = ContractId::new(tx);
                 ops.push(WriteOp::Put(
                     format!("contract_{}", contract_id).into(),
@@ -324,7 +334,6 @@ impl<K: KvStore> KvStoreChain<K> {
                 ops.push(WriteOp::Put(
                     format!("contract_account_{}", contract_id).into(),
                     ContractAccount {
-                        height: 1,
                         compressed_state: contract.initial_state,
                         balance: 0,
                     }
@@ -383,10 +392,14 @@ impl<K: KvStore> KvStoreChain<K> {
                     ) {
                         return Err(BlockchainError::IncorrectZkProof);
                     }
+
+                    if next_state.height() != prev_account.compressed_state.height() + 1 {
+                        return Err(BlockchainError::WrongContractHeight);
+                    }
+
                     ops.push(WriteOp::Put(
                         format!("contract_account_{}", contract_id).into(),
                         ContractAccount {
-                            height: prev_account.height + 1,
                             compressed_state: *next_state,
                             balance: 0,
                         }
@@ -396,7 +409,7 @@ impl<K: KvStore> KvStoreChain<K> {
                         format!(
                             "contract_compressed_state_{}_{}",
                             contract_id,
-                            prev_account.height + 1
+                            next_state.height()
                         )
                         .into(),
                         (*next_state).into(),
@@ -613,7 +626,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let outdated = self.get_outdated_states()?;
         let mut ret = HashMap::new();
         for (cid, _) in outdated {
-            let contract_height = self.get_contract_account(cid)?.height;
+            let contract_height = self.get_contract_account(cid)?.compressed_state.height();
             let compressed_state = self.get_compressed_state_at(cid, contract_height - 1)?;
             ret.insert(cid, compressed_state);
         }
@@ -912,8 +925,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 zk::ZkStatePatch::Full(full) => {
                     let full = zk::ZkState::from_full(full);
                     for (i, calc_state) in full.compress_prev_states().into_iter().enumerate() {
-                        let actual_state = self
-                            .get_compressed_state_at(cid, contract_account.height - 1 - i as u64)?;
+                        let actual_state = self.get_compressed_state_at(
+                            cid,
+                            contract_account.compressed_state.height() - 1 - i as u64,
+                        )?;
                         if calc_state != actual_state {
                             return Err(BlockchainError::DeltasInvalid);
                         }
