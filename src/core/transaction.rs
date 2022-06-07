@@ -60,7 +60,6 @@ pub struct ContractPayment<H: Hash, S: SignatureScheme> {
 pub struct ContractAccount {
     pub balance: Money,
     pub compressed_state: ZkCompressedState,
-    pub local_compressed_state: ZkCompressedState,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
