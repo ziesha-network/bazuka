@@ -344,6 +344,16 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
 
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
 
+        chans[1].mine().await?;
+        chans[1].mine().await?;
+
+        sleep(Duration::from_millis(2000)).await;
+
+        assert_eq!(chans[0].stats().await?.height, 3);
+        assert_eq!(chans[1].stats().await?.height, 3);
+        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
+        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
+
         for chan in chans.iter() {
             chan.shutdown().await?;
         }
