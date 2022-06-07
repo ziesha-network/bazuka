@@ -22,8 +22,11 @@ use {
 use bazuka::config;
 #[cfg(not(feature = "node"))]
 use {
-    bazuka::blockchain::Blockchain, bazuka::blockchain::KvStoreChain, bazuka::core::Address,
-    bazuka::db::RamKvStore, bazuka::wallet::Wallet,
+    bazuka::blockchain::{Blockchain, KvStoreChain, TransactionStats},
+    bazuka::core::Address,
+    bazuka::db::RamKvStore,
+    bazuka::wallet::Wallet,
+    std::collections::HashMap,
 };
 
 #[cfg(feature = "node")]
@@ -171,7 +174,7 @@ async fn main() -> Result<(), NodeError> {
 fn main() {
     env_logger::init();
 
-    let mut conf = blockchain::get_blockchain_config();
+    let mut conf = config::blockchain::get_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = 0x00ffffff;
 
     let mut chain = KvStoreChain::new(RamKvStore::new(), conf).unwrap();
@@ -182,14 +185,17 @@ fn main() {
 
     loop {
         log::info!("Creating txs...");
-        let mut txs = Vec::new();
+        let mut txs = HashMap::new();
         for _ in 0..500 {
-            txs.push(abc.create_transaction(Address::Treasury, 0, 0, nonce));
+            txs.insert(
+                abc.create_transaction(Address::Treasury, 0, 0, nonce),
+                TransactionStats { first_seen: 0 },
+            );
             nonce += 1;
         }
 
         log::info!("Creating block...");
-        let blk = chain.draft_block(0, &txs, &WALLET).unwrap().block;
+        let blk = chain.draft_block(0, &mut txs, &WALLET).unwrap().block;
 
         log::info!("Applying block ({} txs)...", blk.body.len());
         chain.extend(chain.get_height().unwrap(), &[blk]).unwrap();
