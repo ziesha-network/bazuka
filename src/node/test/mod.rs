@@ -342,6 +342,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
 
         sleep(Duration::from_millis(4000)).await;
 
+        assert_eq!(chans[1].stats().await?.height, 1);
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
 
         chans[1].mine().await?;
