@@ -599,6 +599,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let mut outdated = self.get_outdated_contracts()?;
         let changed_states = self.get_changed_states(height - 1)?;
         for (cid, comp) in changed_states {
+            if comp.prev_state.height() == 0 {
+                rollback.push(WriteOp::Remove(
+                    format!("contract_local_compressed_state_{}", cid).into(),
+                ));
+                rollback.push(WriteOp::Remove(
+                    format!("contract_local_state_{}", cid).into(),
+                ));
+                outdated.retain(|&x| x != cid);
+                continue;
+            }
+
             if !outdated.contains(&cid) {
                 let mut state = self.get_local_state(cid)?;
                 if state.rollback().is_ok() {
@@ -623,7 +634,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 }
             }
         }
-        rollback.push(WriteOp::Put("outdated".into(), outdated.clone().into()));
+
+        rollback.push(if outdated.is_empty() {
+            WriteOp::Remove("outdated".into())
+        } else {
+            WriteOp::Put("outdated".into(), outdated.clone().into())
+        });
 
         rollback.push(WriteOp::Remove(format!("header_{:010}", height - 1).into()));
         rollback.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));

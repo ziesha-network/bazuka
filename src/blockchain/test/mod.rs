@@ -19,6 +19,19 @@ fn with_dummy_stats(txs: &[TransactionAndDelta]) -> HashMap<TransactionAndDelta,
         .collect()
 }
 
+fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), BlockchainError> {
+    while b.get_height()? > 0 {
+        b.rollback()?;
+    }
+    assert!(matches!(
+        b.rollback(),
+        Err(BlockchainError::NoBlocksToRollback)
+    ));
+    println!("{:?}", b.database.pairs()?);
+    assert!(b.database.pairs()?.is_empty());
+    Ok(())
+}
+
 #[test]
 fn test_get_header_and_get_block() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
@@ -39,16 +52,24 @@ fn test_get_header_and_get_block() -> Result<(), BlockchainError> {
         Err(BlockchainError::BlockNotFound)
     ));
 
-    unsafe { chain.update_raw(&vec![WriteOp::Put("height".into(), 3u64.into())])? };
+    let mut broken_chain = chain.fork_on_ram();
+
+    unsafe { broken_chain.update_raw(&vec![WriteOp::Put("height".into(), 3u64.into())])? };
 
     assert!(matches!(
-        chain.get_block(2),
+        broken_chain.get_block(2),
         Err(BlockchainError::Inconsistency)
     ));
     assert!(matches!(
-        chain.get_header(2),
+        broken_chain.get_header(2),
         Err(BlockchainError::Inconsistency)
     ));
+
+    assert!(matches!(
+        rollback_till_empty(&mut broken_chain),
+        Err(BlockchainError::Inconsistency)
+    ));
+    rollback_till_empty(&mut chain)?;
 
     Ok(())
 }
