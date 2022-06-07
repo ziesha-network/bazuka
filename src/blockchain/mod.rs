@@ -154,11 +154,9 @@ pub trait Blockchain {
     fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError>;
     fn get_state(&self, contract_id: ContractId) -> Result<zk::ZkState, BlockchainError>;
 
-    fn get_outdated_states(
-        &self,
-    ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError>;
+    fn get_outdated_contracts(&self) -> Result<Vec<ContractId>, BlockchainError>;
 
-    fn get_outdated_states_request(
+    fn get_outdated_states(
         &self,
     ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError>;
     fn generate_state_patch(
@@ -520,7 +518,7 @@ impl<K: KvStore> KvStoreChain<K> {
         let mut body_size = 0usize;
         let mut state_size_delta = 0isize;
         let mut state_updates: HashMap<ContractId, ZkCompressedStateChange> = HashMap::new();
-        let mut outdated_states = self.get_outdated_states()?;
+        let mut outdated_states = self.get_outdated_contracts()?;
 
         for tx in txs.iter() {
             body_size += tx.size();
@@ -533,7 +531,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 state_size_delta +=
                     state_change.state.size() as isize - state_change.prev_state.size() as isize;
                 state_updates.insert(contract_id, state_change.clone());
-                outdated_states.insert(contract_id, state_change.state);
+                outdated_states.push(contract_id);
             }
         }
 
@@ -588,11 +586,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             }
         };
 
-        let mut outdated = self.get_outdated_states()?;
+        let mut outdated = self.get_outdated_contracts()?;
         let changed_states = self.get_changed_states(height - 1)?;
         for (cid, comp) in changed_states {
             #[allow(clippy::map_entry)]
-            if !outdated.contains_key(&cid) {
+            if !outdated.contains(&cid) {
                 let mut account = self.get_contract_account(cid)?;
                 let mut state = self.get_state(cid)?;
                 if state.rollback().is_ok() {
@@ -609,7 +607,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         (&state).into(),
                     ));
                 } else if comp.prev_state.height() > 0 {
-                    outdated.insert(cid, comp.prev_state);
+                    outdated.push(cid);
                 }
             }
         }
@@ -629,24 +627,21 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     unsafe fn update_raw(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
         self.database.update(ops)
     }
-    fn get_outdated_states_request(
+    fn get_outdated_states(
         &self,
     ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError> {
-        let outdated = self.get_outdated_states()?;
+        let outdated = self.get_outdated_contracts()?;
         let mut ret = HashMap::new();
-        for (cid, _) in outdated {
-            let contract_height = self.get_contract_account(cid)?.compressed_state.height();
-            let compressed_state = self.get_compressed_state_at(cid, contract_height - 1)?;
+        for cid in outdated {
+            let compressed_state = self.get_contract_account(cid)?.local_compressed_state;
             ret.insert(cid, compressed_state);
         }
         Ok(ret)
     }
-    fn get_outdated_states(
-        &self,
-    ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError> {
+    fn get_outdated_contracts(&self) -> Result<Vec<ContractId>, BlockchainError> {
         Ok(match self.database.get("outdated".into())? {
             Some(b) => b.try_into()?,
-            None => HashMap::new(),
+            None => Vec::new(),
         })
     }
     fn get_tip(&self) -> Result<Header, BlockchainError> {
@@ -827,7 +822,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         wallet: &Wallet,
     ) -> Result<BlockAndPatch, BlockchainError> {
         let height = self.get_height()?;
-        let outdated_states = self.get_outdated_states()?;
+        let outdated_states = self.get_outdated_contracts()?;
 
         if !outdated_states.is_empty() {
             return Err(BlockchainError::StatesOutdated);
@@ -922,9 +917,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError> {
         let mut ops = Vec::new();
-        let mut outdated_states = self.get_outdated_states()?;
+        let mut outdated_states = self.get_outdated_contracts()?;
 
-        for (cid, comp_state) in outdated_states.clone() {
+        for cid in outdated_states.clone() {
             let mut contract_account = self.get_contract_account(cid)?;
             let patch = patch
                 .patches
@@ -950,7 +945,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     state
                 }
             };
-            if full_state.compress() == comp_state {
+            if full_state.compress() == contract_account.compressed_state {
                 contract_account.local_compressed_state = contract_account.compressed_state;
                 ops.push(WriteOp::Put(
                     format!("contract_account_{}", cid).into(),
@@ -963,7 +958,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             } else {
                 return Err(BlockchainError::FullStateNotValid);
             }
-            outdated_states.remove(&cid);
+            outdated_states.retain(|&x| x != cid);
         }
 
         ops.push(WriteOp::Put("outdated".into(), outdated_states.into()));
@@ -1000,13 +995,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             return Err(BlockchainError::StatesUnavailable);
         }
 
-        let outdated_states = self.get_outdated_states()?;
+        let outdated_states = self.get_outdated_contracts()?;
 
         let mut blockchain_patch = ZkBlockchainPatch {
             patches: HashMap::new(),
         };
         for (cid, away) in aways {
-            if !outdated_states.contains_key(&cid) {
+            if !outdated_states.contains(&cid) {
                 let state = self.get_state(cid)?;
                 let away = state.height() - away.height();
                 blockchain_patch.patches.insert(

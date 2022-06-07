@@ -12,7 +12,7 @@ pub async fn log_info<B: Blockchain>(
         ),
         (
             "Outdated states".to_string(),
-            ctx.blockchain.get_outdated_states()?.len().to_string(),
+            ctx.blockchain.get_outdated_contracts()?.len().to_string(),
         ),
         ("Timestamp".to_string(), ctx.network_timestamp().to_string()),
         (

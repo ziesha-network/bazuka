@@ -26,12 +26,12 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
     chain.apply_block(&draft.block, true)?;
 
     assert_eq!(chain.get_height()?, 2);
-    assert_eq!(chain.get_outdated_states()?.len(), 1);
+    assert_eq!(chain.get_outdated_contracts()?.len(), 1);
 
     chain.update_states(&draft.patch)?;
 
     assert_eq!(chain.get_height()?, 2);
-    assert_eq!(chain.get_outdated_states()?.len(), 0);
+    assert_eq!(chain.get_outdated_contracts()?.len(), 0);
 
     Ok(())
 }
@@ -180,20 +180,20 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         .into_iter()
         .collect(),
     })?;
-    assert_eq!(updated_fork.get_outdated_states()?.len(), 0);
+    assert_eq!(updated_fork.get_outdated_contracts()?.len(), 0);
     let updated_tip_hash = updated_fork.get_tip()?.hash();
 
-    let outdated_states = unupdated_fork.get_outdated_states_request()?;
+    let outdated_states = unupdated_fork.get_outdated_states()?;
     assert_eq!(outdated_states.len(), 1);
 
     let gen_state_patch = updated_fork.generate_state_patch(outdated_states, updated_tip_hash)?;
     unupdated_fork.update_states(&gen_state_patch)?;
-    assert_eq!(unupdated_fork.get_outdated_states()?.len(), 0);
+    assert_eq!(unupdated_fork.get_outdated_contracts()?.len(), 0);
 
     chain.update_states(&draft.patch)?;
 
     assert_eq!(chain.get_height()?, 2);
-    assert_eq!(chain.get_outdated_states()?.len(), 0);
+    assert_eq!(chain.get_outdated_contracts()?.len(), 0);
 
     assert!(matches!(
         chain.apply_tx(
@@ -273,12 +273,12 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     chain.rollback()?;
 
     assert_eq!(chain.get_height()?, 1);
-    assert_eq!(chain.get_outdated_states()?.len(), 0);
+    assert_eq!(chain.get_outdated_contracts()?.len(), 0);
 
     chain.rollback()?;
 
     assert_eq!(chain.get_height()?, 0);
-    assert_eq!(chain.get_outdated_states()?.len(), 0);
+    assert_eq!(chain.get_outdated_contracts()?.len(), 0);
 
     Ok(())
 }

@@ -9,6 +9,6 @@ pub async fn get_outdated_states<B: Blockchain>(
     _req: GetOutdatedStatesRequest,
 ) -> Result<GetOutdatedStatesResponse, NodeError> {
     let context = context.read().await;
-    let outdated_states = context.blockchain.get_outdated_states_request()?;
+    let outdated_states = context.blockchain.get_outdated_states()?;
     Ok(GetOutdatedStatesResponse { outdated_states })
 }

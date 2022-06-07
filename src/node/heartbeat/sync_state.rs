@@ -10,7 +10,7 @@ pub async fn sync_state<B: Blockchain>(
     let ts = ctx.network_timestamp();
     let height = ctx.blockchain.get_height()?;
     let last_header = ctx.blockchain.get_tip()?;
-    let outdated_states = ctx.blockchain.get_outdated_states_request()?;
+    let outdated_states = ctx.blockchain.get_outdated_states()?;
     if !outdated_states.is_empty() && ctx.outdated_since.is_none() {
         ctx.outdated_since = Some(ts);
     } else if outdated_states.is_empty() && ctx.outdated_since.is_some() {
