@@ -333,7 +333,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
             Err(NodeError::BlockchainError(BlockchainError::StatesOutdated))
         ));
 
-        sleep(Duration::from_millis(5000)).await;
+        sleep(Duration::from_millis(10000)).await;
 
         assert_eq!(chans[1].stats().await?.height, 1);
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
