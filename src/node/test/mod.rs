@@ -177,7 +177,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
 
         // Now we open the connections...
         rules.write().await.clear();
-        sleep(Duration::from_millis(3000)).await;
+        sleep(Duration::from_millis(4000)).await;
         assert_eq!(chans[0].stats().await?.height, 6);
         assert_eq!(chans[1].stats().await?.height, 6);
 
@@ -333,14 +333,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
             Err(NodeError::BlockchainError(BlockchainError::StatesOutdated))
         ));
 
-        sleep(Duration::from_millis(3000)).await;
-
-        assert!(matches!(
-            chans[1].mine().await,
-            Err(NodeError::BlockchainError(BlockchainError::StatesOutdated))
-        ));
-
-        sleep(Duration::from_millis(4000)).await;
+        sleep(Duration::from_millis(5000)).await;
 
         assert_eq!(chans[1].stats().await?.height, 1);
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
