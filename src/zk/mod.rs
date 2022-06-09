@@ -84,8 +84,24 @@ pub enum ZkDataType {
 #[derive(Debug)]
 pub struct ZkScalarSet {
     pub offset: usize,
-    pub distance: Option<usize>,
-    pub count: usize,
+    pub dist_count: Vec<(usize, usize)>,
+}
+
+impl ZkScalarSet {
+    pub fn matches(&self, mut index: usize) -> bool {
+        if index < self.offset {
+            return false;
+        }
+        index -= self.offset;
+        for dc in self.dist_count.iter() {
+            if index / dc.0 < dc.1 {
+                index = index % dc.0;
+            } else {
+                return false;
+            }
+        }
+        index == 0
+    }
 }
 
 impl ZkDataType {
@@ -102,19 +118,14 @@ impl ZkDataType {
     pub fn ranges(
         &self,
         mut offset: usize,
-        distance: Option<usize>,
-        mult: usize,
+        mut dist_count: Vec<(usize, usize)>,
     ) -> Vec<ZkScalarSet> {
         match self {
-            ZkDataType::Scalar => vec![ZkScalarSet {
-                offset,
-                distance,
-                count: mult,
-            }],
+            ZkDataType::Scalar => vec![ZkScalarSet { offset, dist_count }],
             ZkDataType::Struct { field_types } => {
                 let mut ranges = Vec::new();
                 for field_type in field_types {
-                    ranges.extend(field_type.ranges(offset, distance, mult));
+                    ranges.extend(field_type.ranges(offset, dist_count.clone()));
                     offset += field_type.size();
                 }
                 ranges
@@ -122,7 +133,10 @@ impl ZkDataType {
             ZkDataType::List {
                 log_size,
                 item_type,
-            } => item_type.ranges(offset, Some(item_type.size()), 1 << log_size),
+            } => {
+                dist_count.push((item_type.size(), 1 << log_size));
+                item_type.ranges(offset, dist_count)
+            }
         }
     }
 }
