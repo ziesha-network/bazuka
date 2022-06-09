@@ -26,6 +26,7 @@ use {
     bazuka::core::Address,
     bazuka::db::RamKvStore,
     bazuka::wallet::Wallet,
+    bazuka::zk,
     std::collections::HashMap,
 };
 
@@ -173,6 +174,22 @@ async fn main() -> Result<(), NodeError> {
 #[cfg(not(feature = "node"))]
 fn main() {
     env_logger::init();
+
+    let dt = zk::ZkDataType::Struct {
+        field_types: vec![
+            zk::ZkDataType::Scalar,
+            zk::ZkDataType::Scalar,
+            zk::ZkDataType::List {
+                log_size: 5,
+                item_type: Box::new(zk::ZkDataType::Struct {
+                    field_types: vec![zk::ZkDataType::Scalar, zk::ZkDataType::Scalar],
+                }),
+            },
+            zk::ZkDataType::Scalar,
+        ],
+    };
+
+    println!("{:#?}", dt.ranges(0, None, 1));
 
     let mut conf = config::blockchain::get_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = 0x00ffffff;
