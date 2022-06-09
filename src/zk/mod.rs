@@ -83,24 +83,32 @@ pub enum ZkDataType {
 
 #[derive(Debug)]
 pub struct ZkScalarSet {
+    pub parents: Vec<ZkDataType>,
     pub offset: usize,
     pub dist_count: Vec<(usize, usize)>,
 }
 
 impl ZkScalarSet {
-    pub fn matches(&self, mut index: usize) -> bool {
+    pub fn matches(&self, mut index: usize) -> Option<Vec<usize>> {
         if index < self.offset {
-            return false;
+            return None;
         }
         index -= self.offset;
+        let mut inds = Vec::new();
         for dc in self.dist_count.iter() {
-            if index / dc.0 < dc.1 {
+            let ind = index / dc.0;
+            inds.push(ind);
+            if ind < dc.1 {
                 index = index % dc.0;
             } else {
-                return false;
+                return None;
             }
         }
-        index == 0
+        if index == 0 {
+            Some(inds)
+        } else {
+            None
+        }
     }
 }
 
@@ -117,15 +125,21 @@ impl ZkDataType {
     }
     pub fn ranges(
         &self,
+        mut parents: Vec<Self>,
         mut offset: usize,
         mut dist_count: Vec<(usize, usize)>,
     ) -> Vec<ZkScalarSet> {
         match self {
-            ZkDataType::Scalar => vec![ZkScalarSet { offset, dist_count }],
+            ZkDataType::Scalar => vec![ZkScalarSet {
+                parents,
+                offset,
+                dist_count,
+            }],
             ZkDataType::Struct { field_types } => {
                 let mut ranges = Vec::new();
+                parents.push(self.clone());
                 for field_type in field_types {
-                    ranges.extend(field_type.ranges(offset, dist_count.clone()));
+                    ranges.extend(field_type.ranges(parents.clone(), offset, dist_count.clone()));
                     offset += field_type.size();
                 }
                 ranges
@@ -134,8 +148,9 @@ impl ZkDataType {
                 log_size,
                 item_type,
             } => {
+                parents.push(self.clone());
                 dist_count.push((item_type.size(), 1 << log_size));
-                item_type.ranges(offset, dist_count)
+                item_type.ranges(parents, offset, dist_count)
             }
         }
     }
