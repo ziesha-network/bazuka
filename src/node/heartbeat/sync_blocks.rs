@@ -87,8 +87,21 @@ pub async fn sync_blocks<B: Blockchain>(
     }
 
     let will_extend = {
-        let ctx = context.read().await;
-        let banned = headers.iter().any(|h| ctx.banned_headers.contains(h));
+        let mut ctx = context.write().await;
+        let ts = ctx.network_timestamp();
+        let mut banned = false;
+        for header in headers.iter() {
+            if ctx.banned_headers.contains_key(header) {
+                let banned_ts = ctx.banned_headers[header];
+                if ts - banned_ts < opts.state_unavailable_ban_time {
+                    banned = true;
+                    break;
+                } else {
+                    ctx.banned_headers.remove(header);
+                }
+            }
+        }
+
         !banned
             && ctx
                 .blockchain

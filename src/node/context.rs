@@ -28,7 +28,7 @@ pub struct NodeContext<B: Blockchain> {
     pub zero_mempool: HashMap<zk::ZeroTransaction, TransactionStats>,
 
     pub outdated_since: Option<Timestamp>,
-    pub banned_headers: Vec<Header>,
+    pub banned_headers: HashMap<Header, Timestamp>,
 }
 
 impl<B: Blockchain> NodeContext<B> {

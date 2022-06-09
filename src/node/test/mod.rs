@@ -365,6 +365,20 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         );
         assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
 
+        // Header will be banned for some time and gets unbanned again:
+        assert_eq!(
+            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            2
+        );
+        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 1);
+
+        // Banned again...
+        assert_eq!(
+            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            1
+        );
+        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
+
         chans[1].mine().await?;
         chans[1].mine().await?;
         assert_eq!(chans[1].stats().await?.height, 3);

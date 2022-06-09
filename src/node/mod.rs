@@ -47,6 +47,7 @@ pub struct NodeOptions {
     pub invalid_data_punish: u32,
     pub incorrect_power_punish: u32,
     pub max_punish: u32,
+    pub state_unavailable_ban_time: u32,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -380,7 +381,7 @@ pub async fn node_create<B: Blockchain>(
             })
             .collect(),
         timestamp_offset,
-        banned_headers: Vec::new(),
+        banned_headers: HashMap::new(),
         outdated_since: None,
 
         miner_puzzle: None,

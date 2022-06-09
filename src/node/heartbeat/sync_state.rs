@@ -25,7 +25,7 @@ pub async fn sync_state<B: Blockchain>(
     if !outdated_states.is_empty() {
         if let Some(outdated_since) = ctx.outdated_since {
             if (ts as i64 - outdated_since as i64) > ctx.opts.outdated_states_threshold as i64 {
-                ctx.banned_headers.push(last_header);
+                ctx.banned_headers.insert(last_header, ts);
                 ctx.blockchain.rollback()?;
                 ctx.outdated_since = None;
                 return Ok(());
