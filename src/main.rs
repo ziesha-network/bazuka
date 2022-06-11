@@ -180,7 +180,7 @@ fn main() {
             zk::ZkDataType::Scalar,
             zk::ZkDataType::Scalar,
             zk::ZkDataType::List {
-                log_size: 5,
+                log4_size: 3,
                 item_type: Box::new(zk::ZkDataType::Struct {
                     field_types: vec![zk::ZkDataType::Scalar, zk::ZkDataType::Scalar],
                 }),
@@ -189,7 +189,7 @@ fn main() {
         ],
     };
 
-    println!("{:#?}", dt.ranges(0, None, 1));
+    println!("{:#?}", dt.ranges(vec![], 0, vec![]));
 
     let mut conf = config::blockchain::get_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = 0x00ffffff;

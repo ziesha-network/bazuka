@@ -74,9 +74,9 @@ pub enum ZkDataType {
     Struct {
         field_types: Vec<ZkDataType>,
     },
-    // Allocate 2^log_size * size(item_type)
+    // Allocate 4^log4_size * size(item_type)
     List {
-        log_size: u8,
+        log4_size: u8,
         item_type: Box<ZkDataType>,
     },
 }
@@ -118,9 +118,9 @@ impl ZkDataType {
             ZkDataType::Scalar => 1,
             ZkDataType::Struct { field_types } => field_types.iter().map(|t| t.size()).sum(),
             ZkDataType::List {
-                log_size,
+                log4_size,
                 item_type,
-            } => item_type.size() << log_size,
+            } => item_type.size() << (2 * log4_size),
         }
     }
     pub fn ranges(
@@ -145,11 +145,11 @@ impl ZkDataType {
                 ranges
             }
             ZkDataType::List {
-                log_size,
+                log4_size,
                 item_type,
             } => {
                 parents.push(self.clone());
-                dist_count.push((item_type.size(), 1 << log_size));
+                dist_count.push((item_type.size(), 1 << (2 * log4_size)));
                 item_type.ranges(parents, offset, dist_count)
             }
         }
