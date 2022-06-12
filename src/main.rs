@@ -189,7 +189,7 @@ fn main() {
         ],
     };
 
-    println!("{:#?}", dt.ranges(vec![], 0, vec![]));
+    println!("{:#?}", dt.ranges(vec![], 0, vec![], 1, 0));
 
     let mut conf = config::blockchain::get_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = 0x00ffffff;

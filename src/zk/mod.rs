@@ -128,6 +128,8 @@ impl ZkDataType {
         mut parents: Vec<Self>,
         mut offset: usize,
         mut dist_count: Vec<(usize, usize)>,
+        aux_mult: usize,
+        mut aux_offset: usize,
     ) -> Vec<ZkScalarSet> {
         match self {
             ZkDataType::Scalar => vec![ZkScalarSet {
@@ -138,8 +140,15 @@ impl ZkDataType {
             ZkDataType::Struct { field_types } => {
                 let mut ranges = Vec::new();
                 parents.push(self.clone());
+                aux_offset += 1 * aux_mult;
                 for field_type in field_types {
-                    ranges.extend(field_type.ranges(parents.clone(), offset, dist_count.clone()));
+                    ranges.extend(field_type.ranges(
+                        parents.clone(),
+                        offset,
+                        dist_count.clone(),
+                        aux_mult,
+                        aux_offset,
+                    ));
                     offset += field_type.size();
                 }
                 ranges
@@ -148,9 +157,11 @@ impl ZkDataType {
                 log4_size,
                 item_type,
             } => {
+                let count = 1 << (2 * log4_size);
                 parents.push(self.clone());
-                dist_count.push((item_type.size(), 1 << (2 * log4_size)));
-                item_type.ranges(parents, offset, dist_count)
+                aux_offset += (count - 1) / 3 * aux_mult;
+                dist_count.push((item_type.size(), count));
+                item_type.ranges(parents, offset, dist_count, aux_mult * count, aux_offset)
             }
         }
     }
