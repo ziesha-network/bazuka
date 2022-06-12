@@ -108,17 +108,42 @@ pub struct ZkData {
 
 #[derive(Debug, Clone)]
 pub struct ZkScalarSet {
-    pub parent: Option<Box<ZkData>>,
-    pub offset: usize,
+    pub data: ZkData,
     pub dist_count: Vec<(usize, usize)>,
 }
 
+impl ZkData {
+    fn set(
+        &self,
+        data: &mut HashMap<usize, ZkScalar>,
+        index: usize,
+        val: ZkScalar,
+        inds: Vec<usize>,
+    ) {
+        match &self.data_type {
+            ZkDataType::Scalar => {}
+            ZkDataType::Struct { field_types } => {}
+            ZkDataType::List {
+                log4_size,
+                item_type,
+            } => {}
+        }
+        if let Some(parent) = &self.parent {
+            parent.set(data, index, val, inds);
+        }
+    }
+}
+
 impl ZkScalarSet {
+    pub fn set(&self, data: &mut HashMap<usize, ZkScalar>, index: usize, val: ZkScalar) {
+        let inds = self.matches(index).unwrap();
+        self.data.set(data, 0, val, inds);
+    }
     pub fn matches(&self, mut index: usize) -> Option<Vec<usize>> {
-        if index < self.offset {
+        if index < self.data.offset {
             return None;
         }
-        index -= self.offset;
+        index -= self.data.offset;
         let mut inds = Vec::new();
         for dc in self.dist_count.iter() {
             let ind = index / dc.0;
@@ -171,8 +196,12 @@ impl ZkDataType {
     ) -> ZkDataTypeDescriptor {
         match self {
             ZkDataType::Scalar => ZkDataTypeDescriptor(vec![ZkScalarSet {
-                parent,
-                offset,
+                data: ZkData {
+                    parent,
+                    offset,
+                    count: mult,
+                    data_type: self.clone(),
+                },
                 dist_count,
             }]),
             ZkDataType::Struct { field_types } => {
