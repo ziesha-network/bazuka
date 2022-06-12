@@ -82,8 +82,33 @@ pub enum ZkDataType {
 }
 
 #[derive(Debug)]
+pub struct ZkDataTypeDescriptor(Vec<ZkScalarSet>);
+impl ZkDataTypeDescriptor {
+    pub fn find_data(&self, index: usize) -> Option<(ZkScalarSet, Vec<usize>)> {
+        let result = self
+            .0
+            .iter()
+            .cloned()
+            .filter_map(|s| s.matches(index).map(|inds| (s, inds)))
+            .collect::<Vec<_>>();
+        if result.len() != 1 {
+            panic!();
+        }
+        result.get(0).cloned()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ZkData {
+    parent: Option<Box<ZkData>>,
+    offset: usize,
+    data_type: ZkDataType,
+    count: usize,
+}
+
+#[derive(Debug, Clone)]
 pub struct ZkScalarSet {
-    pub parents: Vec<ZkDataType>,
+    pub parent: Option<Box<ZkData>>,
     pub offset: usize,
     pub dist_count: Vec<(usize, usize)>,
 }
@@ -113,55 +138,79 @@ impl ZkScalarSet {
 }
 
 impl ZkDataType {
-    pub fn size(&self) -> usize {
+    pub fn aux_size(&self) -> usize {
+        match self {
+            ZkDataType::Scalar => 0,
+            ZkDataType::Struct { field_types } => 1,
+            ZkDataType::List {
+                log4_size,
+                item_type,
+            } => ((1 << (2 * log4_size)) - 1) / 3,
+        }
+    }
+    pub fn data_size(&self) -> usize {
         match self {
             ZkDataType::Scalar => 1,
             ZkDataType::Struct { field_types } => field_types.iter().map(|t| t.size()).sum(),
             ZkDataType::List {
                 log4_size,
                 item_type,
-            } => item_type.size() << (2 * log4_size),
+            } => (item_type.size() << (2 * log4_size)),
         }
+    }
+
+    pub fn size(&self) -> usize {
+        self.data_size() + self.aux_size()
     }
     pub fn ranges(
         &self,
-        mut parents: Vec<Self>,
+        mut parent: Option<Box<ZkData>>,
         mut offset: usize,
         mut dist_count: Vec<(usize, usize)>,
-        aux_mult: usize,
-        mut aux_offset: usize,
-    ) -> Vec<ZkScalarSet> {
+        mult: usize,
+    ) -> ZkDataTypeDescriptor {
         match self {
-            ZkDataType::Scalar => vec![ZkScalarSet {
-                parents,
+            ZkDataType::Scalar => ZkDataTypeDescriptor(vec![ZkScalarSet {
+                parent,
                 offset,
                 dist_count,
-            }],
+            }]),
             ZkDataType::Struct { field_types } => {
+                let parent = Some(Box::new(ZkData {
+                    parent,
+                    offset,
+                    count: mult,
+                    data_type: self.clone(),
+                }));
+
+                offset += self.aux_size();
                 let mut ranges = Vec::new();
-                parents.push(self.clone());
-                aux_offset += 1 * aux_mult;
                 for field_type in field_types {
-                    ranges.extend(field_type.ranges(
-                        parents.clone(),
-                        offset,
-                        dist_count.clone(),
-                        aux_mult,
-                        aux_offset,
-                    ));
+                    ranges.extend(
+                        field_type
+                            .ranges(parent.clone(), offset, dist_count.clone(), mult)
+                            .0,
+                    );
                     offset += field_type.size();
                 }
-                ranges
+                ZkDataTypeDescriptor(ranges)
             }
             ZkDataType::List {
                 log4_size,
                 item_type,
             } => {
+                let parent = Some(Box::new(ZkData {
+                    parent,
+                    offset,
+                    count: mult,
+                    data_type: self.clone(),
+                }));
+                offset += self.aux_size();
+
                 let count = 1 << (2 * log4_size);
-                parents.push(self.clone());
-                aux_offset += (count - 1) / 3 * aux_mult;
                 dist_count.push((item_type.size(), count));
-                item_type.ranges(parents, offset, dist_count, aux_mult * count, aux_offset)
+
+                item_type.ranges(parent, offset, dist_count, mult * count)
             }
         }
     }
