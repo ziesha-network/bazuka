@@ -15,6 +15,10 @@ pub enum ZkError {
 #[derive(Debug, Clone, Default)]
 pub struct ZkStateProof(Vec<ZkScalar>);
 
+pub trait ZkHasher {
+    fn hash(vals: &[ZkScalar]) -> ZkScalar;
+}
+
 pub fn check_proof(
     vk: &ZkVerifierKey,
     prev_state: &ZkCompressedState,
@@ -134,28 +138,24 @@ impl ZkDataType {
             },
         }
     }
-    pub fn compress_default(&self) -> ZkScalar {
+    pub fn compress_default<H: ZkHasher>(&self) -> ZkScalar {
         match self {
             ZkDataType::Scalar => ZkScalar::default(),
             ZkDataType::Struct { field_types } => {
                 let mut vals = vec![];
                 for f in field_types.iter() {
-                    vals.push(f.compress_default().0);
+                    vals.push(f.compress_default::<H>());
                 }
-                ZkScalar(mimc::mimc(&vals))
+                H::hash(&vals)
             }
             ZkDataType::List {
                 item_type,
                 log4_size,
             } => {
-                let mut root_default = item_type.compress_default();
+                let mut root_default = item_type.compress_default::<H>();
                 for _ in 0..*log4_size {
-                    root_default = ZkScalar(mimc::mimc(&[
-                        root_default.0,
-                        root_default.0,
-                        root_default.0,
-                        root_default.0,
-                    ]))
+                    root_default =
+                        H::hash(&[root_default, root_default, root_default, root_default])
                 }
                 root_default
             }
@@ -393,10 +393,10 @@ impl ZkCompressedState {
             state_size,
         }
     }
-    pub fn empty(data_type: ZkDataType) -> Self {
+    pub fn empty<H: ZkHasher>(data_type: ZkDataType) -> Self {
         Self {
             height: 0,
-            state_hash: data_type.compress_default(),
+            state_hash: data_type.compress_default::<H>(),
             state_size: 0,
         }
     }

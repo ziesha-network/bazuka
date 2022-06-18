@@ -21,9 +21,10 @@ pub enum StateManagerError {
     NotFound,
 }
 
-pub struct KvStoreStateManager<K: KvStore> {
+pub struct KvStoreStateManager<K: KvStore, H: zk::ZkHasher> {
     config: BlockchainConfig,
     database: K,
+    _hasher: std::marker::PhantomData<H>,
 }
 
 pub struct ContractStats {
@@ -31,14 +32,15 @@ pub struct ContractStats {
     size: u32,
 }
 
-impl<K: KvStore> KvStoreStateManager<K> {
+impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
     pub fn new(
         database: K,
         config: BlockchainConfig,
-    ) -> Result<KvStoreStateManager<K>, StateManagerError> {
-        let mut chain = KvStoreStateManager::<K> {
+    ) -> Result<KvStoreStateManager<K, H>, StateManagerError> {
+        let mut chain = KvStoreStateManager::<K, H> {
             database,
             config: config.clone(),
+            _hasher: std::marker::PhantomData,
         };
         Ok(chain)
     }
@@ -52,7 +54,7 @@ impl<K: KvStore> KvStoreStateManager<K> {
             WriteOp::Put(format!("{}", id).into(), data_type.clone().into()),
             WriteOp::Put(
                 format!("{}_compressed", id).into(),
-                zk::ZkCompressedState::empty(data_type).into(),
+                zk::ZkCompressedState::empty::<H>(data_type).into(),
             ),
         ])?;
         Ok(())
@@ -66,10 +68,11 @@ impl<K: KvStore> KvStoreStateManager<K> {
             .try_into()?)
     }
 
-    fn fork_on_ram(&self) -> KvStoreStateManager<RamMirrorKvStore<'_, K>> {
+    fn fork_on_ram(&self) -> KvStoreStateManager<RamMirrorKvStore<'_, K>, H> {
         KvStoreStateManager {
             database: RamMirrorKvStore::new(&self.database),
             config: self.config.clone(),
+            _hasher: self._hasher,
         }
     }
 
@@ -108,7 +111,7 @@ impl<K: KvStore> KvStoreStateManager<K> {
                 } => {
                     if let zk::ZkDataLocator::Leaf { leaf_index } = curr_loc {
                         let mut curr_ind = leaf_index;
-                        let mut default_value = item_type.compress_default();
+                        let mut default_value = item_type.compress_default::<H>();
                         for layer in (1..log4_size).rev() {
                             if layer == log4_size - 1 {
                                 let mut dats = Vec::new();
@@ -125,9 +128,7 @@ impl<K: KvStore> KvStoreStateManager<K> {
                                         self.get_data(id, &full_loc)?
                                     });
                                 }
-                                value = zk::ZkScalar(zeekit::mimc::mimc(
-                                    &dats.into_iter().map(|d| d.0).collect::<Vec<_>>(),
-                                ));
+                                value = H::hash(&dats);
                             } else {
                                 let mut dats = Vec::new();
                                 let mut default_dats = Vec::new();
@@ -153,12 +154,8 @@ impl<K: KvStore> KvStoreStateManager<K> {
                                         }
                                     });
                                 }
-                                default_value = zk::ZkScalar(zeekit::mimc::mimc(
-                                    &default_dats.into_iter().map(|d| d.0).collect::<Vec<_>>(),
-                                ));
-                                value = zk::ZkScalar(zeekit::mimc::mimc(
-                                    &dats.into_iter().map(|d| d.0).collect::<Vec<_>>(),
-                                ));
+                                default_value = H::hash(&default_dats);
+                                value = H::hash(&dats);
                             }
 
                             curr_ind = curr_ind / 4;
@@ -195,9 +192,7 @@ impl<K: KvStore> KvStoreStateManager<K> {
                             self.get_data(id, &full_loc)?
                         });
                     }
-                    value = zk::ZkScalar(zeekit::mimc::mimc(
-                        &dats.into_iter().map(|d| d.0).collect::<Vec<_>>(),
-                    ));
+                    value = H::hash(&dats);
                 }
                 zk::ZkDataType::Scalar => {
                     panic!()
@@ -227,7 +222,7 @@ impl<K: KvStore> KvStoreStateManager<K> {
         Ok(
             match self.database.get(format!("{}_{:?}", cid, locator).into())? {
                 Some(b) => b.try_into()?,
-                None => sub_type.compress_default(),
+                None => sub_type.compress_default::<H>(),
             },
         )
     }
