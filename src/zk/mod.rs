@@ -81,168 +81,71 @@ pub enum ZkDataType {
     },
 }
 
-#[derive(Debug)]
-pub struct ZkDataTypeDescriptor(Vec<ZkScalarSet>);
-impl ZkDataTypeDescriptor {
-    pub fn find_data(&self, index: usize) -> Option<(ZkScalarSet, Vec<usize>)> {
-        let result = self
-            .0
-            .iter()
-            .cloned()
-            .filter_map(|s| s.matches(index).map(|inds| (s, inds)))
-            .collect::<Vec<_>>();
-        if result.len() != 1 {
-            panic!();
-        }
-        result.get(0).cloned()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ZkData {
-    parent: Option<Box<ZkData>>,
-    offset: usize,
-    data_type: ZkDataType,
-    count: usize,
-}
-
-#[derive(Debug, Clone)]
-pub struct ZkScalarSet {
-    pub data: ZkData,
-    pub dist_count: Vec<(usize, usize)>,
-}
-
-impl ZkData {
-    fn set(
-        &self,
-        data: &mut HashMap<usize, ZkScalar>,
-        index: usize,
-        val: ZkScalar,
-        inds: Vec<usize>,
-    ) {
-        match &self.data_type {
-            ZkDataType::Scalar => {}
-            ZkDataType::Struct { field_types } => {}
-            ZkDataType::List {
-                log4_size,
-                item_type,
-            } => {}
-        }
-        if let Some(parent) = &self.parent {
-            parent.set(data, index, val, inds);
-        }
-    }
-}
-
-impl ZkScalarSet {
-    pub fn set(&self, data: &mut HashMap<usize, ZkScalar>, index: usize, val: ZkScalar) {
-        let inds = self.matches(index).unwrap();
-        self.data.set(data, 0, val, inds);
-    }
-    pub fn matches(&self, mut index: usize) -> Option<Vec<usize>> {
-        if index < self.data.offset {
-            return None;
-        }
-        index -= self.data.offset;
-        let mut inds = Vec::new();
-        for dc in self.dist_count.iter() {
-            let ind = index / dc.0;
-            inds.push(ind);
-            if ind < dc.1 {
-                index = index % dc.0;
-            } else {
-                return None;
-            }
-        }
-        if index == 0 {
-            Some(inds)
-        } else {
-            None
-        }
-    }
-}
-
 impl ZkDataType {
-    pub fn aux_size(&self) -> usize {
+    pub fn empty(&self) -> ZkData {
         match self {
-            ZkDataType::Scalar => 0,
-            ZkDataType::Struct { field_types } => 1,
-            ZkDataType::List {
-                log4_size,
-                item_type,
-            } => ((1 << (2 * log4_size)) - 1) / 3,
-        }
-    }
-    pub fn data_size(&self) -> usize {
-        match self {
-            ZkDataType::Scalar => 1,
-            ZkDataType::Struct { field_types } => field_types.iter().map(|t| t.size()).sum(),
-            ZkDataType::List {
-                log4_size,
-                item_type,
-            } => (item_type.size() << (2 * log4_size)),
-        }
-    }
-
-    pub fn size(&self) -> usize {
-        self.data_size() + self.aux_size()
-    }
-    pub fn ranges(
-        &self,
-        mut parent: Option<Box<ZkData>>,
-        mut offset: usize,
-        mut dist_count: Vec<(usize, usize)>,
-        mult: usize,
-    ) -> ZkDataTypeDescriptor {
-        match self {
-            ZkDataType::Scalar => ZkDataTypeDescriptor(vec![ZkScalarSet {
-                data: ZkData {
-                    parent,
-                    offset,
-                    count: mult,
-                    data_type: self.clone(),
-                },
-                dist_count,
-            }]),
+            ZkDataType::Scalar => ZkData::Scalar { value: None },
             ZkDataType::Struct { field_types } => {
-                let parent = Some(Box::new(ZkData {
-                    parent,
-                    offset,
-                    count: mult,
-                    data_type: self.clone(),
-                }));
-
-                offset += self.aux_size();
-                let mut ranges = Vec::new();
-                for field_type in field_types {
-                    ranges.extend(
-                        field_type
-                            .ranges(parent.clone(), offset, dist_count.clone(), mult)
-                            .0,
-                    );
-                    offset += field_type.size();
+                let mut vals = vec![];
+                for f in field_types.iter() {
+                    vals.push(f.empty());
                 }
-                ZkDataTypeDescriptor(ranges)
+                ZkData::Struct {
+                    root: None,
+                    fields: vals,
+                }
             }
             ZkDataType::List {
-                log4_size,
                 item_type,
+                log4_size,
+            } => ZkData::List {
+                nodes: None,
+                leaves: HashMap::new(),
+            },
+        }
+    }
+    pub fn compress_default(&self) -> ZkScalar {
+        match self {
+            ZkDataType::Scalar => ZkScalar::default(),
+            ZkDataType::Struct { field_types } => {
+                let mut vals = vec![];
+                for f in field_types.iter() {
+                    vals.push(f.compress_default().0);
+                }
+                ZkScalar(mimc::mimc(&vals))
+            }
+            ZkDataType::List {
+                item_type,
+                log4_size,
             } => {
-                let parent = Some(Box::new(ZkData {
-                    parent,
-                    offset,
-                    count: mult,
-                    data_type: self.clone(),
-                }));
-                offset += self.aux_size();
-
-                let count = 1 << (2 * log4_size);
-                dist_count.push((item_type.size(), count));
-
-                item_type.ranges(parent, offset, dist_count, mult * count)
+                let mut root_default = item_type.compress_default();
+                for _ in 0..*log4_size {
+                    root_default = ZkScalar(mimc::mimc(&[
+                        root_default.0,
+                        root_default.0,
+                        root_default.0,
+                        root_default.0,
+                    ]))
+                }
+                root_default
             }
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ZkData {
+    Scalar {
+        value: Option<ZkScalar>,
+    },
+    Struct {
+        root: Option<ZkScalar>,
+        fields: Vec<ZkData>,
+    },
+    List {
+        nodes: Option<HashMap<u32, ZkScalar>>,
+        leaves: HashMap<u32, ZkData>,
+    },
 }
 
 // Each leaf of the target sparse merkle tree will be the

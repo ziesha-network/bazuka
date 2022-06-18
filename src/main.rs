@@ -196,9 +196,8 @@ fn main() {
         ],
     };
 
-    let desc = dt.ranges(None, 0, vec![], 1);
-
-    println!("{:#?}", desc);
+    let desc = dt.compress_default();
+    println!("{:?}", desc);
 
     let mut conf = config::blockchain::get_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = 0x00ffffff;
