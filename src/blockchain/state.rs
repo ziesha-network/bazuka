@@ -81,13 +81,14 @@ impl<K: KvStore> KvStoreStateManager<K> {
             .try_into()?)
     }
 
-    fn set_data(
+    pub fn set_data(
         &mut self,
         id: ContractId,
         mut locator: Vec<zk::ZkDataLocator>,
         mut value: zk::ZkScalar,
     ) -> Result<(), StateManagerError> {
         let contract_type = self.type_of(id)?;
+        let prev_root = self.root(id)?;
         let mut ops = Vec::new();
         if contract_type.locate(&locator) != zk::ZkDataType::Scalar {
             return Err(StateManagerError::LocatorError);
@@ -208,6 +209,11 @@ impl<K: KvStore> KvStoreStateManager<K> {
                 value.into(),
             ));
         }
+
+        ops.push(WriteOp::Put(
+            format!("{}_compressed", id).into(),
+            zk::ZkCompressedState::new(prev_root.height() + 1, value, prev_root.size()).into(),
+        ));
         self.database.update(&ops)?;
         Ok(())
     }

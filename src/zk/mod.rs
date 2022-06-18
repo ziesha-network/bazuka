@@ -386,6 +386,13 @@ pub struct ZkCompressedState {
 }
 
 impl ZkCompressedState {
+    pub fn new(height: u64, state_hash: ZkScalar, state_size: u32) -> Self {
+        Self {
+            height,
+            state_hash,
+            state_size,
+        }
+    }
     pub fn empty(data_type: ZkDataType) -> Self {
         Self {
             height: 0,

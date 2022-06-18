@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 mod state;
+use state::*;
 
 #[derive(Clone)]
 pub struct BlockchainConfig {
