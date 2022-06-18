@@ -12,6 +12,8 @@ use crate::zk;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+mod state;
+
 #[derive(Clone)]
 pub struct BlockchainConfig {
     pub genesis: BlockAndPatch,

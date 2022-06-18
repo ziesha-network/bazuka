@@ -82,6 +82,36 @@ pub enum ZkDataType {
 }
 
 impl ZkDataType {
+    pub fn locate(&self, locator: &[ZkDataLocator]) -> ZkDataType {
+        let mut curr = self.clone();
+        for l in locator {
+            match l {
+                ZkDataLocator::Field { field_index } => {
+                    if let ZkDataType::Struct { field_types } = curr {
+                        curr = field_types[*field_index as usize].clone();
+                    } else {
+                        panic!();
+                    }
+                }
+                ZkDataLocator::Leaf { leaf_index } => {
+                    if let ZkDataType::List {
+                        item_type,
+                        log4_size,
+                    } = curr
+                    {
+                        if *leaf_index < 1 << (2 * log4_size) {
+                            curr = *item_type;
+                        } else {
+                            panic!();
+                        }
+                    } else {
+                        panic!();
+                    }
+                }
+            }
+        }
+        curr
+    }
     pub fn empty(&self) -> ZkData {
         match self {
             ZkDataType::Scalar => ZkData::Scalar { value: None },
@@ -131,6 +161,12 @@ impl ZkDataType {
             }
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ZkDataLocator {
+    Field { field_index: u32 },
+    Leaf { leaf_index: u32 },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

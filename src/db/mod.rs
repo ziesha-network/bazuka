@@ -1,7 +1,7 @@
 use crate::blockchain::{ZkBlockchainPatch, ZkCompressedStateChange};
 use crate::core::{hash::Hash, Account, Block, ContractAccount, ContractId, Hasher, Header};
 use crate::crypto::merkle::MerkleTree;
-use crate::zk::{ZkCompressedState, ZkContract, ZkState};
+use crate::zk::{ZkCompressedState, ZkContract, ZkDataType, ZkState};
 use db_key::Key;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -86,7 +86,8 @@ gen_try_into!(
     HashMap<ContractId, ContractAccount>,
     HashMap<ContractId, ZkCompressedStateChange>,
     ZkState,
-    ZkBlockchainPatch
+    ZkBlockchainPatch,
+    ZkDataType
 );
 gen_from!(
     u32,
@@ -105,7 +106,8 @@ gen_from!(
     HashMap<ContractId, ContractAccount>,
     HashMap<ContractId, ZkCompressedStateChange>,
     &ZkState,
-    &ZkBlockchainPatch
+    &ZkBlockchainPatch,
+    ZkDataType
 );
 
 impl Key for StringKey {
