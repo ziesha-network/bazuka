@@ -109,8 +109,8 @@ impl<K: KvStore> KvStoreStateManager<K> {
                     if let zk::ZkDataLocator::Leaf { leaf_index } = curr_loc {
                         let mut curr_ind = leaf_index;
                         let mut default_value = item_type.compress_default();
-                        for layer in log4_size..1 {
-                            if layer == log4_size {
+                        for layer in (1..log4_size).rev() {
+                            if layer == log4_size - 1 {
                                 let mut dats = Vec::new();
                                 let start = curr_ind - (curr_ind % 4);
                                 for leaf_index in start..start + 4 {
@@ -131,7 +131,7 @@ impl<K: KvStore> KvStoreStateManager<K> {
                             } else {
                                 let mut dats = Vec::new();
                                 let mut default_dats = Vec::new();
-                                let aux_offset = (1 << (2 * (layer - 1)) - 1) / 3;
+                                let aux_offset = (1 << (2 * layer) - 1) / 3;
 
                                 let start = curr_ind - (curr_ind % 4);
                                 for leaf_index in start..start + 4 {
@@ -164,7 +164,7 @@ impl<K: KvStore> KvStoreStateManager<K> {
                             curr_ind = curr_ind / 4;
 
                             if layer > 2 {
-                                let parent_aux_offset = (1 << (2 * (layer - 2)) - 1) / 3;
+                                let parent_aux_offset = (1 << (2 * (layer - 1)) - 1) / 3;
                                 let parent_index = parent_aux_offset + curr_ind;
                                 ops.push(WriteOp::Put(
                                     format!("{}_{:?}_aux_{}", id, locator, parent_index).into(),
