@@ -104,7 +104,75 @@ impl<K: KvStore> KvStoreStateManager<K> {
                 zk::ZkDataType::List {
                     item_type,
                     log4_size,
-                } => {}
+                } => {
+                    if let zk::ZkDataLocator::Leaf { leaf_index } = curr_loc {
+                        let mut curr_ind = leaf_index;
+                        let mut default_value = item_type.compress_default();
+                        for layer in log4_size..2 {
+                            if layer == log4_size {
+                                let mut dats = Vec::new();
+                                let start = curr_ind - (curr_ind % 4);
+                                for leaf_index in start..start + 4 {
+                                    let leaf_loc = zk::ZkDataLocator::Leaf {
+                                        leaf_index: leaf_index as u32,
+                                    };
+                                    dats.push(if leaf_index == curr_ind {
+                                        value
+                                    } else {
+                                        let mut full_loc = locator.clone();
+                                        full_loc.push(leaf_loc);
+                                        self.get_data(id, &full_loc)?
+                                    });
+                                }
+                                value = zk::ZkScalar(zeekit::mimc::mimc(
+                                    &dats.into_iter().map(|d| d.0).collect::<Vec<_>>(),
+                                ));
+                            } else {
+                                let mut dats = Vec::new();
+                                let mut default_dats = Vec::new();
+                                let aux_offset = (1 << (2 * (layer - 1)) - 1) / 3;
+
+                                let start = curr_ind - (curr_ind % 4);
+                                for leaf_index in start..start + 4 {
+                                    default_dats.push(default_value);
+                                    dats.push(if leaf_index == curr_ind {
+                                        value
+                                    } else {
+                                        match self.database.get(
+                                            format!(
+                                                "{}_{:?}_aux_{}",
+                                                id,
+                                                locator,
+                                                aux_offset + leaf_index
+                                            )
+                                            .into(),
+                                        )? {
+                                            Some(b) => b.try_into()?,
+                                            None => default_value,
+                                        }
+                                    });
+                                }
+                                default_value = zk::ZkScalar(zeekit::mimc::mimc(
+                                    &default_dats.into_iter().map(|d| d.0).collect::<Vec<_>>(),
+                                ));
+                                value = zk::ZkScalar(zeekit::mimc::mimc(
+                                    &dats.into_iter().map(|d| d.0).collect::<Vec<_>>(),
+                                ));
+                            }
+
+                            curr_ind = curr_ind / 4;
+                            let parent_aux_offset = (1 << (2 * (layer - 2)) - 1) / 3;
+                            let parent_index = parent_aux_offset + curr_ind;
+
+                            ops.push(WriteOp::Put(
+                                format!("{}_{:?}_aux_{}", id, locator, parent_index).into(),
+                                value.into(),
+                            ));
+                        }
+                    } else {
+                        panic!();
+                    }
+                }
                 zk::ZkDataType::Struct { field_types } => {
                     let mut dats = Vec::new();
                     for field_index in 0..field_types.len() {
