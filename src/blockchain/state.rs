@@ -108,11 +108,16 @@ impl<K: KvStore> KvStoreStateManager<K> {
                 zk::ZkDataType::Struct { field_types } => {
                     let mut dats = Vec::new();
                     for field_index in 0..field_types.len() {
-                        let mut field_loc = locator.clone();
-                        field_loc.push(zk::ZkDataLocator::Field {
+                        let field_loc = zk::ZkDataLocator::Field {
                             field_index: field_index as u32,
+                        };
+                        dats.push(if field_loc == curr_loc {
+                            value
+                        } else {
+                            let mut full_loc = locator.clone();
+                            full_loc.push(field_loc);
+                            self.get_data(id, &full_loc)?
                         });
-                        dats.push(self.get_data(id, &field_loc)?);
                     }
                     value = zk::ZkScalar(zeekit::mimc::mimc(
                         &dats.into_iter().map(|d| d.0).collect::<Vec<_>>(),
