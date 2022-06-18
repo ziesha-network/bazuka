@@ -48,8 +48,13 @@ impl<K: KvStore> KvStoreStateManager<K> {
         id: ContractId,
         data_type: zk::ZkDataType,
     ) -> Result<(), StateManagerError> {
-        self.database
-            .update(&[WriteOp::Put(format!("{}", id).into(), data_type.into())])?;
+        self.database.update(&[
+            WriteOp::Put(format!("{}", id).into(), data_type.clone().into()),
+            WriteOp::Put(
+                format!("{}_compressed", id).into(),
+                zk::ZkCompressedState::empty(data_type).into(),
+            ),
+        ])?;
         Ok(())
     }
 
@@ -68,27 +73,61 @@ impl<K: KvStore> KvStoreStateManager<K> {
         }
     }
 
-    pub fn compress(&self, cid: ContractId) -> Result<zk::ZkCompressedState, StateManagerError> {
-        Err(StateManagerError::NotFound)
+    pub fn root(&self, id: ContractId) -> Result<zk::ZkCompressedState, StateManagerError> {
+        Ok(self
+            .database
+            .get(format!("{}_compressed", id).into())?
+            .ok_or(StateManagerError::ContractNotFound)?
+            .try_into()?)
     }
 
     fn set_data(
         &mut self,
-        cid: ContractId,
-        locator: Vec<zk::ZkDataLocator>,
-        value: zk::ZkScalar,
+        id: ContractId,
+        mut locator: Vec<zk::ZkDataLocator>,
+        mut value: zk::ZkScalar,
     ) -> Result<(), StateManagerError> {
+        let contract_type = self.type_of(id)?;
         let mut ops = Vec::new();
-        if self.type_of(cid)?.locate(&locator) != zk::ZkDataType::Scalar {
+        if contract_type.locate(&locator) != zk::ZkDataType::Scalar {
             return Err(StateManagerError::LocatorError);
         }
-        let addr = locator
-            .into_iter()
-            .map(|l| match l {
-                zk::ZkDataLocator::Field { field_index } => field_index,
-                zk::ZkDataLocator::Leaf { leaf_index } => leaf_index,
-            })
-            .collect::<Vec<u32>>();
+
+        ops.push(WriteOp::Put(
+            format!("{}_{:?}", id, locator).into(),
+            value.into(),
+        ));
+
+        while let Some(curr_loc) = locator.pop() {
+            let curr_type = contract_type.locate(&locator);
+            match curr_type {
+                zk::ZkDataType::List {
+                    item_type,
+                    log4_size,
+                } => {}
+                zk::ZkDataType::Struct { field_types } => {
+                    let mut dats = Vec::new();
+                    for field_index in 0..field_types.len() {
+                        let mut field_loc = locator.clone();
+                        field_loc.push(zk::ZkDataLocator::Field {
+                            field_index: field_index as u32,
+                        });
+                        dats.push(self.get_data(id, &field_loc)?);
+                    }
+                    value = zk::ZkScalar(zeekit::mimc::mimc(
+                        &dats.into_iter().map(|d| d.0).collect::<Vec<_>>(),
+                    ));
+                }
+                zk::ZkDataType::Scalar => {
+                    panic!()
+                }
+            }
+
+            ops.push(WriteOp::Put(
+                format!("{}_{:?}", id, locator).into(),
+                value.into(),
+            ));
+        }
         self.database.update(&ops)?;
         Ok(())
     }
@@ -96,7 +135,7 @@ impl<K: KvStore> KvStoreStateManager<K> {
     pub fn get_data(
         &self,
         cid: ContractId,
-        locator: Vec<zk::ZkDataLocator>,
+        locator: &[zk::ZkDataLocator],
     ) -> Result<zk::ZkScalar, StateManagerError> {
         let sub_type = self.type_of(cid)?.locate(&locator);
         Ok(

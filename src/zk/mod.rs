@@ -52,7 +52,7 @@ pub fn check_proof(
 
 // A single state cell
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Default)]
-pub struct ZkScalar(Fr);
+pub struct ZkScalar(pub Fr);
 
 impl From<u64> for ZkScalar {
     fn from(val: u64) -> Self {
@@ -386,6 +386,13 @@ pub struct ZkCompressedState {
 }
 
 impl ZkCompressedState {
+    pub fn empty(data_type: ZkDataType) -> Self {
+        Self {
+            height: 0,
+            state_hash: data_type.compress_default(),
+            state_size: 0,
+        }
+    }
     pub fn height(&self) -> u64 {
         self.height
     }
