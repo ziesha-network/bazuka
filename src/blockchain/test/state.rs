@@ -14,6 +14,15 @@ impl ZkHasher for SumHasher {
     }
 }
 
+struct MimcHasher;
+impl ZkHasher for MimcHasher {
+    fn hash(vals: &[ZkScalar]) -> ZkScalar {
+        ZkScalar(zeekit::mimc::mimc(
+            &vals.iter().map(|v| v.0).collect::<Vec<_>>(),
+        ))
+    }
+}
+
 #[test]
 fn test_state_manager_scalar() -> Result<(), StateManagerError> {
     let mut sm = KvStoreStateManager::<db::RamKvStore, SumHasher>::new(
@@ -101,7 +110,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
 
 #[test]
 fn test_state_manager_list() -> Result<(), StateManagerError> {
-    let mut sm = KvStoreStateManager::<db::RamKvStore, SumHasher>::new(
+    let mut sm = KvStoreStateManager::<db::RamKvStore, MimcHasher>::new(
         db::RamKvStore::new(),
         easy_config(),
     )?;
