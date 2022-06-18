@@ -113,31 +113,20 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
                         let mut curr_ind = leaf_index;
                         let mut default_value = item_type.compress_default::<H>();
                         for layer in (0..log4_size).rev() {
-                            if layer == log4_size - 1 {
-                                let mut dats = Vec::new();
-                                let start = curr_ind - (curr_ind % 4);
-                                for leaf_index in start..start + 4 {
-                                    let leaf_loc = zk::ZkDataLocator::Leaf {
-                                        leaf_index: leaf_index as u32,
-                                    };
-                                    dats.push(if leaf_index == curr_ind {
-                                        value
-                                    } else {
+                            let mut dats = Vec::new();
+                            let aux_offset = ((1 << (2 * (layer + 1))) - 1) / 3;
+                            let start = curr_ind - (curr_ind % 4);
+                            for leaf_index in start..start + 4 {
+                                let leaf_loc = zk::ZkDataLocator::Leaf {
+                                    leaf_index: leaf_index as u32,
+                                };
+                                dats.push(if leaf_index == curr_ind {
+                                    value
+                                } else {
+                                    if layer == log4_size - 1 {
                                         let mut full_loc = locator.clone();
                                         full_loc.push(leaf_loc);
                                         self.get_data(id, &full_loc)?
-                                    });
-                                }
-                                value = H::hash(&dats);
-                            } else {
-                                let mut dats = Vec::new();
-
-                                let aux_offset = ((1 << (2 * (layer + 1))) - 1) / 3;
-
-                                let start = curr_ind - (curr_ind % 4);
-                                for leaf_index in start..start + 4 {
-                                    dats.push(if leaf_index == curr_ind {
-                                        value
                                     } else {
                                         match self.database.get(
                                             format!(
@@ -151,11 +140,11 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
                                             Some(b) => b.try_into()?,
                                             None => default_value,
                                         }
-                                    });
-                                }
-                                value = H::hash(&dats);
+                                    }
+                                });
                             }
 
+                            value = H::hash(&dats);
                             default_value = H::hash(&[default_value; 4]);
 
                             curr_ind = curr_ind / 4;
