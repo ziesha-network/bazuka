@@ -131,12 +131,11 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
                                 value = H::hash(&dats);
                             } else {
                                 let mut dats = Vec::new();
-                                let mut default_dats = Vec::new();
+
                                 let aux_offset = ((1 << (2 * (layer + 1))) - 1) / 3;
 
                                 let start = curr_ind - (curr_ind % 4);
                                 for leaf_index in start..start + 4 {
-                                    default_dats.push(default_value);
                                     dats.push(if leaf_index == curr_ind {
                                         value
                                     } else {
@@ -154,9 +153,10 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
                                         }
                                     });
                                 }
-                                default_value = H::hash(&default_dats);
                                 value = H::hash(&dats);
                             }
+
+                            default_value = H::hash(&[default_value; 4]);
 
                             curr_ind = curr_ind / 4;
 
