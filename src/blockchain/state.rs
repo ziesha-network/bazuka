@@ -15,6 +15,8 @@ pub enum StateManagerError {
     KvStoreError(#[from] KvStoreError),
     #[error("contract not found")]
     ContractNotFound,
+    #[error("not locating a scalar")]
+    LocatorError,
     #[error("data not found")]
     NotFound,
 }
@@ -48,7 +50,7 @@ impl<K: KvStore> KvStoreStateManager<K> {
     ) -> Result<(), StateManagerError> {
         self.database
             .update(&[WriteOp::Put(format!("{}", id).into(), data_type.into())])?;
-        Err(StateManagerError::NotFound)
+        Ok(())
     }
 
     fn type_of(&self, id: ContractId) -> Result<zk::ZkDataType, StateManagerError> {
@@ -71,19 +73,15 @@ impl<K: KvStore> KvStoreStateManager<K> {
     }
 
     fn set_data(
-        &self,
+        &mut self,
         cid: ContractId,
         locator: Vec<zk::ZkDataLocator>,
         value: zk::ZkScalar,
     ) -> Result<(), StateManagerError> {
-        Err(StateManagerError::NotFound)
-    }
-
-    pub fn get_data(
-        &self,
-        cid: ContractId,
-        locator: Vec<zk::ZkDataLocator>,
-    ) -> Result<zk::ZkScalar, StateManagerError> {
+        let mut ops = Vec::new();
+        if self.type_of(cid)?.locate(&locator) != zk::ZkDataType::Scalar {
+            return Err(StateManagerError::LocatorError);
+        }
         let addr = locator
             .into_iter()
             .map(|l| match l {
@@ -91,6 +89,21 @@ impl<K: KvStore> KvStoreStateManager<K> {
                 zk::ZkDataLocator::Leaf { leaf_index } => leaf_index,
             })
             .collect::<Vec<u32>>();
-        Err(StateManagerError::NotFound)
+        self.database.update(&ops)?;
+        Ok(())
+    }
+
+    pub fn get_data(
+        &self,
+        cid: ContractId,
+        locator: Vec<zk::ZkDataLocator>,
+    ) -> Result<zk::ZkScalar, StateManagerError> {
+        let sub_type = self.type_of(cid)?.locate(&locator);
+        Ok(
+            match self.database.get(format!("{}_{:?}", cid, locator).into())? {
+                Some(b) => b.try_into()?,
+                None => sub_type.compress_default(),
+            },
+        )
     }
 }
