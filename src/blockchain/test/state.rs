@@ -64,6 +64,18 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
     )?;
     println!("{:?}", sm.root(c0));
 
+    sm.set_data(
+        c0,
+        vec![zk::ZkDataLocator::Field { field_index: 0 }],
+        zk::ZkScalar::from(0),
+    )?;
+    sm.set_data(
+        c0,
+        vec![zk::ZkDataLocator::Field { field_index: 1 }],
+        zk::ZkScalar::from(0),
+    )?;
+    println!("{:?}", sm.root(c0));
+
     Ok(())
 }
 
@@ -124,6 +136,24 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
             zk::ZkDataLocator::Field { field_index: 0 },
         ],
         zk::ZkScalar::from(123),
+    )?;
+    println!("{:?}", sm.root(c0));
+
+    sm.set_data(
+        c0,
+        vec![
+            zk::ZkDataLocator::Leaf { leaf_index: 33 },
+            zk::ZkDataLocator::Field { field_index: 0 },
+        ],
+        zk::ZkScalar::from(0),
+    )?;
+    sm.set_data(
+        c0,
+        vec![
+            zk::ZkDataLocator::Leaf { leaf_index: 33 },
+            zk::ZkDataLocator::Field { field_index: 1 },
+        ],
+        zk::ZkScalar::from(0),
     )?;
     println!("{:?}", sm.root(c0));
 
