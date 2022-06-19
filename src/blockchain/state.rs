@@ -98,8 +98,7 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
         patches: Vec<HashMap<zk::ZkDataLocator, zk::ZkScalar>>,
     ) -> Result<(), StateManagerError> {
         let fork = self.fork_on_ram();
-        for p in fork.database.pairs("1".into())? {
-            println!("WH");
+        for p in fork.database.pairs(format!("{}_", id).into())? {
             println!("{:?}", p.0);
         }
         Ok(())
