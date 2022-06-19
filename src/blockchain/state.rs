@@ -97,14 +97,15 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
             return Err(StateManagerError::LocatorError);
         }
 
-        ops.push(WriteOp::Put(
-            format!("{}_{:?}", id, locator).into(),
-            value.into(),
-        ));
+        ops.push(if value == zk::ZkScalar::default() {
+            WriteOp::Remove(format!("{}_{:?}", id, locator).into())
+        } else {
+            WriteOp::Put(format!("{}_{:?}", id, locator).into(), value.into())
+        });
 
         while let Some(curr_loc) = locator.pop() {
             let curr_type = contract_type.locate(&locator);
-            match curr_type {
+            match curr_type.clone() {
                 zk::ZkDataType::List {
                     item_type,
                     log4_size,
@@ -152,10 +153,12 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
                             if layer > 0 {
                                 let parent_aux_offset = ((1 << (2 * layer)) - 1) / 3;
                                 let parent_index = parent_aux_offset + curr_ind;
-                                ops.push(WriteOp::Put(
-                                    format!("{}_{:?}_aux_{}", id, locator, parent_index).into(),
-                                    value.into(),
-                                ));
+                                let aux_key = format!("{}_{:?}_aux_{}", id, locator, parent_index);
+                                ops.push(if value == default_value {
+                                    WriteOp::Remove(aux_key.into())
+                                } else {
+                                    WriteOp::Put(aux_key.into(), value.into())
+                                });
                             }
                         }
                     } else {
@@ -183,10 +186,11 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
                 }
             }
 
-            ops.push(WriteOp::Put(
-                format!("{}_{:?}", id, locator).into(),
-                value.into(),
-            ));
+            ops.push(if value == curr_type.compress_default::<H>() {
+                WriteOp::Remove(format!("{}_{:?}", id, locator).into())
+            } else {
+                WriteOp::Put(format!("{}_{:?}", id, locator).into(), value.into())
+            });
         }
 
         ops.push(WriteOp::Put(
