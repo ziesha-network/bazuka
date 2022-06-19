@@ -5,6 +5,7 @@ use super::BlockchainConfig;
 use crate::core::ContractId;
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, WriteOp};
 use crate::zk;
+use std::collections::HashMap;
 
 #[derive(Error, Debug)]
 pub enum StateManagerError {
@@ -74,14 +75,33 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
             .try_into()?)
     }
 
-    pub fn set_data(
+    pub fn update_contract(
+        &mut self,
+        id: ContractId,
+        patch: HashMap<zk::ZkDataLocator, zk::ZkScalar>,
+    ) -> Result<(), StateManagerError> {
+        let mut fork = self.fork_on_ram();
+        let mut root = fork.root(id)?;
+        for (k, v) in patch {
+            let (op, new_root) = fork.set_data(id, k, v)?;
+            root.state_hash = new_root;
+        }
+        let mut ops = fork.database.to_ops();
+        ops.push(WriteOp::Put(
+            format!("{}_compressed", id).into(),
+            zk::ZkCompressedState::new(root.height + 1, root.state_hash, root.state_size).into(),
+        ));
+        self.database.update(&ops)?;
+        Ok(())
+    }
+
+    fn set_data(
         &mut self,
         id: ContractId,
         mut locator: zk::ZkDataLocator,
         mut value: zk::ZkScalar,
-    ) -> Result<(), StateManagerError> {
+    ) -> Result<(Vec<WriteOp>, zk::ZkScalar), StateManagerError> {
         let contract_type = self.type_of(id)?;
-        let prev_root = self.root(id)?;
         let mut ops = Vec::new();
 
         if contract_type.locate(&locator) != zk::ZkDataType::Scalar {
@@ -175,13 +195,8 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
             });
         }
 
-        ops.push(WriteOp::Put(
-            format!("{}_compressed", id).into(),
-            zk::ZkCompressedState::new(prev_root.height() + 1, value, prev_root.size()).into(),
-        ));
-
         self.database.update(&ops)?;
-        Ok(())
+        Ok((ops, value))
     }
 
     pub fn get_data(

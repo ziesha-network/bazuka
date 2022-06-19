@@ -135,8 +135,10 @@ impl ZkDataType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Hash)]
 pub struct ZkDataLocator(pub Vec<u32>);
+
+impl Eq for ZkDataLocator {}
 
 // Each leaf of the target sparse merkle tree will be the
 // result of consecutive hash of `leaf_size` cells.
@@ -334,9 +336,9 @@ impl ZkState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkCompressedState {
-    height: u64,
-    state_hash: ZkScalar,
-    state_size: u32,
+    pub height: u64,
+    pub state_hash: ZkScalar,
+    pub state_size: u32,
 }
 
 impl ZkCompressedState {

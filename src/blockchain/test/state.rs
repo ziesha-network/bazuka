@@ -38,7 +38,12 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
 
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(c0, zk::ZkDataLocator(vec![]), zk::ZkScalar::from(0xf))?;
+    sm.update_contract(
+        c0,
+        [(zk::ZkDataLocator(vec![]), zk::ZkScalar::from(0xf))]
+            .into_iter()
+            .collect(),
+    )?;
 
     println!("{:?}", sm.root(c0));
 
@@ -65,20 +70,47 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
 
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(c0, zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0xf))?;
+    sm.update_contract(
+        c0,
+        [(zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0xf))]
+            .into_iter()
+            .collect(),
+    )?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(c0, zk::ZkDataLocator(vec![1]), zk::ZkScalar::from(0xf0))?;
+    sm.update_contract(
+        c0,
+        [(zk::ZkDataLocator(vec![1]), zk::ZkScalar::from(0xf0))]
+            .into_iter()
+            .collect(),
+    )?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(c0, zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0xf00))?;
+    sm.update_contract(
+        c0,
+        [(zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0xf00))]
+            .into_iter()
+            .collect(),
+    )?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(c0, zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0xf))?;
+    sm.update_contract(
+        c0,
+        [(zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0xf))]
+            .into_iter()
+            .collect(),
+    )?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(c0, zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0))?;
-    sm.set_data(c0, zk::ZkDataLocator(vec![1]), zk::ZkScalar::from(0))?;
+    sm.update_contract(
+        c0,
+        [
+            (zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0x0)),
+            (zk::ZkDataLocator(vec![1]), zk::ZkScalar::from(0x0)),
+        ]
+        .into_iter()
+        .collect(),
+    )?;
     println!("{:?}", sm.root(c0));
 
     Ok(())
@@ -107,34 +139,63 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
 
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(
+    sm.update_contract(
         c0,
-        zk::ZkDataLocator(vec![62, 0]),
-        zk::ZkScalar::from(0xf00000),
+        [(zk::ZkDataLocator(vec![62, 0]), zk::ZkScalar::from(0xf00000))]
+            .into_iter()
+            .collect(),
     )?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(c0, zk::ZkDataLocator(vec![33, 0]), zk::ZkScalar::from(0xf))?;
-    println!("{:?}", sm.root(c0));
-
-    sm.set_data(c0, zk::ZkDataLocator(vec![33, 1]), zk::ZkScalar::from(0xf0))?;
-    println!("{:?}", sm.root(c0));
-
-    sm.set_data(
+    sm.update_contract(
         c0,
-        zk::ZkDataLocator(vec![33, 0]),
-        zk::ZkScalar::from(0xf00),
+        [(zk::ZkDataLocator(vec![33, 0]), zk::ZkScalar::from(0xf))]
+            .into_iter()
+            .collect(),
     )?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(c0, zk::ZkDataLocator(vec![33, 0]), zk::ZkScalar::from(0xf))?;
+    sm.update_contract(
+        c0,
+        [(zk::ZkDataLocator(vec![33, 1]), zk::ZkScalar::from(0xf0))]
+            .into_iter()
+            .collect(),
+    )?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(c0, zk::ZkDataLocator(vec![33, 0]), zk::ZkScalar::from(0))?;
-    sm.set_data(c0, zk::ZkDataLocator(vec![33, 1]), zk::ZkScalar::from(0))?;
+    sm.update_contract(
+        c0,
+        [(zk::ZkDataLocator(vec![33, 0]), zk::ZkScalar::from(0xf00))]
+            .into_iter()
+            .collect(),
+    )?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(c0, zk::ZkDataLocator(vec![62, 0]), zk::ZkScalar::from(0))?;
+    sm.update_contract(
+        c0,
+        [(zk::ZkDataLocator(vec![33, 0]), zk::ZkScalar::from(0xf))]
+            .into_iter()
+            .collect(),
+    )?;
+    println!("{:?}", sm.root(c0));
+
+    sm.update_contract(
+        c0,
+        [
+            (zk::ZkDataLocator(vec![33, 0]), zk::ZkScalar::from(0x0)),
+            (zk::ZkDataLocator(vec![33, 1]), zk::ZkScalar::from(0x0)),
+        ]
+        .into_iter()
+        .collect(),
+    )?;
+    println!("{:?}", sm.root(c0));
+
+    sm.update_contract(
+        c0,
+        [(zk::ZkDataLocator(vec![62, 0]), zk::ZkScalar::from(0x0))]
+            .into_iter()
+            .collect(),
+    )?;
     println!("{:?}", sm.root(c0));
 
     Ok(())
