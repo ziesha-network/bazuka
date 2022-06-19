@@ -87,12 +87,13 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
     pub fn set_data(
         &mut self,
         id: ContractId,
-        mut locator: Vec<zk::ZkDataLocator>,
+        mut locator: zk::ZkDataLocator,
         mut value: zk::ZkScalar,
     ) -> Result<(), StateManagerError> {
         let contract_type = self.type_of(id)?;
         let prev_root = self.root(id)?;
         let mut ops = Vec::new();
+
         if contract_type.locate(&locator) != zk::ZkDataType::Scalar {
             return Err(StateManagerError::LocatorError);
         }
@@ -103,79 +104,70 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
             WriteOp::Put(format!("{}_{:?}", id, locator).into(), value.into())
         });
 
-        while let Some(curr_loc) = locator.pop() {
+        while let Some(curr_loc) = locator.0.pop() {
             let curr_type = contract_type.locate(&locator);
             match curr_type.clone() {
                 zk::ZkDataType::List {
                     item_type,
                     log4_size,
                 } => {
-                    if let zk::ZkDataLocator::Leaf { leaf_index } = curr_loc {
-                        let mut curr_ind = leaf_index;
-                        let mut default_value = item_type.compress_default::<H>();
-                        for layer in (0..log4_size).rev() {
-                            let mut dats = Vec::new();
-                            let aux_offset = ((1 << (2 * (layer + 1))) - 1) / 3;
-                            let start = curr_ind - (curr_ind % 4);
-                            for leaf_index in start..start + 4 {
-                                let leaf_loc = zk::ZkDataLocator::Leaf {
-                                    leaf_index: leaf_index as u32,
-                                };
-                                dats.push(if leaf_index == curr_ind {
-                                    value
+                    let leaf_index = curr_loc;
+                    let mut curr_ind = leaf_index;
+                    let mut default_value = item_type.compress_default::<H>();
+                    for layer in (0..log4_size).rev() {
+                        let mut dats = Vec::new();
+                        let aux_offset = ((1 << (2 * (layer + 1))) - 1) / 3;
+                        let start = curr_ind - (curr_ind % 4);
+                        for leaf_index in start..start + 4 {
+                            dats.push(if leaf_index == curr_ind {
+                                value
+                            } else {
+                                if layer == log4_size - 1 {
+                                    let mut full_loc = locator.clone();
+                                    full_loc.0.push(leaf_index as u32);
+                                    self.get_data(id, &full_loc)?
                                 } else {
-                                    if layer == log4_size - 1 {
-                                        let mut full_loc = locator.clone();
-                                        full_loc.push(leaf_loc);
-                                        self.get_data(id, &full_loc)?
-                                    } else {
-                                        match self.database.get(
-                                            format!(
-                                                "{}_{:?}_aux_{}",
-                                                id,
-                                                locator,
-                                                aux_offset + leaf_index
-                                            )
-                                            .into(),
-                                        )? {
-                                            Some(b) => b.try_into()?,
-                                            None => default_value,
-                                        }
+                                    match self.database.get(
+                                        format!(
+                                            "{}_{:?}_aux_{}",
+                                            id,
+                                            locator,
+                                            aux_offset + leaf_index
+                                        )
+                                        .into(),
+                                    )? {
+                                        Some(b) => b.try_into()?,
+                                        None => default_value,
                                     }
-                                });
-                            }
-
-                            value = H::hash(&dats);
-                            default_value = H::hash(&[default_value; 4]);
-
-                            curr_ind = curr_ind / 4;
-
-                            if layer > 0 {
-                                let parent_aux_offset = ((1 << (2 * layer)) - 1) / 3;
-                                let parent_index = parent_aux_offset + curr_ind;
-                                let aux_key = format!("{}_{:?}_aux_{}", id, locator, parent_index);
-                                ops.push(if value == default_value {
-                                    WriteOp::Remove(aux_key.into())
-                                } else {
-                                    WriteOp::Put(aux_key.into(), value.into())
-                                });
-                            }
+                                }
+                            });
                         }
-                    } else {
-                        panic!();
+
+                        value = H::hash(&dats);
+                        default_value = H::hash(&[default_value; 4]);
+
+                        curr_ind = curr_ind / 4;
+
+                        if layer > 0 {
+                            let parent_aux_offset = ((1 << (2 * layer)) - 1) / 3;
+                            let parent_index = parent_aux_offset + curr_ind;
+                            let aux_key = format!("{}_{:?}_aux_{}", id, locator, parent_index);
+                            ops.push(if value == default_value {
+                                WriteOp::Remove(aux_key.into())
+                            } else {
+                                WriteOp::Put(aux_key.into(), value.into())
+                            });
+                        }
                     }
                 }
                 zk::ZkDataType::Struct { field_types } => {
                     let mut dats = Vec::new();
                     for field_index in 0..field_types.len() {
-                        let field_loc = zk::ZkDataLocator::Field {
-                            field_index: field_index as u32,
-                        };
-                        dats.push(if field_loc == curr_loc {
+                        dats.push(if field_index as u32 == curr_loc {
                             value
                         } else {
                             let mut full_loc = locator.clone();
-                            full_loc.push(field_loc);
+                            full_loc.0.push(field_index as u32);
                             self.get_data(id, &full_loc)?
                         });
                     }
@@ -205,9 +197,9 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
     pub fn get_data(
         &self,
         cid: ContractId,
-        locator: &[zk::ZkDataLocator],
+        locator: &zk::ZkDataLocator,
     ) -> Result<zk::ZkScalar, StateManagerError> {
-        let sub_type = self.type_of(cid)?.locate(&locator);
+        let sub_type = self.type_of(cid)?.locate(locator);
         Ok(
             match self.database.get(format!("{}_{:?}", cid, locator).into())? {
                 Some(b) => b.try_into()?,

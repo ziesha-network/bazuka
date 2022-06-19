@@ -38,7 +38,7 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
 
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(c0, vec![], zk::ZkScalar::from(0xf))?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![]), zk::ZkScalar::from(0xf))?;
 
     println!("{:?}", sm.root(c0));
 
@@ -65,44 +65,20 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
 
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(
-        c0,
-        vec![zk::ZkDataLocator::Field { field_index: 0 }],
-        zk::ZkScalar::from(0xf),
-    )?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0xf))?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(
-        c0,
-        vec![zk::ZkDataLocator::Field { field_index: 1 }],
-        zk::ZkScalar::from(0xf0),
-    )?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![1]), zk::ZkScalar::from(0xf0))?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(
-        c0,
-        vec![zk::ZkDataLocator::Field { field_index: 0 }],
-        zk::ZkScalar::from(0xf00),
-    )?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0xf00))?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(
-        c0,
-        vec![zk::ZkDataLocator::Field { field_index: 0 }],
-        zk::ZkScalar::from(0xf),
-    )?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0xf))?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(
-        c0,
-        vec![zk::ZkDataLocator::Field { field_index: 0 }],
-        zk::ZkScalar::from(0),
-    )?;
-    sm.set_data(
-        c0,
-        vec![zk::ZkDataLocator::Field { field_index: 1 }],
-        zk::ZkScalar::from(0),
-    )?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![0]), zk::ZkScalar::from(0))?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![1]), zk::ZkScalar::from(0))?;
     println!("{:?}", sm.root(c0));
 
     Ok(())
@@ -133,80 +109,32 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
 
     sm.set_data(
         c0,
-        vec![
-            zk::ZkDataLocator::Leaf { leaf_index: 62 },
-            zk::ZkDataLocator::Field { field_index: 0 },
-        ],
+        zk::ZkDataLocator(vec![62, 0]),
         zk::ZkScalar::from(0xf00000),
     )?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(
-        c0,
-        vec![
-            zk::ZkDataLocator::Leaf { leaf_index: 33 },
-            zk::ZkDataLocator::Field { field_index: 0 },
-        ],
-        zk::ZkScalar::from(0xf),
-    )?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![33, 0]), zk::ZkScalar::from(0xf))?;
+    println!("{:?}", sm.root(c0));
+
+    sm.set_data(c0, zk::ZkDataLocator(vec![33, 1]), zk::ZkScalar::from(0xf0))?;
     println!("{:?}", sm.root(c0));
 
     sm.set_data(
         c0,
-        vec![
-            zk::ZkDataLocator::Leaf { leaf_index: 33 },
-            zk::ZkDataLocator::Field { field_index: 1 },
-        ],
-        zk::ZkScalar::from(0xf0),
-    )?;
-    println!("{:?}", sm.root(c0));
-
-    sm.set_data(
-        c0,
-        vec![
-            zk::ZkDataLocator::Leaf { leaf_index: 33 },
-            zk::ZkDataLocator::Field { field_index: 0 },
-        ],
+        zk::ZkDataLocator(vec![33, 0]),
         zk::ZkScalar::from(0xf00),
     )?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(
-        c0,
-        vec![
-            zk::ZkDataLocator::Leaf { leaf_index: 33 },
-            zk::ZkDataLocator::Field { field_index: 0 },
-        ],
-        zk::ZkScalar::from(0xf),
-    )?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![33, 0]), zk::ZkScalar::from(0xf))?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(
-        c0,
-        vec![
-            zk::ZkDataLocator::Leaf { leaf_index: 33 },
-            zk::ZkDataLocator::Field { field_index: 0 },
-        ],
-        zk::ZkScalar::from(0),
-    )?;
-    sm.set_data(
-        c0,
-        vec![
-            zk::ZkDataLocator::Leaf { leaf_index: 33 },
-            zk::ZkDataLocator::Field { field_index: 1 },
-        ],
-        zk::ZkScalar::from(0),
-    )?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![33, 0]), zk::ZkScalar::from(0))?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![33, 1]), zk::ZkScalar::from(0))?;
     println!("{:?}", sm.root(c0));
 
-    sm.set_data(
-        c0,
-        vec![
-            zk::ZkDataLocator::Leaf { leaf_index: 62 },
-            zk::ZkDataLocator::Field { field_index: 0 },
-        ],
-        zk::ZkScalar::from(0),
-    )?;
+    sm.set_data(c0, zk::ZkDataLocator(vec![62, 0]), zk::ZkScalar::from(0))?;
     println!("{:?}", sm.root(c0));
 
     Ok(())

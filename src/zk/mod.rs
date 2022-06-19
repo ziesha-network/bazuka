@@ -86,31 +86,25 @@ pub enum ZkDataType {
 }
 
 impl ZkDataType {
-    pub fn locate(&self, locator: &[ZkDataLocator]) -> ZkDataType {
+    pub fn locate(&self, locator: &ZkDataLocator) -> ZkDataType {
         let mut curr = self.clone();
-        for l in locator {
-            match l {
-                ZkDataLocator::Field { field_index } => {
-                    if let ZkDataType::Struct { field_types } = curr {
-                        curr = field_types[*field_index as usize].clone();
+        for l in locator.0.iter() {
+            match curr {
+                ZkDataType::Struct { field_types } => {
+                    curr = field_types[*l as usize].clone();
+                }
+                ZkDataType::List {
+                    item_type,
+                    log4_size,
+                } => {
+                    if *l < 1 << (2 * log4_size) {
+                        curr = *item_type.clone();
                     } else {
                         panic!();
                     }
                 }
-                ZkDataLocator::Leaf { leaf_index } => {
-                    if let ZkDataType::List {
-                        item_type,
-                        log4_size,
-                    } = curr
-                    {
-                        if *leaf_index < 1 << (2 * log4_size) {
-                            curr = *item_type;
-                        } else {
-                            panic!();
-                        }
-                    } else {
-                        panic!();
-                    }
+                ZkDataType::Scalar => {
+                    panic!();
                 }
             }
         }
@@ -164,10 +158,7 @@ impl ZkDataType {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ZkDataLocator {
-    Field { field_index: u32 },
-    Leaf { leaf_index: u32 },
-}
+pub struct ZkDataLocator(pub Vec<u32>);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ZkData {
