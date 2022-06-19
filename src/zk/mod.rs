@@ -110,28 +110,6 @@ impl ZkDataType {
         }
         curr
     }
-    pub fn empty(&self) -> ZkData {
-        match self {
-            ZkDataType::Scalar => ZkData::Scalar { value: None },
-            ZkDataType::Struct { field_types } => {
-                let mut vals = vec![];
-                for f in field_types.iter() {
-                    vals.push(f.empty());
-                }
-                ZkData::Struct {
-                    root: None,
-                    fields: vals,
-                }
-            }
-            ZkDataType::List {
-                item_type,
-                log4_size,
-            } => ZkData::List {
-                nodes: None,
-                leaves: HashMap::new(),
-            },
-        }
-    }
     pub fn compress_default<H: ZkHasher>(&self) -> ZkScalar {
         match self {
             ZkDataType::Scalar => ZkScalar::default(),
@@ -159,21 +137,6 @@ impl ZkDataType {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZkDataLocator(pub Vec<u32>);
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ZkData {
-    Scalar {
-        value: Option<ZkScalar>,
-    },
-    Struct {
-        root: Option<ZkScalar>,
-        fields: Vec<ZkData>,
-    },
-    List {
-        nodes: Option<HashMap<u32, ZkScalar>>,
-        leaves: HashMap<u32, ZkData>,
-    },
-}
 
 // Each leaf of the target sparse merkle tree will be the
 // result of consecutive hash of `leaf_size` cells.

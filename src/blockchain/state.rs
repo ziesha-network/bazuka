@@ -2,11 +2,8 @@ use thiserror::Error;
 
 use super::BlockchainConfig;
 
-use crate::core::{
-    hash::Hash, Account, Address, Block, ContractAccount, ContractId, ContractUpdate, Hasher,
-    Header, Money, ProofOfWork, Signature, Transaction, TransactionAndDelta, TransactionData,
-};
-use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
+use crate::core::ContractId;
+use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, WriteOp};
 use crate::zk;
 
 #[derive(Error, Debug)]
@@ -17,8 +14,6 @@ pub enum StateManagerError {
     ContractNotFound,
     #[error("not locating a scalar")]
     LocatorError,
-    #[error("data not found")]
-    NotFound,
 }
 
 pub struct KvStoreStateManager<K: KvStore, H: zk::ZkHasher> {
@@ -27,17 +22,12 @@ pub struct KvStoreStateManager<K: KvStore, H: zk::ZkHasher> {
     _hasher: std::marker::PhantomData<H>,
 }
 
-pub struct ContractStats {
-    height: u32,
-    size: u32,
-}
-
 impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
     pub fn new(
         database: K,
         config: BlockchainConfig,
     ) -> Result<KvStoreStateManager<K, H>, StateManagerError> {
-        let mut chain = KvStoreStateManager::<K, H> {
+        let chain = KvStoreStateManager::<K, H> {
             database,
             config: config.clone(),
             _hasher: std::marker::PhantomData,
