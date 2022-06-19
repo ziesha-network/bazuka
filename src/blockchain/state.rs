@@ -3,7 +3,7 @@ use thiserror::Error;
 use super::BlockchainConfig;
 
 use crate::core::ContractId;
-use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, WriteOp};
+use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::zk;
 use std::collections::HashMap;
 
@@ -13,6 +13,8 @@ pub enum StateManagerError {
     KvStoreError(#[from] KvStoreError),
     #[error("contract not found")]
     ContractNotFound,
+    #[error("rollback not found")]
+    RollbackNotFound,
     #[error("not locating a scalar")]
     LocatorError,
 }
@@ -75,22 +77,46 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
             .try_into()?)
     }
 
+    pub fn rollback_contract(&mut self, id: ContractId) -> Result<(), StateManagerError> {
+        let root = self.root(id)?;
+        let rollback_key: StringKey = format!("{}_rollback_{}", id, root.height - 1).into();
+        let mut rollback: Vec<WriteOp> = match self.database.get(rollback_key.clone())? {
+            Some(b) => b.try_into()?,
+            None => {
+                return Err(StateManagerError::RollbackNotFound);
+            }
+        };
+        rollback.push(WriteOp::Remove(rollback_key));
+        self.database.update(&rollback)?;
+        Ok(())
+    }
+
     pub fn update_contract(
         &mut self,
         id: ContractId,
         patch: HashMap<zk::ZkDataLocator, zk::ZkScalar>,
     ) -> Result<(), StateManagerError> {
+        const MAX_ROLLBACKS: u64 = 5;
         let mut fork = self.fork_on_ram();
         let mut root = fork.root(id)?;
         for (k, v) in patch {
-            let (op, new_root) = fork.set_data(id, k, v)?;
-            root.state_hash = new_root;
+            root.state_hash = fork.set_data(id, k, v)?;
         }
         let mut ops = fork.database.to_ops();
         ops.push(WriteOp::Put(
             format!("{}_compressed", id).into(),
             zk::ZkCompressedState::new(root.height + 1, root.state_hash, root.state_size).into(),
         ));
+        let rollback = self.database.rollback_of(&ops)?;
+        ops.push(WriteOp::Put(
+            format!("{}_rollback_{}", id, root.height).into(),
+            rollback.into(),
+        ));
+        if root.height >= MAX_ROLLBACKS {
+            ops.push(WriteOp::Remove(
+                format!("{}_rollback_{}", id, root.height - MAX_ROLLBACKS).into(),
+            ));
+        }
         self.database.update(&ops)?;
         Ok(())
     }
@@ -100,7 +126,7 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
         id: ContractId,
         mut locator: zk::ZkDataLocator,
         mut value: zk::ZkScalar,
-    ) -> Result<(Vec<WriteOp>, zk::ZkScalar), StateManagerError> {
+    ) -> Result<zk::ZkScalar, StateManagerError> {
         let contract_type = self.type_of(id)?;
         let mut ops = Vec::new();
 
@@ -196,7 +222,7 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
         }
 
         self.database.update(&ops)?;
-        Ok((ops, value))
+        Ok(value)
     }
 
     pub fn get_data(

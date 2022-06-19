@@ -198,5 +198,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
     )?;
     println!("{:?}", sm.root(c0));
 
+    while sm.root(c0)?.height > 2 {
+        sm.rollback_contract(c0)?;
+        println!("{:?}", sm.root(c0));
+    }
+
     Ok(())
 }
