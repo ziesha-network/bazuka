@@ -142,9 +142,9 @@ pub enum WriteOp {
 pub trait KvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError>;
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError>;
-    fn pairs(&self) -> Result<HashMap<StringKey, Blob>, KvStoreError>;
+    fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError>;
     fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
-        let mut kvs: Vec<_> = self.pairs()?.into_iter().collect();
+        let mut kvs: Vec<_> = self.pairs("".into())?.into_iter().collect();
         kvs.sort_by_key(|(k, _)| k.clone());
         Ok(H::hash(&bincode::serialize(&kvs).unwrap()))
     }
@@ -204,11 +204,13 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
         }
         Ok(())
     }
-    fn pairs(&self) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
-        let mut res = self.store.pairs()?;
+    fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
+        let mut res = self.store.pairs(prefix.clone())?;
         for (k, v) in self.overwrite.iter() {
             if let Some(v) = v {
-                res.insert(k.clone(), v.clone());
+                if k.0.starts_with(&prefix.0) {
+                    res.insert(k.clone(), v.clone());
+                }
             } else {
                 res.remove(k);
             }

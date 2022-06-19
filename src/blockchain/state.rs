@@ -91,6 +91,20 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
         Ok(())
     }
 
+    pub fn reset_contract(
+        &mut self,
+        id: ContractId,
+        old_data: HashMap<zk::ZkDataLocator, zk::ZkScalar>,
+        patches: Vec<HashMap<zk::ZkDataLocator, zk::ZkScalar>>,
+    ) -> Result<(), StateManagerError> {
+        let fork = self.fork_on_ram();
+        for p in fork.database.pairs("1".into())? {
+            println!("WH");
+            println!("{:?}", p.0);
+        }
+        Ok(())
+    }
+
     pub fn update_contract(
         &mut self,
         id: ContractId,

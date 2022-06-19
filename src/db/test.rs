@@ -10,6 +10,41 @@ fn temp_disk_store() -> Result<LevelDbKvStore, KvStoreError> {
 
 #[test]
 #[cfg(feature = "node")]
+fn test_ram_and_disk_pair_prefix() -> Result<(), KvStoreError> {
+    let mut ram = RamKvStore::default();
+    let mut disk = temp_disk_store()?;
+
+    assert_eq!(ram.checksum::<Hasher>()?, disk.checksum::<Hasher>()?);
+
+    let ops = &[
+        WriteOp::Put("bc".into(), Blob(vec![0, 1, 2, 3])),
+        WriteOp::Put("aa".into(), Blob(vec![3, 2, 1, 0])),
+        WriteOp::Put("a0a".into(), Blob(vec![])),
+        WriteOp::Put("bge".into(), Blob(vec![])),
+        WriteOp::Put("def".into(), Blob(vec![])),
+    ];
+
+    ram.update(ops)?;
+    disk.update(ops)?;
+
+    assert_eq!(disk.pairs("".into())?.len(), 5);
+    assert_eq!(ram.pairs("".into())?.len(), 5);
+    assert_eq!(disk.pairs("a".into())?.len(), 2);
+    assert_eq!(ram.pairs("a".into())?.len(), 2);
+    assert_eq!(disk.pairs("b".into())?.len(), 2);
+    assert_eq!(ram.pairs("b".into())?.len(), 2);
+    assert_eq!(disk.pairs("d".into())?.len(), 1);
+    assert_eq!(ram.pairs("d".into())?.len(), 1);
+    assert_eq!(disk.pairs("a0".into())?.len(), 1);
+    assert_eq!(ram.pairs("a0".into())?.len(), 1);
+    assert_eq!(disk.pairs("a1".into())?.len(), 0);
+    assert_eq!(ram.pairs("a1".into())?.len(), 0);
+
+    Ok(())
+}
+
+#[test]
+#[cfg(feature = "node")]
 fn test_ram_and_disk_db_consistency() -> Result<(), KvStoreError> {
     let mut ram = RamKvStore::default();
     let mut disk = temp_disk_store()?;

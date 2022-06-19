@@ -28,7 +28,7 @@ fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), Blockc
         b.rollback(),
         Err(BlockchainError::NoBlocksToRollback)
     ));
-    assert!(b.database.pairs()?.is_empty());
+    assert!(b.database.pairs("".into())?.is_empty());
     Ok(())
 }
 
