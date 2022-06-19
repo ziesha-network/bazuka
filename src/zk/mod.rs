@@ -140,6 +140,9 @@ pub struct ZkDataLocator(pub Vec<u32>);
 
 impl Eq for ZkDataLocator {}
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ZkDataPairs(pub HashMap<ZkDataLocator, Option<ZkScalar>>);
+
 // Each leaf of the target sparse merkle tree will be the
 // result of consecutive hash of `leaf_size` cells.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

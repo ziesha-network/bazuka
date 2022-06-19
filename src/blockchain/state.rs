@@ -15,6 +15,8 @@ pub enum StateManagerError {
     ContractNotFound,
     #[error("rollback not found")]
     RollbackNotFound,
+    #[error("data does not correspond to target")]
+    TargetMismatch,
     #[error("not locating a scalar")]
     LocatorError,
 }
@@ -80,50 +82,110 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
     pub fn rollback_contract(&mut self, id: ContractId) -> Result<(), StateManagerError> {
         let root = self.root(id)?;
         let rollback_key: StringKey = format!("{}_rollback_{}", id, root.height - 1).into();
-        let mut rollback: Vec<WriteOp> = match self.database.get(rollback_key.clone())? {
+        let mut rollback_patch: zk::ZkDataPairs = match self.database.get(rollback_key.clone())? {
             Some(b) => b.try_into()?,
             None => {
                 return Err(StateManagerError::RollbackNotFound);
             }
         };
-        rollback.push(WriteOp::Remove(rollback_key));
-        self.database.update(&rollback)?;
+        let mut fork = self.fork_on_ram();
+        let mut state_hash = self.root(id)?.state_hash;
+        for (k, v) in rollback_patch.0 {
+            state_hash = fork.set_data(id, k, v.unwrap_or_default())?;
+        }
+        fork.database.update(&[
+            WriteOp::Remove(rollback_key),
+            WriteOp::Put(
+                format!("{}_compressed", id).into(),
+                zk::ZkCompressedState::new(root.height - 1, state_hash, root.state_size).into(),
+            ),
+        ])?;
+
+        self.database.update(&fork.database.to_ops())?;
         Ok(())
     }
 
     pub fn reset_contract(
         &mut self,
         id: ContractId,
-        old_data: HashMap<zk::ZkDataLocator, zk::ZkScalar>,
-        patches: Vec<HashMap<zk::ZkDataLocator, zk::ZkScalar>>,
+        data: zk::ZkDataPairs,
+        data_target: zk::ZkCompressedState,
+        rollbacks: Vec<zk::ZkDataPairs>,
+        rollback_targets: Vec<zk::ZkCompressedState>,
     ) -> Result<(), StateManagerError> {
-        let fork = self.fork_on_ram();
-        for p in fork.database.pairs(format!("{}_", id).into())? {
-            println!("{:?}", p.0);
+        let contract_type = self.type_of(id)?;
+        let mut fork = self.fork_on_ram();
+        for (k, _) in fork.database.pairs(format!("{}_", id).into())? {
+            fork.database.update(&[WriteOp::Remove(k)])?;
         }
+
+        let mut state_hash = contract_type.compress_default::<H>();
+        for (k, v) in data.0 {
+            state_hash = fork.set_data(id, k, v.unwrap_or_default())?;
+        }
+
+        if state_hash != data_target.state_hash || data_target.state_size != 0 {
+            return Err(StateManagerError::TargetMismatch);
+        }
+
+        fork.database.update(&[WriteOp::Put(
+            format!("{}_compressed", id).into(),
+            data_target.into(),
+        )])?;
+
+        let mut rollback_updates = Vec::new();
+
+        let mut rollback_fork = fork.fork_on_ram();
+        for (i, (rollback, rollback_target)) in rollbacks
+            .iter()
+            .zip(rollback_targets.into_iter())
+            .enumerate()
+        {
+            let mut state_hash = rollback_fork.root(id)?.state_hash;
+            for (k, v) in &rollback.0 {
+                state_hash = rollback_fork.set_data(id, k.clone(), v.unwrap_or_default())?;
+            }
+            if state_hash != rollback_target.state_hash
+                || rollback_target.state_size != 0
+                || rollback_target.height != data_target.height - 1 - i as u64
+            {
+                return Err(StateManagerError::TargetMismatch);
+            }
+            rollback_updates.push(WriteOp::Put(
+                format!("{}_rollback_{}", id, rollback_target.height).into(),
+                rollback.into(),
+            ));
+        }
+
+        fork.database.update(&rollback_updates)?;
+
+        self.database.update(&fork.database.to_ops());
+
         Ok(())
     }
 
     pub fn update_contract(
         &mut self,
         id: ContractId,
-        patch: HashMap<zk::ZkDataLocator, zk::ZkScalar>,
+        patch: zk::ZkDataPairs,
     ) -> Result<(), StateManagerError> {
         const MAX_ROLLBACKS: u64 = 5;
+        let mut rollback_patch = zk::ZkDataPairs(HashMap::new());
         let mut fork = self.fork_on_ram();
         let mut root = fork.root(id)?;
-        for (k, v) in patch {
-            root.state_hash = fork.set_data(id, k, v)?;
+        for (k, v) in patch.0 {
+            let prev_val = self.get_data(id, &k)?;
+            rollback_patch.0.insert(k.clone(), Some(prev_val)); // Or None if default
+            root.state_hash = fork.set_data(id, k, v.unwrap_or_default())?;
         }
         let mut ops = fork.database.to_ops();
         ops.push(WriteOp::Put(
             format!("{}_compressed", id).into(),
             zk::ZkCompressedState::new(root.height + 1, root.state_hash, root.state_size).into(),
         ));
-        let rollback = self.database.rollback_of(&ops)?;
         ops.push(WriteOp::Put(
             format!("{}_rollback_{}", id, root.height).into(),
-            rollback.into(),
+            (&rollback_patch).into(),
         ));
         if root.height >= MAX_ROLLBACKS {
             ops.push(WriteOp::Remove(
