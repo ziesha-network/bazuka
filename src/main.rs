@@ -94,6 +94,9 @@ async fn main() -> Result<(), NodeError> {
         }
     };
 
+    let bazuka_dir = opts
+        .db
+        .unwrap_or_else(|| home::home_dir().unwrap().join(Path::new(".bazuka")));
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
     let node = node_create(
@@ -101,13 +104,8 @@ async fn main() -> Result<(), NodeError> {
         address,
         bootstrap_nodes,
         KvStoreChain::new(
-            LevelDbKvStore::new(
-                &opts
-                    .db
-                    .unwrap_or_else(|| home::home_dir().unwrap().join(Path::new(".bazuka"))),
-                64,
-            )
-            .unwrap(),
+            LevelDbKvStore::new(&bazuka_dir.join("chain"), 64).unwrap(),
+            LevelDbKvStore::new(&bazuka_dir.join("state"), 64).unwrap(),
             config::blockchain::get_blockchain_config(),
         )
         .unwrap(),

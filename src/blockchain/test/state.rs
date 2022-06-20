@@ -34,7 +34,7 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
             .unwrap();
 
-    sm.new_contract(c0, zk::ZkDataType::Scalar)?;
+    sm.new_contract(c0, zk::ZkStateModel::Scalar)?;
 
     println!("{:?}", sm.root(c0));
 
@@ -65,8 +65,8 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
 
     sm.new_contract(
         c0,
-        zk::ZkDataType::Struct {
-            field_types: vec![zk::ZkDataType::Scalar, zk::ZkDataType::Scalar],
+        zk::ZkStateModel::Struct {
+            field_types: vec![zk::ZkStateModel::Scalar, zk::ZkStateModel::Scalar],
         },
     )?;
 
@@ -141,10 +141,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
 
     sm.new_contract(
         c0,
-        zk::ZkDataType::List {
+        zk::ZkStateModel::List {
             log4_size: 3,
-            item_type: Box::new(zk::ZkDataType::Struct {
-                field_types: vec![zk::ZkDataType::Scalar, zk::ZkDataType::Scalar],
+            item_type: Box::new(zk::ZkStateModel::Struct {
+                field_types: vec![zk::ZkStateModel::Scalar, zk::ZkStateModel::Scalar],
             }),
         },
     )?;

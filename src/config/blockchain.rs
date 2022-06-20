@@ -1,23 +1,33 @@
-use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
+use crate::blockchain::{
+    compress_state, BlockAndPatch, BlockchainConfig, KvStoreStateManager, ZkBlockchainPatch,
+};
 use crate::core::{
     Address, Block, ContractId, Header, ProofOfWork, Signature, Transaction, TransactionAndDelta,
-    TransactionData,
+    TransactionData, ZkHasher,
 };
+use crate::db::RamKvStore;
 use crate::zk;
 
 #[cfg(test)]
 use crate::wallet::Wallet;
 
 fn get_mpn_contract() -> TransactionAndDelta {
-    let mpn_state_model = zk::ZkStateModel::new(1, 10);
-    let mpn_initial_state = zk::ZkState::new(
-        1,
-        mpn_state_model,
-        [(100, zk::ZkScalar::from(200))].into_iter().collect(),
+    let mpn_state_model = zk::ZkStateModel::List {
+        item_type: Box::new(zk::ZkStateModel::Scalar),
+        log4_size: 5,
+    };
+    let mpn_initial_state = zk::ZkDataPairs(
+        [(zk::ZkDataLocator(vec![100]), Some(zk::ZkScalar::from(200)))]
+            .into_iter()
+            .collect(),
     );
     let mpn_contract = zk::ZkContract {
-        state_model: mpn_state_model,
-        initial_state: mpn_initial_state.compress(),
+        state_model: mpn_state_model.clone(),
+        initial_state: compress_state::<ZkHasher>(
+            mpn_state_model.clone(),
+            mpn_initial_state.clone(),
+        )
+        .unwrap(),
         deposit_withdraw_function: zk::ZkVerifierKey::Plonk(0),
         functions: vec![zk::ZkVerifierKey::Plonk(0)],
     };
@@ -32,7 +42,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
     };
     TransactionAndDelta {
         tx: mpn_contract_create_tx,
-        state_delta: Some(mpn_initial_state.as_delta()),
+        state_delta: Some(mpn_initial_state),
     }
 }
 
