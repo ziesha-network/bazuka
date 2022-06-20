@@ -198,6 +198,18 @@ pub struct ZkState {
     pub rollbacks: Vec<ZkDataPairs>,
 }
 
+impl ZkState {
+    pub fn compress<H: ZkHasher>(&self, model: ZkStateModel) -> ZkCompressedState {
+        crate::blockchain::compress_state::<H>(model, self.data.clone()).unwrap()
+    }
+    pub fn push_delta(&mut self, delta: &ZkDataPairs) {
+        for (k, v) in delta.0.iter() {}
+    }
+    pub fn apply_delta(&mut self, delta: &ZkDataPairs) {
+        for (k, v) in delta.0.iter() {}
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkCompressedState {
     pub height: u64,
