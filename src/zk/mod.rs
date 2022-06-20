@@ -138,6 +138,39 @@ impl ZkDataType {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Hash)]
 pub struct ZkDataLocator(pub Vec<u32>);
 
+impl std::fmt::Display for ZkDataLocator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|n| format!("{:x}", n))
+                .collect::<Vec<_>>()
+                .join("-")
+        )?;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum ParseZkDataLocatorError {
+    #[error("locator invalid")]
+    Invalid,
+}
+
+impl std::str::FromStr for ZkDataLocator {
+    type Err = ParseZkDataLocatorError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(
+            s.split("-")
+                .map(|s| u32::from_str_radix(s, 16))
+                .collect::<Result<Vec<u32>, _>>()
+                .map_err(|_| ParseZkDataLocatorError::Invalid)?,
+        ))
+    }
+}
+
 impl Eq for ZkDataLocator {}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

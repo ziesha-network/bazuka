@@ -6,6 +6,7 @@ use crate::core::ContractId;
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::zk;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Error, Debug)]
 pub enum StateManagerError {
@@ -19,6 +20,8 @@ pub enum StateManagerError {
     TargetMismatch,
     #[error("not locating a scalar")]
     LocatorError,
+    #[error("locator parse error: {0}")]
+    LocatorParseError(#[from] zk::ParseZkDataLocatorError),
 }
 
 pub struct KvStoreStateManager<K: KvStore, H: zk::ZkHasher> {
@@ -105,6 +108,33 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
         Ok(())
     }
 
+    pub fn get_full_state(
+        &self,
+        id: ContractId,
+    ) -> Result<(zk::ZkDataPairs, Vec<zk::ZkDataPairs>), StateManagerError> {
+        const MAX_ROLLBACKS: u64 = 5;
+        let mut data = zk::ZkDataPairs(Default::default());
+        for (k, v) in self.database.pairs(format!("{}_s_", id).into())? {
+            let loc = zk::ZkDataLocator::from_str(k.0.split("_").nth(2).unwrap())?;
+            data.0.insert(loc, Some(v.try_into()?));
+        }
+        let mut rollbacks = Vec::<zk::ZkDataPairs>::new();
+        let height = self.root(id)?.height;
+        for i in 0..MAX_ROLLBACKS {
+            if height >= i + 1 {
+                rollbacks.push(
+                    self.database
+                        .get(format!("{}_rollback_{}", id, height - i - 1).into())?
+                        .ok_or(StateManagerError::RollbackNotFound)?
+                        .try_into()?,
+                );
+            } else {
+                break;
+            }
+        }
+        Ok((data, vec![]))
+    }
+
     pub fn reset_contract(
         &mut self,
         id: ContractId,
@@ -159,7 +189,7 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
 
         fork.database.update(&rollback_updates)?;
 
-        self.database.update(&fork.database.to_ops());
+        self.database.update(&fork.database.to_ops())?;
 
         Ok(())
     }
@@ -210,9 +240,9 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
         }
 
         ops.push(if value == zk::ZkScalar::default() {
-            WriteOp::Remove(format!("{}_{:?}", id, locator).into())
+            WriteOp::Remove(format!("{}_s_{}", id, locator).into())
         } else {
-            WriteOp::Put(format!("{}_{:?}", id, locator).into(), value.into())
+            WriteOp::Put(format!("{}_s_{}", id, locator).into(), value.into())
         });
 
         while let Some(curr_loc) = locator.0.pop() {
@@ -240,7 +270,7 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
                                 } else {
                                     match self.database.get(
                                         format!(
-                                            "{}_{:?}_aux_{}",
+                                            "{}_{}_aux_{}",
                                             id,
                                             locator,
                                             aux_offset + leaf_index
@@ -262,7 +292,7 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
                         if layer > 0 {
                             let parent_aux_offset = ((1 << (2 * layer)) - 1) / 3;
                             let parent_index = parent_aux_offset + curr_ind;
-                            let aux_key = format!("{}_{:?}_aux_{}", id, locator, parent_index);
+                            let aux_key = format!("{}_{}_aux_{}", id, locator, parent_index);
                             ops.push(if value == default_value {
                                 WriteOp::Remove(aux_key.into())
                             } else {
@@ -290,9 +320,9 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
             }
 
             ops.push(if value == curr_type.compress_default::<H>() {
-                WriteOp::Remove(format!("{}_{:?}", id, locator).into())
+                WriteOp::Remove(format!("{}_{}", id, locator).into())
             } else {
-                WriteOp::Put(format!("{}_{:?}", id, locator).into(), value.into())
+                WriteOp::Put(format!("{}_{}", id, locator).into(), value.into())
             });
         }
 
@@ -307,7 +337,19 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
     ) -> Result<zk::ZkScalar, StateManagerError> {
         let sub_type = self.type_of(cid)?.locate(locator);
         Ok(
-            match self.database.get(format!("{}_{:?}", cid, locator).into())? {
+            match self.database.get(
+                format!(
+                    "{}_{}{}",
+                    cid,
+                    if sub_type == zk::ZkDataType::Scalar {
+                        "s_"
+                    } else {
+                        ""
+                    },
+                    locator
+                )
+                .into(),
+            )? {
                 Some(b) => b.try_into()?,
                 None => sub_type.compress_default::<H>(),
             },

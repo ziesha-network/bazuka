@@ -216,6 +216,8 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
     )?;
     println!("{:?}", sm.root(c0));
 
+    println!("Full: {:?}", sm.get_full_state(c0)?.0);
+
     sm.update_contract(
         c0,
         zk::ZkDataPairs(

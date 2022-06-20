@@ -21,7 +21,7 @@ pub enum KvStoreError {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, std::hash::Hash)]
-pub struct StringKey(String);
+pub struct StringKey(pub String);
 
 impl PartialOrd for StringKey {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
