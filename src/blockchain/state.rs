@@ -60,6 +60,15 @@ impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
         Ok(chain)
     }
 
+    pub fn delete_contract(&mut self, id: ContractId) -> Result<(), StateManagerError> {
+        let mut rems = Vec::new();
+        for (k, _) in self.database.pairs(format!("{}", id).into())? {
+            rems.push(WriteOp::Remove(k));
+        }
+        self.database.update(&rems)?;
+        Ok(())
+    }
+
     pub fn new_contract(
         &mut self,
         id: ContractId,
