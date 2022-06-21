@@ -28,6 +28,7 @@ pub struct BlockchainConfig {
     pub pow_key_change_delay: u64,
     pub pow_key_change_interval: u64,
     pub median_timestamp_count: u64,
+    pub state_manager_config: StateManagerConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -194,7 +195,10 @@ impl<K: KvStore> KvStoreChain<K> {
     ) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> {
             database,
-            state_manager: KvStoreStateManager::new(state_database, config.clone())?,
+            state_manager: KvStoreStateManager::new(
+                state_database,
+                config.state_manager_config.clone(),
+            )?,
             config: config.clone(),
         };
         if chain.get_height()? == 0 {

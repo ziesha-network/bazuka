@@ -1,5 +1,6 @@
 use crate::blockchain::{
-    compress_state, BlockAndPatch, BlockchainConfig, KvStoreStateManager, ZkBlockchainPatch,
+    compress_state, BlockAndPatch, BlockchainConfig, KvStoreStateManager, StateManagerConfig,
+    ZkBlockchainPatch,
 };
 use crate::core::{
     Address, Block, ContractId, Header, ProofOfWork, Signature, Transaction, TransactionAndDelta,
@@ -121,6 +122,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         // New block's timestamp should be higher than median
         // timestamp of 10 previous blocks
         median_timestamp_count: 10,
+
+        state_manager_config: StateManagerConfig {},
     }
 }
 

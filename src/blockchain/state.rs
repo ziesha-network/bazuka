@@ -1,12 +1,13 @@
 use thiserror::Error;
 
-use super::BlockchainConfig;
-
 use crate::core::ContractId;
 use crate::db::{KvStore, KvStoreError, RamKvStore, RamMirrorKvStore, StringKey, WriteOp};
 use crate::zk;
 use std::collections::HashMap;
 use std::str::FromStr;
+
+#[derive(Debug, Clone)]
+pub struct StateManagerConfig {}
 
 #[derive(Error, Debug)]
 pub enum StateManagerError {
@@ -27,7 +28,7 @@ pub enum StateManagerError {
 }
 
 pub struct KvStoreStateManager<K: KvStore, H: zk::ZkHasher> {
-    config: BlockchainConfig,
+    config: StateManagerConfig,
     database: K,
     _hasher: std::marker::PhantomData<H>,
 }
@@ -39,10 +40,8 @@ pub fn compress_state<H: zk::ZkHasher>(
     let id =
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
             .unwrap();
-    let mut db = KvStoreStateManager::<RamKvStore, H>::new(
-        RamKvStore::new(),
-        crate::config::blockchain::get_blockchain_config(),
-    )?;
+    let mut db =
+        KvStoreStateManager::<RamKvStore, H>::new(RamKvStore::new(), StateManagerConfig {})?;
     db.new_contract(id, data_type)?;
     db.update_contract(id, &data)?;
     Ok(db.root(id)?)
@@ -51,7 +50,7 @@ pub fn compress_state<H: zk::ZkHasher>(
 impl<K: KvStore, H: zk::ZkHasher> KvStoreStateManager<K, H> {
     pub fn new(
         database: K,
-        config: BlockchainConfig,
+        config: StateManagerConfig,
     ) -> Result<KvStoreStateManager<K, H>, StateManagerError> {
         let chain = KvStoreStateManager::<K, H> {
             database,

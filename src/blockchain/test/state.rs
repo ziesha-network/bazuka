@@ -27,7 +27,7 @@ impl ZkHasher for MimcHasher {
 fn test_state_manager_scalar() -> Result<(), StateManagerError> {
     let mut sm = KvStoreStateManager::<db::RamKvStore, SumHasher>::new(
         db::RamKvStore::new(),
-        easy_config(),
+        StateManagerConfig {},
     )?;
 
     let c0 =
@@ -56,7 +56,7 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
 fn test_state_manager_struct() -> Result<(), StateManagerError> {
     let mut sm = KvStoreStateManager::<db::RamKvStore, SumHasher>::new(
         db::RamKvStore::new(),
-        easy_config(),
+        StateManagerConfig {},
     )?;
 
     let c0 =
@@ -132,7 +132,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
 fn test_state_manager_list() -> Result<(), StateManagerError> {
     let mut sm = KvStoreStateManager::<db::RamKvStore, MimcHasher>::new(
         db::RamKvStore::new(),
-        easy_config(),
+        StateManagerConfig {},
     )?;
 
     let c0 =
