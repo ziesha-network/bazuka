@@ -104,8 +104,7 @@ async fn main() -> Result<(), NodeError> {
         address,
         bootstrap_nodes,
         KvStoreChain::new(
-            LevelDbKvStore::new(&bazuka_dir.join("chain"), 64).unwrap(),
-            LevelDbKvStore::new(&bazuka_dir.join("state"), 64).unwrap(),
+            LevelDbKvStore::new(&bazuka_dir, 64).unwrap(),
             config::blockchain::get_blockchain_config(),
         )
         .unwrap(),
