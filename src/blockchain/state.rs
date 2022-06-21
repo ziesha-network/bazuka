@@ -181,7 +181,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         rollbacks: Vec<zk::ZkDeltaPairs>,
     ) -> Result<(zk::ZkCompressedState, Vec<zk::ZkCompressedState>), StateManagerError> {
         let contract_type = self.type_of(db, id)?;
-        let mut fork = db.fork_on_ram();
+        let mut fork = db.mirror();
         for (k, _) in fork.pairs(format!("{}_", id).into())? {
             fork.update(&[WriteOp::Remove(k)])?;
         }
@@ -230,7 +230,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
     ) -> Result<(), StateManagerError> {
         const MAX_ROLLBACKS: u64 = 5;
         let mut rollback_patch = zk::ZkDeltaPairs(HashMap::new());
-        let mut fork = db.fork_on_ram();
+        let mut fork = db.mirror();
         let mut root = self.root(&fork, id)?;
         for (k, v) in &patch.0 {
             let prev_val = self.get_data(&fork, id, &k)?;

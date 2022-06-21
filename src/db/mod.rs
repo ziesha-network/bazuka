@@ -169,7 +169,7 @@ pub trait KvStore {
         }
         Ok(rollback)
     }
-    fn fork_on_ram(&self) -> RamMirrorKvStore<'_, Self>
+    fn mirror(&self) -> RamMirrorKvStore<'_, Self>
     where
         Self: Sized,
     {
