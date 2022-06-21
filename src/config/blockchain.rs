@@ -1,12 +1,10 @@
 use crate::blockchain::{
-    compress_state, BlockAndPatch, BlockchainConfig, KvStoreStateManager, StateManagerConfig,
-    ZkBlockchainPatch,
+    compress_state, BlockAndPatch, BlockchainConfig, StateManagerConfig, ZkBlockchainPatch,
 };
 use crate::core::{
     Address, Block, ContractId, Header, ProofOfWork, Signature, Transaction, TransactionAndDelta,
     TransactionData, ZkHasher,
 };
-use crate::db::RamKvStore;
 use crate::zk;
 
 #[cfg(test)]
@@ -18,7 +16,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
         log4_size: 5,
     };
     let mpn_initial_state = zk::ZkDataPairs(
-        [(zk::ZkDataLocator(vec![100]), Some(zk::ZkScalar::from(200)))]
+        [(zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200))]
             .into_iter()
             .collect(),
     );
@@ -43,7 +41,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
     };
     TransactionAndDelta {
         tx: mpn_contract_create_tx,
-        state_delta: Some(mpn_initial_state),
+        state_delta: Some(mpn_initial_state.as_delta()),
     }
 }
 

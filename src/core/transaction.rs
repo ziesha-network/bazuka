@@ -2,7 +2,7 @@ use super::address::{Address, Signature};
 use super::hash::Hash;
 use super::Money;
 use crate::crypto::SignatureScheme;
-use crate::zk::{ZkCompressedState, ZkContract, ZkDataPairs, ZkProof};
+use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkProof};
 
 use std::str::FromStr;
 use thiserror::Error;
@@ -110,7 +110,7 @@ pub struct Transaction<H: Hash, S: SignatureScheme> {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct TransactionAndDelta<H: Hash, S: SignatureScheme> {
     pub tx: Transaction<H, S>,
-    pub state_delta: Option<ZkDataPairs>,
+    pub state_delta: Option<ZkDeltaPairs>,
 }
 
 impl<H: Hash, S: SignatureScheme> PartialEq<TransactionAndDelta<H, S>>

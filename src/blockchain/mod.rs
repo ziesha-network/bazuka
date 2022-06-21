@@ -184,7 +184,7 @@ pub trait Blockchain {
 pub struct KvStoreChain<K: KvStore> {
     config: BlockchainConfig,
     database: K,
-    state_manager: KvStoreStateManager<K, ZkHasher>,
+    state_manager: KvStoreStateManager<ZkHasher>,
 }
 
 impl<K: KvStore> KvStoreChain<K> {
@@ -195,10 +195,7 @@ impl<K: KvStore> KvStoreChain<K> {
     ) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> {
             database,
-            state_manager: KvStoreStateManager::new(
-                state_database,
-                config.state_manager_config.clone(),
-            )?,
+            state_manager: KvStoreStateManager::new(config.state_manager_config.clone())?,
             config: config.clone(),
         };
         if chain.get_height()? == 0 {
@@ -211,7 +208,7 @@ impl<K: KvStore> KvStoreChain<K> {
     fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
         KvStoreChain {
             database: RamMirrorKvStore::new(&self.database),
-            state_manager: self.state_manager.fork_on_ram(),
+            state_manager: self.state_manager.clone(),
             config: self.config.clone(),
         }
     }
@@ -621,6 +618,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         let mut outdated = self.get_outdated_contracts()?;
         let changed_states = self.get_changed_states(height - 1)?;
+
+        let mut fork = self.fork_on_ram();
+
         for (cid, comp) in changed_states {
             if comp.prev_state.height() == 0 {
                 rollback.push(WriteOp::Remove(
@@ -634,23 +634,27 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             }
 
             if !outdated.contains(&cid) {
-                let mut state = self.get_local_state(cid)?;
-                if self
+                let mut rollbacked = fork.fork_on_ram();
+                if rollbacked
                     .state_manager
-                    .rollback_contract(cid, comp.prev_state)
-                    .is_err()
+                    .rollback_contract(&mut rollbacked.database, cid)?
+                    != Some(comp.prev_state)
                     && comp.prev_state.height() > 0
                 {
                     outdated.push(cid);
+                } else {
+                    fork.database.update(&rollbacked.database.to_ops())?;
                 }
             } else {
-                let local_compressed_state = self.get_local_compressed_state(cid)?;
+                let local_compressed_state = fork.get_local_compressed_state(cid)?;
                 if local_compressed_state == comp.prev_state {
                     outdated.retain(|&x| x != cid);
                 }
             }
         }
 
+        let fork_ops = fork.database.to_ops();
+        rollback.extend(fork_ops);
         rollback.push(if outdated.is_empty() {
             WriteOp::Remove("outdated".into())
         } else {
@@ -717,7 +721,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .ok_or(BlockchainError::ContractNotFound)??)
     }
     fn get_local_state(&self, contract_id: ContractId) -> Result<zk::ZkState, BlockchainError> {
-        Ok(self.state_manager.get_full_state(contract_id)?)
+        Ok(self
+            .state_manager
+            .get_full_state(&self.database, contract_id)?)
     }
 
     fn get_local_compressed_state(
@@ -973,8 +979,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError> {
-        let mut ops = Vec::new();
         let mut outdated_states = self.get_outdated_contracts()?;
+
+        let mut fork = self.fork_on_ram();
 
         for cid in outdated_states.clone() {
             let contract_account = self.get_contract_account(cid)?;
@@ -988,12 +995,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     // TODO:Rollback if invalid
                 }
                 zk::ZkStatePatch::Delta(delta) => {
-                    self.state_manager.update_contract(cid, delta)?;
+                    fork.state_manager
+                        .update_contract(&mut fork.database, cid, delta)?;
                     // TODO:Rollback if invalid
                 }
             };
 
-            if self.state_manager.root(cid)? == contract_account.compressed_state {
+            if self.state_manager.root(&self.database, cid)? == contract_account.compressed_state {
                 // TODO: Persist changes
             } else {
                 return Err(BlockchainError::FullStateNotValid);
@@ -1001,12 +1009,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             outdated_states.retain(|&x| x != cid);
         }
 
-        ops.push(if outdated_states.is_empty() {
+        fork.database.update(&[if outdated_states.is_empty() {
             WriteOp::Remove("outdated".into())
         } else {
             WriteOp::Put("outdated".into(), outdated_states.clone().into())
-        });
+        }])?;
 
+        let ops = fork.database.to_ops();
         self.database.update(&ops)?;
         Ok(())
     }
@@ -1046,7 +1055,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         };
         for (cid, away) in aways {
             if !outdated_states.contains(&cid) {
-                let compressed_state = self.state_manager.root(cid)?;
+                let compressed_state = self.state_manager.root(&self.database, cid)?;
                 // TODO: Check state/compressed state relate
                 let away = compressed_state.height - away.height;
                 blockchain_patch.patches.insert(
@@ -1054,7 +1063,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     if let Ok(delta) = self.state_manager.delta_of(cid, away as usize) {
                         zk::ZkStatePatch::Delta(delta)
                     } else {
-                        zk::ZkStatePatch::Full(self.state_manager.get_full_state(cid)?)
+                        zk::ZkStatePatch::Full(
+                            self.state_manager.get_full_state(&self.database, cid)?,
+                        )
                     },
                 );
             }

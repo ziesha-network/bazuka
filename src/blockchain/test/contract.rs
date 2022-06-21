@@ -60,14 +60,14 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let mut full_state = zk::ZkState {
         rollbacks: vec![],
         data: zk::ZkDataPairs(
-            [(zk::ZkDataLocator(vec![100]), Some(zk::ZkScalar::from(200)))]
+            [(zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200))]
                 .into_iter()
                 .collect(),
         ),
     };
     let mut full_state_with_delta = full_state.clone();
 
-    let state_delta = zk::ZkDataPairs(
+    let state_delta = zk::ZkDeltaPairs(
         [(zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(234)))]
             .into_iter()
             .collect(),
@@ -99,7 +99,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.fork_on_ram().update_states(&ZkBlockchainPatch {
             patches: [(
                 cid,
-                zk::ZkStatePatch::Delta(zk::ZkDataPairs(
+                zk::ZkStatePatch::Delta(zk::ZkDeltaPairs(
                     [(zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(321)))]
                         .into_iter()
                         .collect()
@@ -128,7 +128,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                 zk::ZkStatePatch::Full(zk::ZkState {
                     rollbacks: vec![],
                     data: zk::ZkDataPairs(
-                        [(zk::ZkDataLocator(vec![100]), Some(zk::ZkScalar::from(200)))]
+                        [(zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200))]
                             .into_iter()
                             .collect()
                     )
@@ -147,8 +147,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     rollbacks: vec![],
                     data: zk::ZkDataPairs(
                         [
-                            (zk::ZkDataLocator(vec![100]), Some(zk::ZkScalar::from(200))),
-                            (zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(234)))
+                            (zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200)),
+                            (zk::ZkDataLocator(vec![123]), zk::ZkScalar::from(234))
                         ]
                         .into_iter()
                         .collect()
@@ -167,8 +167,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                 rollbacks: vec![],
                 data: zk::ZkDataPairs(
                     [
-                        (zk::ZkDataLocator(vec![100]), Some(zk::ZkScalar::from(200))),
-                        (zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(234))),
+                        (zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200)),
+                        (zk::ZkDataLocator(vec![123]), zk::ZkScalar::from(234)),
                     ]
                     .into_iter()
                     .collect(),
@@ -189,7 +189,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     updated_fork.update_states(&ZkBlockchainPatch {
         patches: [(
             cid,
-            zk::ZkStatePatch::Delta(zk::ZkDataPairs(
+            zk::ZkStatePatch::Delta(zk::ZkDeltaPairs(
                 [(zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(234)))]
                     .into_iter()
                     .collect(),

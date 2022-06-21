@@ -1,7 +1,9 @@
 use crate::blockchain::{ZkBlockchainPatch, ZkCompressedStateChange};
 use crate::core::{hash::Hash, Account, Block, ContractAccount, ContractId, Hasher, Header};
 use crate::crypto::merkle::MerkleTree;
-use crate::zk::{ZkCompressedState, ZkContract, ZkDataPairs, ZkScalar, ZkState, ZkStateModel};
+use crate::zk::{
+    ZkCompressedState, ZkContract, ZkDataPairs, ZkDeltaPairs, ZkScalar, ZkState, ZkStateModel,
+};
 use db_key::Key;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -89,7 +91,8 @@ gen_try_into!(
     ZkBlockchainPatch,
     ZkStateModel,
     ZkScalar,
-    ZkDataPairs
+    ZkDataPairs,
+    ZkDeltaPairs
 );
 gen_from!(
     u32,
@@ -111,7 +114,8 @@ gen_from!(
     &ZkBlockchainPatch,
     ZkStateModel,
     ZkScalar,
-    &ZkDataPairs
+    &ZkDataPairs,
+    &ZkDeltaPairs
 );
 
 impl Key for StringKey {
@@ -164,6 +168,12 @@ pub trait KvStore {
             })
         }
         Ok(rollback)
+    }
+    fn fork_on_ram(&self) -> RamMirrorKvStore<'_, Self>
+    where
+        Self: Sized,
+    {
+        RamMirrorKvStore::new(self)
     }
 }
 

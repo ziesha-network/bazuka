@@ -229,12 +229,12 @@ fn sample_contract_call() -> TransactionAndDelta {
     let mut full_state = zk::ZkState {
         rollbacks: vec![],
         data: zk::ZkDataPairs(
-            [(zk::ZkDataLocator(vec![100]), Some(zk::ZkScalar::from(200)))]
+            [(zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200))]
                 .into_iter()
                 .collect(),
         ),
     };
-    let state_delta = zk::ZkDataPairs(
+    let state_delta = zk::ZkDeltaPairs(
         [(zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(234)))]
             .into_iter()
             .collect(),

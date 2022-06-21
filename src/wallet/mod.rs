@@ -64,7 +64,7 @@ impl Wallet {
         tx.sig = Signature::Signed(EdDSA::sign(&sk, &bytes));
         TransactionAndDelta {
             tx,
-            state_delta: Some(initial_state),
+            state_delta: Some(initial_state.as_delta()),
         }
     }
 
@@ -73,7 +73,7 @@ impl Wallet {
         &self,
         contract_id: ContractId,
         function_id: u32,
-        state_delta: zk::ZkDataPairs,
+        state_delta: zk::ZkDeltaPairs,
         next_state: zk::ZkCompressedState,
         proof: zk::ZkProof,
         fee: Money,

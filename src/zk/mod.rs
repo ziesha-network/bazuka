@@ -15,7 +15,7 @@ pub enum ZkError {
 #[derive(Debug, Clone, Default)]
 pub struct ZkStateProof(Vec<ZkScalar>);
 
-pub trait ZkHasher {
+pub trait ZkHasher: Clone {
     fn hash(vals: &[ZkScalar]) -> ZkScalar;
 }
 
@@ -67,7 +67,7 @@ impl From<u64> for ZkScalar {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ZkStatePatch {
     Full(ZkState),
-    Delta(ZkDataPairs),
+    Delta(ZkDeltaPairs),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -174,14 +174,33 @@ impl std::str::FromStr for ZkDataLocator {
 impl Eq for ZkDataLocator {}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct ZkDataPairs(pub HashMap<ZkDataLocator, Option<ZkScalar>>);
+pub struct ZkDataPairs(pub HashMap<ZkDataLocator, ZkScalar>);
 
-impl ZkDataPairs {
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ZkDeltaPairs(pub HashMap<ZkDataLocator, Option<ZkScalar>>);
+
+impl ZkDeltaPairs {
     pub fn size(&self) -> isize {
         self.0.len() as isize // TODO: Really?
     }
 }
 
+impl ZkDataPairs {
+    pub fn as_delta(&self) -> ZkDeltaPairs {
+        ZkDeltaPairs(
+            self.0
+                .clone()
+                .into_iter()
+                .map(|(k, v)| (k, Some(v)))
+                .collect(),
+        )
+    }
+    pub fn size(&self) -> usize {
+        self.0.len() as usize
+    }
+}
+
+#[derive(Clone)]
 pub struct MimcHasher;
 impl ZkHasher for MimcHasher {
     fn hash(vals: &[ZkScalar]) -> ZkScalar {
@@ -195,18 +214,31 @@ impl ZkHasher for MimcHasher {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZkState {
     pub data: ZkDataPairs,
-    pub rollbacks: Vec<ZkDataPairs>,
+    pub rollbacks: Vec<ZkDeltaPairs>,
 }
 
 impl ZkState {
     pub fn compress<H: ZkHasher>(&self, model: ZkStateModel) -> ZkCompressedState {
         crate::blockchain::compress_state::<H>(model, self.data.clone()).unwrap()
     }
-    pub fn push_delta(&mut self, delta: &ZkDataPairs) {
-        for (k, v) in delta.0.iter() {}
+    pub fn push_delta(&mut self, delta: &ZkDeltaPairs) {
+        let mut rollback = ZkDeltaPairs::default();
+        for (loc, val) in delta.0.iter() {
+            rollback
+                .0
+                .insert(loc.clone(), self.data.0.get(loc).cloned());
+        }
+        self.apply_delta(delta);
+        self.rollbacks.push(rollback);
     }
-    pub fn apply_delta(&mut self, delta: &ZkDataPairs) {
-        for (k, v) in delta.0.iter() {}
+    pub fn apply_delta(&mut self, delta: &ZkDeltaPairs) {
+        for (loc, val) in delta.0.iter() {
+            if let Some(val) = val {
+                self.data.0.insert(loc.clone(), *val);
+            } else {
+                self.data.0.remove(loc);
+            }
+        }
     }
 }
 
