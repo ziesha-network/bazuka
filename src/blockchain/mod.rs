@@ -188,11 +188,7 @@ pub struct KvStoreChain<K: KvStore> {
 }
 
 impl<K: KvStore> KvStoreChain<K> {
-    pub fn new(
-        database: K,
-        state_database: K,
-        config: BlockchainConfig,
-    ) -> Result<KvStoreChain<K>, BlockchainError> {
+    pub fn new(database: K, config: BlockchainConfig) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> {
             database,
             state_manager: KvStoreStateManager::new(config.state_manager_config.clone())?,
