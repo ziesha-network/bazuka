@@ -188,12 +188,12 @@ impl<'a, K: KvStore> RamMirrorKvStore<'a, K> {
             overwrite: HashMap::new(),
         }
     }
-    pub fn to_ops(self) -> Vec<WriteOp> {
+    pub fn to_ops(&self) -> Vec<WriteOp> {
         self.overwrite
-            .into_iter()
+            .iter()
             .map(|(k, v)| match v {
-                Some(b) => WriteOp::Put(k, b),
-                None => WriteOp::Remove(k),
+                Some(b) => WriteOp::Put(k.clone(), b.clone()),
+                None => WriteOp::Remove(k.clone()),
             })
             .collect()
     }
