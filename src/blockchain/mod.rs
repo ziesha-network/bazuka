@@ -568,7 +568,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 ),
             ])?;
 
-            let rollback = chain.database.rollback_of(&chain.database.to_ops())?;
+            let rollback = chain.database.rollback()?;
 
             chain.database.update(&[
                 WriteOp::Put(

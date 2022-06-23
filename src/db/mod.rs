@@ -154,21 +154,6 @@ pub trait KvStore {
         kvs.sort_by_key(|(k, _)| k.clone());
         Ok(H::hash(&bincode::serialize(&kvs).unwrap()))
     }
-    fn rollback_of(&self, ops: &[WriteOp]) -> Result<Vec<WriteOp>, KvStoreError> {
-        let mut rollback = Vec::new();
-        for op in ops.iter() {
-            let key = match op {
-                WriteOp::Put(k, _) => k,
-                WriteOp::Remove(k) => k,
-            }
-            .clone();
-            rollback.push(match self.get(key.clone())? {
-                Some(b) => WriteOp::Put(key, b.clone()),
-                None => WriteOp::Remove(key),
-            })
-        }
-        Ok(rollback)
-    }
     fn mirror(&self) -> RamMirrorKvStore<'_, Self>
     where
         Self: Sized,
@@ -187,6 +172,17 @@ impl<'a, K: KvStore> RamMirrorKvStore<'a, K> {
             store,
             overwrite: HashMap::new(),
         }
+    }
+    pub fn rollback(&self) -> Result<Vec<WriteOp>, KvStoreError> {
+        self.overwrite
+            .iter()
+            .map(|(k, _)| {
+                self.store.get(k.clone()).map(|v| match v {
+                    Some(v) => WriteOp::Put(k.clone(), v.clone()),
+                    None => WriteOp::Remove(k.clone()),
+                })
+            })
+            .collect()
     }
     pub fn to_ops(&self) -> Vec<WriteOp> {
         self.overwrite
