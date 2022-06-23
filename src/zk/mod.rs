@@ -38,7 +38,6 @@ pub fn check_proof(
                 false
             }
         }
-        #[cfg(test)]
         ZkVerifierKey::Dummy => {
             if let ZkProof::Dummy(result) = proof {
                 *result
@@ -274,7 +273,6 @@ impl ZkCompressedState {
 pub enum ZkVerifierKey {
     Groth16(Box<zeekit::Groth16VerifyingKey>),
     Plonk(u8),
-    #[cfg(test)]
     Dummy,
 }
 
@@ -293,6 +291,5 @@ pub struct ZkContract {
 pub enum ZkProof {
     Groth16(Box<zeekit::Groth16Proof>),
     Plonk(u8),
-    #[cfg(test)]
     Dummy(bool),
 }

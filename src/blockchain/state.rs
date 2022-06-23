@@ -42,7 +42,16 @@ pub fn compress_state<H: zk::ZkHasher>(
             .unwrap();
     let mut db = KvStoreStateManager::<H>::new(StateManagerConfig {})?;
     let mut ram = RamKvStore::new();
-    db.new_contract(&mut ram, id, data_type)?;
+    db.new_contract(
+        &mut ram,
+        id,
+        zk::ZkContract {
+            initial_state: zk::ZkCompressedState::empty::<H>(data_type.clone()).into(),
+            state_model: data_type.clone(),
+            deposit_withdraw_function: zk::ZkVerifierKey::Dummy,
+            functions: vec![],
+        },
+    )?;
     db.update_contract(&mut ram, id, &data.as_delta())?;
     Ok(db.root(&ram, id)?)
 }
@@ -73,15 +82,12 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         &mut self,
         db: &mut K,
         id: ContractId,
-        data_type: zk::ZkStateModel,
+        contract: zk::ZkContract,
     ) -> Result<(), StateManagerError> {
-        db.update(&[
-            WriteOp::Put(format!("{}", id).into(), data_type.clone().into()),
-            WriteOp::Put(
-                format!("{}_compressed", id).into(),
-                zk::ZkCompressedState::empty::<H>(data_type).into(),
-            ),
-        ])?;
+        db.update(&[WriteOp::Put(
+            format!("contract_{}", id).into(),
+            contract.clone().into(),
+        )])?;
         Ok(())
     }
 
@@ -90,10 +96,11 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         db: &K,
         id: ContractId,
     ) -> Result<zk::ZkStateModel, StateManagerError> {
-        Ok(db
-            .get(format!("{}", id).into())?
+        let cont: zk::ZkContract = db
+            .get(format!("contract_{}", id).into())?
             .ok_or(StateManagerError::ContractNotFound)?
-            .try_into()?)
+            .try_into()?;
+        Ok(cont.state_model)
     }
 
     pub fn root<K: KvStore>(
@@ -101,10 +108,11 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         db: &K,
         id: ContractId,
     ) -> Result<zk::ZkCompressedState, StateManagerError> {
-        Ok(db
-            .get(format!("{}_compressed", id).into())?
-            .ok_or(StateManagerError::ContractNotFound)?
-            .try_into()?)
+        if let Some(blob) = db.get(format!("{}_compressed", id).into())? {
+            Ok(blob.try_into()?)
+        } else {
+            Ok(zk::ZkCompressedState::empty::<H>(self.type_of(db, id)?))
+        }
     }
 
     pub fn rollback_contract<K: KvStore>(
