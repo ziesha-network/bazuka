@@ -162,12 +162,6 @@ pub trait Blockchain {
 
     fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError>;
 
-    fn get_local_state(&self, contract_id: ContractId) -> Result<zk::ZkState, BlockchainError>;
-    fn get_local_compressed_state(
-        &self,
-        contract_id: ContractId,
-    ) -> Result<zk::ZkCompressedState, BlockchainError>;
-
     fn get_outdated_contracts(&self) -> Result<Vec<ContractId>, BlockchainError>;
 
     fn get_outdated_states(
@@ -622,7 +616,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             }
 
             let rollback_key: StringKey = format!("rollback_{:010}", height - 1).into();
-            let mut rollback: Vec<WriteOp> = match chain.database.get(rollback_key.clone())? {
+            let rollback: Vec<WriteOp> = match chain.database.get(rollback_key.clone())? {
                 Some(b) => b.try_into()?,
                 None => {
                     return Err(BlockchainError::Inconsistency);
@@ -634,12 +628,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
             for (cid, comp) in changed_states {
                 if comp.prev_state.height() == 0 {
-                    rollback.push(WriteOp::Remove(
-                        format!("contract_local_compressed_state_{}", cid).into(),
-                    ));
-                    rollback.push(WriteOp::Remove(
-                        format!("contract_local_state_{}", cid).into(),
-                    ));
+                    chain
+                        .state_manager
+                        .delete_contract(&mut chain.database, cid)?;
                     outdated.retain(|&x| x != cid);
                     continue;
                 }
@@ -657,13 +648,14 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         chain.database.update(&ops)?;
                     }
                 } else {
-                    let local_compressed_state = chain.get_local_compressed_state(cid)?;
+                    let local_compressed_state = chain.state_manager.root(&chain.database, cid)?;
                     if local_compressed_state == comp.prev_state {
                         outdated.retain(|&x| x != cid);
                     }
                 }
             }
 
+            chain.database.update(&rollback)?;
             chain.database.update(&[
                 if outdated.is_empty() {
                     WriteOp::Remove("outdated".into())
@@ -692,7 +684,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let outdated = self.get_outdated_contracts()?;
         let mut ret = HashMap::new();
         for cid in outdated {
-            let compressed_state = self.get_local_compressed_state(cid)?;
+            let compressed_state = self.state_manager.root(&self.database, cid)?;
             ret.insert(cid, compressed_state);
         }
         Ok(ret)
@@ -730,23 +722,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .get(k)?
             .map(|b| b.try_into())
             .ok_or(BlockchainError::ContractNotFound)??)
-    }
-    fn get_local_state(&self, contract_id: ContractId) -> Result<zk::ZkState, BlockchainError> {
-        Ok(self
-            .state_manager
-            .get_full_state(&self.database, contract_id)?)
-    }
-
-    fn get_local_compressed_state(
-        &self,
-        contract_id: ContractId,
-    ) -> Result<zk::ZkCompressedState, BlockchainError> {
-        let contract = self.get_contract(contract_id)?;
-        let k = format!("contract_local_compressed_state_{}", contract_id).into();
-        Ok(match self.database.get(k)? {
-            Some(b) => b.try_into()?,
-            None => zk::ZkCompressedState::empty::<ZkHasher>(contract.state_model),
-        })
     }
 
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {
