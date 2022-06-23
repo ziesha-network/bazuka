@@ -201,15 +201,19 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(chain)
     }
 
+    fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
+        KvStoreChain {
+            database: self.database.mirror(),
+            state_manager: self.state_manager.clone(),
+            config: self.config.clone(),
+        }
+    }
+
     fn isolated<F, R>(&self, f: F) -> Result<(Vec<WriteOp>, R), BlockchainError>
     where
         F: FnOnce(&mut KvStoreChain<RamMirrorKvStore<'_, K>>) -> Result<R, BlockchainError>,
     {
-        let mut mirror = KvStoreChain {
-            database: self.database.mirror(),
-            state_manager: self.state_manager.clone(),
-            config: self.config.clone(),
-        };
+        let mut mirror = self.fork_on_ram();
         let result = f(&mut mirror)?;
         Ok((mirror.database.to_ops(), result))
     }

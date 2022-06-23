@@ -28,7 +28,7 @@ fn create_test_node(
     opts: NodeOpts,
 ) -> (impl futures::Future<Output = Result<(), NodeError>>, Node) {
     let addr = PeerAddress(SocketAddr::from(([127, 0, 0, 1], opts.addr)));
-    let chain = KvStoreChain::new(RamKvStore::new(), RamKvStore::new(), opts.config).unwrap();
+    let chain = KvStoreChain::new(RamKvStore::new(), opts.config).unwrap();
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
     let node = node_create(
