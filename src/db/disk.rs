@@ -49,7 +49,7 @@ impl KvStore for LevelDbKvStore {
         Ok(it
             .collect::<Vec<_>>()
             .into_iter()
-            .take_while(|(k, v)| k.0.starts_with(&prefix.0))
+            .take_while(|(k, _)| k.0.starts_with(&prefix.0))
             .map(|(k, v)| (k, Blob(v)))
             .collect())
     }

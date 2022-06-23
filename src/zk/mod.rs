@@ -1,8 +1,6 @@
-use crate::config;
-use ff::Field;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use zeekit::{mimc, Fr};
+use zeekit::Fr;
 
 use thiserror::Error;
 
@@ -223,7 +221,7 @@ impl ZkState {
     }
     pub fn push_delta(&mut self, delta: &ZkDeltaPairs) {
         let mut rollback = ZkDeltaPairs::default();
-        for (loc, val) in delta.0.iter() {
+        for loc in delta.0.keys() {
             rollback
                 .0
                 .insert(loc.clone(), self.data.0.get(loc).cloned());

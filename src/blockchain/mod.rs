@@ -1006,22 +1006,33 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     .ok_or(BlockchainError::FullStateNotFound)?;
                 match &patch {
                     zk::ZkStatePatch::Full(full) => {
-                        //chain.state_manager.reset_contract(cid, full)?;
-                        // TODO:Rollback if invalid
+                        let (_, rollback_results) = chain.state_manager.reset_contract(
+                            &mut chain.database,
+                            cid,
+                            contract_account.compressed_state.height,
+                            full,
+                        )?;
+                        for (i, rollback_result) in rollback_results.into_iter().enumerate() {
+                            if rollback_result
+                                != self.get_compressed_state_at(
+                                    cid,
+                                    contract_account.compressed_state.height - 1 - i as u64,
+                                )?
+                            {
+                                return Err(BlockchainError::DeltasInvalid);
+                            }
+                        }
                     }
                     zk::ZkStatePatch::Delta(delta) => {
                         chain
                             .state_manager
                             .update_contract(&mut chain.database, cid, delta)?;
-                        // TODO:Rollback if invalid
                     }
                 };
 
                 if chain.state_manager.root(&chain.database, cid)?
-                    == contract_account.compressed_state
+                    != contract_account.compressed_state
                 {
-                    // TODO: Persist changes
-                } else {
                     return Err(BlockchainError::FullStateNotValid);
                 }
                 outdated_states.retain(|&x| x != cid);
@@ -1079,7 +1090,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 let away = compressed_state.height - away.height;
                 blockchain_patch.patches.insert(
                     cid,
-                    if let Ok(delta) = self.state_manager.delta_of(cid, away as usize) {
+                    if let Some(delta) = self.state_manager.delta_of(&self.database, cid, away)? {
                         zk::ZkStatePatch::Delta(delta)
                     } else {
                         zk::ZkStatePatch::Full(
