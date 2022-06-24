@@ -215,8 +215,10 @@ pub struct ZkState {
 }
 
 impl ZkState {
-    pub fn compress<H: ZkHasher>(&self, model: ZkStateModel) -> ZkCompressedState {
-        crate::blockchain::compress_state::<H>(model, self.data.clone()).unwrap()
+    pub fn compress<H: ZkHasher>(&self, height: u64, model: ZkStateModel) -> ZkCompressedState {
+        let mut state = crate::blockchain::compress_state::<H>(model, self.data.clone()).unwrap();
+        state.height = height;
+        state
     }
     pub fn push_delta(&mut self, delta: &ZkDeltaPairs) {
         let mut rollback = ZkDeltaPairs::default();

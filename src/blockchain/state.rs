@@ -122,7 +122,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
     ) -> Result<Option<zk::ZkCompressedState>, StateManagerError> {
         let root = self.root(db, id)?;
         let rollback_key: StringKey = format!("{}_rollback_{}", id, root.height - 1).into();
-        let rollback_patch = if let Some(patch) = self.delta_of(db, id, 1)? {
+        let rollback_patch = if let Some(patch) = self.rollback_of(db, id, 1)? {
             patch
         } else {
             return Ok(None);
@@ -141,6 +141,25 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
     }
 
     pub fn delta_of<K: KvStore>(
+        &self,
+        db: &K,
+        id: ContractId,
+        away: u64,
+    ) -> Result<Option<zk::ZkDeltaPairs>, StateManagerError> {
+        let mut data = zk::ZkDeltaPairs(Default::default());
+        for i in 0..away {
+            if let Some(rollback) = self.rollback_of(db, id, i + 1)? {
+                for (k, _) in rollback.0 {
+                    data.0.insert(k.clone(), Some(self.get_data(db, id, &k)?));
+                }
+            } else {
+                return Ok(None);
+            }
+        }
+        Ok(Some(data))
+    }
+
+    pub fn rollback_of<K: KvStore>(
         &self,
         db: &K,
         id: ContractId,
@@ -203,7 +222,12 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
 
         db.update(&[WriteOp::Put(
             format!("{}_compressed", id).into(),
-            state_hash.into(),
+            zk::ZkCompressedState {
+                height: height,
+                state_hash,
+                state_size: 0,
+            }
+            .into(),
         )])?;
 
         let mut rollback_results = Vec::new();
