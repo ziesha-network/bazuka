@@ -42,16 +42,13 @@ pub async fn sync_blocks<B: Blockchain>(
     // The local blockchain and the peer blockchain both have all blocks
     // from 0 to height-1, though, the blocks might not be equal. Find
     // the header from which the fork has happened.
-    let mut low_idx: u64 = 0;
-    let mut high_idx: u64 = start_height - 1;
-    while low_idx <= high_idx {
-        let mid_idx = ((high_idx - low_idx) / 2) + low_idx;
+    for index in (0..start_height).rev() {
         let peer_header = net
             .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
                 format!("{}/bincode/headers", most_powerful.address),
                 GetHeadersRequest {
-                    since: mid_idx,
-                    until: Some(mid_idx + 1),
+                    since: index,
+                    until: Some(index + 1),
                 },
                 Limit::default().size(1024 * 1024).time(1000),
             )
@@ -60,30 +57,14 @@ pub async fn sync_blocks<B: Blockchain>(
             .clone();
 
         let ctx = context.read().await;
-        let local_header = ctx.blockchain.get_headers(mid_idx, Some(mid_idx + 1))?[0].clone();
+        let local_header = ctx.blockchain.get_headers(index, Some(index + 1))?[0].clone();
         drop(ctx);
 
         if local_header.hash() != peer_header.hash() {
-            high_idx = mid_idx - 1;
+            headers.insert(0, peer_header);
         } else {
-            low_idx = mid_idx + 1;
+            break;
         }
-    }
-
-    if low_idx != start_height {
-        // The remote blockchain is forked
-        // TODO: Blocks should be streamed in smaller batches
-        headers = net
-            .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
-                format!("{}/bincode/headers", most_powerful.address),
-                GetHeadersRequest {
-                    since: low_idx,
-                    until: None,
-                },
-                Limit::default().size(1024 * 1024).time(1000),
-            )
-            .await?
-            .headers;
     }
 
     let will_extend = {
