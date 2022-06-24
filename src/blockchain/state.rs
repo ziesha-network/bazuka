@@ -17,16 +17,10 @@ pub enum StateManagerError {
     LocatorError(#[from] zk::ZkLocatorError),
     #[error("contract not found")]
     ContractNotFound,
-    #[error("rollback not found")]
-    RollbackNotFound,
-    #[error("data does not correspond to target")]
-    TargetMismatch,
     #[error("not locating a scalar")]
     NonScalarLocatorError,
     #[error("locator parse error: {0}")]
     LocatorParseError(#[from] zk::ParseZkDataLocatorError),
-    #[error("rollback resulted in an invalid root")]
-    RollbackToInvalidRoot,
 }
 
 #[derive(Clone)]
@@ -44,16 +38,16 @@ pub fn compress_state<H: zk::ZkHasher>(
             .unwrap();
     let mut db = KvStoreStateManager::<H>::new(StateManagerConfig {})?;
     let mut ram = RamKvStore::new();
-    db.new_contract(
-        &mut ram,
-        id,
+    ram.update(&[WriteOp::Put(
+        format!("contract_{}", id).into(),
         zk::ZkContract {
             initial_state: zk::ZkCompressedState::empty::<H>(data_type.clone()).into(),
             state_model: data_type.clone(),
             deposit_withdraw_function: zk::ZkVerifierKey::Dummy,
             functions: vec![],
-        },
-    )?;
+        }
+        .into(),
+    )])?;
     db.update_contract(&mut ram, id, &data.as_delta())?;
     Ok(db.root(&ram, id)?)
 }
@@ -77,19 +71,6 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
             rems.push(WriteOp::Remove(k));
         }
         db.update(&rems)?;
-        Ok(())
-    }
-
-    pub fn new_contract<K: KvStore>(
-        &mut self,
-        db: &mut K,
-        id: ContractId,
-        contract: zk::ZkContract,
-    ) -> Result<(), StateManagerError> {
-        db.update(&[WriteOp::Put(
-            format!("contract_{}", id).into(),
-            contract.clone().into(),
-        )])?;
         Ok(())
     }
 

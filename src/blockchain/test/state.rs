@@ -35,11 +35,10 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
             .unwrap();
 
-    sm.new_contract(
-        &mut db,
-        c0,
-        empty_contract::<SumHasher>(zk::ZkStateModel::Scalar),
-    )?;
+    db.update(&[WriteOp::Put(
+        format!("contract_{}", c0).into(),
+        empty_contract::<SumHasher>(zk::ZkStateModel::Scalar).into(),
+    )])?;
 
     println!("{:?}", sm.root(&db, c0));
 
@@ -68,13 +67,13 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
             .unwrap();
 
-    sm.new_contract(
-        &mut db,
-        c0,
+    db.update(&[WriteOp::Put(
+        format!("contract_{}", c0).into(),
         empty_contract::<SumHasher>(zk::ZkStateModel::Struct {
             field_types: vec![zk::ZkStateModel::Scalar, zk::ZkStateModel::Scalar],
-        }),
-    )?;
+        })
+        .into(),
+    )])?;
 
     println!("{:?}", sm.root(&db, c0));
 
@@ -151,16 +150,16 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
 
     let mut roots = Vec::new();
 
-    sm.new_contract(
-        &mut db,
-        c0,
+    db.update(&[WriteOp::Put(
+        format!("contract_{}", c0).into(),
         empty_contract::<MimcHasher>(zk::ZkStateModel::List {
             log4_size: 3,
             item_type: Box::new(zk::ZkStateModel::Struct {
                 field_types: vec![zk::ZkStateModel::Scalar, zk::ZkStateModel::Scalar],
             }),
-        }),
-    )?;
+        })
+        .into(),
+    )])?;
 
     println!("{:?}", sm.root(&db, c0));
     roots.push(sm.root(&db, c0)?);
