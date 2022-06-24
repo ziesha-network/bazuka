@@ -1,8 +1,6 @@
-use crate::config;
-use ff::Field;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use zeekit::{mimc, Fr};
+use zeekit::Fr;
 
 use thiserror::Error;
 
@@ -14,6 +12,10 @@ pub enum ZkError {
 
 #[derive(Debug, Clone, Default)]
 pub struct ZkStateProof(Vec<ZkScalar>);
+
+pub trait ZkHasher: Clone {
+    fn hash(vals: &[ZkScalar]) -> ZkScalar;
+}
 
 pub fn check_proof(
     vk: &ZkVerifierKey,
@@ -36,7 +38,6 @@ pub fn check_proof(
                 false
             }
         }
-        #[cfg(test)]
         ZkVerifierKey::Dummy => {
             if let ZkProof::Dummy(result) = proof {
                 *result
@@ -52,7 +53,7 @@ pub fn check_proof(
 
 // A single state cell
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Default)]
-pub struct ZkScalar(Fr);
+pub struct ZkScalar(pub Fr);
 
 impl From<u64> for ZkScalar {
     fn from(val: u64) -> Self {
@@ -62,240 +63,212 @@ impl From<u64> for ZkScalar {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ZkStatePatch {
-    Full(ZkStateFull),
-    Delta(ZkStateDelta),
+    Full(ZkState),
+    Delta(ZkDeltaPairs),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum ZkDataType {
+pub enum ZkStateModel {
     // Allocate 1
     Scalar,
     // Allocate sum(size(data_type) for data_type in field_types)
     Struct {
-        field_types: Vec<ZkDataType>,
+        field_types: Vec<ZkStateModel>,
     },
-    // Allocate 2^log_size * size(item_type)
+    // Allocate 4^log4_size * size(item_type)
     List {
-        log_size: u8,
-        item_type: Box<ZkDataType>,
+        log4_size: u8,
+        item_type: Box<ZkStateModel>,
     },
 }
 
-impl ZkDataType {
-    pub fn size(&self) -> usize {
+#[derive(Error, Debug)]
+pub enum ZkLocatorError {
+    #[error("locator pointing to nonexistent elements")]
+    InvalidLocator,
+}
+
+impl ZkStateModel {
+    pub fn locate(&self, locator: &ZkDataLocator) -> Result<ZkStateModel, ZkLocatorError> {
+        let mut curr = self.clone();
+        for l in locator.0.iter() {
+            match curr {
+                ZkStateModel::Struct { field_types } => {
+                    curr = field_types[*l as usize].clone();
+                }
+                ZkStateModel::List {
+                    item_type,
+                    log4_size,
+                } => {
+                    if *l < 1 << (2 * log4_size) {
+                        curr = *item_type.clone();
+                    } else {
+                        return Err(ZkLocatorError::InvalidLocator);
+                    }
+                }
+                ZkStateModel::Scalar => {
+                    return Err(ZkLocatorError::InvalidLocator);
+                }
+            }
+        }
+        Ok(curr)
+    }
+    pub fn compress_default<H: ZkHasher>(&self) -> ZkScalar {
         match self {
-            ZkDataType::Scalar => 1,
-            ZkDataType::Struct { field_types } => field_types.iter().map(|t| t.size()).sum(),
-            ZkDataType::List {
-                log_size,
+            ZkStateModel::Scalar => ZkScalar::default(),
+            ZkStateModel::Struct { field_types } => {
+                let mut vals = vec![];
+                for f in field_types.iter() {
+                    vals.push(f.compress_default::<H>());
+                }
+                H::hash(&vals)
+            }
+            ZkStateModel::List {
                 item_type,
-            } => item_type.size() << log_size,
+                log4_size,
+            } => {
+                let mut root_default = item_type.compress_default::<H>();
+                for _ in 0..*log4_size {
+                    root_default =
+                        H::hash(&[root_default, root_default, root_default, root_default])
+                }
+                root_default
+            }
         }
     }
 }
 
-// Each leaf of the target sparse merkle tree will be the
-// result of consecutive hash of `leaf_size` cells.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct ZkStateModel {
-    leaf_size: u32,
-    tree_depth: u8,
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Hash)]
+pub struct ZkDataLocator(pub Vec<u32>);
+
+impl std::fmt::Display for ZkDataLocator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.0
+                .iter()
+                .map(|n| format!("{:x}", n))
+                .collect::<Vec<_>>()
+                .join("-")
+        )?;
+        Ok(())
+    }
 }
 
-impl ZkStateModel {
-    pub fn new(leaf_size: u32, tree_depth: u8) -> Self {
-        Self {
-            leaf_size,
-            tree_depth,
-        }
+#[derive(Debug, Error)]
+pub enum ParseZkDataLocatorError {
+    #[error("locator invalid")]
+    Invalid,
+}
+
+impl std::str::FromStr for ZkDataLocator {
+    type Err = ParseZkDataLocatorError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(
+            s.split("-")
+                .map(|s| u32::from_str_radix(s, 16))
+                .collect::<Result<Vec<u32>, _>>()
+                .map_err(|_| ParseZkDataLocatorError::Invalid)?,
+        ))
+    }
+}
+
+impl Eq for ZkDataLocator {}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ZkDataPairs(pub HashMap<ZkDataLocator, ZkScalar>);
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+pub struct ZkDeltaPairs(pub HashMap<ZkDataLocator, Option<ZkScalar>>);
+
+impl ZkDeltaPairs {
+    pub fn size(&self) -> isize {
+        self.0.len() as isize // TODO: Really?
+    }
+}
+
+impl ZkDataPairs {
+    pub fn as_delta(&self) -> ZkDeltaPairs {
+        ZkDeltaPairs(
+            self.0
+                .clone()
+                .into_iter()
+                .map(|(k, v)| (k, Some(v)))
+                .collect(),
+        )
+    }
+    pub fn size(&self) -> usize {
+        self.0.len() as usize
+    }
+}
+
+#[derive(Clone)]
+pub struct MimcHasher;
+impl ZkHasher for MimcHasher {
+    fn hash(vals: &[ZkScalar]) -> ZkScalar {
+        ZkScalar(zeekit::mimc::mimc(
+            &vals.iter().map(|v| v.0).collect::<Vec<_>>(),
+        ))
     }
 }
 
 // Full state of a contract
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ZkState {
-    height: u64,
-    state_model: ZkStateModel,
-    deltas: Vec<ZkStateDelta>,
-    defaults: Vec<ZkScalar>,
-    layers: Vec<HashMap<u32, ZkScalar>>,
+    pub data: ZkDataPairs,
+    pub rollbacks: Vec<ZkDeltaPairs>,
 }
-
-// Full state
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ZkStateFull {
-    height: u64,
-    state_model: ZkStateModel,
-    state: HashMap<u32, ZkScalar>,
-    deltas: Vec<ZkStateDelta>,
-}
-
-// One-way delta
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
-pub struct ZkStateDelta(HashMap<u32, ZkScalar>);
 
 impl ZkState {
-    pub fn height(&self) -> u64 {
-        self.height
+    pub fn compress<H: ZkHasher>(&self, height: u64, model: ZkStateModel) -> ZkCompressedState {
+        let mut state = crate::blockchain::compress_state::<H>(model, self.data.clone()).unwrap();
+        state.height = height;
+        state
     }
-    pub fn size(&self) -> u32 {
-        self.layers[0].len() as u32
-    }
-    pub fn from_full(full: &ZkStateFull) -> Self {
-        let mut tree = Self::new(full.height, full.state_model, full.state.clone());
-        tree.deltas = full.deltas.clone();
-        tree
-    }
-    pub fn new(height: u64, state_model: ZkStateModel, data: HashMap<u32, ZkScalar>) -> Self {
-        let mut defaults = vec![ZkScalar::default()];
-        for i in 0..state_model.tree_depth as usize {
-            defaults.push(ZkScalar(mimc::mimc(&[defaults[i].0, defaults[i].0])));
+    pub fn push_delta(&mut self, delta: &ZkDeltaPairs) {
+        let mut rollback = ZkDeltaPairs::default();
+        for loc in delta.0.keys() {
+            rollback
+                .0
+                .insert(loc.clone(), self.data.0.get(loc).cloned());
         }
-        let mut tree = Self {
-            height,
-            state_model,
-            deltas: Vec::new(),
-            defaults,
-            layers: vec![HashMap::new(); state_model.tree_depth as usize + 1],
-        };
-        for (k, v) in data {
-            tree.set(k, v);
-        }
-        tree
+        self.apply_delta(delta);
+        self.rollbacks.push(rollback);
     }
-    pub fn empty(state_model: ZkStateModel) -> Self {
-        Self::new(0, state_model, HashMap::new())
-    }
-    pub fn genesis(state_model: ZkStateModel, data: HashMap<u32, ZkScalar>) -> Self {
-        Self::new(1, state_model, data)
-    }
-    pub fn as_delta(&self) -> ZkStateDelta {
-        ZkStateDelta(self.layers[0].clone())
-    }
-    pub fn as_full(&self) -> ZkStateFull {
-        ZkStateFull {
-            height: self.height,
-            state_model: self.state_model,
-            state: self.layers[0].clone(),
-            deltas: self.deltas.clone(),
-        }
-    }
-    pub fn push_delta(&mut self, patch: &ZkStateDelta) {
-        let mut rev_delta = ZkStateDelta(HashMap::new());
-        for (k, _) in patch.0.iter() {
-            rev_delta.0.insert(*k, self.get(0, *k));
-        }
-        self.apply_delta(patch);
-        self.deltas.insert(0, rev_delta);
-        self.deltas.truncate(config::NUM_STATE_DELTAS_KEEP);
-    }
-    pub fn apply_delta(&mut self, patch: &ZkStateDelta) {
-        for (k, v) in patch.0.iter() {
-            self.set(*k, *v);
-        }
-        self.height += 1;
-    }
-    pub fn compress(&self) -> ZkCompressedState {
-        let depth = self.state_model.tree_depth as usize;
-        let root = *self.layers[depth].get(&0).unwrap_or(&self.defaults[depth]);
-        ZkCompressedState {
-            height: self.height,
-            state_hash: root,
-            state_size: self.size(),
-        }
-    }
-    pub fn rollback(&mut self) -> Result<(), ZkError> {
-        if self.deltas.is_empty() {
-            return Err(ZkError::DeltaNotFound);
-        }
-        let back = self.deltas.remove(0);
-        self.apply_delta(&back);
-        self.height -= 2; // Height is advanced when applying block, so step back by 2
-        Ok(())
-    }
-    pub fn compress_prev_states(&self) -> Vec<ZkCompressedState> {
-        let mut res = Vec::new();
-        let mut curr = self.clone();
-        while !curr.deltas.is_empty() {
-            curr.rollback().unwrap();
-            res.push(curr.compress());
-        }
-        res
-    }
-    pub fn delta_of(&self, away: usize) -> Result<ZkStateDelta, ZkError> {
-        if away == 0 {
-            return Ok(ZkStateDelta::default());
-        }
-        let mut back = self.deltas.get(0).ok_or(ZkError::DeltaNotFound)?.clone();
-        for i in 1..away {
-            back.combine(self.deltas.get(i).ok_or(ZkError::DeltaNotFound)?);
-        }
-
-        let mut forth = ZkStateDelta(HashMap::new());
-        for (k, _) in back.0.iter() {
-            forth.0.insert(*k, self.get(0, *k));
-        }
-
-        Ok(forth)
-    }
-    fn get(&self, level: usize, index: u32) -> ZkScalar {
-        self.layers[level]
-            .get(&index)
-            .cloned()
-            .unwrap_or(self.defaults[level])
-    }
-    pub fn prove(&self, mut index: u32) -> ZkStateProof {
-        let mut proof = Vec::new();
-        for level in 0..self.state_model.tree_depth as usize {
-            let neigh = if index & 1 == 0 { index + 1 } else { index - 1 };
-            proof.push(self.get(level, neigh as u32));
-            index >>= 1;
-        }
-        ZkStateProof(proof)
-    }
-    pub fn verify(
-        mut index: u32,
-        mut value: ZkScalar,
-        proof: ZkStateProof,
-        root: ZkScalar,
-    ) -> bool {
-        for p in proof.0 {
-            value = ZkScalar(if index & 1 == 0 {
-                mimc::mimc(&[value.0, p.0])
+    pub fn apply_delta(&mut self, delta: &ZkDeltaPairs) {
+        for (loc, val) in delta.0.iter() {
+            if let Some(val) = val {
+                self.data.0.insert(loc.clone(), *val);
             } else {
-                mimc::mimc(&[p.0, value.0])
-            });
-            index >>= 1;
-        }
-        value == root
-    }
-    pub fn set(&mut self, mut index: u32, mut value: ZkScalar) {
-        for level in 0..(self.state_model.tree_depth as usize + 1) {
-            if value.0.is_zero().into() {
-                self.layers[level].remove(&index);
-            } else {
-                self.layers[level].insert(index, value);
+                self.data.0.remove(loc);
             }
-            let neigh = if index & 1 == 0 { index + 1 } else { index - 1 };
-            let neigh_val = self.get(level, neigh);
-            value = ZkScalar(if index & 1 == 0 {
-                mimc::mimc(&[value.0, neigh_val.0])
-            } else {
-                mimc::mimc(&[neigh_val.0, value.0])
-            });
-            index >>= 1;
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkCompressedState {
-    height: u64,
-    state_hash: ZkScalar,
-    state_size: u32,
+    pub height: u64,
+    pub state_hash: ZkScalar,
+    pub state_size: u32,
 }
 
 impl ZkCompressedState {
+    pub fn new(height: u64, state_hash: ZkScalar, state_size: u32) -> Self {
+        Self {
+            height,
+            state_hash,
+            state_size,
+        }
+    }
+    pub fn empty<H: ZkHasher>(data_type: ZkStateModel) -> Self {
+        Self {
+            height: 0,
+            state_hash: data_type.compress_default::<H>(),
+            state_size: 0,
+        }
+    }
     pub fn height(&self) -> u64 {
         self.height
     }
@@ -304,37 +277,10 @@ impl ZkCompressedState {
     }
 }
 
-impl ZkStateDelta {
-    pub fn new(data: HashMap<u32, ZkScalar>) -> Self {
-        Self(data)
-    }
-    pub fn combine(&mut self, other: &Self) {
-        for (k, v) in other.0.iter() {
-            if v.0.is_zero().into() {
-                self.0.remove(k);
-            } else {
-                self.0.insert(*k, *v);
-            }
-        }
-    }
-    pub fn size(&self) -> isize {
-        let mut sz = 0isize;
-        for (_, v) in self.0.iter() {
-            if v.0.is_zero().into() {
-                sz -= 1;
-            } else {
-                sz += 1;
-            }
-        }
-        sz
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ZkVerifierKey {
     Groth16(Box<zeekit::Groth16VerifyingKey>),
     Plonk(u8),
-    #[cfg(test)]
     Dummy,
 }
 
@@ -353,6 +299,5 @@ pub struct ZkContract {
 pub enum ZkProof {
     Groth16(Box<zeekit::Groth16Proof>),
     Plonk(u8),
-    #[cfg(test)]
     Dummy(bool),
 }

@@ -5,6 +5,7 @@ use crate::crypto::{EdDSA, SignatureScheme};
 use crate::db;
 
 mod contract;
+mod state;
 
 fn easy_config() -> BlockchainConfig {
     let mut conf = blockchain::get_test_blockchain_config();
@@ -27,7 +28,7 @@ fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), Blockc
         b.rollback(),
         Err(BlockchainError::NoBlocksToRollback)
     ));
-    assert!(b.database.pairs()?.is_empty());
+    assert!(b.database.pairs("".into())?.is_empty());
     Ok(())
 }
 

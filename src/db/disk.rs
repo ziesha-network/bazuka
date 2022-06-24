@@ -4,6 +4,7 @@ use leveldb::database::batch::Writebatch;
 use leveldb::database::cache::Cache;
 use leveldb::database::Database;
 use leveldb::iterator::Iterable;
+use leveldb::iterator::LevelDBIterator;
 use leveldb::kv::KV;
 use leveldb::options::{Options, ReadOptions, WriteOptions};
 use std::fs;
@@ -42,12 +43,13 @@ impl KvStore for LevelDbKvStore {
             Err(_) => Err(KvStoreError::Failure),
         }
     }
-    fn pairs(&self) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
-        Ok(self
-            .0
-            .iter(ReadOptions::new())
+    fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
+        let it = self.0.iter(ReadOptions::new());
+        it.seek(&prefix);
+        Ok(it
             .collect::<Vec<_>>()
             .into_iter()
+            .take_while(|(k, _)| k.0.starts_with(&prefix.0))
             .map(|(k, v)| (k, Blob(v)))
             .collect())
     }

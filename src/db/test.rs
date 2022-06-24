@@ -10,6 +10,41 @@ fn temp_disk_store() -> Result<LevelDbKvStore, KvStoreError> {
 
 #[test]
 #[cfg(feature = "node")]
+fn test_ram_and_disk_pair_prefix() -> Result<(), KvStoreError> {
+    let mut ram = RamKvStore::default();
+    let mut disk = temp_disk_store()?;
+
+    assert_eq!(ram.checksum::<Hasher>()?, disk.checksum::<Hasher>()?);
+
+    let ops = &[
+        WriteOp::Put("bc".into(), Blob(vec![0, 1, 2, 3])),
+        WriteOp::Put("aa".into(), Blob(vec![3, 2, 1, 0])),
+        WriteOp::Put("a0a".into(), Blob(vec![])),
+        WriteOp::Put("bge".into(), Blob(vec![])),
+        WriteOp::Put("def".into(), Blob(vec![])),
+    ];
+
+    ram.update(ops)?;
+    disk.update(ops)?;
+
+    assert_eq!(disk.pairs("".into())?.len(), 5);
+    assert_eq!(ram.pairs("".into())?.len(), 5);
+    assert_eq!(disk.pairs("a".into())?.len(), 2);
+    assert_eq!(ram.pairs("a".into())?.len(), 2);
+    assert_eq!(disk.pairs("b".into())?.len(), 2);
+    assert_eq!(ram.pairs("b".into())?.len(), 2);
+    assert_eq!(disk.pairs("d".into())?.len(), 1);
+    assert_eq!(ram.pairs("d".into())?.len(), 1);
+    assert_eq!(disk.pairs("a0".into())?.len(), 1);
+    assert_eq!(ram.pairs("a0".into())?.len(), 1);
+    assert_eq!(disk.pairs("a1".into())?.len(), 0);
+    assert_eq!(ram.pairs("a1".into())?.len(), 0);
+
+    Ok(())
+}
+
+#[test]
+#[cfg(feature = "node")]
 fn test_ram_and_disk_db_consistency() -> Result<(), KvStoreError> {
     let mut ram = RamKvStore::default();
     let mut disk = temp_disk_store()?;
@@ -79,7 +114,7 @@ fn test_mirror_kv_store() -> Result<(), KvStoreError> {
 }
 
 #[test]
-fn test_rollback_of() -> Result<(), KvStoreError> {
+fn test_mirror_rollback() -> Result<(), KvStoreError> {
     let mut ram = RamKvStore::default();
 
     let ops = &[
@@ -90,25 +125,32 @@ fn test_rollback_of() -> Result<(), KvStoreError> {
 
     ram.update(ops)?;
 
-    assert_eq!(ram.rollback_of(&[])?, vec![]);
+    let mirror1 = ram.mirror();
+    assert_eq!(mirror1.rollback()?, vec![]);
 
-    assert_eq!(
-        ram.rollback_of(&[WriteOp::Remove("kk".into()),])?,
-        vec![WriteOp::Remove("kk".into())]
-    );
+    let mut mirror2 = ram.mirror();
+    mirror2.update(&[WriteOp::Remove("kk".into())])?;
+    assert_eq!(mirror2.rollback()?, vec![WriteOp::Remove("kk".into())]);
 
+    let mut mirror3 = ram.mirror();
+    mirror3.update(&[
+        WriteOp::Put("bc".into(), Blob(vec![3, 2, 1])),
+        WriteOp::Put("gg".into(), Blob(vec![2, 2, 2, 2])),
+        WriteOp::Put("fre".into(), Blob(vec![1, 1])),
+        WriteOp::Remove("aa".into()),
+    ])?;
+    let mut mirror3_rollback = mirror3.rollback()?;
+    mirror3_rollback.sort_by_key(|v| match v {
+        WriteOp::Put(k, _) => k.clone(),
+        WriteOp::Remove(k) => k.clone(),
+    });
     assert_eq!(
-        ram.rollback_of(&[
-            WriteOp::Put("bc".into(), Blob(vec![3, 2, 1])),
-            WriteOp::Put("gg".into(), Blob(vec![2, 2, 2, 2])),
-            WriteOp::Put("fre".into(), Blob(vec![1, 1])),
-            WriteOp::Remove("aa".into()),
-        ])?,
+        mirror3_rollback,
         vec![
-            WriteOp::Put("bc".into(), Blob(vec![0, 1, 2, 3])),
-            WriteOp::Remove("gg".into()),
-            WriteOp::Remove("fre".into()),
             WriteOp::Put("aa".into(), Blob(vec![3, 2, 1, 0])),
+            WriteOp::Put("bc".into(), Blob(vec![0, 1, 2, 3])),
+            WriteOp::Remove("fre".into()),
+            WriteOp::Remove("gg".into()),
         ]
     );
 

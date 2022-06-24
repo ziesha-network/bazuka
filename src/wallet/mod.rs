@@ -48,7 +48,7 @@ impl Wallet {
     pub fn create_contract(
         &self,
         contract: zk::ZkContract,
-        initial_state: zk::ZkState,
+        initial_state: zk::ZkDataPairs,
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
@@ -73,7 +73,7 @@ impl Wallet {
         &self,
         contract_id: ContractId,
         function_id: u32,
-        state_delta: zk::ZkStateDelta,
+        state_delta: zk::ZkDeltaPairs,
         next_state: zk::ZkCompressedState,
         proof: zk::ZkProof,
         fee: Money,

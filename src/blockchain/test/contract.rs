@@ -7,17 +7,23 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
     let alice = Wallet::new(Vec::from("ABC"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
-    let state_model = zk::ZkStateModel::new(1, 10);
-    let full_state = zk::ZkState::new(1, state_model, HashMap::new());
+    let state_model = zk::ZkStateModel::List {
+        item_type: Box::new(zk::ZkStateModel::Scalar),
+        log4_size: 5,
+    };
+    let full_state = zk::ZkState {
+        rollbacks: vec![],
+        data: Default::default(),
+    };
 
     let tx = alice.create_contract(
         zk::ZkContract {
-            state_model,
-            initial_state: full_state.compress(),
+            state_model: state_model.clone(),
+            initial_state: full_state.compress::<ZkHasher>(1, state_model.clone()),
             deposit_withdraw_function: zk::ZkVerifierKey::Dummy,
             functions: Vec::new(),
         },
-        full_state.clone(),
+        full_state.data.clone(),
         0,
         1,
     );
@@ -43,19 +49,29 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
     let cid =
-        ContractId::from_str("ee439600bcd11a41d068c6bc7f5d55aa1cc6a73174b2594ee1e38c54abdf2a31")
+        ContractId::from_str("b83f6f4d4e548b4dadd02e46ee0f6458f1fd713f2dcb34afb019afd00db0f7e7")
             .unwrap();
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
-    let state_model = zk::ZkStateModel::new(1, 10);
-    let mut full_state = zk::ZkState::new(
-        1,
-        state_model,
-        [(100, zk::ZkScalar::from(200))].into_iter().collect(),
-    );
+    let state_model = zk::ZkStateModel::List {
+        item_type: Box::new(zk::ZkStateModel::Scalar),
+        log4_size: 5,
+    };
+    let mut full_state = zk::ZkState {
+        rollbacks: vec![],
+        data: zk::ZkDataPairs(
+            [(zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200))]
+                .into_iter()
+                .collect(),
+        ),
+    };
     let mut full_state_with_delta = full_state.clone();
 
-    let state_delta = zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect());
+    let state_delta = zk::ZkDeltaPairs(
+        [(zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(234)))]
+            .into_iter()
+            .collect(),
+    );
     full_state.apply_delta(&state_delta);
     full_state_with_delta.push_delta(&state_delta);
 
@@ -63,7 +79,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         cid,
         0,
         state_delta.clone(),
-        full_state.compress(),
+        full_state.compress::<ZkHasher>(2, state_model.clone()),
         zk::ZkProof::Dummy(true),
         0,
         1,
@@ -83,8 +99,10 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.fork_on_ram().update_states(&ZkBlockchainPatch {
             patches: [(
                 cid,
-                zk::ZkStatePatch::Delta(zk::ZkStateDelta::new(
-                    [(123, zk::ZkScalar::from(321))].into_iter().collect()
+                zk::ZkStatePatch::Delta(zk::ZkDeltaPairs(
+                    [(zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(321)))]
+                        .into_iter()
+                        .collect()
                 ))
             )]
             .into_iter()
@@ -107,37 +125,14 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.fork_on_ram().update_states(&ZkBlockchainPatch {
             patches: [(
                 cid,
-                zk::ZkStatePatch::Full(
-                    zk::ZkState::new(
-                        2,
-                        state_model,
-                        [(100, zk::ZkScalar::from(200))].into_iter().collect()
+                zk::ZkStatePatch::Full(zk::ZkState {
+                    rollbacks: vec![],
+                    data: zk::ZkDataPairs(
+                        [(zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200))]
+                            .into_iter()
+                            .collect()
                     )
-                    .as_full()
-                )
-            )]
-            .into_iter()
-            .collect()
-        }),
-        Err(BlockchainError::FullStateNotValid)
-    ));
-    assert!(matches!(
-        chain.fork_on_ram().update_states(&ZkBlockchainPatch {
-            patches: [(
-                cid,
-                zk::ZkStatePatch::Full(
-                    zk::ZkState::new(
-                        1,
-                        state_model,
-                        [
-                            (100, zk::ZkScalar::from(200)),
-                            (123, zk::ZkScalar::from(234))
-                        ]
-                        .into_iter()
-                        .collect()
-                    )
-                    .as_full()
-                )
+                })
             )]
             .into_iter()
             .collect()
@@ -147,36 +142,53 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     chain.fork_on_ram().update_states(&ZkBlockchainPatch {
         patches: [(
             cid,
-            zk::ZkStatePatch::Full(
-                zk::ZkState::new(
-                    2,
-                    state_model,
+            zk::ZkStatePatch::Full(zk::ZkState {
+                rollbacks: vec![],
+                data: zk::ZkDataPairs(
                     [
-                        (100, zk::ZkScalar::from(200)),
-                        (123, zk::ZkScalar::from(234)),
+                        (zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200)),
+                        (zk::ZkDataLocator(vec![123]), zk::ZkScalar::from(234)),
                     ]
                     .into_iter()
                     .collect(),
-                )
-                .as_full(),
-            ),
+                ),
+            }),
         )]
         .into_iter()
         .collect(),
     })?;
     chain.fork_on_ram().update_states(&ZkBlockchainPatch {
-        patches: [(cid, zk::ZkStatePatch::Full(full_state_with_delta.as_full()))]
+        patches: [(
+            cid,
+            zk::ZkStatePatch::Full(zk::ZkState {
+                rollbacks: vec![],
+                data: zk::ZkDataPairs(
+                    [
+                        (zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200)),
+                        (zk::ZkDataLocator(vec![123]), zk::ZkScalar::from(234)),
+                    ]
+                    .into_iter()
+                    .collect(),
+                ),
+            }),
+        )]
+        .into_iter()
+        .collect(),
+    })?;
+    chain.fork_on_ram().update_states(&ZkBlockchainPatch {
+        patches: [(cid, zk::ZkStatePatch::Full(full_state_with_delta))]
             .into_iter()
             .collect(),
     })?;
-
     let mut unupdated_fork = chain.fork_on_ram();
     let mut updated_fork = chain.fork_on_ram();
     updated_fork.update_states(&ZkBlockchainPatch {
         patches: [(
             cid,
-            zk::ZkStatePatch::Delta(zk::ZkStateDelta::new(
-                [(123, zk::ZkScalar::from(234))].into_iter().collect(),
+            zk::ZkStatePatch::Delta(zk::ZkDeltaPairs(
+                [(zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(234)))]
+                    .into_iter()
+                    .collect(),
             )),
         )]
         .into_iter()
@@ -191,7 +203,6 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let gen_state_patch = updated_fork.generate_state_patch(outdated_states, updated_tip_hash)?;
     unupdated_fork.update_states(&gen_state_patch)?;
     assert_eq!(unupdated_fork.get_outdated_contracts()?.len(), 0);
-
     chain.update_states(&draft.patch)?;
 
     assert_eq!(chain.get_height()?, 2);
@@ -204,7 +215,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     cid,
                     0,
                     state_delta.clone(),
-                    full_state.compress(),
+                    full_state.compress::<ZkHasher>(2, state_model.clone()),
                     zk::ZkProof::Dummy(true),
                     0,
                     1,
@@ -225,7 +236,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     .unwrap(),
                     0,
                     state_delta.clone(),
-                    full_state.compress(),
+                    full_state.compress::<ZkHasher>(2, state_model.clone()),
                     zk::ZkProof::Dummy(true),
                     0,
                     2,
@@ -243,7 +254,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     cid,
                     1,
                     state_delta.clone(),
-                    full_state.compress(),
+                    full_state.compress::<ZkHasher>(2, state_model.clone()),
                     zk::ZkProof::Dummy(true),
                     0,
                     2,
@@ -261,7 +272,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     cid,
                     0,
                     state_delta,
-                    full_state.compress(),
+                    full_state.compress::<ZkHasher>(2, state_model.clone()),
                     zk::ZkProof::Dummy(false),
                     0,
                     2,

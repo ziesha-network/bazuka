@@ -1,7 +1,9 @@
 use crate::blockchain::{ZkBlockchainPatch, ZkCompressedStateChange};
 use crate::core::{hash::Hash, Account, Block, ContractAccount, ContractId, Hasher, Header};
 use crate::crypto::merkle::MerkleTree;
-use crate::zk::{ZkCompressedState, ZkContract, ZkState};
+use crate::zk::{
+    ZkCompressedState, ZkContract, ZkDataPairs, ZkDeltaPairs, ZkScalar, ZkState, ZkStateModel,
+};
 use db_key::Key;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -21,7 +23,7 @@ pub enum KvStoreError {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, std::hash::Hash)]
-pub struct StringKey(String);
+pub struct StringKey(pub String);
 
 impl PartialOrd for StringKey {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
@@ -86,7 +88,11 @@ gen_try_into!(
     HashMap<ContractId, ContractAccount>,
     HashMap<ContractId, ZkCompressedStateChange>,
     ZkState,
-    ZkBlockchainPatch
+    ZkBlockchainPatch,
+    ZkStateModel,
+    ZkScalar,
+    ZkDataPairs,
+    ZkDeltaPairs
 );
 gen_from!(
     u32,
@@ -105,7 +111,11 @@ gen_from!(
     HashMap<ContractId, ContractAccount>,
     HashMap<ContractId, ZkCompressedStateChange>,
     &ZkState,
-    &ZkBlockchainPatch
+    &ZkBlockchainPatch,
+    ZkStateModel,
+    ZkScalar,
+    &ZkDataPairs,
+    &ZkDeltaPairs
 );
 
 impl Key for StringKey {
@@ -138,26 +148,17 @@ pub enum WriteOp {
 pub trait KvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError>;
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError>;
-    fn pairs(&self) -> Result<HashMap<StringKey, Blob>, KvStoreError>;
+    fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError>;
     fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
-        let mut kvs: Vec<_> = self.pairs()?.into_iter().collect();
+        let mut kvs: Vec<_> = self.pairs("".into())?.into_iter().collect();
         kvs.sort_by_key(|(k, _)| k.clone());
         Ok(H::hash(&bincode::serialize(&kvs).unwrap()))
     }
-    fn rollback_of(&self, ops: &[WriteOp]) -> Result<Vec<WriteOp>, KvStoreError> {
-        let mut rollback = Vec::new();
-        for op in ops.iter() {
-            let key = match op {
-                WriteOp::Put(k, _) => k,
-                WriteOp::Remove(k) => k,
-            }
-            .clone();
-            rollback.push(match self.get(key.clone())? {
-                Some(b) => WriteOp::Put(key, b.clone()),
-                None => WriteOp::Remove(key),
-            })
-        }
-        Ok(rollback)
+    fn mirror(&self) -> RamMirrorKvStore<'_, Self>
+    where
+        Self: Sized,
+    {
+        RamMirrorKvStore::new(self)
     }
 }
 
@@ -172,12 +173,23 @@ impl<'a, K: KvStore> RamMirrorKvStore<'a, K> {
             overwrite: HashMap::new(),
         }
     }
-    pub fn to_ops(self) -> Vec<WriteOp> {
+    pub fn rollback(&self) -> Result<Vec<WriteOp>, KvStoreError> {
         self.overwrite
-            .into_iter()
+            .iter()
+            .map(|(k, _)| {
+                self.store.get(k.clone()).map(|v| match v {
+                    Some(v) => WriteOp::Put(k.clone(), v.clone()),
+                    None => WriteOp::Remove(k.clone()),
+                })
+            })
+            .collect()
+    }
+    pub fn to_ops(&self) -> Vec<WriteOp> {
+        self.overwrite
+            .iter()
             .map(|(k, v)| match v {
-                Some(b) => WriteOp::Put(k, b),
-                None => WriteOp::Remove(k),
+                Some(b) => WriteOp::Put(k.clone(), b.clone()),
+                None => WriteOp::Remove(k.clone()),
             })
             .collect()
     }
@@ -200,11 +212,13 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
         }
         Ok(())
     }
-    fn pairs(&self) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
-        let mut res = self.store.pairs()?;
+    fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
+        let mut res = self.store.pairs(prefix.clone())?;
         for (k, v) in self.overwrite.iter() {
             if let Some(v) = v {
-                res.insert(k.clone(), v.clone());
+                if k.0.starts_with(&prefix.0) {
+                    res.insert(k.clone(), v.clone());
+                }
             } else {
                 res.remove(k);
             }

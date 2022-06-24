@@ -27,12 +27,18 @@ impl KvStore for RamKvStore {
         }
         Ok(())
     }
-    fn pairs(&self) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
+    fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
         Ok(self
             .0
             .clone()
             .into_iter()
-            .map(|(k, v)| (StringKey::new(&k), v))
+            .filter_map(|(k, v)| {
+                if k.starts_with(&prefix.0) {
+                    Some((StringKey::new(&k), v))
+                } else {
+                    None
+                }
+            })
             .collect())
     }
 }

@@ -3,6 +3,7 @@ use thiserror::Error;
 use crate::core::{
     hash::Hash, Account, Address, Block, ContractAccount, ContractId, ContractUpdate, Hasher,
     Header, Money, ProofOfWork, Signature, Transaction, TransactionAndDelta, TransactionData,
+    ZkHasher,
 };
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
@@ -11,6 +12,9 @@ use crate::zk;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+mod state;
+pub use state::*;
 
 #[derive(Clone)]
 pub struct BlockchainConfig {
@@ -24,6 +28,7 @@ pub struct BlockchainConfig {
     pub pow_key_change_delay: u64,
     pub pow_key_change_interval: u64,
     pub median_timestamp_count: u64,
+    pub state_manager_config: StateManagerConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -91,8 +96,10 @@ pub enum BlockchainError {
     WrongContractHeight,
     #[error("no blocks to roll back")]
     NoBlocksToRollback,
-    #[error("zk error happened")]
+    #[error("zk error happened: {0}")]
     ZkError(#[from] zk::ZkError),
+    #[error("state-manager error happened: {0}")]
+    StateManagerError(#[from] StateManagerError),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -155,12 +162,6 @@ pub trait Blockchain {
 
     fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError>;
 
-    fn get_local_state(&self, contract_id: ContractId) -> Result<zk::ZkState, BlockchainError>;
-    fn get_local_compressed_state(
-        &self,
-        contract_id: ContractId,
-    ) -> Result<zk::ZkCompressedState, BlockchainError>;
-
     fn get_outdated_contracts(&self) -> Result<Vec<ContractId>, BlockchainError>;
 
     fn get_outdated_states(
@@ -177,12 +178,14 @@ pub trait Blockchain {
 pub struct KvStoreChain<K: KvStore> {
     config: BlockchainConfig,
     database: K,
+    state_manager: KvStoreStateManager<ZkHasher>,
 }
 
 impl<K: KvStore> KvStoreChain<K> {
     pub fn new(database: K, config: BlockchainConfig) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> {
             database,
+            state_manager: KvStoreStateManager::new(config.state_manager_config.clone())?,
             config: config.clone(),
         };
         if chain.get_height()? == 0 {
@@ -194,9 +197,19 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
         KvStoreChain {
-            database: RamMirrorKvStore::new(&self.database),
+            database: self.database.mirror(),
+            state_manager: self.state_manager.clone(),
             config: self.config.clone(),
         }
+    }
+
+    fn isolated<F, R>(&self, f: F) -> Result<(Vec<WriteOp>, R), BlockchainError>
+    where
+        F: FnOnce(&mut KvStoreChain<RamMirrorKvStore<'_, K>>) -> Result<R, BlockchainError>,
+    {
+        let mut mirror = self.fork_on_ram();
+        let result = f(&mut mirror)?;
+        Ok((mirror.database.to_ops(), result))
     }
 
     fn median_timestamp(&self, index: u64) -> Result<u32, BlockchainError> {
@@ -254,7 +267,7 @@ impl<K: KvStore> KvStoreChain<K> {
             return Err(BlockchainError::CompressedStateNotFound);
         }
         if index == 0 {
-            return Ok(zk::ZkState::empty(state_model).compress());
+            return Ok(zk::ZkCompressedState::empty::<ZkHasher>(state_model));
         }
         let header_key: StringKey =
             format!("contract_compressed_state_{}_{}", contract_id, index).into();
@@ -336,7 +349,8 @@ impl<K: KvStore> KvStoreChain<K> {
                     format!("contract_{}", contract_id).into(),
                     contract.clone().into(),
                 ));
-                let compressed_empty = zk::ZkState::empty(contract.state_model).compress();
+                let compressed_empty =
+                    zk::ZkCompressedState::empty::<ZkHasher>(contract.state_model.clone());
                 ops.push(WriteOp::Put(
                     format!("contract_account_{}", contract_id).into(),
                     ContractAccount {
@@ -458,202 +472,206 @@ impl<K: KvStore> KvStoreChain<K> {
     ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
         let mut sorted = txs.keys().cloned().collect::<Vec<_>>();
         sorted.sort_by(|t1, t2| t1.tx.nonce.cmp(&t2.tx.nonce));
-        let mut fork = self.fork_on_ram();
-        let mut result = Vec::new();
-        let mut sz = 0isize;
-        for tx in sorted.into_iter() {
-            let delta = tx.tx.size() as isize + tx.state_delta.clone().unwrap_or_default().size();
-            if sz + delta <= self.config.max_delta_size as isize
-                && fork.apply_tx(&tx.tx, false).is_ok()
-            {
-                txs.remove(&tx);
-                sz += delta;
-                result.push(tx);
+        let (_, result) = self.isolated(|chain| {
+            let mut result = Vec::new();
+            let mut sz = 0isize;
+            for tx in sorted.into_iter() {
+                let delta =
+                    tx.tx.size() as isize + tx.state_delta.clone().unwrap_or_default().size();
+                if sz + delta <= chain.config.max_delta_size as isize
+                    && chain.apply_tx(&tx.tx, false).is_ok()
+                {
+                    txs.remove(&tx);
+                    sz += delta;
+                    result.push(tx);
+                }
             }
-        }
+            Ok(result)
+        })?;
         Ok(result)
     }
 
     fn apply_block(&mut self, block: &Block, check_pow: bool) -> Result<(), BlockchainError> {
-        let curr_height = self.get_height()?;
-        let is_genesis = block.header.number == 0;
-        let next_reward = self.next_reward()?;
+        let (ops, _) = self.isolated(|chain| {
+            let curr_height = chain.get_height()?;
+            let is_genesis = block.header.number == 0;
+            let next_reward = chain.next_reward()?;
 
-        if curr_height > 0 {
-            if block.merkle_tree().root() != block.header.block_root {
-                return Err(BlockchainError::InvalidMerkleRoot);
+            if curr_height > 0 {
+                if block.merkle_tree().root() != block.header.block_root {
+                    return Err(BlockchainError::InvalidMerkleRoot);
+                }
+
+                chain.will_extend(curr_height, &[block.header.clone()], check_pow)?;
             }
 
-            self.will_extend(curr_height, &[block.header.clone()], check_pow)?;
-        }
+            // All blocks except genesis block should have a miner reward
+            let txs = if !is_genesis {
+                let reward_tx = block
+                    .body
+                    .first()
+                    .ok_or(BlockchainError::MinerRewardNotFound)?;
 
-        let mut fork = self.fork_on_ram();
-
-        // All blocks except genesis block should have a miner reward
-        let txs = if !is_genesis {
-            let reward_tx = block
-                .body
-                .first()
-                .ok_or(BlockchainError::MinerRewardNotFound)?;
-
-            if reward_tx.src != Address::Treasury
-                || reward_tx.fee != 0
-                || reward_tx.sig != Signature::Unsigned
-            {
-                return Err(BlockchainError::InvalidMinerReward);
-            }
-            match reward_tx.data {
-                TransactionData::RegularSend { dst: _, amount } => {
-                    if amount != next_reward {
+                if reward_tx.src != Address::Treasury
+                    || reward_tx.fee != 0
+                    || reward_tx.sig != Signature::Unsigned
+                {
+                    return Err(BlockchainError::InvalidMinerReward);
+                }
+                match reward_tx.data {
+                    TransactionData::RegularSend { dst: _, amount } => {
+                        if amount != next_reward {
+                            return Err(BlockchainError::InvalidMinerReward);
+                        }
+                    }
+                    _ => {
                         return Err(BlockchainError::InvalidMinerReward);
                     }
                 }
-                _ => {
-                    return Err(BlockchainError::InvalidMinerReward);
+
+                // Reward tx allowed to get money from Treasury
+                chain.apply_tx(reward_tx, true)?;
+                &block.body[1..]
+            } else {
+                &block.body[..]
+            };
+
+            let mut body_size = 0usize;
+            let mut state_size_delta = 0isize;
+            let mut state_updates: HashMap<ContractId, ZkCompressedStateChange> = HashMap::new();
+            let mut outdated_states = self.get_outdated_contracts()?;
+
+            for tx in txs.iter() {
+                body_size += tx.size();
+                // All genesis block txs are allowed to get from Treasury
+                if let TxSideEffect::StateChange {
+                    contract_id,
+                    state_change,
+                } = chain.apply_tx(tx, is_genesis)?
+                {
+                    state_size_delta += state_change.state.size() as isize
+                        - state_change.prev_state.size() as isize;
+                    state_updates.insert(contract_id, state_change.clone());
+                    outdated_states.push(contract_id);
                 }
             }
 
-            // Reward tx allowed to get money from Treasury
-            fork.apply_tx(reward_tx, true)?;
-            &block.body[1..]
-        } else {
-            &block.body[..]
-        };
-
-        let mut body_size = 0usize;
-        let mut state_size_delta = 0isize;
-        let mut state_updates: HashMap<ContractId, ZkCompressedStateChange> = HashMap::new();
-        let mut outdated_states = self.get_outdated_contracts()?;
-
-        for tx in txs.iter() {
-            body_size += tx.size();
-            // All genesis block txs are allowed to get from Treasury
-            if let TxSideEffect::StateChange {
-                contract_id,
-                state_change,
-            } = fork.apply_tx(tx, is_genesis)?
-            {
-                state_size_delta +=
-                    state_change.state.size() as isize - state_change.prev_state.size() as isize;
-                state_updates.insert(contract_id, state_change.clone());
-                outdated_states.push(contract_id);
+            if (body_size as isize + state_size_delta) as usize > self.config.max_delta_size {
+                return Err(BlockchainError::BlockTooBig);
             }
-        }
 
-        if (body_size as isize + state_size_delta) as usize > self.config.max_delta_size {
-            return Err(BlockchainError::BlockTooBig);
-        }
+            chain.database.update(&[
+                WriteOp::Put("height".into(), (curr_height + 1).into()),
+                WriteOp::Put(
+                    format!("power_{:010}", block.header.number).into(),
+                    (block.header.power() + self.get_power()?).into(),
+                ),
+            ])?;
 
-        let mut changes = fork.database.to_ops();
+            let rollback = chain.database.rollback()?;
 
-        changes.push(WriteOp::Put("height".into(), (curr_height + 1).into()));
+            chain.database.update(&[
+                WriteOp::Put(
+                    format!("rollback_{:010}", block.header.number).into(),
+                    rollback.into(),
+                ),
+                WriteOp::Put(
+                    format!("header_{:010}", block.header.number).into(),
+                    block.header.clone().into(),
+                ),
+                WriteOp::Put(
+                    format!("block_{:010}", block.header.number).into(),
+                    block.into(),
+                ),
+                WriteOp::Put(
+                    format!("merkle_{:010}", block.header.number).into(),
+                    block.merkle_tree().into(),
+                ),
+                WriteOp::Put(
+                    format!("contract_updates_{:010}", block.header.number).into(),
+                    state_updates.into(),
+                ),
+                if outdated_states.is_empty() {
+                    WriteOp::Remove("outdated".into())
+                } else {
+                    WriteOp::Put("outdated".into(), outdated_states.clone().into())
+                },
+            ])?;
 
-        changes.push(WriteOp::Put(
-            format!("power_{:010}", block.header.number).into(),
-            (block.header.power() + self.get_power()?).into(),
-        ));
+            Ok(())
+        })?;
 
-        changes.push(WriteOp::Put(
-            format!("rollback_{:010}", block.header.number).into(),
-            self.database.rollback_of(&changes)?.into(),
-        ));
-        changes.push(WriteOp::Put(
-            format!("header_{:010}", block.header.number).into(),
-            block.header.clone().into(),
-        ));
-        changes.push(WriteOp::Put(
-            format!("block_{:010}", block.header.number).into(),
-            block.into(),
-        ));
-        changes.push(WriteOp::Put(
-            format!("merkle_{:010}", block.header.number).into(),
-            block.merkle_tree().into(),
-        ));
-        changes.push(WriteOp::Put(
-            format!("contract_updates_{:010}", block.header.number).into(),
-            state_updates.into(),
-        ));
-
-        changes.push(if outdated_states.is_empty() {
-            WriteOp::Remove("outdated".into())
-        } else {
-            WriteOp::Put("outdated".into(), outdated_states.clone().into())
-        });
-
-        self.database.update(&changes)?;
+        self.database.update(&ops)?;
         Ok(())
     }
 }
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn rollback(&mut self) -> Result<(), BlockchainError> {
-        let height = self.get_height()?;
+        let (ops, _) = self.isolated(|chain| {
+            let height = chain.get_height()?;
 
-        if height == 0 {
-            return Err(BlockchainError::NoBlocksToRollback);
-        }
-
-        let rollback_key: StringKey = format!("rollback_{:010}", height - 1).into();
-        let mut rollback: Vec<WriteOp> = match self.database.get(rollback_key.clone())? {
-            Some(b) => b.try_into()?,
-            None => {
-                return Err(BlockchainError::Inconsistency);
-            }
-        };
-
-        let mut outdated = self.get_outdated_contracts()?;
-        let changed_states = self.get_changed_states(height - 1)?;
-        for (cid, comp) in changed_states {
-            if comp.prev_state.height() == 0 {
-                rollback.push(WriteOp::Remove(
-                    format!("contract_local_compressed_state_{}", cid).into(),
-                ));
-                rollback.push(WriteOp::Remove(
-                    format!("contract_local_state_{}", cid).into(),
-                ));
-                outdated.retain(|&x| x != cid);
-                continue;
+            if height == 0 {
+                return Err(BlockchainError::NoBlocksToRollback);
             }
 
-            if !outdated.contains(&cid) {
-                let mut state = self.get_local_state(cid)?;
-                if state.rollback().is_ok() {
-                    if state.compress() != comp.prev_state {
-                        return Err(BlockchainError::Inconsistency);
-                    }
-                    rollback.push(WriteOp::Put(
-                        format!("contract_local_compressed_state_{}", cid).into(),
-                        comp.prev_state.into(),
-                    ));
-                    rollback.push(WriteOp::Put(
-                        format!("contract_local_state_{}", cid).into(),
-                        (&state).into(),
-                    ));
-                } else if comp.prev_state.height() > 0 {
-                    outdated.push(cid);
+            let rollback_key: StringKey = format!("rollback_{:010}", height - 1).into();
+            let rollback: Vec<WriteOp> = match chain.database.get(rollback_key.clone())? {
+                Some(b) => b.try_into()?,
+                None => {
+                    return Err(BlockchainError::Inconsistency);
                 }
-            } else {
-                let local_compressed_state = self.get_local_compressed_state(cid)?;
-                if local_compressed_state == comp.prev_state {
+            };
+
+            let mut outdated = chain.get_outdated_contracts()?;
+            let changed_states = chain.get_changed_states(height - 1)?;
+
+            for (cid, comp) in changed_states {
+                if comp.prev_state.height() == 0 {
+                    chain
+                        .state_manager
+                        .delete_contract(&mut chain.database, cid)?;
                     outdated.retain(|&x| x != cid);
+                    continue;
+                }
+
+                if !outdated.contains(&cid) {
+                    let (ops, result) = chain.isolated(|fork| {
+                        Ok(fork
+                            .state_manager
+                            .rollback_contract(&mut fork.database, cid)?)
+                    })?;
+
+                    if result != Some(comp.prev_state) && comp.prev_state.height() > 0 {
+                        outdated.push(cid);
+                    } else {
+                        chain.database.update(&ops)?;
+                    }
+                } else {
+                    let local_compressed_state = chain.state_manager.root(&chain.database, cid)?;
+                    if local_compressed_state == comp.prev_state {
+                        outdated.retain(|&x| x != cid);
+                    }
                 }
             }
-        }
 
-        rollback.push(if outdated.is_empty() {
-            WriteOp::Remove("outdated".into())
-        } else {
-            WriteOp::Put("outdated".into(), outdated.clone().into())
-        });
+            chain.database.update(&rollback)?;
+            chain.database.update(&[
+                if outdated.is_empty() {
+                    WriteOp::Remove("outdated".into())
+                } else {
+                    WriteOp::Put("outdated".into(), outdated.clone().into())
+                },
+                WriteOp::Remove(format!("header_{:010}", height - 1).into()),
+                WriteOp::Remove(format!("block_{:010}", height - 1).into()),
+                WriteOp::Remove(format!("merkle_{:010}", height - 1).into()),
+                WriteOp::Remove(format!("contract_updates_{:010}", height - 1).into()),
+                WriteOp::Remove(rollback_key),
+            ])?;
 
-        rollback.push(WriteOp::Remove(format!("header_{:010}", height - 1).into()));
-        rollback.push(WriteOp::Remove(format!("block_{:010}", height - 1).into()));
-        rollback.push(WriteOp::Remove(format!("merkle_{:010}", height - 1).into()));
-        rollback.push(WriteOp::Remove(
-            format!("contract_updates_{:010}", height - 1).into(),
-        ));
-        rollback.push(WriteOp::Remove(rollback_key));
-        self.database.update(&rollback)?;
+            Ok(())
+        })?;
+        self.database.update(&ops)?;
         Ok(())
     }
 
@@ -666,7 +684,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let outdated = self.get_outdated_contracts()?;
         let mut ret = HashMap::new();
         for cid in outdated {
-            let compressed_state = self.get_local_compressed_state(cid)?;
+            let compressed_state = self.state_manager.root(&self.database, cid)?;
             ret.insert(cid, compressed_state);
         }
         Ok(ret)
@@ -704,26 +722,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .get(k)?
             .map(|b| b.try_into())
             .ok_or(BlockchainError::ContractNotFound)??)
-    }
-    fn get_local_state(&self, contract_id: ContractId) -> Result<zk::ZkState, BlockchainError> {
-        let contract = self.get_contract(contract_id)?;
-        let k = format!("contract_local_state_{}", contract_id).into();
-        Ok(match self.database.get(k)? {
-            Some(b) => b.try_into()?,
-            None => zk::ZkState::empty(contract.state_model),
-        })
-    }
-
-    fn get_local_compressed_state(
-        &self,
-        contract_id: ContractId,
-    ) -> Result<zk::ZkCompressedState, BlockchainError> {
-        let contract = self.get_contract(contract_id)?;
-        let k = format!("contract_local_compressed_state_{}", contract_id).into();
-        Ok(match self.database.get(k)? {
-            Some(b) => b.try_into()?,
-            None => zk::ZkState::empty(contract.state_model).compress(),
-        })
     }
 
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {
@@ -812,24 +810,25 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(new_power > current_power)
     }
     fn extend(&mut self, from: u64, blocks: &[Block]) -> Result<(), BlockchainError> {
-        let curr_height = self.get_height()?;
+        let (ops, _) = self.isolated(|chain| {
+            let curr_height = chain.get_height()?;
 
-        if from == 0 {
-            return Err(BlockchainError::ExtendFromGenesis);
-        } else if from > curr_height {
-            return Err(BlockchainError::ExtendFromFuture);
-        }
+            if from == 0 {
+                return Err(BlockchainError::ExtendFromGenesis);
+            } else if from > curr_height {
+                return Err(BlockchainError::ExtendFromFuture);
+            }
 
-        let mut forked = self.fork_on_ram();
+            while chain.get_height()? > from {
+                chain.rollback()?;
+            }
 
-        while forked.get_height()? > from {
-            forked.rollback()?;
-        }
+            for block in blocks.iter() {
+                chain.apply_block(block, true)?;
+            }
 
-        for block in blocks.iter() {
-            forked.apply_block(block, true)?;
-        }
-        let ops = forked.database.to_ops();
+            Ok(())
+        })?;
 
         self.database.update(&ops)?;
         Ok(())
@@ -933,9 +932,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         };
         blk.header.block_root = blk.merkle_tree().root();
 
-        let mut ram_fork = self.fork_on_ram();
-        ram_fork.apply_block(&blk, false)?; // Check if everything is ok
-        ram_fork.update_states(&block_delta)?;
+        self.isolated(|chain| {
+            chain.apply_block(&blk, false)?; // Check if everything is ok
+            chain.update_states(&block_delta)?;
+
+            Ok(())
+        })?;
+
         Ok(BlockAndPatch {
             block: blk,
             patch: block_delta,
@@ -967,56 +970,57 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError> {
-        let mut ops = Vec::new();
-        let mut outdated_states = self.get_outdated_contracts()?;
+        let (ops, _) = self.isolated(|chain| {
+            let mut outdated_states = chain.get_outdated_contracts()?;
 
-        for cid in outdated_states.clone() {
-            let contract_account = self.get_contract_account(cid)?;
-            let patch = patch
-                .patches
-                .get(&cid)
-                .ok_or(BlockchainError::FullStateNotFound)?;
-            let full_state = match &patch {
-                zk::ZkStatePatch::Full(full) => {
-                    let full = zk::ZkState::from_full(full);
-                    for (i, calc_state) in full.compress_prev_states().into_iter().enumerate() {
-                        let actual_state = self.get_compressed_state_at(
+            for cid in outdated_states.clone() {
+                let contract_account = chain.get_contract_account(cid)?;
+                let patch = patch
+                    .patches
+                    .get(&cid)
+                    .ok_or(BlockchainError::FullStateNotFound)?;
+                match &patch {
+                    zk::ZkStatePatch::Full(full) => {
+                        let (_, rollback_results) = chain.state_manager.reset_contract(
+                            &mut chain.database,
                             cid,
-                            contract_account.compressed_state.height() - 1 - i as u64,
+                            contract_account.compressed_state.height,
+                            full,
                         )?;
-                        if calc_state != actual_state {
-                            return Err(BlockchainError::DeltasInvalid);
+                        for (i, rollback_result) in rollback_results.into_iter().enumerate() {
+                            if rollback_result
+                                != self.get_compressed_state_at(
+                                    cid,
+                                    contract_account.compressed_state.height - 1 - i as u64,
+                                )?
+                            {
+                                return Err(BlockchainError::DeltasInvalid);
+                            }
                         }
                     }
-                    full.clone()
+                    zk::ZkStatePatch::Delta(delta) => {
+                        chain
+                            .state_manager
+                            .update_contract(&mut chain.database, cid, delta)?;
+                    }
+                };
+
+                if chain.state_manager.root(&chain.database, cid)?
+                    != contract_account.compressed_state
+                {
+                    return Err(BlockchainError::FullStateNotValid);
                 }
-                zk::ZkStatePatch::Delta(delta) => {
-                    let mut state = self.get_local_state(cid)?;
-                    state.push_delta(delta);
-                    state
-                }
-            };
-            if full_state.compress() == contract_account.compressed_state {
-                ops.push(WriteOp::Put(
-                    format!("contract_local_compressed_state_{}", cid).into(),
-                    contract_account.compressed_state.into(),
-                ));
-                ops.push(WriteOp::Put(
-                    format!("contract_local_state_{}", cid).into(),
-                    (&full_state).into(),
-                ));
-            } else {
-                return Err(BlockchainError::FullStateNotValid);
+                outdated_states.retain(|&x| x != cid);
             }
-            outdated_states.retain(|&x| x != cid);
-        }
 
-        ops.push(if outdated_states.is_empty() {
-            WriteOp::Remove("outdated".into())
-        } else {
-            WriteOp::Put("outdated".into(), outdated_states.clone().into())
-        });
+            chain.database.update(&[if outdated_states.is_empty() {
+                WriteOp::Remove("outdated".into())
+            } else {
+                WriteOp::Put("outdated".into(), outdated_states.clone().into())
+            }])?;
 
+            Ok(())
+        })?;
         self.database.update(&ops)?;
         Ok(())
     }
@@ -1056,14 +1060,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         };
         for (cid, away) in aways {
             if !outdated_states.contains(&cid) {
-                let state = self.get_local_state(cid)?;
-                let away = state.height() - away.height();
+                let compressed_state = self.state_manager.root(&self.database, cid)?;
+                // TODO: Check state/compressed state relate
+                let away = compressed_state.height - away.height;
                 blockchain_patch.patches.insert(
                     cid,
-                    if let Ok(delta) = state.delta_of(away as usize) {
+                    if let Some(delta) = self.state_manager.delta_of(&self.database, cid, away)? {
                         zk::ZkStatePatch::Delta(delta)
                     } else {
-                        zk::ZkStatePatch::Full(state.as_full())
+                        zk::ZkStatePatch::Full(
+                            self.state_manager.get_full_state(&self.database, cid)?,
+                        )
                     },
                 );
             }

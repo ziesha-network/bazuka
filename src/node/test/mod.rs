@@ -5,7 +5,7 @@ use simulation::*;
 
 use crate::blockchain::BlockchainError;
 use crate::config::blockchain;
-use crate::core::{ContractId, TransactionAndDelta};
+use crate::core::{ContractId, TransactionAndDelta, ZkHasher};
 use crate::zk;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -220,21 +220,31 @@ fn sample_contract_call() -> TransactionAndDelta {
     let updater = Wallet::new(Vec::from("ABC"));
 
     let cid =
-        ContractId::from_str("ee439600bcd11a41d068c6bc7f5d55aa1cc6a73174b2594ee1e38c54abdf2a31")
+        ContractId::from_str("b83f6f4d4e548b4dadd02e46ee0f6458f1fd713f2dcb34afb019afd00db0f7e7")
             .unwrap();
-    let state_model = zk::ZkStateModel::new(1, 10);
-    let mut full_state = zk::ZkState::new(
-        1,
-        state_model,
-        [(100, zk::ZkScalar::from(200))].into_iter().collect(),
+    let state_model = zk::ZkStateModel::List {
+        item_type: Box::new(zk::ZkStateModel::Scalar),
+        log4_size: 5,
+    };
+    let mut full_state = zk::ZkState {
+        rollbacks: vec![],
+        data: zk::ZkDataPairs(
+            [(zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200))]
+                .into_iter()
+                .collect(),
+        ),
+    };
+    let state_delta = zk::ZkDeltaPairs(
+        [(zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(234)))]
+            .into_iter()
+            .collect(),
     );
-    let state_delta = zk::ZkStateDelta::new([(123, zk::ZkScalar::from(234))].into_iter().collect());
     full_state.apply_delta(&state_delta);
     updater.call_function(
         cid,
         0,
         state_delta.clone(),
-        full_state.compress(),
+        full_state.compress::<ZkHasher>(2, state_model),
         zk::ZkProof::Dummy(true),
         0,
         1,
