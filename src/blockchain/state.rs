@@ -13,6 +13,8 @@ pub struct StateManagerConfig {}
 pub enum StateManagerError {
     #[error("kvstore error happened: {0}")]
     KvStoreError(#[from] KvStoreError),
+    #[error("locator error: {0}")]
+    LocatorError(#[from] zk::ZkLocatorError),
     #[error("contract not found")]
     ContractNotFound,
     #[error("rollback not found")]
@@ -20,7 +22,7 @@ pub enum StateManagerError {
     #[error("data does not correspond to target")]
     TargetMismatch,
     #[error("not locating a scalar")]
-    LocatorError,
+    NonScalarLocatorError,
     #[error("locator parse error: {0}")]
     LocatorParseError(#[from] zk::ParseZkDataLocatorError),
     #[error("rollback resulted in an invalid root")]
@@ -297,8 +299,8 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         let contract_type = self.type_of(db, id)?;
         let mut ops = Vec::new();
 
-        if contract_type.locate(&locator) != zk::ZkStateModel::Scalar {
-            return Err(StateManagerError::LocatorError);
+        if contract_type.locate(&locator)? != zk::ZkStateModel::Scalar {
+            return Err(StateManagerError::NonScalarLocatorError);
         }
 
         ops.push(if value == zk::ZkScalar::default() {
@@ -308,7 +310,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         });
 
         while let Some(curr_loc) = locator.0.pop() {
-            let curr_type = contract_type.locate(&locator);
+            let curr_type = contract_type.locate(&locator)?;
             match curr_type.clone() {
                 zk::ZkStateModel::List {
                     item_type,
@@ -398,7 +400,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         cid: ContractId,
         locator: &zk::ZkDataLocator,
     ) -> Result<zk::ZkScalar, StateManagerError> {
-        let sub_type = self.type_of(db, cid)?.locate(locator);
+        let sub_type = self.type_of(db, cid)?.locate(locator)?;
         Ok(
             match db.get(
                 format!(

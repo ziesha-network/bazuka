@@ -82,8 +82,14 @@ pub enum ZkStateModel {
     },
 }
 
+#[derive(Error, Debug)]
+pub enum ZkLocatorError {
+    #[error("locator pointing to nonexistent elements")]
+    InvalidLocator,
+}
+
 impl ZkStateModel {
-    pub fn locate(&self, locator: &ZkDataLocator) -> ZkStateModel {
+    pub fn locate(&self, locator: &ZkDataLocator) -> Result<ZkStateModel, ZkLocatorError> {
         let mut curr = self.clone();
         for l in locator.0.iter() {
             match curr {
@@ -97,15 +103,15 @@ impl ZkStateModel {
                     if *l < 1 << (2 * log4_size) {
                         curr = *item_type.clone();
                     } else {
-                        panic!();
+                        return Err(ZkLocatorError::InvalidLocator);
                     }
                 }
                 ZkStateModel::Scalar => {
-                    panic!();
+                    return Err(ZkLocatorError::InvalidLocator);
                 }
             }
         }
-        curr
+        Ok(curr)
     }
     pub fn compress_default<H: ZkHasher>(&self) -> ZkScalar {
         match self {
