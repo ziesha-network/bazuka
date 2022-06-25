@@ -5,7 +5,6 @@ use crate::crypto::{EdDSA, SignatureScheme};
 use crate::db;
 
 mod contract;
-mod state;
 
 fn easy_config() -> BlockchainConfig {
     let mut conf = blockchain::get_test_blockchain_config();

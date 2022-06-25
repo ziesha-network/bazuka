@@ -1,8 +1,8 @@
 use thiserror::Error;
 
+use super::*;
 use crate::core::ContractId;
 use crate::db::{KvStore, KvStoreError, RamKvStore, StringKey, WriteOp};
-use crate::zk;
 use std::collections::HashMap;
 use std::str::FromStr;
 
@@ -14,25 +14,25 @@ pub enum StateManagerError {
     #[error("kvstore error happened: {0}")]
     KvStoreError(#[from] KvStoreError),
     #[error("locator error: {0}")]
-    LocatorError(#[from] zk::ZkLocatorError),
+    LocatorError(#[from] ZkLocatorError),
     #[error("contract not found")]
     ContractNotFound,
     #[error("not locating a scalar")]
     NonScalarLocatorError,
     #[error("locator parse error: {0}")]
-    LocatorParseError(#[from] zk::ParseZkDataLocatorError),
+    LocatorParseError(#[from] ParseZkDataLocatorError),
 }
 
 #[derive(Clone)]
-pub struct KvStoreStateManager<H: zk::ZkHasher> {
+pub struct KvStoreStateManager<H: ZkHasher> {
     config: StateManagerConfig,
     _hasher: std::marker::PhantomData<H>,
 }
 
-pub fn compress_state<H: zk::ZkHasher>(
-    data_type: zk::ZkStateModel,
-    data: zk::ZkDataPairs,
-) -> Result<zk::ZkCompressedState, StateManagerError> {
+pub fn compress_state<H: ZkHasher>(
+    data_type: ZkStateModel,
+    data: ZkDataPairs,
+) -> Result<ZkCompressedState, StateManagerError> {
     let id =
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
             .unwrap();
@@ -40,10 +40,10 @@ pub fn compress_state<H: zk::ZkHasher>(
     let mut ram = RamKvStore::new();
     ram.update(&[WriteOp::Put(
         format!("contract_{}", id).into(),
-        zk::ZkContract {
-            initial_state: zk::ZkCompressedState::empty::<H>(data_type.clone()).into(),
+        ZkContract {
+            initial_state: ZkCompressedState::empty::<H>(data_type.clone()).into(),
             state_model: data_type.clone(),
-            deposit_withdraw_function: zk::ZkVerifierKey::Dummy,
+            deposit_withdraw_function: ZkVerifierKey::Dummy,
             functions: vec![],
         }
         .into(),
@@ -52,7 +52,7 @@ pub fn compress_state<H: zk::ZkHasher>(
     Ok(db.root(&ram, id)?)
 }
 
-impl<H: zk::ZkHasher> KvStoreStateManager<H> {
+impl<H: ZkHasher> KvStoreStateManager<H> {
     pub fn new(config: StateManagerConfig) -> Result<KvStoreStateManager<H>, StateManagerError> {
         let chain = KvStoreStateManager::<H> {
             config,
@@ -78,8 +78,8 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         &self,
         db: &K,
         id: ContractId,
-    ) -> Result<zk::ZkStateModel, StateManagerError> {
-        let cont: zk::ZkContract = db
+    ) -> Result<ZkStateModel, StateManagerError> {
+        let cont: ZkContract = db
             .get(format!("contract_{}", id).into())?
             .ok_or(StateManagerError::ContractNotFound)?
             .try_into()?;
@@ -90,11 +90,11 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         &self,
         db: &K,
         id: ContractId,
-    ) -> Result<zk::ZkCompressedState, StateManagerError> {
+    ) -> Result<ZkCompressedState, StateManagerError> {
         if let Some(blob) = db.get(format!("{}_compressed", id).into())? {
             Ok(blob.try_into()?)
         } else {
-            Ok(zk::ZkCompressedState::empty::<H>(self.type_of(db, id)?))
+            Ok(ZkCompressedState::empty::<H>(self.type_of(db, id)?))
         }
     }
 
@@ -102,7 +102,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         &mut self,
         db: &mut K,
         id: ContractId,
-    ) -> Result<Option<zk::ZkCompressedState>, StateManagerError> {
+    ) -> Result<Option<ZkCompressedState>, StateManagerError> {
         let root = self.root(db, id)?;
         let rollback_key: StringKey = format!("{}_rollback_{}", id, root.height - 1).into();
         let rollback_patch = if let Some(patch) = self.rollback_of(db, id, 1)? {
@@ -114,7 +114,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         for (k, v) in rollback_patch.0 {
             state_hash = self.set_data(db, id, k, v.unwrap_or_default())?;
         }
-        let new_state = zk::ZkCompressedState::new(root.height - 1, state_hash, root.state_size);
+        let new_state = ZkCompressedState::new(root.height - 1, state_hash, root.state_size);
         db.update(&[
             WriteOp::Remove(rollback_key),
             WriteOp::Put(format!("{}_compressed", id).into(), new_state.into()),
@@ -128,8 +128,8 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         db: &K,
         id: ContractId,
         away: u64,
-    ) -> Result<Option<zk::ZkDeltaPairs>, StateManagerError> {
-        let mut data = zk::ZkDeltaPairs(Default::default());
+    ) -> Result<Option<ZkDeltaPairs>, StateManagerError> {
+        let mut data = ZkDeltaPairs(Default::default());
         for i in 0..away {
             if let Some(rollback) = self.rollback_of(db, id, i + 1)? {
                 for (k, _) in rollback.0 {
@@ -147,7 +147,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         db: &K,
         id: ContractId,
         away: u64,
-    ) -> Result<Option<zk::ZkDeltaPairs>, StateManagerError> {
+    ) -> Result<Option<ZkDeltaPairs>, StateManagerError> {
         let root = self.root(db, id)?;
         let rollback_key: StringKey = format!("{}_rollback_{}", id, root.height - away).into();
         Ok(match db.get(rollback_key.clone())? {
@@ -160,14 +160,14 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         &self,
         db: &K,
         id: ContractId,
-    ) -> Result<zk::ZkState, StateManagerError> {
+    ) -> Result<ZkState, StateManagerError> {
         const MAX_ROLLBACKS: u64 = 5;
-        let mut data = zk::ZkDataPairs(Default::default());
+        let mut data = ZkDataPairs(Default::default());
         for (k, v) in db.pairs(format!("{}_s_", id).into())? {
-            let loc = zk::ZkDataLocator::from_str(k.0.split("_").nth(2).unwrap())?;
+            let loc = ZkDataLocator::from_str(k.0.split("_").nth(2).unwrap())?;
             data.0.insert(loc, v.try_into()?);
         }
-        let mut rollbacks = Vec::<zk::ZkDeltaPairs>::new();
+        let mut rollbacks = Vec::<ZkDeltaPairs>::new();
         let height = self.root(db, id)?.height;
         for i in 0..MAX_ROLLBACKS {
             if height >= i + 1 {
@@ -183,7 +183,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
                 break;
             }
         }
-        Ok(zk::ZkState { data, rollbacks })
+        Ok(ZkState { data, rollbacks })
     }
 
     pub fn reset_contract<K: KvStore>(
@@ -191,8 +191,8 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         db: &mut K,
         id: ContractId,
         height: u64,
-        state: &zk::ZkState,
-    ) -> Result<(zk::ZkCompressedState, Vec<zk::ZkCompressedState>), StateManagerError> {
+        state: &ZkState,
+    ) -> Result<(ZkCompressedState, Vec<ZkCompressedState>), StateManagerError> {
         let contract_type = self.type_of(db, id)?;
         for (k, _) in db.pairs(format!("{}_", id).into())? {
             db.update(&[WriteOp::Remove(k)])?;
@@ -205,7 +205,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
 
         db.update(&[WriteOp::Put(
             format!("{}_compressed", id).into(),
-            zk::ZkCompressedState {
+            ZkCompressedState {
                 height: height,
                 state_hash,
                 state_size: 0,
@@ -220,7 +220,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
             for (k, v) in &rollback.0 {
                 state_hash = self.set_data(db, id, k.clone(), v.unwrap_or_default())?;
             }
-            rollback_results.push(zk::ZkCompressedState {
+            rollback_results.push(ZkCompressedState {
                 height: height - 1 - i as u64,
                 state_hash,
                 state_size: 0,
@@ -228,7 +228,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         }
 
         Ok((
-            zk::ZkCompressedState {
+            ZkCompressedState {
                 height,
                 state_hash,
                 state_size: 0,
@@ -241,10 +241,10 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         &mut self,
         db: &mut K,
         id: ContractId,
-        patch: &zk::ZkDeltaPairs,
+        patch: &ZkDeltaPairs,
     ) -> Result<(), StateManagerError> {
         const MAX_ROLLBACKS: u64 = 5;
-        let mut rollback_patch = zk::ZkDeltaPairs(HashMap::new());
+        let mut rollback_patch = ZkDeltaPairs(HashMap::new());
         let mut fork = db.mirror();
         let mut root = self.root(&fork, id)?;
         for (k, v) in &patch.0 {
@@ -255,7 +255,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         let mut ops = fork.to_ops();
         ops.push(WriteOp::Put(
             format!("{}_compressed", id).into(),
-            zk::ZkCompressedState::new(root.height + 1, root.state_hash, root.state_size).into(),
+            ZkCompressedState::new(root.height + 1, root.state_hash, root.state_size).into(),
         ));
         ops.push(WriteOp::Put(
             format!("{}_rollback_{}", id, root.height).into(),
@@ -274,17 +274,17 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         &mut self,
         db: &mut K,
         id: ContractId,
-        mut locator: zk::ZkDataLocator,
-        mut value: zk::ZkScalar,
-    ) -> Result<zk::ZkScalar, StateManagerError> {
+        mut locator: ZkDataLocator,
+        mut value: ZkScalar,
+    ) -> Result<ZkScalar, StateManagerError> {
         let contract_type = self.type_of(db, id)?;
         let mut ops = Vec::new();
 
-        if contract_type.locate(&locator)? != zk::ZkStateModel::Scalar {
+        if contract_type.locate(&locator)? != ZkStateModel::Scalar {
             return Err(StateManagerError::NonScalarLocatorError);
         }
 
-        ops.push(if value == zk::ZkScalar::default() {
+        ops.push(if value == ZkScalar::default() {
             WriteOp::Remove(format!("{}_s_{}", id, locator).into())
         } else {
             WriteOp::Put(format!("{}_s_{}", id, locator).into(), value.into())
@@ -293,7 +293,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         while let Some(curr_loc) = locator.0.pop() {
             let curr_type = contract_type.locate(&locator)?;
             match curr_type.clone() {
-                zk::ZkStateModel::List {
+                ZkStateModel::List {
                     item_type,
                     log4_size,
                 } => {
@@ -346,7 +346,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
                         }
                     }
                 }
-                zk::ZkStateModel::Struct { field_types } => {
+                ZkStateModel::Struct { field_types } => {
                     let mut dats = Vec::new();
                     for field_index in 0..field_types.len() {
                         dats.push(if field_index as u32 == curr_loc {
@@ -359,7 +359,7 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
                     }
                     value = H::hash(&dats);
                 }
-                zk::ZkStateModel::Scalar => {
+                ZkStateModel::Scalar => {
                     panic!()
                 }
             }
@@ -379,15 +379,15 @@ impl<H: zk::ZkHasher> KvStoreStateManager<H> {
         &self,
         db: &K,
         cid: ContractId,
-        locator: &zk::ZkDataLocator,
-    ) -> Result<zk::ZkScalar, StateManagerError> {
+        locator: &ZkDataLocator,
+    ) -> Result<ZkScalar, StateManagerError> {
         let sub_type = self.type_of(db, cid)?.locate(locator)?;
         Ok(
             match db.get(
                 format!(
                     "{}_{}{}",
                     cid,
-                    if sub_type == zk::ZkStateModel::Scalar {
+                    if sub_type == ZkStateModel::Scalar {
                         "s_"
                     } else {
                         ""

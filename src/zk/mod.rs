@@ -4,6 +4,9 @@ use zeekit::Fr;
 
 use thiserror::Error;
 
+mod state;
+pub use state::*;
+
 #[derive(Error, Debug)]
 pub enum ZkError {
     #[error("delta not found")]
@@ -222,7 +225,7 @@ pub struct ZkState {
 
 impl ZkState {
     pub fn compress<H: ZkHasher>(&self, height: u64, model: ZkStateModel) -> ZkCompressedState {
-        let mut state = crate::blockchain::compress_state::<H>(model, self.data.clone()).unwrap();
+        let mut state = compress_state::<H>(model, self.data.clone()).unwrap();
         state.height = height;
         state
     }
@@ -301,3 +304,6 @@ pub enum ZkProof {
     Plonk(u8),
     Dummy(bool),
 }
+
+#[cfg(test)]
+mod test;

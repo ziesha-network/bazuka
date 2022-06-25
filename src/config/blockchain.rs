@@ -1,6 +1,4 @@
-use crate::blockchain::{
-    compress_state, BlockAndPatch, BlockchainConfig, StateManagerConfig, ZkBlockchainPatch,
-};
+use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::core::{
     Address, Block, ContractId, Header, ProofOfWork, Signature, Transaction, TransactionAndDelta,
     TransactionData, ZkHasher,
@@ -22,7 +20,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
     );
     let mpn_contract = zk::ZkContract {
         state_model: mpn_state_model.clone(),
-        initial_state: compress_state::<ZkHasher>(
+        initial_state: zk::compress_state::<ZkHasher>(
             mpn_state_model.clone(),
             mpn_initial_state.clone(),
         )
@@ -121,7 +119,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         // timestamp of 10 previous blocks
         median_timestamp_count: 10,
 
-        state_manager_config: StateManagerConfig {},
+        state_manager_config: zk::StateManagerConfig {},
     }
 }
 

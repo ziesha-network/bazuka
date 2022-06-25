@@ -1,6 +1,6 @@
 use super::*;
-use crate::db::RamKvStore;
-use crate::zk::{MimcHasher, ZkHasher, ZkScalar};
+use crate::core::ContractId;
+use crate::db::{KvStore, RamKvStore, WriteOp};
 use std::ops::*;
 use std::str::FromStr;
 
@@ -16,11 +16,11 @@ impl ZkHasher for SumHasher {
     }
 }
 
-fn empty_contract<H: ZkHasher>(state_model: zk::ZkStateModel) -> zk::ZkContract {
-    zk::ZkContract {
-        initial_state: zk::ZkCompressedState::empty::<H>(state_model.clone()).into(),
+fn empty_contract<H: ZkHasher>(state_model: ZkStateModel) -> ZkContract {
+    ZkContract {
+        initial_state: ZkCompressedState::empty::<H>(state_model.clone()).into(),
         state_model: state_model,
-        deposit_withdraw_function: zk::ZkVerifierKey::Dummy,
+        deposit_withdraw_function: ZkVerifierKey::Dummy,
         functions: vec![],
     }
 }
@@ -37,7 +37,7 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
 
     db.update(&[WriteOp::Put(
         format!("contract_{}", c0).into(),
-        empty_contract::<SumHasher>(zk::ZkStateModel::Scalar).into(),
+        empty_contract::<SumHasher>(ZkStateModel::Scalar).into(),
     )])?;
 
     println!("{:?}", sm.root(&db, c0));
@@ -45,8 +45,8 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
-            [(zk::ZkDataLocator(vec![]), Some(zk::ZkScalar::from(0xf)))]
+        &ZkDeltaPairs(
+            [(ZkDataLocator(vec![]), Some(ZkScalar::from(0xf)))]
                 .into_iter()
                 .collect(),
         ),
@@ -69,8 +69,8 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
 
     db.update(&[WriteOp::Put(
         format!("contract_{}", c0).into(),
-        empty_contract::<SumHasher>(zk::ZkStateModel::Struct {
-            field_types: vec![zk::ZkStateModel::Scalar, zk::ZkStateModel::Scalar],
+        empty_contract::<SumHasher>(ZkStateModel::Struct {
+            field_types: vec![ZkStateModel::Scalar, ZkStateModel::Scalar],
         })
         .into(),
     )])?;
@@ -80,8 +80,8 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
-            [(zk::ZkDataLocator(vec![0]), Some(zk::ZkScalar::from(0xf)))]
+        &ZkDeltaPairs(
+            [(ZkDataLocator(vec![0]), Some(ZkScalar::from(0xf)))]
                 .into_iter()
                 .collect(),
         ),
@@ -91,8 +91,8 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
-            [(zk::ZkDataLocator(vec![1]), Some(zk::ZkScalar::from(0xf0)))]
+        &ZkDeltaPairs(
+            [(ZkDataLocator(vec![1]), Some(ZkScalar::from(0xf0)))]
                 .into_iter()
                 .collect(),
         ),
@@ -102,8 +102,8 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
-            [(zk::ZkDataLocator(vec![0]), Some(zk::ZkScalar::from(0xf00)))]
+        &ZkDeltaPairs(
+            [(ZkDataLocator(vec![0]), Some(ZkScalar::from(0xf00)))]
                 .into_iter()
                 .collect(),
         ),
@@ -113,8 +113,8 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
-            [(zk::ZkDataLocator(vec![0]), Some(zk::ZkScalar::from(0xf)))]
+        &ZkDeltaPairs(
+            [(ZkDataLocator(vec![0]), Some(ZkScalar::from(0xf)))]
                 .into_iter()
                 .collect(),
         ),
@@ -124,10 +124,10 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
+        &ZkDeltaPairs(
             [
-                (zk::ZkDataLocator(vec![0]), Some(zk::ZkScalar::from(0x0))),
-                (zk::ZkDataLocator(vec![1]), Some(zk::ZkScalar::from(0x0))),
+                (ZkDataLocator(vec![0]), Some(ZkScalar::from(0x0))),
+                (ZkDataLocator(vec![1]), Some(ZkScalar::from(0x0))),
             ]
             .into_iter()
             .collect(),
@@ -152,10 +152,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
 
     db.update(&[WriteOp::Put(
         format!("contract_{}", c0).into(),
-        empty_contract::<MimcHasher>(zk::ZkStateModel::List {
+        empty_contract::<MimcHasher>(ZkStateModel::List {
             log4_size: 3,
-            item_type: Box::new(zk::ZkStateModel::Struct {
-                field_types: vec![zk::ZkStateModel::Scalar, zk::ZkStateModel::Scalar],
+            item_type: Box::new(ZkStateModel::Struct {
+                field_types: vec![ZkStateModel::Scalar, ZkStateModel::Scalar],
             }),
         })
         .into(),
@@ -167,13 +167,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
-            [(
-                zk::ZkDataLocator(vec![62, 0]),
-                Some(zk::ZkScalar::from(0xf00000)),
-            )]
-            .into_iter()
-            .collect(),
+        &ZkDeltaPairs(
+            [(ZkDataLocator(vec![62, 0]), Some(ZkScalar::from(0xf00000)))]
+                .into_iter()
+                .collect(),
         ),
     )?;
     println!("{:?}", sm.root(&db, c0));
@@ -182,13 +179,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
-            [(
-                zk::ZkDataLocator(vec![33, 0]),
-                Some(zk::ZkScalar::from(0xf)),
-            )]
-            .into_iter()
-            .collect(),
+        &ZkDeltaPairs(
+            [(ZkDataLocator(vec![33, 0]), Some(ZkScalar::from(0xf)))]
+                .into_iter()
+                .collect(),
         ),
     )?;
     println!("{:?}", sm.root(&db, c0));
@@ -197,13 +191,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
-            [(
-                zk::ZkDataLocator(vec![33, 1]),
-                Some(zk::ZkScalar::from(0xf0)),
-            )]
-            .into_iter()
-            .collect(),
+        &ZkDeltaPairs(
+            [(ZkDataLocator(vec![33, 1]), Some(ZkScalar::from(0xf0)))]
+                .into_iter()
+                .collect(),
         ),
     )?;
     println!("{:?}", sm.root(&db, c0));
@@ -212,13 +203,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
-            [(
-                zk::ZkDataLocator(vec![33, 0]),
-                Some(zk::ZkScalar::from(0xf00)),
-            )]
-            .into_iter()
-            .collect(),
+        &ZkDeltaPairs(
+            [(ZkDataLocator(vec![33, 0]), Some(ZkScalar::from(0xf00)))]
+                .into_iter()
+                .collect(),
         ),
     )?;
     println!("{:?}", sm.root(&db, c0));
@@ -227,13 +215,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
-            [(
-                zk::ZkDataLocator(vec![33, 0]),
-                Some(zk::ZkScalar::from(0xf)),
-            )]
-            .into_iter()
-            .collect(),
+        &ZkDeltaPairs(
+            [(ZkDataLocator(vec![33, 0]), Some(ZkScalar::from(0xf)))]
+                .into_iter()
+                .collect(),
         ),
     )?;
     println!("{:?}", sm.root(&db, c0));
@@ -244,16 +229,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
+        &ZkDeltaPairs(
             [
-                (
-                    zk::ZkDataLocator(vec![33, 0]),
-                    Some(zk::ZkScalar::from(0x0)),
-                ),
-                (
-                    zk::ZkDataLocator(vec![33, 1]),
-                    Some(zk::ZkScalar::from(0x0)),
-                ),
+                (ZkDataLocator(vec![33, 0]), Some(ZkScalar::from(0x0))),
+                (ZkDataLocator(vec![33, 1]), Some(ZkScalar::from(0x0))),
             ]
             .into_iter()
             .collect(),
@@ -265,18 +244,15 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
     sm.update_contract(
         &mut db,
         c0,
-        &zk::ZkDeltaPairs(
-            [(
-                zk::ZkDataLocator(vec![62, 0]),
-                Some(zk::ZkScalar::from(0x0)),
-            )]
-            .into_iter()
-            .collect(),
+        &ZkDeltaPairs(
+            [(ZkDataLocator(vec![62, 0]), Some(ZkScalar::from(0x0)))]
+                .into_iter()
+                .collect(),
         ),
     )?;
     println!("{:?}", sm.root(&db, c0));
 
-    //sm.reset_contract(c0, zk::ZkDeltaPairs(Default::default()), Default::default())?;
+    //sm.reset_contract(c0, ZkDeltaPairs(Default::default()), Default::default())?;
 
     while sm.root(&db, c0)?.height > 2 {
         if let Some(expected_root) = roots.pop() {
