@@ -1,11 +1,15 @@
+use ff::PrimeField;
+use num_bigint::BigUint;
+use num_integer::Integer;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use zeekit::Fr;
+use std::str::FromStr;
 
 use thiserror::Error;
 
 mod state;
 pub use state::*;
+mod groth16;
 
 #[derive(Error, Debug)]
 pub enum ZkError {
@@ -30,11 +34,11 @@ pub fn check_proof(
     match vk {
         ZkVerifierKey::Groth16(vk) => {
             if let ZkProof::Groth16(proof) = proof {
-                zeekit::groth16_verify(
+                groth16::groth16_verify(
                     vk,
-                    prev_state.state_hash.0,
-                    aux_data.state_hash.0,
-                    next_state.state_hash.0,
+                    prev_state.state_hash,
+                    aux_data.state_hash,
+                    next_state.state_hash,
                     proof,
                 )
             } else {
@@ -54,13 +58,27 @@ pub fn check_proof(
     }
 }
 
-// A single state cell
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize, Default)]
-pub struct ZkScalar(pub Fr);
+lazy_static! {
+    static ref ZKSCALAR_MODULUS: BigUint = BigUint::from_str(
+        "52435875175126190479447740508185965837690552500527637822603658699938581184513"
+    )
+    .unwrap();
+}
 
-impl From<u64> for ZkScalar {
-    fn from(val: u64) -> Self {
-        Self(Fr::from(val))
+#[derive(PrimeField, Serialize, Deserialize)]
+#[PrimeFieldModulus = "52435875175126190479447740508185965837690552500527637822603658699938581184513"]
+#[PrimeFieldGenerator = "7"]
+#[PrimeFieldReprEndianness = "little"]
+pub struct ZkScalar([u64; 4]);
+
+impl ZkScalar {
+    pub fn new(num_le: [u8; 32]) -> Self {
+        let bts = BigUint::from_bytes_le(&num_le)
+            .mod_floor(&ZKSCALAR_MODULUS)
+            .to_bytes_le();
+        let mut data = [0u8; 32];
+        data[0..bts.len()].copy_from_slice(&bts);
+        ZkScalar::from_repr_vartime(ZkScalarRepr(data)).unwrap()
     }
 }
 
@@ -210,9 +228,14 @@ impl ZkDataPairs {
 pub struct MimcHasher;
 impl ZkHasher for MimcHasher {
     fn hash(vals: &[ZkScalar]) -> ZkScalar {
-        ZkScalar(zeekit::mimc::mimc(
-            &vals.iter().map(|v| v.0).collect::<Vec<_>>(),
-        ))
+        unsafe {
+            std::mem::transmute::<zeekit::Fr, ZkScalar>(zeekit::mimc::mimc(
+                &vals
+                    .iter()
+                    .map(|v| std::mem::transmute::<ZkScalar, zeekit::Fr>(*v))
+                    .collect::<Vec<_>>(),
+            ))
+        }
     }
 }
 
@@ -282,7 +305,7 @@ impl ZkCompressedState {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ZkVerifierKey {
-    Groth16(Box<zeekit::Groth16VerifyingKey>),
+    Groth16(Box<groth16::Groth16VerifyingKey>),
     Plonk(u8),
     Dummy,
 }
@@ -300,7 +323,7 @@ pub struct ZkContract {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ZkProof {
-    Groth16(Box<zeekit::Groth16Proof>),
+    Groth16(Box<groth16::Groth16Proof>),
     Plonk(u8),
     Dummy(bool),
 }

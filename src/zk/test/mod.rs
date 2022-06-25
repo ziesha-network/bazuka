@@ -10,7 +10,7 @@ impl ZkHasher for SumHasher {
     fn hash(vals: &[ZkScalar]) -> ZkScalar {
         let mut sum = ZkScalar::from(0);
         for v in vals.iter() {
-            sum.0.add_assign(&v.0);
+            sum.add_assign(v);
         }
         sum
     }
