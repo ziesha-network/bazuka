@@ -9,6 +9,8 @@ pub use eddsa::*;
 mod eddsa;
 pub mod merkle;
 
+pub mod ed25519;
+
 pub trait SignatureScheme: Clone + Serialize {
     type Pub: Clone + Debug + PartialEq + Serialize + DeserializeOwned + FromStr + Display;
     type Priv;

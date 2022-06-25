@@ -27,6 +27,7 @@ colored = "2.0.0"
 rust-randomx = "0.5.6"
 bellman = "0.13.0"
 bls12_381 = "0.7.0"
+ed25519-dalek = { version = "1", features = ["serde"] }
 
 # Node related deps
 tokio = { version = "1", features = ["full"], optional = true }
