@@ -224,7 +224,7 @@ impl ZkDataPairs {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, std::hash::Hash)]
 pub struct MimcHasher;
 impl ZkHasher for MimcHasher {
     fn hash(vals: &[ZkScalar]) -> ZkScalar {

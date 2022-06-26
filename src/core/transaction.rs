@@ -1,7 +1,7 @@
 use super::address::{Address, Signature};
 use super::hash::Hash;
 use super::Money;
-use crate::crypto::SignatureScheme;
+use crate::crypto::{SignatureScheme, ZkSignatureScheme};
 use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkProof};
 
 use std::str::FromStr;
@@ -19,7 +19,7 @@ pub enum ParseContractIdError {
 }
 
 impl<H: Hash> ContractId<H> {
-    pub fn new<S: SignatureScheme>(tx: &Transaction<H, S>) -> Self {
+    pub fn new<S: SignatureScheme, ZS: ZkSignatureScheme>(tx: &Transaction<H, S, ZS>) -> Self {
         Self(tx.hash())
     }
 }
@@ -40,20 +40,20 @@ impl<H: Hash> FromStr for ContractId<H> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub enum PaymentDirection {
-    Deposit,
-    Withdraw,
+pub enum PaymentDirection<S: SignatureScheme, ZS: ZkSignatureScheme> {
+    Deposit(S::Sig),
+    Withdraw(ZS::Sig),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct ContractPayment<H: Hash, S: SignatureScheme> {
-    initiator: Address<S>,
+pub struct ContractPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
+    address: Address<S>,
+    zk_address: ZS::Pub,
     contract_id: ContractId<H>, // Makes sure the payment can only run on this contract.
     nonce: usize, // Makes sure a contract payment cannot be replayed on this contract.
     amount: Money,
     fee: Money,
-    direction: PaymentDirection,
-    sig: Signature<S>,
+    direction: PaymentDirection<S, ZS>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
@@ -63,10 +63,10 @@ pub struct ContractAccount {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
+pub enum ContractUpdate<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     // Proof for DepositWithdrawCircuit(curr_state, next_state, hash(entries))
     DepositWithdraw {
-        deposit_withdraws: Vec<ContractPayment<H, S>>,
+        deposit_withdraws: Vec<ContractPayment<H, S, ZS>>,
         next_state: ZkCompressedState,
         proof: ZkProof,
     },
@@ -81,7 +81,7 @@ pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub enum TransactionData<H: Hash, S: SignatureScheme> {
+pub enum TransactionData<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     RegularSend {
         dst: Address<S>,
         amount: Money,
@@ -94,34 +94,34 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
     // Collection of contract updates
     UpdateContract {
         contract_id: ContractId<H>,
-        updates: Vec<ContractUpdate<H, S>>,
+        updates: Vec<ContractUpdate<H, S, ZS>>,
     },
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
-pub struct Transaction<H: Hash, S: SignatureScheme> {
+pub struct Transaction<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub src: Address<S>,
     pub nonce: u32,
-    pub data: TransactionData<H, S>,
+    pub data: TransactionData<H, S, ZS>,
     pub fee: Money,
     pub sig: Signature<S>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct TransactionAndDelta<H: Hash, S: SignatureScheme> {
-    pub tx: Transaction<H, S>,
+pub struct TransactionAndDelta<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
+    pub tx: Transaction<H, S, ZS>,
     pub state_delta: Option<ZkDeltaPairs>,
 }
 
-impl<H: Hash, S: SignatureScheme> PartialEq<TransactionAndDelta<H, S>>
-    for TransactionAndDelta<H, S>
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> PartialEq<TransactionAndDelta<H, S, ZS>>
+    for TransactionAndDelta<H, S, ZS>
 {
     fn eq(&self, other: &Self) -> bool {
         bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
     }
 }
 
-impl<H: Hash, S: SignatureScheme> Transaction<H, S> {
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> Transaction<H, S, ZS> {
     pub fn size(&self) -> usize {
         bincode::serialize(self).unwrap().len()
     }
@@ -144,8 +144,13 @@ impl<H: Hash, S: SignatureScheme> Transaction<H, S> {
     }
 }
 
-impl<H: Hash, S: SignatureScheme + PartialEq> Eq for TransactionAndDelta<H, S> {}
-impl<H: Hash, S: SignatureScheme> std::hash::Hash for TransactionAndDelta<H, S> {
+impl<H: Hash, S: SignatureScheme + PartialEq, ZS: ZkSignatureScheme + PartialEq> Eq
+    for TransactionAndDelta<H, S, ZS>
+{
+}
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> std::hash::Hash
+    for TransactionAndDelta<H, S, ZS>
+{
     fn hash<Hasher>(&self, state: &mut Hasher)
     where
         Hasher: std::hash::Hasher,
