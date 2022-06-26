@@ -10,6 +10,8 @@ use crate::utils;
 use crate::wallet::Wallet;
 use crate::zk;
 
+use rayon::prelude::*;
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -149,6 +151,7 @@ pub trait Blockchain {
         timestamp: u32,
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
         wallet: &Wallet,
+        check: bool,
     ) -> Result<BlockAndPatch, BlockchainError>;
     fn get_height(&self) -> Result<u64, BlockchainError>;
     fn get_tip(&self) -> Result<Header, BlockchainError>;
@@ -302,10 +305,6 @@ impl<K: KvStore> KvStoreChain<K> {
 
         if tx.src == Address::Treasury && !allow_treasury {
             return Err(BlockchainError::IllegalTreasuryAccess);
-        }
-
-        if !tx.verify_signature() {
-            return Err(BlockchainError::SignatureError);
         }
 
         if tx.nonce != acc_src.nonce + 1 {
@@ -466,6 +465,7 @@ impl<K: KvStore> KvStoreChain<K> {
     fn select_transactions(
         &self,
         txs: &mut HashMap<TransactionAndDelta, TransactionStats>,
+        check: bool,
     ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
         let mut sorted = txs.keys().cloned().collect::<Vec<_>>();
         sorted.sort_by(|t1, t2| t1.tx.nonce.cmp(&t2.tx.nonce));
@@ -475,8 +475,10 @@ impl<K: KvStore> KvStoreChain<K> {
             for tx in sorted.into_iter() {
                 let delta =
                     tx.tx.size() as isize + tx.state_delta.clone().unwrap_or_default().size();
-                if sz + delta <= chain.config.max_delta_size as isize
-                    && chain.apply_tx(&tx.tx, false).is_ok()
+                if !check
+                    || (sz + delta <= chain.config.max_delta_size as isize
+                        && tx.tx.verify_signature()
+                        && chain.apply_tx(&tx.tx, false).is_ok())
                 {
                     txs.remove(&tx);
                     sz += delta;
@@ -537,6 +539,10 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut state_size_delta = 0isize;
             let mut state_updates: HashMap<ContractId, ZkCompressedStateChange> = HashMap::new();
             let mut outdated_states = self.get_outdated_contracts()?;
+
+            if !txs.par_iter().all(|tx| tx.verify_signature()) {
+                return Err(BlockchainError::SignatureError);
+            }
 
             for tx in txs.iter() {
                 body_size += tx.size();
@@ -867,6 +873,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         timestamp: u32,
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
         wallet: &Wallet,
+        check: bool,
     ) -> Result<BlockAndPatch, BlockchainError> {
         let height = self.get_height()?;
         let outdated_states = self.get_outdated_contracts()?;
@@ -889,7 +896,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             sig: Signature::Unsigned,
         }];
 
-        let tx_and_deltas = self.select_transactions(mempool)?;
+        let tx_and_deltas = self.select_transactions(mempool, check)?;
         let mut block_delta: HashMap<ContractId, zk::ZkStatePatch> = HashMap::new();
         for tx_delta in tx_and_deltas.iter() {
             if let Some(contract_id) = match &tx_delta.tx.data {

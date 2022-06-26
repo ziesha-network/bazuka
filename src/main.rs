@@ -184,7 +184,7 @@ fn main() {
     loop {
         log::info!("Creating txs...");
         let mut txs = HashMap::new();
-        for _ in 0..500 {
+        for _ in 0..7400 {
             txs.insert(
                 abc.create_transaction(Address::Treasury, 0, 0, nonce),
                 TransactionStats { first_seen: 0 },
@@ -193,7 +193,7 @@ fn main() {
         }
 
         log::info!("Creating block...");
-        let blk = chain.draft_block(0, &mut txs, &WALLET).unwrap().block;
+        let blk = chain.draft_block(0, &mut txs, &WALLET, true).unwrap().block;
 
         log::info!("Applying block ({} txs)...", blk.body.len());
         chain.extend(chain.get_height().unwrap(), &[blk]).unwrap();
