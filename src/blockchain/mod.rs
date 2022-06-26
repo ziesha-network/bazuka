@@ -127,8 +127,6 @@ pub enum TxSideEffect {
 }
 
 pub trait Blockchain {
-    unsafe fn update_raw(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError>;
-
     fn validate_zero_transaction(&self, tx: &zk::ZeroTransaction) -> Result<bool, BlockchainError>;
     fn validate_transaction(&self, tx_delta: &TransactionAndDelta)
         -> Result<bool, BlockchainError>;
@@ -678,9 +676,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    unsafe fn update_raw(&mut self, ops: &Vec<WriteOp>) -> Result<(), KvStoreError> {
-        self.database.update(ops)
-    }
     fn get_outdated_states(
         &self,
     ) -> Result<HashMap<ContractId, zk::ZkCompressedState>, BlockchainError> {

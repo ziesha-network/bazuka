@@ -55,7 +55,9 @@ fn test_get_header_and_get_block() -> Result<(), BlockchainError> {
 
     let mut broken_chain = chain.fork_on_ram();
 
-    unsafe { broken_chain.update_raw(&vec![WriteOp::Put("height".into(), 3u64.into())])? };
+    broken_chain
+        .database
+        .update(&vec![WriteOp::Put("height".into(), 3u64.into())])?;
 
     assert!(matches!(
         broken_chain.get_block(2),
