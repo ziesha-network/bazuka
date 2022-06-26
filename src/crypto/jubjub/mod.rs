@@ -78,10 +78,7 @@ impl FromStr for PublicKey {
 }
 
 fn hash_to_fr(inp: &[u8]) -> ZkScalar {
-    let hash = Sha3Hasher::hash(inp);
-    let mut fr_data = [0u8; 32];
-    fr_data.copy_from_slice(&hash);
-    ZkScalar::new(fr_data)
+    ZkScalar::new(&Sha3Hasher::hash(inp))
 }
 
 impl<H: ZkHasher> ZkSignatureScheme for JubJub<H> {

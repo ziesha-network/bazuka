@@ -72,7 +72,7 @@ lazy_static! {
 pub struct ZkScalar([u64; 4]);
 
 impl ZkScalar {
-    pub fn new(num_le: [u8; 32]) -> Self {
+    pub fn new(num_le: &[u8]) -> Self {
         let bts = BigUint::from_bytes_le(&num_le)
             .mod_floor(&ZKSCALAR_MODULUS)
             .to_bytes_le();

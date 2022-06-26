@@ -2,7 +2,7 @@ use super::address::{Address, Signature};
 use super::hash::Hash;
 use super::Money;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
-use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkProof};
+use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkProof, ZkScalar};
 
 use std::str::FromStr;
 use thiserror::Error;
@@ -41,19 +41,40 @@ impl<H: Hash> FromStr for ContractId<H> {
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum PaymentDirection<S: SignatureScheme, ZS: ZkSignatureScheme> {
-    Deposit(S::Sig),
-    Withdraw(ZS::Sig),
+    Deposit(Option<S::Sig>),
+    Withdraw(Option<ZS::Sig>),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct ContractPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
-    address: Address<S>,
+    address: S::Pub,
     zk_address: ZS::Pub,
     contract_id: ContractId<H>, // Makes sure the payment can only run on this contract.
     nonce: usize, // Makes sure a contract payment cannot be replayed on this contract.
     amount: Money,
-    fee: Money,
+    fee: Money, // Executor fee
     direction: PaymentDirection<S, ZS>,
+}
+
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> ContractPayment<H, S, ZS> {
+    pub fn verify_signature(&self) -> bool {
+        let mut unsigned = self.clone();
+        unsigned.direction = match &unsigned.direction {
+            PaymentDirection::<S, ZS>::Deposit(_) => PaymentDirection::<S, ZS>::Deposit(None),
+            PaymentDirection::<S, ZS>::Withdraw(_) => PaymentDirection::<S, ZS>::Withdraw(None),
+        };
+        let unsigned_bin = bincode::serialize(&unsigned).unwrap();
+        match &self.direction {
+            PaymentDirection::<S, ZS>::Deposit(Some(sig)) => {
+                S::verify(&self.address, &unsigned_bin, sig)
+            }
+            PaymentDirection::<S, ZS>::Withdraw(Some(sig)) => {
+                let scalar = ZkScalar::new(H::hash(&unsigned_bin).as_ref());
+                ZS::verify(&self.zk_address, scalar, sig)
+            }
+            _ => false,
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
