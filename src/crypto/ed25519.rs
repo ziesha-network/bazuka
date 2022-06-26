@@ -78,3 +78,19 @@ impl FromStr for PublicKey {
         ))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ed25519_signature_verification() {
+        let (pk, sk) = Ed25519::<crate::core::Hasher>::generate_keys(b"ABC");
+        let msg = b"salam1";
+        let fake_msg = b"salam2";
+        let sig = Ed25519::<crate::core::Hasher>::sign(&sk, msg);
+
+        assert!(Ed25519::<crate::core::Hasher>::verify(&pk, msg, &sig));
+        assert!(!Ed25519::<crate::core::Hasher>::verify(&pk, fake_msg, &sig));
+    }
+}

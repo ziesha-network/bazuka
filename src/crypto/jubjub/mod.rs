@@ -6,7 +6,7 @@ use num_integer::Integer;
 use serde::{Deserialize, Serialize};
 use std::ops::{AddAssign, MulAssign};
 
-use super::SignatureScheme;
+use super::ZkSignatureScheme;
 
 use std::str::FromStr;
 use thiserror::Error;
@@ -15,7 +15,7 @@ mod curve;
 pub use curve::*;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct EdDSA;
+pub struct JubJub<H: ZkHasher>(std::marker::PhantomData<H>);
 
 #[derive(Error, Debug)]
 pub enum ParsePublicKeyError {
@@ -37,59 +37,6 @@ pub struct PublicKey(pub PointCompressed);
 pub struct Signature {
     pub r: PointAffine,
     pub s: ZkScalar,
-}
-
-pub fn generate_keys(randomness: ZkScalar, scalar: ZkScalar) -> (PublicKey, PrivateKey) {
-    let point = BASE.multiply(&scalar);
-    let pk = PublicKey(point.compress());
-    (
-        pk.clone(),
-        PrivateKey {
-            public_key: point,
-            randomness,
-            scalar,
-        },
-    )
-}
-
-pub fn sign<H: ZkHasher>(sk: &PrivateKey, message: ZkScalar) -> Signature {
-    // r=H(b,M)
-    let r = H::hash(&[sk.randomness, message]);
-
-    // R=rB
-    let rr = BASE.multiply(&r);
-
-    // h=H(R,A,M)
-    let h = H::hash(&[rr.0, rr.1, sk.public_key.0, sk.public_key.1, message]);
-
-    // s = (r + ha) mod ORDER
-    let mut s = BigUint::from_bytes_le(r.to_repr().as_ref());
-    let mut ha = BigUint::from_bytes_le(h.to_repr().as_ref());
-    ha.mul_assign(&BigUint::from_bytes_le(sk.scalar.to_repr().as_ref()));
-    s.add_assign(&ha);
-    s = s.mod_floor(&*ORDER);
-    let s_as_fr = {
-        let s_bytes = s.to_bytes_le();
-        let mut s_repr = ZkScalarRepr([0u8; 32]);
-        s_repr.0[0..s_bytes.len()].copy_from_slice(&s_bytes);
-        ZkScalar::from_repr(s_repr).unwrap()
-    };
-
-    Signature { r: rr, s: s_as_fr }
-}
-
-pub fn verify<H: ZkHasher>(pk: &PublicKey, message: ZkScalar, sig: &Signature) -> bool {
-    let pk = pk.0.decompress();
-
-    // h=H(R,A,M)
-    let h = H::hash(&[sig.r.0, sig.r.1, pk.0, pk.1, message]);
-
-    let sb = BASE.multiply(&sig.s);
-
-    let mut r_plus_ha = pk.multiply(&h);
-    r_plus_ha.add_assign(&sig.r);
-
-    r_plus_ha == sb
 }
 
 impl std::fmt::Display for PublicKey {
@@ -137,22 +84,61 @@ fn hash_to_fr(inp: &[u8]) -> ZkScalar {
     ZkScalar::new(fr_data)
 }
 
-impl SignatureScheme for EdDSA {
+impl<H: ZkHasher> ZkSignatureScheme for JubJub<H> {
     type Pub = PublicKey;
     type Priv = PrivateKey;
     type Sig = Signature;
     fn generate_keys(seed: &[u8]) -> (PublicKey, PrivateKey) {
         let randomness = hash_to_fr(seed);
         let scalar = hash_to_fr(randomness.to_repr().as_ref());
-        generate_keys(randomness, scalar)
+        let point = BASE.multiply(&scalar);
+        let pk = PublicKey(point.compress());
+        (
+            pk.clone(),
+            PrivateKey {
+                public_key: point,
+                randomness,
+                scalar,
+            },
+        )
     }
-    fn sign(sk: &PrivateKey, message: &[u8]) -> Signature {
-        let hash = hash_to_fr(message);
-        sign::<crate::core::ZkHasher>(&sk, hash)
+    fn sign(sk: &PrivateKey, message: ZkScalar) -> Signature {
+        // r=H(b,M)
+        let r = H::hash(&[sk.randomness, message]);
+
+        // R=rB
+        let rr = BASE.multiply(&r);
+
+        // h=H(R,A,M)
+        let h = H::hash(&[rr.0, rr.1, sk.public_key.0, sk.public_key.1, message]);
+
+        // s = (r + ha) mod ORDER
+        let mut s = BigUint::from_bytes_le(r.to_repr().as_ref());
+        let mut ha = BigUint::from_bytes_le(h.to_repr().as_ref());
+        ha.mul_assign(&BigUint::from_bytes_le(sk.scalar.to_repr().as_ref()));
+        s.add_assign(&ha);
+        s = s.mod_floor(&*ORDER);
+        let s_as_fr = {
+            let s_bytes = s.to_bytes_le();
+            let mut s_repr = ZkScalarRepr([0u8; 32]);
+            s_repr.0[0..s_bytes.len()].copy_from_slice(&s_bytes);
+            ZkScalar::from_repr(s_repr).unwrap()
+        };
+
+        Signature { r: rr, s: s_as_fr }
     }
-    fn verify(pk: &PublicKey, message: &[u8], sig: &Signature) -> bool {
-        let hash = hash_to_fr(message);
-        verify::<crate::core::ZkHasher>(&pk, hash, &sig)
+    fn verify(pk: &PublicKey, message: ZkScalar, sig: &Signature) -> bool {
+        let pk = pk.0.decompress();
+
+        // h=H(R,A,M)
+        let h = H::hash(&[sig.r.0, sig.r.1, pk.0, pk.1, message]);
+
+        let sb = BASE.multiply(&sig.s);
+
+        let mut r_plus_ha = pk.multiply(&h);
+        r_plus_ha.add_assign(&sig.r);
+
+        r_plus_ha == sb
     }
 }
 
@@ -161,7 +147,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_public_key_compression() {
+    fn test_jubjub_public_key_compression() {
         let p1 = BASE.multiply(&ZkScalar::from(123_u64));
         let p2 = p1.compress().decompress();
 
@@ -169,13 +155,15 @@ mod tests {
     }
 
     #[test]
-    fn test_signature_verification() {
-        let (pk, sk) = EdDSA::generate_keys(b"ABC");
-        let msg = b"Hi this a transaction!";
-        let fake_msg = b"Hi this a fake transaction!";
-        let sig = EdDSA::sign(&sk, msg);
+    fn test_jubjub_signature_verification() {
+        let (pk, sk) = JubJub::<crate::core::ZkHasher>::generate_keys(b"ABC");
+        let msg = ZkScalar::from(123456);
+        let fake_msg = ZkScalar::from(123457);
+        let sig = JubJub::<crate::core::ZkHasher>::sign(&sk, msg);
 
-        assert!(EdDSA::verify(&pk, msg, &sig));
-        assert!(!EdDSA::verify(&pk, fake_msg, &sig));
+        assert!(JubJub::<crate::core::ZkHasher>::verify(&pk, msg, &sig));
+        assert!(!JubJub::<crate::core::ZkHasher>::verify(
+            &pk, fake_msg, &sig
+        ));
     }
 }
