@@ -7,8 +7,8 @@ mod transaction;
 use crate::crypto;
 
 pub type Money = u64;
-pub type Signer = crypto::EdDSA;
 pub type Hasher = hash::Sha3Hasher;
+pub type Signer = crypto::ed25519::Ed25519<Hasher>;
 pub type Address = address::Address<Signer>;
 pub type Account = address::Account;
 pub type Signature = address::Signature<Signer>;

@@ -9,9 +9,11 @@ pub use eddsa::*;
 mod eddsa;
 pub mod merkle;
 
+pub mod ed25519;
+
 pub trait SignatureScheme: Clone + Serialize {
     type Pub: Clone + Debug + PartialEq + Serialize + DeserializeOwned + FromStr + Display;
-    type Priv;
+    type Priv: Clone;
     type Sig: Clone + Debug + PartialEq + Serialize + DeserializeOwned;
     fn generate_keys(seed: &[u8]) -> (Self::Pub, Self::Priv);
     fn sign(sk: &Self::Priv, msg: &[u8]) -> Self::Sig;

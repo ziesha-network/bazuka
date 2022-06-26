@@ -18,7 +18,7 @@ db-key = "0.0.5"
 ff = { version = "0.12", features = ["derive", "derive_bits"] }
 sha3 = "0.10.0"
 bincode = "1.3.3"
-rand = "0.8.5"
+rand = "0.7.0"
 thiserror = "1.0"
 num-bigint = "0.4"
 num-integer = "0.1"
@@ -27,6 +27,7 @@ colored = "2.0.0"
 rust-randomx = "0.5.6"
 bellman = "0.13.0"
 bls12_381 = "0.7.0"
+ed25519-dalek = { version = "1", features = ["serde"] }
 
 # Node related deps
 tokio = { version = "1", features = ["full"], optional = true }

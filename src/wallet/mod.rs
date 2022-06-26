@@ -1,20 +1,20 @@
 use crate::core::{
-    Address, ContractId, ContractUpdate, Money, Signature, Transaction, TransactionAndDelta,
-    TransactionData,
+    Address, ContractId, ContractUpdate, Money, Signature, Signer, Transaction,
+    TransactionAndDelta, TransactionData,
 };
-use crate::crypto::{EdDSA, PrivateKey, SignatureScheme};
+use crate::crypto::SignatureScheme;
 use crate::zk;
 
 #[derive(Clone)]
 pub struct Wallet {
     seed: Vec<u8>,
-    private_key: PrivateKey,
+    private_key: <Signer as SignatureScheme>::Priv,
     address: Address,
 }
 
 impl Wallet {
     pub fn new(seed: Vec<u8>) -> Self {
-        let (pk, sk) = EdDSA::generate_keys(&seed);
+        let (pk, sk) = Signer::generate_keys(&seed);
         Self {
             seed,
             address: Address::PublicKey(pk),
@@ -39,7 +39,7 @@ impl Wallet {
             sig: Signature::Unsigned,
         };
         let bytes = bincode::serialize(&tx).unwrap();
-        tx.sig = Signature::Signed(EdDSA::sign(&self.private_key, &bytes));
+        tx.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
         TransactionAndDelta {
             tx,
             state_delta: None,
@@ -52,7 +52,7 @@ impl Wallet {
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
-        let (_, sk) = EdDSA::generate_keys(&self.seed);
+        let (_, sk) = Signer::generate_keys(&self.seed);
         let mut tx = Transaction {
             src: self.get_address(),
             data: TransactionData::CreateContract { contract },
@@ -61,7 +61,7 @@ impl Wallet {
             sig: Signature::Unsigned,
         };
         let bytes = bincode::serialize(&tx).unwrap();
-        tx.sig = Signature::Signed(EdDSA::sign(&sk, &bytes));
+        tx.sig = Signature::Signed(Signer::sign(&sk, &bytes));
         TransactionAndDelta {
             tx,
             state_delta: Some(initial_state.as_delta()),
@@ -79,7 +79,7 @@ impl Wallet {
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
-        let (_, sk) = EdDSA::generate_keys(&self.seed);
+        let (_, sk) = Signer::generate_keys(&self.seed);
         let mut tx = Transaction {
             src: self.get_address(),
             data: TransactionData::UpdateContract {
@@ -95,7 +95,7 @@ impl Wallet {
             sig: Signature::Unsigned,
         };
         let bytes = bincode::serialize(&tx).unwrap();
-        tx.sig = Signature::Signed(EdDSA::sign(&sk, &bytes));
+        tx.sig = Signature::Signed(Signer::sign(&sk, &bytes));
         TransactionAndDelta {
             tx,
             state_delta: Some(state_delta),

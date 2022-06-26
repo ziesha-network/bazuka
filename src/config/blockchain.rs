@@ -75,7 +75,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             Transaction {
                 src: Address::Treasury,
                 data: TransactionData::RegularSend {
-                    dst: "0x215d9af3a1bfa2a87929b6e8265e95c61c36f91493f3dbd702215255f68742552"
+                    dst: "0x93dbba22f3bc954eb24cbe3fe697c70d3ab599c070ca057f0ed4690570db307c"
                         .parse()
                         .unwrap(),
                     amount: 100000000,
