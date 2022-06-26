@@ -1,7 +1,7 @@
 use super::*;
 use crate::config::blockchain;
-use crate::core::{Address, Hasher, Signature, TransactionData};
-use crate::crypto::{EdDSA, SignatureScheme};
+use crate::core::{Address, Hasher, Signature, Signer, TransactionData};
+use crate::crypto::SignatureScheme;
 use crate::db;
 
 mod contract;
@@ -542,7 +542,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     // Create unsigned tx
-    let (_, sk) = EdDSA::generate_keys(&Vec::from("ABC"));
+    let (_, sk) = Signer::generate_keys(&Vec::from("ABC"));
     let mut tx = Transaction {
         src: alice.get_address(),
         data: TransactionData::RegularSend {
@@ -557,7 +557,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     let mut bytes = bincode::serialize(&tx).unwrap();
     bytes.push(0x11);
 
-    tx.sig = Signature::Signed(EdDSA::sign(&sk, &bytes));
+    tx.sig = Signature::Signed(Signer::sign(&sk, &bytes));
     let tx = TransactionAndDelta {
         tx,
         state_delta: None,
