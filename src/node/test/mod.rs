@@ -5,7 +5,8 @@ use simulation::*;
 
 use crate::blockchain::BlockchainError;
 use crate::config::blockchain;
-use crate::core::{ContractId, TransactionAndDelta, ZkHasher};
+use crate::core::{ContractId, Signer, TransactionAndDelta, ZkHasher};
+use crate::crypto::SignatureScheme;
 use crate::zk;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -47,6 +48,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3030").1,
                 wallet: None,
                 addr: 3030,
                 bootstrap: vec![],
@@ -54,6 +56,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
             },
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3031").1,
                 wallet: None,
                 addr: 3031,
                 bootstrap: vec![3030],
@@ -61,6 +64,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
             },
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3032").1,
                 wallet: None,
                 addr: 3032,
                 bootstrap: vec![3031],
@@ -96,6 +100,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3030").1,
                 wallet: None,
                 addr: 3030,
                 bootstrap: vec![],
@@ -103,6 +108,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
             },
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3031").1,
                 wallet: None,
                 addr: 3031,
                 bootstrap: vec![3030],
@@ -110,6 +116,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
             },
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3032").1,
                 wallet: None,
                 addr: 3032,
                 bootstrap: vec![3031],
@@ -150,6 +157,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3030").1,
                 wallet: Some(Wallet::new(Vec::from("ABC"))),
                 addr: 3030,
                 bootstrap: vec![],
@@ -157,6 +165,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
             },
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3031").1,
                 wallet: Some(Wallet::new(Vec::from("CBA"))),
                 addr: 3031,
                 bootstrap: vec![3030],
@@ -263,6 +272,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3030").1,
                 wallet: Some(Wallet::new(Vec::from("ABC"))),
                 addr: 3030,
                 bootstrap: vec![],
@@ -270,6 +280,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
             },
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3031").1,
                 wallet: Some(Wallet::new(Vec::from("CBA"))),
                 addr: 3031,
                 bootstrap: vec![3030],
@@ -334,6 +345,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3030").1,
                 wallet: Some(Wallet::new(Vec::from("ABC"))),
                 addr: 3030,
                 bootstrap: vec![],
@@ -341,6 +353,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
             },
             NodeOpts {
                 config: conf.clone(),
+                priv_key: Signer::generate_keys(b"3031").1,
                 wallet: Some(Wallet::new(Vec::from("CBA"))),
                 addr: 3031,
                 bootstrap: vec![3030],

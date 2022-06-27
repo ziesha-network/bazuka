@@ -15,6 +15,8 @@ pub enum NodeError {
     ServerError(#[from] hyper::Error),
     #[error("client error happened: {0}")]
     ClientError(#[from] hyper::http::Error),
+    #[error("http invalid header error happened: {0}")]
+    InvalidHeaderError(#[from] hyper::header::InvalidHeaderValue),
     #[error("serde json error happened: {0}")]
     JsonError(#[from] serde_json::Error),
     #[error("serde qs error happened: {0}")]

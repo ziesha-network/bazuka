@@ -30,6 +30,7 @@ pub async fn sync_peers<B: Blockchain>(
         for peers in resps {
             for p in peers {
                 ctx.peers.entry(p.address).or_insert(Peer {
+                    pub_key: None,
                     address: p.address,
                     info: None,
                     punished_until: 0,

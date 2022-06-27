@@ -12,9 +12,13 @@ use context::NodeContext;
 pub use errors::NodeError;
 
 use crate::blockchain::Blockchain;
+use crate::core::Signer;
+use crate::crypto::ed25519;
+use crate::crypto::SignatureScheme;
 use crate::utils;
 use crate::wallet::Wallet;
 use hyper::body::HttpBody;
+use hyper::header::{HeaderValue, AUTHORIZATION};
 use hyper::{Body, Method, Request, Response, StatusCode};
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -58,6 +62,7 @@ pub struct PeerInfo {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct Peer {
+    pub pub_key: Option<ed25519::PublicKey>,
     pub address: PeerAddress,
     pub punished_until: Timestamp,
     pub info: Option<PeerInfo>,
@@ -230,6 +235,7 @@ pub struct OutgoingRequest {
 }
 
 pub struct OutgoingSender {
+    priv_key: ed25519::PrivateKey,
     chan: mpsc::UnboundedSender<OutgoingRequest>,
 }
 
@@ -289,10 +295,14 @@ impl OutgoingSender {
         req: Req,
         limit: Limit,
     ) -> Result<Resp, NodeError> {
-        let req = Request::builder()
+        let bytes = bincode::serialize(&req)?;
+        let sig = hex::encode(bincode::serialize(&Signer::sign(&self.priv_key, &bytes))?);
+        let mut req = Request::builder()
             .method(Method::GET)
             .uri(&addr)
-            .body(Body::from(bincode::serialize(&req)?))?;
+            .body(Body::from(bytes))?;
+        req.headers_mut()
+            .insert(AUTHORIZATION, HeaderValue::from_str(&sig)?);
         let body = self.raw(req, limit).await?;
         let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
@@ -305,11 +315,15 @@ impl OutgoingSender {
         req: Req,
         limit: Limit,
     ) -> Result<Resp, NodeError> {
-        let req = Request::builder()
+        let bytes = bincode::serialize(&req)?;
+        let sig = hex::encode(bincode::serialize(&Signer::sign(&self.priv_key, &bytes))?);
+        let mut req = Request::builder()
             .method(Method::POST)
             .uri(&addr)
             .header("content-type", "application/octet-stream")
-            .body(Body::from(bincode::serialize(&req)?))?;
+            .body(Body::from(bytes))?;
+        req.headers_mut()
+            .insert(AUTHORIZATION, HeaderValue::from_str(&sig)?);
         let body = self.raw(req, limit).await?;
         let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
@@ -321,11 +335,15 @@ impl OutgoingSender {
         req: Req,
         limit: Limit,
     ) -> Result<Resp, NodeError> {
-        let req = Request::builder()
+        let bytes = serde_json::to_vec(&req)?;
+        let sig = hex::encode(bincode::serialize(&Signer::sign(&self.priv_key, &bytes))?);
+        let mut req = Request::builder()
             .method(Method::POST)
             .uri(&addr)
             .header("content-type", "application/json")
-            .body(Body::from(serde_json::to_vec(&req)?))?;
+            .body(Body::from(bytes))?;
+        req.headers_mut()
+            .insert(AUTHORIZATION, HeaderValue::from_str(&sig)?);
         let body = self.raw(req, limit).await?;
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
@@ -351,6 +369,7 @@ impl OutgoingSender {
 pub async fn node_create<B: Blockchain>(
     opts: NodeOptions,
     address: PeerAddress,
+    priv_key: ed25519::PrivateKey,
     bootstrap: Vec<PeerAddress>,
     blockchain: B,
     timestamp_offset: i32,
@@ -362,7 +381,10 @@ pub async fn node_create<B: Blockchain>(
         opts,
         address,
         shutdown: false,
-        outgoing: Arc::new(OutgoingSender { chan: outgoing }),
+        outgoing: Arc::new(OutgoingSender {
+            chan: outgoing,
+            priv_key,
+        }),
         blockchain,
         wallet,
         mempool: HashMap::new(),
@@ -373,6 +395,7 @@ pub async fn node_create<B: Blockchain>(
                 (
                     addr,
                     Peer {
+                        pub_key: None,
                         address: addr,
                         punished_until: 0,
                         info: None,

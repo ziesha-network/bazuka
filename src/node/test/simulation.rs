@@ -3,6 +3,8 @@ use super::*;
 use super::api::messages::*;
 use crate::blockchain::{BlockchainConfig, KvStoreChain};
 use crate::config;
+use crate::core::Signer;
+use crate::crypto::SignatureScheme;
 use crate::db::RamKvStore;
 use crate::wallet::Wallet;
 
@@ -18,6 +20,7 @@ struct Node {
 
 pub struct NodeOpts {
     pub config: BlockchainConfig,
+    pub priv_key: <Signer as SignatureScheme>::Priv,
     pub wallet: Option<Wallet>,
     pub addr: u16,
     pub bootstrap: Vec<u16>,
@@ -34,6 +37,7 @@ fn create_test_node(
     let node = node_create(
         config::node::get_test_node_options(),
         addr,
+        opts.priv_key,
         opts.bootstrap
             .iter()
             .map(|p| PeerAddress(SocketAddr::from(([127, 0, 0, 1], *p))))

@@ -4,6 +4,8 @@ extern crate lazy_static;
 #[cfg(feature = "node")]
 use {
     bazuka::blockchain::KvStoreChain,
+    bazuka::core::Signer,
+    bazuka::crypto::SignatureScheme,
     bazuka::db::LevelDbKvStore,
     bazuka::node::{node_create, IncomingRequest, NodeError, OutgoingRequest, PeerAddress},
     bazuka::wallet::Wallet,
@@ -55,6 +57,8 @@ lazy_static! {
 async fn main() -> Result<(), NodeError> {
     env_logger::init();
 
+    let (pub_key, priv_key) = Signer::generate_keys(b"mynode");
+
     let public_ip = bazuka::node::upnp::get_public_ip().await;
 
     const DEFAULT_PORT: u16 = 3030;
@@ -77,6 +81,7 @@ async fn main() -> Result<(), NodeError> {
     println!();
     println!("{} {}", "Listening:".bright_yellow(), listen);
     println!("{} {}", "Internet endpoint:".bright_yellow(), address);
+    println!("{} {}", "Peer public-key:".bright_yellow(), pub_key);
 
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
     let (out_send, mut out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
@@ -102,6 +107,7 @@ async fn main() -> Result<(), NodeError> {
     let node = node_create(
         config::node::get_node_options(),
         address,
+        priv_key,
         bootstrap_nodes,
         KvStoreChain::new(
             LevelDbKvStore::new(&bazuka_dir, 64).unwrap(),
