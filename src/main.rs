@@ -7,7 +7,7 @@ use {
     bazuka::core::Signer,
     bazuka::crypto::SignatureScheme,
     bazuka::db::LevelDbKvStore,
-    bazuka::node::{node_create, IncomingRequest, NodeError, OutgoingRequest, PeerAddress},
+    bazuka::node::{node_create, NodeError, NodeRequest, PeerAddress},
     bazuka::wallet::Wallet,
     colored::Colorize,
     hyper::server::conn::AddrStream,
@@ -83,8 +83,8 @@ async fn main() -> Result<(), NodeError> {
     println!("{} {}", "Internet endpoint:".bright_yellow(), address);
     println!("{} {}", "Peer public-key:".bright_yellow(), pub_key);
 
-    let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
-    let (out_send, mut out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
+    let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
+    let (out_send, mut out_recv) = mpsc::unbounded_channel::<NodeRequest>();
 
     // Use hardcoded seed bootstrap nodes if none provided via cli opts
     let bootstrap_nodes = {
@@ -134,8 +134,8 @@ async fn main() -> Result<(), NodeError> {
                         async move {
                             let (resp_snd, mut resp_rcv) =
                                 mpsc::channel::<Result<Response<Body>, NodeError>>(1);
-                            let req = IncomingRequest {
-                                socket_addr: client,
+                            let req = NodeRequest {
+                                socket_addr: Some(client),
                                 body: req,
                                 resp: resp_snd,
                             };

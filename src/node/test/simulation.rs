@@ -15,7 +15,7 @@ use tokio::time::{sleep, Duration};
 struct Node {
     addr: PeerAddress,
     incoming: SenderWrapper,
-    outgoing: mpsc::UnboundedReceiver<OutgoingRequest>,
+    outgoing: mpsc::UnboundedReceiver<NodeRequest>,
 }
 
 pub struct NodeOpts {
@@ -32,12 +32,12 @@ fn create_test_node(
 ) -> (impl futures::Future<Output = Result<(), NodeError>>, Node) {
     let addr = PeerAddress(SocketAddr::from(([127, 0, 0, 1], opts.addr)));
     let chain = KvStoreChain::new(RamKvStore::new(), opts.config).unwrap();
-    let (inc_send, inc_recv) = mpsc::unbounded_channel::<IncomingRequest>();
-    let (out_send, out_recv) = mpsc::unbounded_channel::<OutgoingRequest>();
+    let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
+    let (out_send, out_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let node = node_create(
         config::node::get_test_node_options(),
         addr,
-        opts.priv_key,
+        opts.priv_key.clone(),
         opts.bootstrap
             .iter()
             .map(|p| PeerAddress(SocketAddr::from(([127, 0, 0, 1], *p))))
@@ -54,7 +54,10 @@ fn create_test_node(
             addr,
             incoming: SenderWrapper {
                 peer: addr,
-                chan: Arc::new(inc_send),
+                sender: Arc::new(OutgoingSender {
+                    chan: inc_send,
+                    priv_key: opts.priv_key,
+                }),
             },
             outgoing: out_recv,
         },
@@ -64,7 +67,7 @@ fn create_test_node(
 async fn route(
     rules: Arc<RwLock<Vec<Rule>>>,
     src: PeerAddress,
-    mut outgoing: mpsc::UnboundedReceiver<OutgoingRequest>,
+    mut outgoing: mpsc::UnboundedReceiver<NodeRequest>,
     incs: HashMap<PeerAddress, SenderWrapper>,
 ) -> Result<(), NodeError> {
     while let Some(req) = outgoing.recv().await {
@@ -95,12 +98,12 @@ async fn route(
         }
 
         let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
-        let inc_req = IncomingRequest {
-            socket_addr: dst.0,
+        let inc_req = NodeRequest {
+            socket_addr: None,
             body: req.body,
             resp: resp_snd,
         };
-        if incs[&dst].chan.send(inc_req).is_ok() {
+        if incs[&dst].sender.chan.send(inc_req).is_ok() {
             if let Some(answer) = resp_rcv.recv().await {
                 let _ = req.resp.send(answer).await;
             }
@@ -113,7 +116,7 @@ async fn route(
 #[derive(Clone)]
 pub struct SenderWrapper {
     peer: PeerAddress,
-    chan: Arc<mpsc::UnboundedSender<IncomingRequest>>,
+    sender: Arc<OutgoingSender>,
 }
 
 #[derive(Clone)]
@@ -171,124 +174,74 @@ impl Rule {
 }
 
 impl SenderWrapper {
-    pub async fn raw(&self, body: Request<Body>) -> Result<Body, NodeError> {
-        let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
-        let req = IncomingRequest {
-            socket_addr: "0.0.0.0:0".parse().unwrap(),
-            body,
-            resp: resp_snd,
-        };
-        self.chan
-            .send(req)
-            .map_err(|_| NodeError::NotListeningError)?;
-
-        let body = resp_rcv
-            .recv()
-            .await
-            .ok_or(NodeError::NotAnsweringError)??
-            .into_body();
-
-        Ok(body)
-    }
-    #[allow(dead_code)]
-    pub async fn json_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
-        &self,
-        url: &str,
-        req: Req,
-    ) -> Result<Resp, NodeError> {
-        let req = Request::builder()
-            .method(Method::GET)
-            .uri(format!(
-                "{}/{}?{}",
-                self.peer,
-                url,
-                serde_qs::to_string(&req)?
-            ))
-            .body(Body::empty())?;
-        let body = self.raw(req).await?;
-        let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
-        Ok(resp)
-    }
-    pub async fn json_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
-        &self,
-        url: &str,
-        req: Req,
-    ) -> Result<Resp, NodeError> {
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri(format!("{}/{}", self.peer, url))
-            .header("content-type", "application/json")
-            .body(Body::from(serde_json::to_vec(&req)?))?;
-        let body = self.raw(req).await?;
-        let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
-        Ok(resp)
-    }
-    pub async fn bincode_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
-        &self,
-        url: &str,
-        req: Req,
-    ) -> Result<Resp, NodeError> {
-        let req = Request::builder()
-            .method(Method::GET)
-            .uri(format!("{}/{}", self.peer, url,))
-            .body(Body::from(bincode::serialize(&req)?))?;
-        let body = self.raw(req).await?;
-        let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
-        Ok(resp)
-    }
-    pub async fn bincode_post<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
-        &self,
-        url: &str,
-        req: Req,
-    ) -> Result<Resp, NodeError> {
-        let req = Request::builder()
-            .method(Method::POST)
-            .uri(format!("{}/{}", self.peer, url))
-            .header("content-type", "application/octet-stream")
-            .body(Body::from(bincode::serialize(&req)?))?;
-        let body = self.raw(req).await?;
-        let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
-        Ok(resp)
-    }
     pub async fn shutdown(&self) -> Result<(), NodeError> {
-        self.json_post::<ShutdownRequest, ShutdownResponse>("shutdown", ShutdownRequest {})
+        self.sender
+            .json_post::<ShutdownRequest, ShutdownResponse>(
+                format!("{}/shutdown", self.peer),
+                ShutdownRequest {},
+                Limit::default(),
+            )
             .await?;
         Ok(())
     }
     pub async fn stats(&self) -> Result<GetStatsResponse, NodeError> {
-        self.json_get::<GetStatsRequest, GetStatsResponse>("stats", GetStatsRequest {})
+        self.sender
+            .json_get::<GetStatsRequest, GetStatsResponse>(
+                format!("{}/stats", self.peer),
+                GetStatsRequest {},
+                Limit::default(),
+            )
             .await
     }
     pub async fn peers(&self) -> Result<GetPeersResponse, NodeError> {
-        self.json_get::<GetPeersRequest, GetPeersResponse>("peers", GetPeersRequest {})
+        self.sender
+            .json_get::<GetPeersRequest, GetPeersResponse>(
+                format!("{}/peers", self.peer),
+                GetPeersRequest {},
+                Limit::default(),
+            )
             .await
     }
 
     pub async fn outdated_states(&self) -> Result<GetOutdatedStatesResponse, NodeError> {
-        self.bincode_get::<GetOutdatedStatesRequest, GetOutdatedStatesResponse>(
-            "bincode/states/outdated",
-            GetOutdatedStatesRequest {},
-        )
-        .await
+        self.sender
+            .bincode_get::<GetOutdatedStatesRequest, GetOutdatedStatesResponse>(
+                format!("{}/bincode/states/outdated", self.peer),
+                GetOutdatedStatesRequest {},
+                Limit::default(),
+            )
+            .await
     }
 
     pub async fn transact(
         &self,
         tx_delta: TransactionAndDelta,
     ) -> Result<TransactResponse, NodeError> {
-        self.bincode_post::<TransactRequest, TransactResponse>(
-            "bincode/transact",
-            TransactRequest { tx_delta },
-        )
-        .await
+        self.sender
+            .bincode_post::<TransactRequest, TransactResponse>(
+                format!("{}/bincode/transact", self.peer),
+                TransactRequest { tx_delta },
+                Limit::default(),
+            )
+            .await
     }
 
     pub async fn mine(&self) -> Result<PostMinerSolutionResponse, NodeError> {
         let puzzle = self
-            .json_get::<GetMinerPuzzleRequest, Puzzle>("miner/puzzle", GetMinerPuzzleRequest {})
+            .sender
+            .json_get::<GetMinerPuzzleRequest, Puzzle>(
+                format!("{}/miner/puzzle", self.peer),
+                GetMinerPuzzleRequest {},
+                Limit::default(),
+            )
             .await?;
         let sol = mine_puzzle(&puzzle);
-        self.json_post::<PostMinerSolutionRequest, PostMinerSolutionResponse>("miner/solution", sol)
+        self.sender
+            .json_post::<PostMinerSolutionRequest, PostMinerSolutionResponse>(
+                format!("{}/miner/solution", self.peer),
+                sol,
+                Limit::default(),
+            )
             .await
     }
 }

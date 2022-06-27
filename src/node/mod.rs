@@ -82,7 +82,7 @@ impl Peer {
 }
 
 async fn node_service<B: Blockchain>(
-    _client: SocketAddr,
+    _client: Option<SocketAddr>,
     context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
@@ -223,20 +223,15 @@ async fn node_service<B: Blockchain>(
 
 use tokio::sync::mpsc;
 
-pub struct IncomingRequest {
-    pub socket_addr: SocketAddr,
-    pub body: Request<Body>,
-    pub resp: mpsc::Sender<Result<Response<Body>, NodeError>>,
-}
-
-pub struct OutgoingRequest {
+pub struct NodeRequest {
+    pub socket_addr: Option<SocketAddr>,
     pub body: Request<Body>,
     pub resp: mpsc::Sender<Result<Response<Body>, NodeError>>,
 }
 
 pub struct OutgoingSender {
     priv_key: ed25519::PrivateKey,
-    chan: mpsc::UnboundedSender<OutgoingRequest>,
+    chan: mpsc::UnboundedSender<NodeRequest>,
 }
 
 #[derive(Default)]
@@ -259,7 +254,8 @@ impl Limit {
 impl OutgoingSender {
     pub async fn raw(&self, body: Request<Body>, limit: Limit) -> Result<Body, NodeError> {
         let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
-        let req = OutgoingRequest {
+        let req = NodeRequest {
+            socket_addr: None,
             body,
             resp: resp_snd,
         };
@@ -374,8 +370,8 @@ pub async fn node_create<B: Blockchain>(
     blockchain: B,
     timestamp_offset: i32,
     wallet: Option<Wallet>,
-    mut incoming: mpsc::UnboundedReceiver<IncomingRequest>,
-    outgoing: mpsc::UnboundedSender<OutgoingRequest>,
+    mut incoming: mpsc::UnboundedReceiver<NodeRequest>,
+    outgoing: mpsc::UnboundedSender<NodeRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
         opts,
