@@ -99,6 +99,8 @@ pub enum BlockchainError {
     ZkError(#[from] zk::ZkError),
     #[error("state-manager error happened: {0}")]
     StateManagerError(#[from] zk::StateManagerError),
+    #[error("invalid deposit/withdraw signature")]
+    InvalidDepositWithdrawSignature,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -374,11 +376,16 @@ impl<K: KvStore> KvStoreChain<K> {
                 for update in updates {
                     let (circuit, aux_data, next_state, proof) = match update {
                         ContractUpdate::DepositWithdraw {
-                            deposit_withdraws: _,
+                            deposit_withdraws,
                             next_state,
                             proof,
                         } => {
                             let circuit = &contract.deposit_withdraw_function;
+                            for dw in deposit_withdraws.iter() {
+                                if !dw.verify_signature() {
+                                    return Err(BlockchainError::InvalidDepositWithdrawSignature);
+                                }
+                            }
                             let aux_data = zk::ZkCompressedState::default();
                             (circuit, aux_data, next_state, proof)
                         }
