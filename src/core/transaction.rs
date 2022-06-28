@@ -47,13 +47,13 @@ pub enum PaymentDirection<S: SignatureScheme, ZS: ZkSignatureScheme> {
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct ContractPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
-    address: S::Pub,
-    zk_address: ZS::Pub,
-    contract_id: ContractId<H>, // Makes sure the payment can only run on this contract.
-    nonce: usize, // Makes sure a contract payment cannot be replayed on this contract.
-    amount: Money,
-    fee: Money, // Executor fee
-    direction: PaymentDirection<S, ZS>,
+    pub address: S::Pub,
+    pub zk_address: ZS::Pub,
+    pub contract_id: ContractId<H>, // Makes sure the payment can only run on this contract.
+    pub nonce: u32, // Makes sure a contract payment cannot be replayed on this contract.
+    pub amount: Money,
+    pub fee: Money, // Executor fee
+    pub direction: PaymentDirection<S, ZS>,
 }
 
 impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> ContractPayment<H, S, ZS> {
@@ -79,6 +79,7 @@ impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> ContractPayment<H, S, Z
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct ContractAccount {
+    pub nonce: u32,
     pub balance: Money,
     pub compressed_state: ZkCompressedState,
 }

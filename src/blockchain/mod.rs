@@ -2,8 +2,8 @@ use thiserror::Error;
 
 use crate::core::{
     hash::Hash, Account, Address, Block, ContractAccount, ContractId, ContractUpdate, Hasher,
-    Header, Money, ProofOfWork, Signature, Transaction, TransactionAndDelta, TransactionData,
-    ZkHasher,
+    Header, Money, PaymentDirection, ProofOfWork, Signature, Transaction, TransactionAndDelta,
+    TransactionData, ZkHasher,
 };
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
@@ -43,6 +43,8 @@ pub enum BlockchainError {
     SignatureError,
     #[error("balance insufficient")]
     BalanceInsufficient,
+    #[error("contract balance insufficient")]
+    ContractBalanceInsufficient,
     #[error("inconsistency error")]
     Inconsistency,
     #[error("block not found")]
@@ -351,6 +353,7 @@ impl<K: KvStore> KvStoreChain<K> {
                         ContractAccount {
                             compressed_state: contract.initial_state,
                             balance: 0,
+                            nonce: 0,
                         }
                         .into(),
                     )])?;
@@ -373,6 +376,9 @@ impl<K: KvStore> KvStoreChain<K> {
                     let contract = chain.get_contract(*contract_id)?;
 
                     for update in updates {
+                        let prev_account = chain.get_contract_account(*contract_id)?;
+                        let mut new_account = prev_account.clone();
+
                         let (circuit, aux_data, next_state, proof) = match update {
                             ContractUpdate::DepositWithdraw {
                                 deposit_withdraws,
@@ -381,6 +387,50 @@ impl<K: KvStore> KvStoreChain<K> {
                             } => {
                                 let circuit = &contract.deposit_withdraw_function;
                                 for dw in deposit_withdraws.iter() {
+                                    let mut addr_account = chain
+                                        .get_account(Address::PublicKey(dw.address.clone()))?;
+                                    match &dw.direction {
+                                        PaymentDirection::Deposit(_) => {
+                                            if addr_account.nonce != dw.nonce {
+                                                return Err(
+                                                    BlockchainError::InvalidTransactionNonce,
+                                                );
+                                            }
+                                            if addr_account.balance < dw.amount {
+                                                return Err(BlockchainError::BalanceInsufficient);
+                                            }
+                                            addr_account.balance -= dw.amount;
+                                            addr_account.nonce += 1;
+
+                                            new_account.balance += dw.amount;
+                                        }
+                                        PaymentDirection::Withdraw(_) => {
+                                            if new_account.nonce != dw.nonce {
+                                                return Err(
+                                                    BlockchainError::InvalidTransactionNonce,
+                                                );
+                                            }
+                                            if new_account.balance < dw.amount {
+                                                return Err(
+                                                    BlockchainError::ContractBalanceInsufficient,
+                                                );
+                                            }
+                                            new_account.balance -= dw.amount;
+                                            new_account.nonce += 1;
+
+                                            addr_account.balance += dw.amount;
+                                        }
+                                    }
+
+                                    chain.database.update(&[WriteOp::Put(
+                                        format!(
+                                            "account_{}",
+                                            Address::PublicKey(dw.address.clone())
+                                        )
+                                        .into(),
+                                        addr_account.into(),
+                                    )])?;
+
                                     if !dw.verify_signature() {
                                         return Err(
                                             BlockchainError::InvalidDepositWithdrawSignature,
@@ -404,7 +454,6 @@ impl<K: KvStore> KvStoreChain<K> {
                             }
                         };
 
-                        let prev_account = chain.get_contract_account(*contract_id)?;
                         if !zk::check_proof(
                             circuit,
                             &prev_account.compressed_state,
@@ -419,13 +468,11 @@ impl<K: KvStore> KvStoreChain<K> {
                             return Err(BlockchainError::WrongContractHeight);
                         }
 
+                        new_account.compressed_state = *next_state;
+
                         chain.database.update(&[WriteOp::Put(
                             format!("contract_account_{}", contract_id).into(),
-                            ContractAccount {
-                                compressed_state: *next_state,
-                                balance: 0,
-                            }
-                            .into(),
+                            new_account.into(),
                         )])?;
                         chain.database.update(&[WriteOp::Put(
                             format!(

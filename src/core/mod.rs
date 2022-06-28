@@ -21,6 +21,7 @@ pub type Transaction = transaction::Transaction<Hasher, Signer, ZkSigner>;
 pub type TransactionData = transaction::TransactionData<Hasher, Signer, ZkSigner>;
 pub type ContractAccount = transaction::ContractAccount;
 pub type ContractUpdate = transaction::ContractUpdate<Hasher, Signer, ZkSigner>;
+pub type PaymentDirection = transaction::PaymentDirection<Signer, ZkSigner>;
 pub type Header = header::Header<Hasher>;
 pub type Block = blocks::Block<Hasher, Signer, ZkSigner>;
 
