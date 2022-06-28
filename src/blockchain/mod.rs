@@ -297,159 +297,163 @@ impl<K: KvStore> KvStoreChain<K> {
         tx: &Transaction,
         allow_treasury: bool,
     ) -> Result<TxSideEffect, BlockchainError> {
-        let mut side_effect = TxSideEffect::Nothing;
+        let (ops, side_effect) = self.isolated(|chain| {
+            let mut side_effect = TxSideEffect::Nothing;
 
-        let mut ops = Vec::new();
+            let mut acc_src = chain.get_account(tx.src.clone())?;
 
-        let mut acc_src = self.get_account(tx.src.clone())?;
-
-        if tx.src == Address::Treasury && !allow_treasury {
-            return Err(BlockchainError::IllegalTreasuryAccess);
-        }
-
-        if tx.nonce != acc_src.nonce + 1 {
-            return Err(BlockchainError::InvalidTransactionNonce);
-        }
-
-        if acc_src.balance < tx.fee {
-            return Err(BlockchainError::BalanceInsufficient);
-        }
-
-        acc_src.balance -= tx.fee;
-        acc_src.nonce += 1;
-
-        match &tx.data {
-            TransactionData::RegularSend { dst, amount } => {
-                if acc_src.balance < *amount {
-                    return Err(BlockchainError::BalanceInsufficient);
-                }
-
-                if *dst != tx.src {
-                    acc_src.balance -= *amount;
-
-                    let mut acc_dst = self.get_account(dst.clone())?;
-                    acc_dst.balance += *amount;
-
-                    ops.push(WriteOp::Put(
-                        format!("account_{}", dst).into(),
-                        acc_dst.into(),
-                    ));
-                }
+            if tx.src == Address::Treasury && !allow_treasury {
+                return Err(BlockchainError::IllegalTreasuryAccess);
             }
-            TransactionData::CreateContract { contract } => {
-                if contract.initial_state.height() != 1 {
-                    return Err(BlockchainError::WrongContractHeight);
-                }
-                let contract_id = ContractId::new(tx);
-                ops.push(WriteOp::Put(
-                    format!("contract_{}", contract_id).into(),
-                    contract.clone().into(),
-                ));
-                let compressed_empty =
-                    zk::ZkCompressedState::empty::<ZkHasher>(contract.state_model.clone());
-                ops.push(WriteOp::Put(
-                    format!("contract_account_{}", contract_id).into(),
-                    ContractAccount {
-                        compressed_state: contract.initial_state,
-                        balance: 0,
-                    }
-                    .into(),
-                ));
-                ops.push(WriteOp::Put(
-                    format!("contract_compressed_state_{}_{}", contract_id, 1).into(),
-                    contract.initial_state.into(),
-                ));
-                side_effect = TxSideEffect::StateChange {
-                    contract_id,
-                    state_change: ZkCompressedStateChange {
-                        prev_state: compressed_empty,
-                        state: contract.initial_state,
-                    },
-                };
+
+            if tx.nonce != acc_src.nonce + 1 {
+                return Err(BlockchainError::InvalidTransactionNonce);
             }
-            TransactionData::UpdateContract {
-                contract_id,
-                updates,
-            } => {
-                let contract = self.get_contract(*contract_id)?;
 
-                for update in updates {
-                    let (circuit, aux_data, next_state, proof) = match update {
-                        ContractUpdate::DepositWithdraw {
-                            deposit_withdraws,
-                            next_state,
-                            proof,
-                        } => {
-                            let circuit = &contract.deposit_withdraw_function;
-                            for dw in deposit_withdraws.iter() {
-                                if !dw.verify_signature() {
-                                    return Err(BlockchainError::InvalidDepositWithdrawSignature);
-                                }
-                            }
-                            let aux_data = zk::ZkCompressedState::default();
-                            (circuit, aux_data, next_state, proof)
-                        }
-                        ContractUpdate::FunctionCall {
-                            function_id,
-                            next_state,
-                            proof,
-                        } => {
-                            let circuit = contract
-                                .functions
-                                .get(*function_id as usize)
-                                .ok_or(BlockchainError::ContractFunctionNotFound)?;
-                            let aux_data = zk::ZkCompressedState::default();
-                            (circuit, aux_data, next_state, proof)
-                        }
-                    };
+            if acc_src.balance < tx.fee {
+                return Err(BlockchainError::BalanceInsufficient);
+            }
 
-                    let prev_account = self.get_contract_account(*contract_id)?;
-                    if !zk::check_proof(
-                        circuit,
-                        &prev_account.compressed_state,
-                        &aux_data,
-                        next_state,
-                        proof,
-                    ) {
-                        return Err(BlockchainError::IncorrectZkProof);
+            acc_src.balance -= tx.fee;
+            acc_src.nonce += 1;
+
+            match &tx.data {
+                TransactionData::RegularSend { dst, amount } => {
+                    if acc_src.balance < *amount {
+                        return Err(BlockchainError::BalanceInsufficient);
                     }
 
-                    if next_state.height() != prev_account.compressed_state.height() + 1 {
+                    if *dst != tx.src {
+                        acc_src.balance -= *amount;
+
+                        let mut acc_dst = chain.get_account(dst.clone())?;
+                        acc_dst.balance += *amount;
+
+                        chain.database.update(&[WriteOp::Put(
+                            format!("account_{}", dst).into(),
+                            acc_dst.into(),
+                        )])?;
+                    }
+                }
+                TransactionData::CreateContract { contract } => {
+                    if contract.initial_state.height() != 1 {
                         return Err(BlockchainError::WrongContractHeight);
                     }
-
-                    ops.push(WriteOp::Put(
+                    let contract_id = ContractId::new(tx);
+                    chain.database.update(&[WriteOp::Put(
+                        format!("contract_{}", contract_id).into(),
+                        contract.clone().into(),
+                    )])?;
+                    let compressed_empty =
+                        zk::ZkCompressedState::empty::<ZkHasher>(contract.state_model.clone());
+                    chain.database.update(&[WriteOp::Put(
                         format!("contract_account_{}", contract_id).into(),
                         ContractAccount {
-                            compressed_state: *next_state,
+                            compressed_state: contract.initial_state,
                             balance: 0,
                         }
                         .into(),
-                    ));
-                    ops.push(WriteOp::Put(
-                        format!(
-                            "contract_compressed_state_{}_{}",
-                            contract_id,
-                            next_state.height()
-                        )
-                        .into(),
-                        (*next_state).into(),
-                    ));
+                    )])?;
+                    chain.database.update(&[WriteOp::Put(
+                        format!("contract_compressed_state_{}_{}", contract_id, 1).into(),
+                        contract.initial_state.into(),
+                    )])?;
                     side_effect = TxSideEffect::StateChange {
-                        contract_id: *contract_id,
+                        contract_id,
                         state_change: ZkCompressedStateChange {
-                            prev_state: prev_account.compressed_state,
-                            state: *next_state,
+                            prev_state: compressed_empty,
+                            state: contract.initial_state,
                         },
                     };
                 }
-            }
-        }
+                TransactionData::UpdateContract {
+                    contract_id,
+                    updates,
+                } => {
+                    let contract = chain.get_contract(*contract_id)?;
 
-        ops.push(WriteOp::Put(
-            format!("account_{}", tx.src).into(),
-            acc_src.into(),
-        ));
+                    for update in updates {
+                        let (circuit, aux_data, next_state, proof) = match update {
+                            ContractUpdate::DepositWithdraw {
+                                deposit_withdraws,
+                                next_state,
+                                proof,
+                            } => {
+                                let circuit = &contract.deposit_withdraw_function;
+                                for dw in deposit_withdraws.iter() {
+                                    if !dw.verify_signature() {
+                                        return Err(
+                                            BlockchainError::InvalidDepositWithdrawSignature,
+                                        );
+                                    }
+                                }
+                                let aux_data = zk::ZkCompressedState::default();
+                                (circuit, aux_data, next_state, proof)
+                            }
+                            ContractUpdate::FunctionCall {
+                                function_id,
+                                next_state,
+                                proof,
+                            } => {
+                                let circuit = contract
+                                    .functions
+                                    .get(*function_id as usize)
+                                    .ok_or(BlockchainError::ContractFunctionNotFound)?;
+                                let aux_data = zk::ZkCompressedState::default();
+                                (circuit, aux_data, next_state, proof)
+                            }
+                        };
+
+                        let prev_account = chain.get_contract_account(*contract_id)?;
+                        if !zk::check_proof(
+                            circuit,
+                            &prev_account.compressed_state,
+                            &aux_data,
+                            next_state,
+                            proof,
+                        ) {
+                            return Err(BlockchainError::IncorrectZkProof);
+                        }
+
+                        if next_state.height() != prev_account.compressed_state.height() + 1 {
+                            return Err(BlockchainError::WrongContractHeight);
+                        }
+
+                        chain.database.update(&[WriteOp::Put(
+                            format!("contract_account_{}", contract_id).into(),
+                            ContractAccount {
+                                compressed_state: *next_state,
+                                balance: 0,
+                            }
+                            .into(),
+                        )])?;
+                        chain.database.update(&[WriteOp::Put(
+                            format!(
+                                "contract_compressed_state_{}_{}",
+                                contract_id,
+                                next_state.height()
+                            )
+                            .into(),
+                            (*next_state).into(),
+                        )])?;
+                        side_effect = TxSideEffect::StateChange {
+                            contract_id: *contract_id,
+                            state_change: ZkCompressedStateChange {
+                                prev_state: prev_account.compressed_state,
+                                state: *next_state,
+                            },
+                        };
+                    }
+                }
+            }
+
+            chain.database.update(&[WriteOp::Put(
+                format!("account_{}", tx.src).into(),
+                acc_src.into(),
+            )])?;
+
+            Ok(side_effect)
+        })?;
 
         self.database.update(&ops)?;
         Ok(side_effect)
