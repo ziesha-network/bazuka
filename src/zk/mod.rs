@@ -317,8 +317,9 @@ pub struct ZeroTransaction;
 pub struct ZkContract {
     pub initial_state: ZkCompressedState, // 32byte
     pub state_model: ZkStateModel,
+    pub log4_deposit_withdraw_capacity: u8, // Number of deposit/withdraws that can be handled
     pub deposit_withdraw_function: ZkVerifierKey, // VK f(prev_state, io_txs (L1)) -> next_state
-    pub functions: Vec<ZkVerifierKey>,            // Vec<VK> f(prev_state) -> next_state
+    pub functions: Vec<ZkVerifierKey>,      // Vec<VK> f(prev_state) -> next_state
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

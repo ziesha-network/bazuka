@@ -25,6 +25,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
             mpn_initial_state.clone(),
         )
         .unwrap(),
+        log4_deposit_withdraw_capacity: 1,
         deposit_withdraw_function: zk::ZkVerifierKey::Plonk(0),
         functions: vec![zk::ZkVerifierKey::Plonk(0)],
     };

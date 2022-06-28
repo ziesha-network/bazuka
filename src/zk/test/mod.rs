@@ -20,6 +20,7 @@ fn empty_contract<H: ZkHasher>(state_model: ZkStateModel) -> ZkContract {
     ZkContract {
         initial_state: ZkCompressedState::empty::<H>(state_model.clone()).into(),
         state_model: state_model,
+        log4_deposit_withdraw_capacity: 0,
         deposit_withdraw_function: ZkVerifierKey::Dummy,
         functions: vec![],
     }

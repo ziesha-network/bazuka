@@ -43,6 +43,7 @@ pub fn compress_state<H: ZkHasher>(
         ZkContract {
             initial_state: ZkCompressedState::empty::<H>(data_type.clone()).into(),
             state_model: data_type.clone(),
+            log4_deposit_withdraw_capacity: 0,
             deposit_withdraw_function: ZkVerifierKey::Dummy,
             functions: vec![],
         }

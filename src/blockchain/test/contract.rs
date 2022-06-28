@@ -20,6 +20,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
         zk::ZkContract {
             state_model: state_model.clone(),
             initial_state: full_state.compress::<ZkHasher>(1, state_model.clone()),
+            log4_deposit_withdraw_capacity: 1,
             deposit_withdraw_function: zk::ZkVerifierKey::Dummy,
             functions: Vec::new(),
         },
@@ -49,7 +50,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
     let cid =
-        ContractId::from_str("b83f6f4d4e548b4dadd02e46ee0f6458f1fd713f2dcb34afb019afd00db0f7e7")
+        ContractId::from_str("6988872c866dd9ba8fbd6cb3498e68ed4181c14905ae6f4084342144c576d943")
             .unwrap();
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 

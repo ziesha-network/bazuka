@@ -255,7 +255,7 @@ impl Limit {
 }
 
 impl OutgoingSender {
-    pub async fn raw(&self, mut body: Request<Body>, limit: Limit) -> Result<Body, NodeError> {
+    pub async fn raw(&self, body: Request<Body>, limit: Limit) -> Result<Body, NodeError> {
         let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
         let req = NodeRequest {
             socket_addr: None,
@@ -290,7 +290,7 @@ impl OutgoingSender {
 
     fn sign(
         &self,
-        mut req: hyper::http::request::Builder,
+        req: hyper::http::request::Builder,
         body: Vec<u8>,
     ) -> Result<Request<Body>, NodeError> {
         let pub_key = hex::encode(bincode::serialize(&ed25519::PublicKey::from(
