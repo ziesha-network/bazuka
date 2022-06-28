@@ -81,6 +81,29 @@ impl Peer {
     }
 }
 
+fn fetch_signature(
+    req: &Request<Body>,
+) -> Result<Option<(ed25519::PublicKey, ed25519::Signature)>, NodeError> {
+    if let Some(v) = req.headers().get(AUTHORIZATION) {
+        let s = v.to_str().map_err(|_| NodeError::InvalidSignatureHeader)?;
+        let mut s = s.split("-");
+        let (pub_hex, sig_hex) = s
+            .next()
+            .zip(s.next())
+            .ok_or(NodeError::InvalidSignatureHeader)?;
+        let pub_key = hex::decode(pub_hex)
+            .map(|bytes| bincode::deserialize::<ed25519::PublicKey>(&bytes))
+            .map_err(|_| NodeError::InvalidSignatureHeader)?
+            .map_err(|_| NodeError::InvalidSignatureHeader)?;
+        let sig = hex::decode(sig_hex)
+            .map(|bytes| bincode::deserialize::<ed25519::Signature>(&bytes))
+            .map_err(|_| NodeError::InvalidSignatureHeader)?
+            .map_err(|_| NodeError::InvalidSignatureHeader)?;
+        return Ok(Some((pub_key, sig)));
+    }
+    Ok(None)
+}
+
 async fn node_service<B: Blockchain>(
     _client: Option<SocketAddr>,
     context: Arc<RwLock<NodeContext<B>>>,
@@ -90,6 +113,8 @@ async fn node_service<B: Blockchain>(
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     let qs = req.uri().query().unwrap_or("").to_string();
+
+    let creds = fetch_signature(&req)?;
     let body = req.into_body();
 
     // Disallow large requests
@@ -101,6 +126,18 @@ async fn node_service<B: Blockchain>(
     {
         *response.status_mut() = StatusCode::PAYLOAD_TOO_LARGE;
         return Ok(response);
+    }
+
+    let body_bytes = hyper::body::to_bytes(body).await?;
+
+    // TODO: This doesn't prevent replay attacks
+    if !creds
+        .map(|(pub_key, sig)| {
+            ed25519::Ed25519::<crate::core::Hasher>::verify(&pub_key, &body_bytes, &sig)
+        })
+        .unwrap_or(false)
+    {
+        return Err(NodeError::SignatureRequired);
     }
 
     match (method, &path[..]) {
@@ -116,7 +153,7 @@ async fn node_service<B: Blockchain>(
             *response.body_mut() = Body::from(serde_json::to_vec(
                 &api::post_miner_solution(
                     Arc::clone(&context),
-                    serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
+                    serde_json::from_slice(&body_bytes)?,
                 )
                 .await?,
             )?);
@@ -134,83 +171,49 @@ async fn node_service<B: Blockchain>(
         }
         (Method::POST, "/peers") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::post_peer(
-                    Arc::clone(&context),
-                    serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
-                )
-                .await?,
+                &api::post_peer(Arc::clone(&context), serde_json::from_slice(&body_bytes)?).await?,
             )?);
         }
         (Method::POST, "/shutdown") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::shutdown(
-                    Arc::clone(&context),
-                    serde_json::from_slice(&hyper::body::to_bytes(body).await?)?,
-                )
-                .await?,
+                &api::shutdown(Arc::clone(&context), serde_json::from_slice(&body_bytes)?).await?,
             )?);
         }
         (Method::POST, "/bincode/transact") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::transact(
-                    Arc::clone(&context),
-                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
-                )
-                .await?,
+                &api::transact(Arc::clone(&context), bincode::deserialize(&body_bytes)?).await?,
             )?);
         }
         (Method::POST, "/bincode/transact/zero") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::transact_zero(
-                    Arc::clone(&context),
-                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
-                )
-                .await?,
+                &api::transact_zero(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                    .await?,
             )?);
         }
         (Method::GET, "/bincode/headers") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_headers(
-                    Arc::clone(&context),
-                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
-                )
-                .await?,
+                &api::get_headers(Arc::clone(&context), bincode::deserialize(&body_bytes)?).await?,
             )?);
         }
         (Method::GET, "/bincode/blocks") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_blocks(
-                    Arc::clone(&context),
-                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
-                )
-                .await?,
+                &api::get_blocks(Arc::clone(&context), bincode::deserialize(&body_bytes)?).await?,
             )?);
         }
         (Method::POST, "/bincode/blocks") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::post_block(
-                    Arc::clone(&context),
-                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
-                )
-                .await?,
+                &api::post_block(Arc::clone(&context), bincode::deserialize(&body_bytes)?).await?,
             )?);
         }
         (Method::GET, "/bincode/states") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_states(
-                    Arc::clone(&context),
-                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
-                )
-                .await?,
+                &api::get_states(Arc::clone(&context), bincode::deserialize(&body_bytes)?).await?,
             )?);
         }
         (Method::GET, "/bincode/states/outdated") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_outdated_states(
-                    Arc::clone(&context),
-                    bincode::deserialize(&hyper::body::to_bytes(body).await?)?,
-                )
-                .await?,
+                &api::get_outdated_states(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                    .await?,
             )?);
         }
         _ => {
@@ -252,7 +255,7 @@ impl Limit {
 }
 
 impl OutgoingSender {
-    pub async fn raw(&self, body: Request<Body>, limit: Limit) -> Result<Body, NodeError> {
+    pub async fn raw(&self, mut body: Request<Body>, limit: Limit) -> Result<Body, NodeError> {
         let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
         let req = NodeRequest {
             socket_addr: None,
@@ -285,6 +288,23 @@ impl OutgoingSender {
         Ok(body)
     }
 
+    fn sign(
+        &self,
+        mut req: hyper::http::request::Builder,
+        body: Vec<u8>,
+    ) -> Result<Request<Body>, NodeError> {
+        let pub_key = hex::encode(bincode::serialize(&ed25519::PublicKey::from(
+            self.priv_key.clone(),
+        ))?);
+        let sig = hex::encode(bincode::serialize(&Signer::sign(&self.priv_key, &body))?);
+        let mut req = req.body(Body::from(body))?;
+        req.headers_mut().insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("{}-{}", pub_key, sig))?,
+        );
+        Ok(req)
+    }
+
     async fn bincode_get<Req: serde::Serialize, Resp: serde::de::DeserializeOwned>(
         &self,
         addr: String,
@@ -292,13 +312,7 @@ impl OutgoingSender {
         limit: Limit,
     ) -> Result<Resp, NodeError> {
         let bytes = bincode::serialize(&req)?;
-        let sig = hex::encode(bincode::serialize(&Signer::sign(&self.priv_key, &bytes))?);
-        let mut req = Request::builder()
-            .method(Method::GET)
-            .uri(&addr)
-            .body(Body::from(bytes))?;
-        req.headers_mut()
-            .insert(AUTHORIZATION, HeaderValue::from_str(&sig)?);
+        let req = self.sign(Request::builder().method(Method::GET).uri(&addr), bytes)?;
         let body = self.raw(req, limit).await?;
         let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
@@ -312,14 +326,13 @@ impl OutgoingSender {
         limit: Limit,
     ) -> Result<Resp, NodeError> {
         let bytes = bincode::serialize(&req)?;
-        let sig = hex::encode(bincode::serialize(&Signer::sign(&self.priv_key, &bytes))?);
-        let mut req = Request::builder()
-            .method(Method::POST)
-            .uri(&addr)
-            .header("content-type", "application/octet-stream")
-            .body(Body::from(bytes))?;
-        req.headers_mut()
-            .insert(AUTHORIZATION, HeaderValue::from_str(&sig)?);
+        let req = self.sign(
+            Request::builder()
+                .method(Method::POST)
+                .uri(&addr)
+                .header("content-type", "application/octet-stream"),
+            bytes,
+        )?;
         let body = self.raw(req, limit).await?;
         let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
@@ -332,14 +345,15 @@ impl OutgoingSender {
         limit: Limit,
     ) -> Result<Resp, NodeError> {
         let bytes = serde_json::to_vec(&req)?;
-        let sig = hex::encode(bincode::serialize(&Signer::sign(&self.priv_key, &bytes))?);
-        let mut req = Request::builder()
-            .method(Method::POST)
-            .uri(&addr)
-            .header("content-type", "application/json")
-            .body(Body::from(bytes))?;
-        req.headers_mut()
-            .insert(AUTHORIZATION, HeaderValue::from_str(&sig)?);
+
+        let req = self.sign(
+            Request::builder()
+                .method(Method::POST)
+                .uri(&addr)
+                .header("content-type", "application/json"),
+            bytes,
+        )?;
+
         let body = self.raw(req, limit).await?;
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
@@ -352,10 +366,14 @@ impl OutgoingSender {
         req: Req,
         limit: Limit,
     ) -> Result<Resp, NodeError> {
-        let req = Request::builder()
-            .method(Method::GET)
-            .uri(format!("{}?{}", addr, serde_qs::to_string(&req)?))
-            .body(Body::empty())?;
+        let req = self.sign(
+            Request::builder().method(Method::GET).uri(format!(
+                "{}?{}",
+                addr,
+                serde_qs::to_string(&req)?
+            )),
+            vec![],
+        )?;
         let body = self.raw(req, limit).await?;
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)

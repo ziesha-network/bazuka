@@ -37,4 +37,8 @@ pub enum NodeError {
     SizeLimitError,
     #[error("bad input")]
     InputError,
+    #[error("signature (authorization) header is invalid")]
+    InvalidSignatureHeader,
+    #[error("signature required on this message")]
+    SignatureRequired,
 }

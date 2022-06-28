@@ -21,6 +21,12 @@ impl Clone for PrivateKey {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PublicKey(pub ed25519_dalek::PublicKey);
 
+impl From<PrivateKey> for PublicKey {
+    fn from(priv_key: PrivateKey) -> Self {
+        Self(priv_key.0.public)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Signature(pub ed25519_dalek::Signature);
 
