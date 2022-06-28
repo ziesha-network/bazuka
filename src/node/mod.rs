@@ -394,6 +394,7 @@ pub async fn node_create<B: Blockchain>(
     let context = Arc::new(RwLock::new(NodeContext {
         opts,
         address,
+        pub_key: ed25519::PublicKey::from(priv_key.clone()),
         shutdown: false,
         outgoing: Arc::new(OutgoingSender {
             chan: outgoing,

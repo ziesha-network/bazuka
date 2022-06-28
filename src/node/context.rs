@@ -1,6 +1,7 @@
 use super::{NodeOptions, OutgoingSender, Peer, PeerAddress, PeerInfo, Timestamp};
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, TransactionStats};
-use crate::core::{Header, TransactionAndDelta};
+use crate::core::{Header, Signer, TransactionAndDelta};
+use crate::crypto::SignatureScheme;
 use crate::utils;
 use crate::wallet::Wallet;
 use crate::zk;
@@ -15,6 +16,7 @@ pub type BlockPuzzle = (BlockAndPatch, Puzzle);
 
 pub struct NodeContext<B: Blockchain> {
     pub opts: NodeOptions,
+    pub pub_key: <Signer as SignatureScheme>::Pub,
     pub address: PeerAddress,
     pub shutdown: bool,
     pub outgoing: Arc<OutgoingSender>,
