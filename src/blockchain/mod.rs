@@ -386,7 +386,24 @@ impl<K: KvStore> KvStoreChain<K> {
                                 proof,
                             } => {
                                 let circuit = &contract.deposit_withdraw_function;
-                                for dw in deposit_withdraws.iter() {
+                                let state_model = zk::ZkStateModel::List {
+                                    item_type: Box::new(zk::ZkStateModel::Struct {
+                                        field_types: vec![
+                                            zk::ZkStateModel::Scalar, // Pub-key
+                                            zk::ZkStateModel::Scalar, // Amount
+                                        ],
+                                    }),
+                                    log4_size: contract.log4_deposit_withdraw_capacity,
+                                };
+                                let mut state_builder =
+                                    zk::ZkStateBuilder::<ZkHasher>::new(state_model);
+                                for (i, dw) in deposit_withdraws.iter().enumerate() {
+                                    // Set amount
+                                    state_builder.set(
+                                        zk::ZkDataLocator(vec![i as u32, 1]),
+                                        zk::ZkScalar::from(dw.amount),
+                                    )?;
+
                                     let mut addr_account = chain
                                         .get_account(Address::PublicKey(dw.address.clone()))?;
                                     match &dw.direction {
@@ -437,7 +454,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                         );
                                     }
                                 }
-                                let aux_data = zk::ZkCompressedState::default();
+                                let aux_data = state_builder.compress()?;
                                 (circuit, aux_data, next_state, proof)
                             }
                             ContractUpdate::FunctionCall {

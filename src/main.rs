@@ -28,7 +28,6 @@ use {
     bazuka::core::Address,
     bazuka::db::RamKvStore,
     bazuka::wallet::Wallet,
-    bazuka::zk,
     std::collections::HashMap,
 };
 
