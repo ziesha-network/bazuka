@@ -30,7 +30,7 @@ fn empty_contract<H: ZkHasher>(state_model: ZkStateModel) -> ZkContract {
 fn test_state_manager_scalar() -> Result<(), StateManagerError> {
     let mut db = RamKvStore::new();
 
-    let mut sm = KvStoreStateManager::<SumHasher>::new(StateManagerConfig {})?;
+    let sm = KvStoreStateManager::<SumHasher>::new(StateManagerConfig {});
 
     let c0 =
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
@@ -62,7 +62,7 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
 fn test_state_manager_struct() -> Result<(), StateManagerError> {
     let mut db = RamKvStore::new();
 
-    let mut sm = KvStoreStateManager::<SumHasher>::new(StateManagerConfig {})?;
+    let sm = KvStoreStateManager::<SumHasher>::new(StateManagerConfig {});
 
     let c0 =
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
@@ -143,7 +143,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
 fn test_state_manager_list() -> Result<(), StateManagerError> {
     let mut db = RamKvStore::new();
 
-    let mut sm = KvStoreStateManager::<MimcHasher>::new(StateManagerConfig {})?;
+    let sm = KvStoreStateManager::<MimcHasher>::new(StateManagerConfig {});
 
     let c0 =
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")

@@ -29,41 +29,72 @@ pub struct KvStoreStateManager<H: ZkHasher> {
     _hasher: std::marker::PhantomData<H>,
 }
 
+pub struct ZkStateBuilder<H: ZkHasher> {
+    contract_id: ContractId,
+    _hasher: std::marker::PhantomData<H>,
+    db: RamKvStore,
+}
+
+impl<H: ZkHasher> ZkStateBuilder<H> {
+    pub fn new(state_model: ZkStateModel) -> Self {
+        let contract_id = ContractId::from_str(
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+        let mut db = RamKvStore::new();
+        db.update(&[WriteOp::Put(
+            format!("contract_{}", contract_id).into(),
+            ZkContract {
+                initial_state: ZkCompressedState::empty::<H>(state_model.clone()).into(),
+                state_model,
+                log4_deposit_withdraw_capacity: 0,
+                deposit_withdraw_function: ZkVerifierKey::Dummy,
+                functions: vec![],
+            }
+            .into(),
+        )])
+        .unwrap();
+        Self {
+            contract_id,
+            db,
+            _hasher: std::marker::PhantomData,
+        }
+    }
+    pub fn batch_set(&mut self, delta: &ZkDeltaPairs) -> Result<(), StateManagerError> {
+        let man = KvStoreStateManager::<H>::new(StateManagerConfig {});
+        man.update_contract(&mut self.db, self.contract_id, delta)?;
+        Ok(())
+    }
+    pub fn set(&mut self, loc: ZkDataLocator, value: ZkScalar) -> Result<(), StateManagerError> {
+        let man = KvStoreStateManager::<H>::new(StateManagerConfig {});
+        man.set_data(&mut self.db, self.contract_id, loc, value)?;
+        Ok(())
+    }
+    pub fn compress(self) -> Result<ZkCompressedState, StateManagerError> {
+        let man = KvStoreStateManager::<H>::new(StateManagerConfig {});
+        man.root(&self.db, self.contract_id)
+    }
+}
+
 pub fn compress_state<H: ZkHasher>(
-    data_type: ZkStateModel,
+    state_model: ZkStateModel,
     data: ZkDataPairs,
 ) -> Result<ZkCompressedState, StateManagerError> {
-    let id =
-        ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
-            .unwrap();
-    let mut db = KvStoreStateManager::<H>::new(StateManagerConfig {})?;
-    let mut ram = RamKvStore::new();
-    ram.update(&[WriteOp::Put(
-        format!("contract_{}", id).into(),
-        ZkContract {
-            initial_state: ZkCompressedState::empty::<H>(data_type.clone()).into(),
-            state_model: data_type.clone(),
-            log4_deposit_withdraw_capacity: 0,
-            deposit_withdraw_function: ZkVerifierKey::Dummy,
-            functions: vec![],
-        }
-        .into(),
-    )])?;
-    db.update_contract(&mut ram, id, &data.as_delta())?;
-    Ok(db.root(&ram, id)?)
+    let mut builder = ZkStateBuilder::<H>::new(state_model);
+    builder.batch_set(&data.as_delta())?;
+    builder.compress()
 }
 
 impl<H: ZkHasher> KvStoreStateManager<H> {
-    pub fn new(config: StateManagerConfig) -> Result<KvStoreStateManager<H>, StateManagerError> {
-        let chain = KvStoreStateManager::<H> {
+    pub fn new(config: StateManagerConfig) -> KvStoreStateManager<H> {
+        KvStoreStateManager::<H> {
             config,
             _hasher: std::marker::PhantomData,
-        };
-        Ok(chain)
+        }
     }
 
     pub fn delete_contract<K: KvStore>(
-        &mut self,
+        &self,
         db: &mut K,
         id: ContractId,
     ) -> Result<(), StateManagerError> {
@@ -100,7 +131,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     }
 
     pub fn rollback_contract<K: KvStore>(
-        &mut self,
+        &self,
         db: &mut K,
         id: ContractId,
     ) -> Result<Option<ZkCompressedState>, StateManagerError> {
@@ -188,7 +219,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     }
 
     pub fn reset_contract<K: KvStore>(
-        &mut self,
+        &self,
         db: &mut K,
         id: ContractId,
         height: u64,
@@ -239,7 +270,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     }
 
     pub fn update_contract<K: KvStore>(
-        &mut self,
+        &self,
         db: &mut K,
         id: ContractId,
         patch: &ZkDeltaPairs,
@@ -272,7 +303,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     }
 
     fn set_data<K: KvStore>(
-        &mut self,
+        &self,
         db: &mut K,
         id: ContractId,
         mut locator: ZkDataLocator,

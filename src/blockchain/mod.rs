@@ -187,7 +187,7 @@ impl<K: KvStore> KvStoreChain<K> {
     pub fn new(database: K, config: BlockchainConfig) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> {
             database,
-            state_manager: zk::KvStoreStateManager::new(config.state_manager_config.clone())?,
+            state_manager: zk::KvStoreStateManager::new(config.state_manager_config.clone()),
             config: config.clone(),
         };
         if chain.get_height()? == 0 {
