@@ -15,6 +15,6 @@ pub async fn get_states<B: Blockchain>(
             .map_err(|_| NodeError::InputError)?;
     let patch = context
         .blockchain
-        .generate_state_patch(req.outdated_states, to)?;
+        .generate_state_patch(req.outdated_heights, to)?;
     Ok(GetStatesResponse { patch })
 }

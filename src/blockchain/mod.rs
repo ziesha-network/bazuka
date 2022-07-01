@@ -165,10 +165,10 @@ pub trait Blockchain {
 
     fn get_outdated_contracts(&self) -> Result<Vec<ContractId>, BlockchainError>;
 
-    fn get_outdated_states(&self) -> Result<HashMap<ContractId, u64>, BlockchainError>;
+    fn get_outdated_heights(&self) -> Result<HashMap<ContractId, u64>, BlockchainError>;
     fn generate_state_patch(
         &self,
-        aways: HashMap<ContractId, u64>,
+        heights: HashMap<ContractId, u64>,
         to: <Hasher as Hash>::Output,
     ) -> Result<ZkBlockchainPatch, BlockchainError>;
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError>;
@@ -599,7 +599,7 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut body_size = 0usize;
             let mut state_size_delta = 0isize;
             let mut state_updates: HashMap<ContractId, ZkCompressedStateChange> = HashMap::new();
-            let mut outdated_states = self.get_outdated_contracts()?;
+            let mut outdated_contracts = self.get_outdated_contracts()?;
 
             if !txs.par_iter().all(|tx| tx.verify_signature()) {
                 return Err(BlockchainError::SignatureError);
@@ -616,7 +616,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     state_size_delta += state_change.state.size() as isize
                         - state_change.prev_state.size() as isize;
                     state_updates.insert(contract_id, state_change.clone());
-                    outdated_states.push(contract_id);
+                    outdated_contracts.push(contract_id);
                 }
             }
 
@@ -655,10 +655,10 @@ impl<K: KvStore> KvStoreChain<K> {
                     format!("contract_updates_{:010}", block.header.number).into(),
                     state_updates.into(),
                 ),
-                if outdated_states.is_empty() {
+                if outdated_contracts.is_empty() {
                     WriteOp::Remove("outdated".into())
                 } else {
-                    WriteOp::Put("outdated".into(), outdated_states.clone().into())
+                    WriteOp::Put("outdated".into(), outdated_contracts.clone().into())
                 },
             ])?;
 
@@ -739,7 +739,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn get_outdated_states(&self) -> Result<HashMap<ContractId, u64>, BlockchainError> {
+    fn get_outdated_heights(&self) -> Result<HashMap<ContractId, u64>, BlockchainError> {
         let outdated = self.get_outdated_contracts()?;
         let mut ret = HashMap::new();
         for cid in outdated {
@@ -932,9 +932,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         check: bool,
     ) -> Result<BlockAndPatch, BlockchainError> {
         let height = self.get_height()?;
-        let outdated_states = self.get_outdated_contracts()?;
+        let outdated_contracts = self.get_outdated_contracts()?;
 
-        if !outdated_states.is_empty() {
+        if !outdated_contracts.is_empty() {
             return Err(BlockchainError::StatesOutdated);
         }
 
@@ -1031,9 +1031,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
-            let mut outdated_states = chain.get_outdated_contracts()?;
+            let mut outdated_contracts = chain.get_outdated_contracts()?;
 
-            for cid in outdated_states.clone() {
+            for cid in outdated_contracts.clone() {
                 let contract_account = chain.get_contract_account(cid)?;
                 let patch = patch
                     .patches
@@ -1070,13 +1070,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 {
                     return Err(BlockchainError::FullStateNotValid);
                 }
-                outdated_states.retain(|&x| x != cid);
+                outdated_contracts.retain(|&x| x != cid);
             }
 
-            chain.database.update(&[if outdated_states.is_empty() {
+            chain.database.update(&[if outdated_contracts.is_empty() {
                 WriteOp::Remove("outdated".into())
             } else {
-                WriteOp::Put("outdated".into(), outdated_states.clone().into())
+                WriteOp::Put("outdated".into(), outdated_contracts.clone().into())
             }])?;
 
             Ok(())
@@ -1103,7 +1103,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
     fn generate_state_patch(
         &self,
-        aways: HashMap<ContractId, u64>,
+        heights: HashMap<ContractId, u64>,
         to: <Hasher as Hash>::Output,
     ) -> Result<ZkBlockchainPatch, BlockchainError> {
         let height = self.get_height()?;
@@ -1113,14 +1113,14 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             return Err(BlockchainError::StatesUnavailable);
         }
 
-        let outdated_states = self.get_outdated_contracts()?;
+        let outdated_contracts = self.get_outdated_contracts()?;
 
         let mut blockchain_patch = ZkBlockchainPatch {
             patches: HashMap::new(),
         };
-        for (cid, away_height) in aways {
-            if !outdated_states.contains(&cid) {
-                let away = self.state_manager.height_of(&self.database, cid)? - away_height;
+        for (cid, height) in heights {
+            if !outdated_contracts.contains(&cid) {
+                let away = self.state_manager.height_of(&self.database, cid)? - height;
                 blockchain_patch.patches.insert(
                     cid,
                     if let Some(delta) = self.state_manager.delta_of(&self.database, cid, away)? {

@@ -10,10 +10,10 @@ pub async fn sync_state<B: Blockchain>(
     let ts = ctx.network_timestamp();
     let height = ctx.blockchain.get_height()?;
     let last_header = ctx.blockchain.get_tip()?;
-    let outdated_states = ctx.blockchain.get_outdated_states()?;
-    if !outdated_states.is_empty() && ctx.outdated_since.is_none() {
+    let outdated_heights = ctx.blockchain.get_outdated_heights()?;
+    if !outdated_heights.is_empty() && ctx.outdated_since.is_none() {
         ctx.outdated_since = Some(ts);
-    } else if outdated_states.is_empty() && ctx.outdated_since.is_some() {
+    } else if outdated_heights.is_empty() && ctx.outdated_since.is_some() {
         ctx.outdated_since = None;
     }
     // Find clients which their height is equal with our height
@@ -22,9 +22,9 @@ pub async fn sync_state<B: Blockchain>(
         .into_iter()
         .filter(|p| p.info.as_ref().map(|i| i.height == height).unwrap_or(false));
 
-    if !outdated_states.is_empty() {
+    if !outdated_heights.is_empty() {
         if let Some(outdated_since) = ctx.outdated_since {
-            if (ts as i64 - outdated_since as i64) > ctx.opts.outdated_states_threshold as i64 {
+            if (ts as i64 - outdated_since as i64) > ctx.opts.outdated_heights_threshold as i64 {
                 ctx.banned_headers.insert(last_header, ts);
                 ctx.blockchain.rollback()?;
                 ctx.outdated_since = None;
@@ -38,7 +38,7 @@ pub async fn sync_state<B: Blockchain>(
                 .bincode_get::<GetStatesRequest, GetStatesResponse>(
                     format!("{}/bincode/states", peer.address),
                     GetStatesRequest {
-                        outdated_states: outdated_states.clone(),
+                        outdated_heights: outdated_heights.clone(),
                         to: hex::encode(last_header.hash()),
                     },
                     Limit::default().size(1024 * 1024).time(1000),

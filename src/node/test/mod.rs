@@ -296,7 +296,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         chans[0].mine().await?;
         assert_eq!(chans[0].stats().await?.height, 2);
 
-        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
+        assert_eq!(chans[0].outdated_heights().await?.outdated_heights.len(), 0);
 
         // Still not synced...
         sleep(Duration::from_millis(1000)).await;
@@ -311,15 +311,17 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
             2
         );
 
-        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
-        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 1);
+        assert_eq!(chans[0].outdated_heights().await?.outdated_heights.len(), 0);
+        assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 1);
 
         // Now we open transmission of everything
         rules.write().await.clear();
-        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
+        assert_eq!(chans[0].outdated_heights().await?.outdated_heights.len(), 0);
         assert_eq!(
-            catch_change(|| async { Ok(chans[1].outdated_states().await?.outdated_states.len()) })
-                .await?,
+            catch_change(|| async {
+                Ok(chans[1].outdated_heights().await?.outdated_heights.len())
+            })
+            .await?,
             0
         );
 
@@ -374,8 +376,8 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
             catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
             2
         );
-        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
-        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 1);
+        assert_eq!(chans[0].outdated_heights().await?.outdated_heights.len(), 0);
+        assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 1);
 
         assert!(matches!(
             chans[1].mine().await,
@@ -386,33 +388,33 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
             catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
             1
         );
-        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
+        assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 0);
 
         // Header will be banned for some time and gets unbanned again:
         assert_eq!(
             catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
             2
         );
-        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 1);
+        assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 1);
 
         // Banned again...
         assert_eq!(
             catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
             1
         );
-        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
+        assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 0);
 
         chans[1].mine().await?;
         chans[1].mine().await?;
         assert_eq!(chans[1].stats().await?.height, 3);
-        assert_eq!(chans[1].outdated_states().await?.outdated_states.len(), 0);
+        assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 0);
 
         assert_eq!(
             catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
             3
         );
         assert_eq!(chans[0].stats().await?.height, 3);
-        assert_eq!(chans[0].outdated_states().await?.outdated_states.len(), 0);
+        assert_eq!(chans[0].outdated_heights().await?.outdated_heights.len(), 0);
 
         for chan in chans.iter() {
             chan.shutdown().await?;

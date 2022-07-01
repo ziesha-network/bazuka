@@ -46,7 +46,7 @@ impl std::fmt::Display for PeerAddress {
 pub struct NodeOptions {
     pub heartbeat_interval: Duration,
     pub num_peers: usize,
-    pub outdated_states_threshold: u32,
+    pub outdated_heights_threshold: u32,
     pub no_response_punish: u32,
     pub invalid_data_punish: u32,
     pub incorrect_power_punish: u32,
@@ -212,8 +212,11 @@ async fn node_service<B: Blockchain>(
         }
         (Method::GET, "/bincode/states/outdated") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_outdated_states(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
-                    .await?,
+                &api::get_outdated_heights(
+                    Arc::clone(&context),
+                    bincode::deserialize(&body_bytes)?,
+                )
+                .await?,
             )?);
         }
         _ => {

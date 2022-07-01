@@ -203,11 +203,11 @@ impl SenderWrapper {
             .await
     }
 
-    pub async fn outdated_states(&self) -> Result<GetOutdatedStatesResponse, NodeError> {
+    pub async fn outdated_heights(&self) -> Result<GetOutdatedHeightsResponse, NodeError> {
         self.sender
-            .bincode_get::<GetOutdatedStatesRequest, GetOutdatedStatesResponse>(
+            .bincode_get::<GetOutdatedHeightsRequest, GetOutdatedHeightsResponse>(
                 format!("{}/bincode/states/outdated", self.peer),
-                GetOutdatedStatesRequest {},
+                GetOutdatedHeightsRequest {},
                 Limit::default(),
             )
             .await

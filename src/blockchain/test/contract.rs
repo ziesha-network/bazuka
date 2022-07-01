@@ -198,10 +198,10 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     assert_eq!(updated_fork.get_outdated_contracts()?.len(), 0);
     let updated_tip_hash = updated_fork.get_tip()?.hash();
 
-    let outdated_states = unupdated_fork.get_outdated_states()?;
-    assert_eq!(outdated_states.len(), 1);
+    let outdated_heights = unupdated_fork.get_outdated_heights()?;
+    assert_eq!(outdated_heights.len(), 1);
 
-    let gen_state_patch = updated_fork.generate_state_patch(outdated_states, updated_tip_hash)?;
+    let gen_state_patch = updated_fork.generate_state_patch(outdated_heights, updated_tip_hash)?;
     unupdated_fork.update_states(&gen_state_patch)?;
     assert_eq!(unupdated_fork.get_outdated_contracts()?.len(), 0);
     chain.update_states(&draft.patch)?;
