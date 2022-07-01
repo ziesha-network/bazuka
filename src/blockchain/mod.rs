@@ -27,7 +27,6 @@ pub struct BlockchainConfig {
     pub pow_key_change_delay: u64,
     pub pow_key_change_interval: u64,
     pub median_timestamp_count: u64,
-    pub state_manager_config: zk::StateManagerConfig,
 }
 
 #[derive(Debug, Clone)]
@@ -177,14 +176,12 @@ pub trait Blockchain {
 pub struct KvStoreChain<K: KvStore> {
     config: BlockchainConfig,
     database: K,
-    state_manager: zk::KvStoreStateManager<ZkHasher>,
 }
 
 impl<K: KvStore> KvStoreChain<K> {
     pub fn new(database: K, config: BlockchainConfig) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> {
             database,
-            state_manager: zk::KvStoreStateManager::new(config.state_manager_config.clone()),
             config: config.clone(),
         };
         if chain.get_height()? == 0 {
@@ -197,7 +194,6 @@ impl<K: KvStore> KvStoreChain<K> {
     fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
         KvStoreChain {
             database: self.database.mirror(),
-            state_manager: self.state_manager.clone(),
             config: self.config.clone(),
         }
     }
@@ -692,18 +688,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
             for (cid, comp) in changed_states {
                 if comp.prev_height == 0 {
-                    chain
-                        .state_manager
-                        .delete_contract(&mut chain.database, cid)?;
+                    zk::KvStoreStateManager::<ZkHasher>::delete_contract(&mut chain.database, cid)?;
                     outdated.retain(|&x| x != cid);
                     continue;
                 }
 
                 if !outdated.contains(&cid) {
                     let (ops, result) = chain.isolated(|fork| {
-                        Ok(fork
-                            .state_manager
-                            .rollback_contract(&mut fork.database, cid)?)
+                        Ok(zk::KvStoreStateManager::<ZkHasher>::rollback_contract(
+                            &mut fork.database,
+                            cid,
+                        )?)
                     })?;
 
                     if result != Some(comp.prev_state) && comp.prev_height > 0 {
@@ -712,7 +707,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         chain.database.update(&ops)?;
                     }
                 } else {
-                    let local_compressed_state = chain.state_manager.root(&chain.database, cid)?;
+                    let local_compressed_state =
+                        zk::KvStoreStateManager::<ZkHasher>::root(&chain.database, cid)?;
                     if local_compressed_state == comp.prev_state {
                         outdated.retain(|&x| x != cid);
                     }
@@ -743,7 +739,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let outdated = self.get_outdated_contracts()?;
         let mut ret = HashMap::new();
         for cid in outdated {
-            let state_height = self.state_manager.height_of(&self.database, cid)?;
+            let state_height = zk::KvStoreStateManager::<ZkHasher>::height_of(&self.database, cid)?;
             ret.insert(cid, state_height);
         }
         Ok(ret)
@@ -1041,12 +1037,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     .ok_or(BlockchainError::FullStateNotFound)?;
                 match &patch {
                     zk::ZkStatePatch::Full(full) => {
-                        let (_, rollback_results) = chain.state_manager.reset_contract(
-                            &mut chain.database,
-                            cid,
-                            contract_account.height,
-                            full,
-                        )?;
+                        let (_, rollback_results) =
+                            zk::KvStoreStateManager::<ZkHasher>::reset_contract(
+                                &mut chain.database,
+                                cid,
+                                contract_account.height,
+                                full,
+                            )?;
                         for (i, rollback_result) in rollback_results.into_iter().enumerate() {
                             if rollback_result
                                 != self.get_compressed_state_at(
@@ -1059,13 +1056,15 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         }
                     }
                     zk::ZkStatePatch::Delta(delta) => {
-                        chain
-                            .state_manager
-                            .update_contract(&mut chain.database, cid, delta)?;
+                        zk::KvStoreStateManager::<ZkHasher>::update_contract(
+                            &mut chain.database,
+                            cid,
+                            delta,
+                        )?;
                     }
                 };
 
-                if chain.state_manager.root(&chain.database, cid)?
+                if zk::KvStoreStateManager::<ZkHasher>::root(&chain.database, cid)?
                     != contract_account.compressed_state
                 {
                     return Err(BlockchainError::FullStateNotValid);
@@ -1120,15 +1119,19 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         };
         for (cid, height) in heights {
             if !outdated_contracts.contains(&cid) {
-                let away = self.state_manager.height_of(&self.database, cid)? - height;
+                let away =
+                    zk::KvStoreStateManager::<ZkHasher>::height_of(&self.database, cid)? - height;
                 blockchain_patch.patches.insert(
                     cid,
-                    if let Some(delta) = self.state_manager.delta_of(&self.database, cid, away)? {
+                    if let Some(delta) =
+                        zk::KvStoreStateManager::<ZkHasher>::delta_of(&self.database, cid, away)?
+                    {
                         zk::ZkStatePatch::Delta(delta)
                     } else {
-                        zk::ZkStatePatch::Full(
-                            self.state_manager.get_full_state(&self.database, cid)?,
-                        )
+                        zk::ZkStatePatch::Full(zk::KvStoreStateManager::<ZkHasher>::get_full_state(
+                            &self.database,
+                            cid,
+                        )?)
                     },
                 );
             }

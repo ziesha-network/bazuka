@@ -30,8 +30,6 @@ fn empty_contract<H: ZkHasher>(state_model: ZkStateModel) -> ZkContract {
 fn test_state_manager_scalar() -> Result<(), StateManagerError> {
     let mut db = RamKvStore::new();
 
-    let sm = KvStoreStateManager::<SumHasher>::new(StateManagerConfig {});
-
     let c0 =
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
             .unwrap();
@@ -41,9 +39,9 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
         empty_contract::<SumHasher>(ZkStateModel::Scalar).into(),
     )])?;
 
-    println!("{:?}", sm.root(&db, c0));
+    println!("{:?}", KvStoreStateManager::<SumHasher>::root(&db, c0));
 
-    sm.update_contract(
+    KvStoreStateManager::<SumHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -53,7 +51,7 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
         ),
     )?;
 
-    println!("{:?}", sm.root(&db, c0));
+    println!("{:?}", KvStoreStateManager::<SumHasher>::root(&db, c0));
 
     Ok(())
 }
@@ -61,8 +59,6 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
 #[test]
 fn test_state_manager_struct() -> Result<(), StateManagerError> {
     let mut db = RamKvStore::new();
-
-    let sm = KvStoreStateManager::<SumHasher>::new(StateManagerConfig {});
 
     let c0 =
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
@@ -76,9 +72,9 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
         .into(),
     )])?;
 
-    println!("{:?}", sm.root(&db, c0));
+    println!("{:?}", KvStoreStateManager::<SumHasher>::root(&db, c0));
 
-    sm.update_contract(
+    KvStoreStateManager::<SumHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -87,9 +83,9 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
                 .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
+    println!("{:?}", KvStoreStateManager::<SumHasher>::root(&db, c0));
 
-    sm.update_contract(
+    KvStoreStateManager::<SumHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -98,9 +94,9 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
                 .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
+    println!("{:?}", KvStoreStateManager::<SumHasher>::root(&db, c0));
 
-    sm.update_contract(
+    KvStoreStateManager::<SumHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -109,9 +105,9 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
                 .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
+    println!("{:?}", KvStoreStateManager::<SumHasher>::root(&db, c0));
 
-    sm.update_contract(
+    KvStoreStateManager::<SumHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -120,9 +116,9 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
                 .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
+    println!("{:?}", KvStoreStateManager::<SumHasher>::root(&db, c0));
 
-    sm.update_contract(
+    KvStoreStateManager::<SumHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -134,7 +130,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
             .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
+    println!("{:?}", KvStoreStateManager::<SumHasher>::root(&db, c0));
 
     Ok(())
 }
@@ -142,8 +138,6 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
 #[test]
 fn test_state_manager_list() -> Result<(), StateManagerError> {
     let mut db = RamKvStore::new();
-
-    let sm = KvStoreStateManager::<MimcHasher>::new(StateManagerConfig {});
 
     let c0 =
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
@@ -162,10 +156,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
         .into(),
     )])?;
 
-    println!("{:?}", sm.root(&db, c0));
-    roots.push(sm.root(&db, c0)?);
+    println!("{:?}", KvStoreStateManager::<MimcHasher>::root(&db, c0));
+    roots.push(KvStoreStateManager::<MimcHasher>::root(&db, c0)?);
 
-    sm.update_contract(
+    KvStoreStateManager::<MimcHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -174,10 +168,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
-    roots.push(sm.root(&db, c0)?);
+    println!("{:?}", KvStoreStateManager::<MimcHasher>::root(&db, c0));
+    roots.push(KvStoreStateManager::<MimcHasher>::root(&db, c0)?);
 
-    sm.update_contract(
+    KvStoreStateManager::<MimcHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -186,10 +180,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
-    roots.push(sm.root(&db, c0)?);
+    println!("{:?}", KvStoreStateManager::<MimcHasher>::root(&db, c0));
+    roots.push(KvStoreStateManager::<MimcHasher>::root(&db, c0)?);
 
-    sm.update_contract(
+    KvStoreStateManager::<MimcHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -198,10 +192,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
-    roots.push(sm.root(&db, c0)?);
+    println!("{:?}", KvStoreStateManager::<MimcHasher>::root(&db, c0));
+    roots.push(KvStoreStateManager::<MimcHasher>::root(&db, c0)?);
 
-    sm.update_contract(
+    KvStoreStateManager::<MimcHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -210,10 +204,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
-    roots.push(sm.root(&db, c0)?);
+    println!("{:?}", KvStoreStateManager::<MimcHasher>::root(&db, c0));
+    roots.push(KvStoreStateManager::<MimcHasher>::root(&db, c0)?);
 
-    sm.update_contract(
+    KvStoreStateManager::<MimcHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -222,12 +216,15 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
-    roots.push(sm.root(&db, c0)?);
+    println!("{:?}", KvStoreStateManager::<MimcHasher>::root(&db, c0));
+    roots.push(KvStoreStateManager::<MimcHasher>::root(&db, c0)?);
 
-    println!("Full: {:?}", sm.get_full_state(&db, c0)?.data);
+    println!(
+        "Full: {:?}",
+        KvStoreStateManager::<MimcHasher>::get_full_state(&db, c0)?.data
+    );
 
-    sm.update_contract(
+    KvStoreStateManager::<MimcHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -239,10 +236,10 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
             .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
-    roots.push(sm.root(&db, c0)?);
+    println!("{:?}", KvStoreStateManager::<MimcHasher>::root(&db, c0));
+    roots.push(KvStoreStateManager::<MimcHasher>::root(&db, c0)?);
 
-    sm.update_contract(
+    KvStoreStateManager::<MimcHasher>::update_contract(
         &mut db,
         c0,
         &ZkDeltaPairs(
@@ -251,14 +248,21 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .collect(),
         ),
     )?;
-    println!("{:?}", sm.root(&db, c0));
+    println!("{:?}", KvStoreStateManager::<MimcHasher>::root(&db, c0));
 
-    //sm.reset_contract(c0, ZkDeltaPairs(Default::default()), Default::default())?;
+    // KvStoreStateManager::<MimcHasher>::reset_contract(c0, ZkDeltaPairs(Default::default()), Default::default())?;
 
-    while sm.height_of(&db, c0)? > 2 {
+    while KvStoreStateManager::<MimcHasher>::height_of(&db, c0)? > 2 {
         if let Some(expected_root) = roots.pop() {
-            assert_eq!(Some(expected_root), sm.rollback_contract(&mut db, c0)?);
-            println!("{:?} == {:?}", sm.root(&db, c0), expected_root);
+            assert_eq!(
+                Some(expected_root),
+                KvStoreStateManager::<MimcHasher>::rollback_contract(&mut db, c0)?
+            );
+            println!(
+                "{:?} == {:?}",
+                KvStoreStateManager::<MimcHasher>::root(&db, c0),
+                expected_root
+            );
         }
     }
 

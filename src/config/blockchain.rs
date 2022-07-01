@@ -119,8 +119,6 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         // New block's timestamp should be higher than median
         // timestamp of 10 previous blocks
         median_timestamp_count: 10,
-
-        state_manager_config: zk::StateManagerConfig {},
     }
 }
 
