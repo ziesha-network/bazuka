@@ -19,7 +19,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
     let tx = alice.create_contract(
         zk::ZkContract {
             state_model: state_model.clone(),
-            initial_state: full_state.compress::<ZkHasher>(1, state_model.clone()),
+            initial_state: full_state.compress::<ZkHasher>(state_model.clone()),
             log4_deposit_withdraw_capacity: 1,
             deposit_withdraw_function: zk::ZkVerifierKey::Dummy,
             functions: Vec::new(),
@@ -50,7 +50,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let miner = Wallet::new(Vec::from("MINER"));
     let alice = Wallet::new(Vec::from("ABC"));
     let cid =
-        ContractId::from_str("6988872c866dd9ba8fbd6cb3498e68ed4181c14905ae6f4084342144c576d943")
+        ContractId::from_str("1977b6b0cca798ac53d6b1f27012cfef1dbf3d71670e64feb521d6a3799a93f3")
             .unwrap();
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
@@ -80,13 +80,13 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         cid,
         0,
         state_delta.clone(),
-        full_state.compress::<ZkHasher>(2, state_model.clone()),
+        full_state.compress::<ZkHasher>(state_model.clone()),
         zk::ZkProof::Dummy(true),
         0,
         1,
     );
 
-    let draft = chain.draft_block(1, &mut with_dummy_stats(&[tx.clone()]), &miner, true)?;
+    let draft = chain.draft_block(1, &mut with_dummy_stats(&[tx.clone()]), &miner, false)?;
 
     chain.apply_block(&draft.block, true)?;
 
@@ -216,7 +216,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     cid,
                     0,
                     state_delta.clone(),
-                    full_state.compress::<ZkHasher>(2, state_model.clone()),
+                    full_state.compress::<ZkHasher>(state_model.clone()),
                     zk::ZkProof::Dummy(true),
                     0,
                     1,
@@ -237,7 +237,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     .unwrap(),
                     0,
                     state_delta.clone(),
-                    full_state.compress::<ZkHasher>(2, state_model.clone()),
+                    full_state.compress::<ZkHasher>(state_model.clone()),
                     zk::ZkProof::Dummy(true),
                     0,
                     2,
@@ -255,7 +255,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     cid,
                     1,
                     state_delta.clone(),
-                    full_state.compress::<ZkHasher>(2, state_model.clone()),
+                    full_state.compress::<ZkHasher>(state_model.clone()),
                     zk::ZkProof::Dummy(true),
                     0,
                     2,
@@ -273,7 +273,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     cid,
                     0,
                     state_delta,
-                    full_state.compress::<ZkHasher>(2, state_model.clone()),
+                    full_state.compress::<ZkHasher>(state_model.clone()),
                     zk::ZkProof::Dummy(false),
                     0,
                     2,

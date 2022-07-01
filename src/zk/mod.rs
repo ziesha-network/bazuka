@@ -247,10 +247,8 @@ pub struct ZkState {
 }
 
 impl ZkState {
-    pub fn compress<H: ZkHasher>(&self, height: u64, model: ZkStateModel) -> ZkCompressedState {
-        let mut state = compress_state::<H>(model, self.data.clone()).unwrap();
-        state.height = height;
-        state
+    pub fn compress<H: ZkHasher>(&self, model: ZkStateModel) -> ZkCompressedState {
+        compress_state::<H>(model, self.data.clone()).unwrap()
     }
     pub fn push_delta(&mut self, delta: &ZkDeltaPairs) {
         let mut rollback = ZkDeltaPairs::default();
@@ -275,28 +273,22 @@ impl ZkState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkCompressedState {
-    pub height: u64,
     pub state_hash: ZkScalar,
     pub state_size: u32,
 }
 
 impl ZkCompressedState {
-    pub fn new(height: u64, state_hash: ZkScalar, state_size: u32) -> Self {
+    pub fn new(state_hash: ZkScalar, state_size: u32) -> Self {
         Self {
-            height,
             state_hash,
             state_size,
         }
     }
     pub fn empty<H: ZkHasher>(data_type: ZkStateModel) -> Self {
         Self {
-            height: 0,
             state_hash: data_type.compress_default::<H>(),
             state_size: 0,
         }
-    }
-    pub fn height(&self) -> u64 {
-        self.height
     }
     pub fn size(&self) -> u32 {
         self.state_size

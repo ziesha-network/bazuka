@@ -255,7 +255,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
 
     //sm.reset_contract(c0, ZkDeltaPairs(Default::default()), Default::default())?;
 
-    while sm.root(&db, c0)?.height > 2 {
+    while sm.height_of(&db, c0)? > 2 {
         if let Some(expected_root) = roots.pop() {
             assert_eq!(Some(expected_root), sm.rollback_contract(&mut db, c0)?);
             println!("{:?} == {:?}", sm.root(&db, c0), expected_root);

@@ -229,7 +229,7 @@ fn sample_contract_call() -> TransactionAndDelta {
     let updater = Wallet::new(Vec::from("ABC"));
 
     let cid =
-        ContractId::from_str("6988872c866dd9ba8fbd6cb3498e68ed4181c14905ae6f4084342144c576d943")
+        ContractId::from_str("1977b6b0cca798ac53d6b1f27012cfef1dbf3d71670e64feb521d6a3799a93f3")
             .unwrap();
     let state_model = zk::ZkStateModel::List {
         item_type: Box::new(zk::ZkStateModel::Scalar),
@@ -253,7 +253,7 @@ fn sample_contract_call() -> TransactionAndDelta {
         cid,
         0,
         state_delta.clone(),
-        full_state.compress::<ZkHasher>(2, state_model),
+        full_state.compress::<ZkHasher>(state_model),
         zk::ZkProof::Dummy(true),
         0,
         1,

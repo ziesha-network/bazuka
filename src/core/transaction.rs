@@ -79,6 +79,7 @@ impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> ContractPayment<H, S, Z
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct ContractAccount {
+    pub height: u64,
     pub nonce: u32,
     pub balance: Money,
     pub compressed_state: ZkCompressedState,
