@@ -134,6 +134,16 @@ impl ZkStateModel {
         }
         Ok(curr)
     }
+
+    pub fn compress<H: ZkHasher>(
+        &self,
+        data: &ZkDataPairs,
+    ) -> Result<ZkCompressedState, StateManagerError> {
+        let mut builder = ZkStateBuilder::<H>::new(self.clone());
+        builder.batch_set(&data.as_delta())?;
+        builder.compress()
+    }
+
     pub fn compress_default<H: ZkHasher>(&self) -> ZkScalar {
         match self {
             ZkStateModel::Scalar => ZkScalar::default(),
@@ -247,9 +257,6 @@ pub struct ZkState {
 }
 
 impl ZkState {
-    pub fn compress<H: ZkHasher>(&self, model: ZkStateModel) -> ZkCompressedState {
-        compress_state::<H>(model, self.data.clone()).unwrap()
-    }
     pub fn push_delta(&mut self, delta: &ZkDeltaPairs) {
         let mut rollback = ZkDeltaPairs::default();
         for loc in delta.0.keys() {

@@ -253,7 +253,7 @@ fn sample_contract_call() -> TransactionAndDelta {
         cid,
         0,
         state_delta.clone(),
-        full_state.compress::<ZkHasher>(state_model),
+        state_model.compress::<ZkHasher>(&full_state.data).unwrap(),
         zk::ZkProof::Dummy(true),
         0,
         1,

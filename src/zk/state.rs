@@ -69,15 +69,6 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
     }
 }
 
-pub fn compress_state<H: ZkHasher>(
-    state_model: ZkStateModel,
-    data: ZkDataPairs,
-) -> Result<ZkCompressedState, StateManagerError> {
-    let mut builder = ZkStateBuilder::<H>::new(state_model);
-    builder.batch_set(&data.as_delta())?;
-    builder.compress()
-}
-
 impl<H: ZkHasher> KvStoreStateManager<H> {
     pub fn delete_contract<K: KvStore>(
         db: &mut K,

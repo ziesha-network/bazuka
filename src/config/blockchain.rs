@@ -20,11 +20,9 @@ fn get_mpn_contract() -> TransactionAndDelta {
     );
     let mpn_contract = zk::ZkContract {
         state_model: mpn_state_model.clone(),
-        initial_state: zk::compress_state::<ZkHasher>(
-            mpn_state_model.clone(),
-            mpn_initial_state.clone(),
-        )
-        .unwrap(),
+        initial_state: mpn_state_model
+            .compress::<ZkHasher>(&mpn_initial_state)
+            .unwrap(),
         log4_deposit_withdraw_capacity: 1,
         deposit_withdraw_function: zk::ZkVerifierKey::Plonk(0),
         functions: vec![zk::ZkVerifierKey::Plonk(0)],
