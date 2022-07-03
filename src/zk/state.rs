@@ -18,6 +18,8 @@ pub enum StateManagerError {
     NonScalarLocatorError,
     #[error("locator parse error: {0}")]
     LocatorParseError(#[from] ParseZkDataLocatorError),
+    #[error("not locating a tree")]
+    NonTreeLocatorError,
 }
 
 #[derive(Clone)]
@@ -60,12 +62,23 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
         KvStoreStateManager::<H>::update_contract(&mut self.db, self.contract_id, delta)?;
         Ok(())
     }
+    pub fn get(&mut self, loc: ZkDataLocator) -> Result<ZkScalar, StateManagerError> {
+        KvStoreStateManager::<H>::get_data(&mut self.db, self.contract_id, &loc)
+    }
     pub fn set(&mut self, loc: ZkDataLocator, value: ZkScalar) -> Result<(), StateManagerError> {
         KvStoreStateManager::<H>::set_data(&mut self.db, self.contract_id, loc, value)?;
         Ok(())
     }
     pub fn compress(self) -> Result<ZkCompressedState, StateManagerError> {
         KvStoreStateManager::<H>::root(&self.db, self.contract_id)
+    }
+
+    pub fn prove(
+        &self,
+        tree_loc: ZkDataLocator,
+        ind: u32,
+    ) -> Result<Vec<[ZkScalar; 3]>, StateManagerError> {
+        KvStoreStateManager::<H>::prove(&self.db, self.contract_id, tree_loc, ind)
     }
 }
 
@@ -87,6 +100,53 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             Ok(blob.try_into()?)
         } else {
             Ok(0)
+        }
+    }
+
+    pub fn prove<K: KvStore>(
+        db: &K,
+        id: ContractId,
+        tree_loc: ZkDataLocator,
+        mut curr_ind: u32,
+    ) -> Result<Vec<[ZkScalar; 3]>, StateManagerError> {
+        let loc_type = Self::type_of(db, id)?.locate(&tree_loc)?;
+        if let ZkStateModel::List {
+            log4_size,
+            item_type,
+        } = loc_type
+        {
+            let mut default_value = item_type.compress_default::<H>();
+            let mut proof = Vec::new();
+
+            for layer in (0..log4_size).rev() {
+                let mut proof_part = [ZkScalar::default(); 3];
+                let aux_offset = ((1 << (2 * (layer + 1))) - 1) / 3;
+                let start = curr_ind - (curr_ind % 4);
+                let mut i = 0;
+                for leaf_index in start..start + 4 {
+                    if leaf_index != curr_ind {
+                        proof_part[i] = if layer == log4_size - 1 {
+                            Self::get_data(db, id, &tree_loc.index(leaf_index as u32))?
+                        } else {
+                            match db.get(
+                                format!("{}_{}_aux_{}", id, tree_loc, aux_offset + leaf_index)
+                                    .into(),
+                            )? {
+                                Some(b) => b.try_into()?,
+                                None => default_value,
+                            }
+                        };
+                        i += 1;
+                    };
+                }
+                curr_ind = curr_ind / 4;
+                default_value = H::hash(&[default_value; 4]);
+                proof.push(proof_part);
+            }
+
+            Ok(proof)
+        } else {
+            Err(StateManagerError::NonTreeLocatorError)
         }
     }
 

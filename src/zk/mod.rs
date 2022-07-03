@@ -173,6 +173,14 @@ impl ZkStateModel {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Hash)]
 pub struct ZkDataLocator(pub Vec<u32>);
 
+impl ZkDataLocator {
+    pub fn index(&self, ind: u32) -> ZkDataLocator {
+        let mut result = self.clone();
+        result.0.push(ind);
+        result
+    }
+}
+
 impl std::fmt::Display for ZkDataLocator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(

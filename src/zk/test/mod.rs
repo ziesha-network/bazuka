@@ -27,6 +27,34 @@ fn empty_contract<H: ZkHasher>(state_model: ZkStateModel) -> ZkContract {
 }
 
 #[test]
+fn test_zk_list_membership_proof() {
+    let model = ZkStateModel::Struct {
+        field_types: vec![
+            ZkStateModel::Scalar,
+            ZkStateModel::List {
+                log4_size: 4,
+                item_type: Box::new(ZkStateModel::Scalar),
+            },
+        ],
+    };
+    let mut builder = ZkStateBuilder::<SumHasher>::new(model);
+    for i in 0..256 {
+        builder
+            .set(ZkDataLocator(vec![1, i]), ZkScalar::from(i as u64))
+            .unwrap();
+    }
+    for i in 0..256 {
+        let mut accum = ZkScalar::from(i as u64);
+        for part in builder.prove(ZkDataLocator(vec![1]), i).unwrap() {
+            for val in part.iter() {
+                accum.add_assign(val);
+            }
+        }
+        assert_eq!(accum, ZkScalar::from(32640)); // sum(0..255)
+    }
+}
+
+#[test]
 fn test_state_manager_scalar() -> Result<(), StateManagerError> {
     let mut db = RamKvStore::new();
 
