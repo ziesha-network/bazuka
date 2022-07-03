@@ -4,6 +4,7 @@ use num_integer::Integer;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
+mod poseidon4;
 
 use thiserror::Error;
 
@@ -235,17 +236,23 @@ impl ZkDataPairs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, std::hash::Hash)]
-pub struct MimcHasher;
-impl ZkHasher for MimcHasher {
+pub struct PoseidonHasher;
+impl ZkHasher for PoseidonHasher {
     fn hash(vals: &[ZkScalar]) -> ZkScalar {
-        unsafe {
-            std::mem::transmute::<zeekit::Fr, ZkScalar>(zeekit::mimc::mimc(
-                &vals
-                    .iter()
-                    .map(|v| std::mem::transmute::<ZkScalar, zeekit::Fr>(*v))
-                    .collect::<Vec<_>>(),
-            ))
+        let mut buf = [ZkScalar::default(); 4];
+        buf[0] = vals[0];
+
+        for chunk in vals[1..].chunks(3) {
+            for (i, scalar) in chunk.iter().enumerate() {
+                buf[i + 1] = *scalar;
+            }
+            buf[0] = poseidon4::poseidon4(buf[0], buf[1], buf[2], buf[3]);
+            for i in 1..4 {
+                buf[i] = ZkScalar::default();
+            }
         }
+
+        buf[0]
     }
 }
 

@@ -38,8 +38,6 @@ leveldb = { version = "0.8.6", optional = true }
 structopt = { version = "0.3", default-features = false, optional = true }
 async-trait = { version = "0.1.53", optional = true }
 
-zeekit = { version = "0.6.1", features = ["groth16"] }
-
 [dev-dependencies]
 tempdir = "0.3.7"
 

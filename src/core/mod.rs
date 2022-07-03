@@ -11,7 +11,7 @@ pub type Money = u64;
 pub type Hasher = hash::Sha3Hasher;
 pub type Signer = crypto::ed25519::Ed25519<Hasher>;
 
-pub type ZkHasher = crate::zk::MimcHasher;
+pub type ZkHasher = crate::zk::PoseidonHasher;
 pub type ZkSigner = crypto::jubjub::JubJub<ZkHasher>;
 
 pub type Address = address::Address<Signer>;
