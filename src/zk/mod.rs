@@ -4,13 +4,13 @@ use num_integer::Integer;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
-mod poseidon4;
 
 use thiserror::Error;
 
 mod state;
 pub use state::*;
 mod groth16;
+pub mod poseidon4;
 
 #[derive(Error, Debug)]
 pub enum ZkError {

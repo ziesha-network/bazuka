@@ -1,13 +1,13 @@
 mod constants;
 
 use super::{ZkScalar, ZkScalarRepr};
-use constants::*;
+pub use constants::*;
 use ff::{Field, PrimeField};
 use hex;
 use std::ops::MulAssign;
 
 lazy_static! {
-    static ref ROUND_CONSTANTS: [ZkScalar; 340] = {
+    pub static ref ROUND_CONSTANTS: [ZkScalar; 340] = {
         ROUND_CONSTANTS_HEX.map(|c| {
             let mut m = [0u8; 32];
             hex::decode_to_slice(c, &mut m).unwrap();
@@ -15,7 +15,7 @@ lazy_static! {
             ZkScalar::from_repr(ZkScalarRepr(m)).unwrap()
         })
     };
-    static ref MDS_MATRIX: [[ZkScalar; WIDTH]; WIDTH] = {
+    pub static ref MDS_MATRIX: [[ZkScalar; WIDTH]; WIDTH] = {
         MDS_MATRIX_HEX.map(|cr| {
             cr.map(|c| {
                 let mut m = [0u8; 32];
