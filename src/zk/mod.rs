@@ -83,6 +83,22 @@ impl ZkScalar {
     }
 }
 
+impl TryInto<u64> for ZkScalar {
+    type Error = &'static str;
+
+    fn try_into(self) -> Result<u64, Self::Error> {
+        if !self.to_repr().as_ref()[8..].iter().all(|d| *d == 0) {
+            Err("ZkScalar bigger than a u64!")
+        } else {
+            Ok(u64::from_le_bytes(
+                self.to_repr().as_ref()[..8]
+                    .try_into()
+                    .map_err(|_| "Infallible")?,
+            ))
+        }
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ZkStatePatch {
     Full(ZkState),

@@ -27,6 +27,18 @@ fn empty_contract<H: ZkHasher>(state_model: ZkStateModel) -> ZkContract {
 }
 
 #[test]
+fn test_u64_conversion() {
+    let zero: u64 = ZkScalar::from(0).try_into().unwrap();
+    let num123: u64 = ZkScalar::from(123).try_into().unwrap();
+    let u64max: u64 = ZkScalar::from(u64::MAX).try_into().unwrap();
+    assert_eq!(zero, 0);
+    assert_eq!(num123, 123);
+    assert_eq!(u64max, u64::MAX);
+    let u64max_plus_1: Result<u64, _> = (ZkScalar::from(u64::MAX) + ZkScalar::from(1)).try_into();
+    assert!(u64max_plus_1.is_err());
+}
+
+#[test]
 fn test_zk_list_membership_proof() {
     let model = ZkStateModel::Struct {
         field_types: vec![
