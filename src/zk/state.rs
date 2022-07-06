@@ -150,7 +150,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         }
     }
 
-    fn type_of<K: KvStore>(db: &K, id: ContractId) -> Result<ZkStateModel, StateManagerError> {
+    pub fn type_of<K: KvStore>(db: &K, id: ContractId) -> Result<ZkStateModel, StateManagerError> {
         let cont: ZkContract = db
             .get(format!("contract_{}", id).into())?
             .ok_or(StateManagerError::ContractNotFound)?
@@ -346,7 +346,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         Ok(())
     }
 
-    fn set_data<K: KvStore>(
+    pub fn set_data<K: KvStore>(
         db: &mut K,
         id: ContractId,
         mut locator: ZkDataLocator,
