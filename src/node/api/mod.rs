@@ -24,7 +24,8 @@ mod transact_zero;
 pub use transact_zero::*;
 mod shutdown;
 pub use shutdown::*;
-
+mod get_zero_transactions;
+pub use get_zero_transactions::*;
 mod get_miner_puzzle;
 pub use get_miner_puzzle::*;
 mod post_miner_solution;

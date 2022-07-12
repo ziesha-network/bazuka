@@ -343,6 +343,13 @@ pub enum ZkVerifierKey {
     Dummy,
 }
 
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct DepositWithdraw {
+    pub index: u32,
+    pub pub_key: jubjub::PublicKey,
+    pub amount: i64,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZeroTransaction {
     pub nonce: u64,

@@ -219,6 +219,15 @@ async fn node_service<B: Blockchain>(
                 .await?,
             )?);
         }
+        (Method::GET, "/bincode/zk/transactions") => {
+            *response.body_mut() = Body::from(bincode::serialize(
+                &api::get_zero_transactions(
+                    Arc::clone(&context),
+                    bincode::deserialize(&body_bytes)?,
+                )
+                .await?,
+            )?);
+        }
         _ => {
             *response.status_mut() = StatusCode::NOT_FOUND;
         }
