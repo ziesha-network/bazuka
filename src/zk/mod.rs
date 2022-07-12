@@ -343,7 +343,7 @@ pub enum ZkVerifierKey {
     Dummy,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZeroTransaction {
     pub nonce: u64,
     pub src_index: u32,
