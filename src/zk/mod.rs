@@ -1,3 +1,6 @@
+use crate::core::ZkHasher as ZkMainHasher;
+use crate::crypto::{jubjub, ZkSignatureScheme};
+
 use ff::PrimeField;
 use num_bigint::BigUint;
 use num_integer::Integer;
@@ -66,7 +69,7 @@ lazy_static! {
     .unwrap();
 }
 
-#[derive(PrimeField, Serialize, Deserialize)]
+#[derive(PrimeField, Serialize, Deserialize, Hash)]
 #[PrimeFieldModulus = "52435875175126190479447740508185965837690552500527637822603658699938581184513"]
 #[PrimeFieldGenerator = "7"]
 #[PrimeFieldReprEndianness = "little"]
@@ -340,8 +343,42 @@ pub enum ZkVerifierKey {
     Dummy,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash)]
-pub struct ZeroTransaction;
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ZeroTransaction {
+    pub nonce: u64,
+    pub src_index: u32,
+    pub dst_index: u32,
+    pub dst_pub_key: jubjub::PublicKey,
+    pub amount: u64,
+    pub fee: u64,
+    pub sig: jubjub::Signature,
+}
+
+impl Eq for ZeroTransaction {}
+
+impl std::hash::Hash for ZeroTransaction {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.hash().hash(state);
+    }
+}
+
+impl ZeroTransaction {
+    pub fn verify(&self, addr: jubjub::PublicKey) -> bool {
+        jubjub::JubJub::<ZkMainHasher>::verify(&addr, self.hash(), &self.sig)
+    }
+    pub fn sign(&mut self, sk: jubjub::PrivateKey) {
+        self.sig = jubjub::JubJub::<ZkMainHasher>::sign(&sk, self.hash());
+    }
+    pub fn hash(&self) -> ZkScalar {
+        ZkMainHasher::hash(&[
+            ZkScalar::from(self.nonce),
+            ZkScalar::from(self.src_index as u64),
+            ZkScalar::from(self.dst_index as u64),
+            ZkScalar::from(self.amount),
+            ZkScalar::from(self.fee),
+        ])
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ZkContract {
