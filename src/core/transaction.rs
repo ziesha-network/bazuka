@@ -45,7 +45,7 @@ pub enum PaymentDirection<S: SignatureScheme, ZS: ZkSignatureScheme> {
     Withdraw(Option<ZS::Sig>),
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct ContractPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub address: S::Pub,
     pub zk_address: ZS::Pub,
@@ -54,6 +54,12 @@ pub struct ContractPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub amount: Money,
     pub fee: Money, // Executor fee
     pub direction: PaymentDirection<S, ZS>,
+}
+
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> PartialEq for ContractPayment<H, S, ZS> {
+    fn eq(&self, other: &Self) -> bool {
+        bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
+    }
 }
 
 impl<H: Hash + PartialEq, S: SignatureScheme + PartialEq, ZS: ZkSignatureScheme + PartialEq> Eq
