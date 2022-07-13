@@ -79,7 +79,7 @@ impl Poseidon4State {
         self.add_round_constants();
 
         // Apply the quintic S-Box to all elements
-        self.elements.iter_mut().for_each(|l| quintic_s_box(l));
+        self.elements.iter_mut().for_each(quintic_s_box);
 
         // Multiply the elements by the constant MDS matrix
         self.product_mds();

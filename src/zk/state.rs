@@ -43,7 +43,7 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
         db.update(&[WriteOp::Put(
             format!("contract_{}", contract_id).into(),
             ZkContract {
-                initial_state: ZkCompressedState::empty::<H>(state_model.clone()).into(),
+                initial_state: ZkCompressedState::empty::<H>(state_model.clone()),
                 state_model,
                 log4_deposit_withdraw_capacity: 0,
                 deposit_withdraw_function: ZkVerifierKey::Dummy,
@@ -63,7 +63,7 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
         Ok(())
     }
     pub fn get(&mut self, loc: ZkDataLocator) -> Result<ZkScalar, StateManagerError> {
-        KvStoreStateManager::<H>::get_data(&mut self.db, self.contract_id, &loc)
+        KvStoreStateManager::<H>::get_data(&self.db, self.contract_id, &loc)
     }
     pub fn set(&mut self, loc: ZkDataLocator, value: ZkScalar) -> Result<(), StateManagerError> {
         KvStoreStateManager::<H>::set_data(&mut self.db, self.contract_id, loc, value)?;
@@ -139,7 +139,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                         i += 1;
                     };
                 }
-                curr_ind = curr_ind / 4;
+                curr_ind /= 4;
                 default_value = H::hash(&[default_value; 4]);
                 proof.push(proof_part);
             }
@@ -220,7 +220,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     ) -> Result<Option<ZkDeltaPairs>, StateManagerError> {
         let height = Self::height_of(db, id)?;
         let rollback_key: StringKey = format!("{}_rollback_{}", id, height - away).into();
-        Ok(match db.get(rollback_key.clone())? {
+        Ok(match db.get(rollback_key)? {
             Some(b) => Some(b.try_into()?),
             None => None,
         })
@@ -233,13 +233,13 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         const MAX_ROLLBACKS: u64 = 5;
         let mut data = ZkDataPairs(Default::default());
         for (k, v) in db.pairs(format!("{}_s_", id).into())? {
-            let loc = ZkDataLocator::from_str(k.0.split("_").nth(2).unwrap())?;
+            let loc = ZkDataLocator::from_str(k.0.split('_').nth(2).unwrap())?;
             data.0.insert(loc, v.try_into()?);
         }
         let mut rollbacks = Vec::<ZkDeltaPairs>::new();
         let height = Self::height_of(db, id)?;
         for i in 0..MAX_ROLLBACKS {
-            if height >= i + 1 {
+            if height > i {
                 rollbacks.push(
                     match db.get(format!("{}_rollback_{}", id, height - i - 1).into())? {
                         Some(b) => b.try_into()?,
@@ -320,7 +320,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         let mut root = Self::root(&fork, id)?;
         let height = Self::height_of(&fork, id)?;
         for (k, v) in &patch.0 {
-            let prev_val = Self::get_data(&fork, id, &k)?;
+            let prev_val = Self::get_data(&fork, id, k)?;
             rollback_patch.0.insert(k.clone(), Some(prev_val)); // Or None if default
             root.state_hash = Self::set_data(&mut fork, id, k.clone(), v.unwrap_or_default())?;
         }
@@ -382,24 +382,17 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                         for leaf_index in start..start + 4 {
                             dats.push(if leaf_index == curr_ind {
                                 value
+                            } else if layer == log4_size - 1 {
+                                let mut full_loc = locator.clone();
+                                full_loc.0.push(leaf_index as u32);
+                                Self::get_data(db, id, &full_loc)?
                             } else {
-                                if layer == log4_size - 1 {
-                                    let mut full_loc = locator.clone();
-                                    full_loc.0.push(leaf_index as u32);
-                                    Self::get_data(db, id, &full_loc)?
-                                } else {
-                                    match db.get(
-                                        format!(
-                                            "{}_{}_aux_{}",
-                                            id,
-                                            locator,
-                                            aux_offset + leaf_index
-                                        )
+                                match db.get(
+                                    format!("{}_{}_aux_{}", id, locator, aux_offset + leaf_index)
                                         .into(),
-                                    )? {
-                                        Some(b) => b.try_into()?,
-                                        None => default_value,
-                                    }
+                                )? {
+                                    Some(b) => b.try_into()?,
+                                    None => default_value,
                                 }
                             });
                         }
@@ -407,7 +400,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                         value = H::hash(&dats);
                         default_value = H::hash(&[default_value; 4]);
 
-                        curr_ind = curr_ind / 4;
+                        curr_ind /= 4;
 
                         if layer > 0 {
                             let parent_aux_offset = ((1 << (2 * layer)) - 1) / 3;

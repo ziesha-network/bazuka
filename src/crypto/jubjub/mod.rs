@@ -91,7 +91,7 @@ impl<H: ZkHasher> ZkSignatureScheme for JubJub<H> {
         let point = BASE.multiply(&scalar);
         let pk = PublicKey(point.compress());
         (
-            pk.clone(),
+            pk,
             PrivateKey {
                 public_key: point,
                 randomness,

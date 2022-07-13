@@ -178,7 +178,7 @@ impl<'a, K: KvStore> RamMirrorKvStore<'a, K> {
             .iter()
             .map(|(k, _)| {
                 self.store.get(k.clone()).map(|v| match v {
-                    Some(v) => WriteOp::Put(k.clone(), v.clone()),
+                    Some(v) => WriteOp::Put(k.clone(), v),
                     None => WriteOp::Remove(k.clone()),
                 })
             })

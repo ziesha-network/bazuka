@@ -44,10 +44,10 @@ impl PointAffine {
         let yy = (ZkScalar::one() + ZkScalar::one() - *A * self.0 * self.0 - self.1 * self.1)
             .invert()
             .unwrap();
-        return Self(
+        Self(
             ((self.0 * self.1) * xx).double(),
             (self.1 * self.1 - *A * self.0 * self.0) * yy,
-        );
+        )
     }
     pub fn multiply(&self, scalar: &ZkScalar) -> Self {
         let mut result = PointProjective::zero();
@@ -78,7 +78,7 @@ impl PointCompressed {
         if self.1 != is_odd {
             y = y.neg();
         }
-        PointAffine(self.0.clone(), y)
+        PointAffine(self.0, y)
     }
 }
 

@@ -69,7 +69,7 @@ lazy_static! {
     .unwrap();
 }
 
-#[derive(PrimeField, Serialize, Deserialize, Hash)]
+#[derive(PrimeField, Serialize, Deserialize)]
 #[PrimeFieldModulus = "52435875175126190479447740508185965837690552500527637822603658699938581184513"]
 #[PrimeFieldGenerator = "7"]
 #[PrimeFieldReprEndianness = "little"]
@@ -77,7 +77,7 @@ pub struct ZkScalar([u64; 4]);
 
 impl ZkScalar {
     pub fn new(num_le: &[u8]) -> Self {
-        let bts = BigUint::from_bytes_le(&num_le)
+        let bts = BigUint::from_bytes_le(num_le)
             .mod_floor(&ZKSCALAR_MODULUS)
             .to_bytes_le();
         let mut data = [0u8; 32];
@@ -225,7 +225,7 @@ impl std::str::FromStr for ZkDataLocator {
     type Err = ParseZkDataLocatorError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(
-            s.split("-")
+            s.split('-')
                 .map(|s| u32::from_str_radix(s, 16))
                 .collect::<Result<Vec<u32>, _>>()
                 .map_err(|_| ParseZkDataLocatorError::Invalid)?,
@@ -274,8 +274,8 @@ impl ZkHasher for PoseidonHasher {
                 buf[i + 1] = *scalar;
             }
             buf[0] = poseidon4::poseidon4(buf[0], buf[1], buf[2], buf[3]);
-            for i in 1..4 {
-                buf[i] = ZkScalar::default();
+            for item in buf.iter_mut().skip(1) {
+                *item = ZkScalar::default();
             }
         }
 
@@ -350,7 +350,7 @@ pub struct DepositWithdraw {
     pub amount: i64,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct ZeroTransaction {
     pub nonce: u64,
     pub src_index: u32,
@@ -363,9 +363,15 @@ pub struct ZeroTransaction {
 
 impl Eq for ZeroTransaction {}
 
+impl PartialEq for ZeroTransaction {
+    fn eq(&self, other: &Self) -> bool {
+        self.hash() == other.hash()
+    }
+}
+
 impl std::hash::Hash for ZeroTransaction {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.hash().hash(state);
+        self.hash().0.hash(state);
     }
 }
 

@@ -2,9 +2,9 @@ use super::ZkScalar;
 use bls12_381::{Bls12, G1Affine as BellmanG1, G2Affine as BellmanG2, Scalar as BellmanFr};
 use serde::{Deserialize, Serialize};
 
-impl Into<BellmanFr> for ZkScalar {
-    fn into(self) -> BellmanFr {
-        unsafe { std::mem::transmute::<ZkScalar, BellmanFr>(self) }
+impl From<ZkScalar> for BellmanFr {
+    fn from(s: ZkScalar) -> BellmanFr {
+        unsafe { std::mem::transmute::<ZkScalar, BellmanFr>(s) }
     }
 }
 
@@ -78,7 +78,7 @@ pub fn groth16_verify(
     bellman::groth16::verify_proof(
         &vk,
         &proof,
-        &vec![prev_state.into(), aux_data.into(), next_state.into()],
+        &[prev_state.into(), aux_data.into(), next_state.into()],
     )
     .is_ok()
 }

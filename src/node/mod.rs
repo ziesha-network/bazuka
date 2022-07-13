@@ -86,7 +86,7 @@ fn fetch_signature(
 ) -> Result<Option<(ed25519::PublicKey, ed25519::Signature)>, NodeError> {
     if let Some(v) = req.headers().get(AUTHORIZATION) {
         let s = v.to_str().map_err(|_| NodeError::InvalidSignatureHeader)?;
-        let mut s = s.split("-");
+        let mut s = s.split('-');
         let (pub_hex, sig_hex) = s
             .next()
             .zip(s.next())
@@ -131,12 +131,12 @@ async fn node_service<B: Blockchain>(
     let body_bytes = hyper::body::to_bytes(body).await?;
 
     // TODO: This doesn't prevent replay attacks
-    if !creds
+    let is_signed = creds
         .map(|(pub_key, sig)| {
             ed25519::Ed25519::<crate::core::Hasher>::verify(&pub_key, &body_bytes, &sig)
         })
-        .unwrap_or(false)
-    {
+        .unwrap_or(false);
+    if !is_signed {
         return Err(NodeError::SignatureRequired);
     }
 
