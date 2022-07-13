@@ -8,9 +8,9 @@ pub async fn get_zero_transactions<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     _req: GetZeroTransactionsRequest,
 ) -> Result<GetZeroTransactionsResponse, NodeError> {
-    let _context = context.read().await;
+    let context = context.read().await;
     Ok(GetZeroTransactionsResponse {
-        updates: vec![],
-        deposit_withdraws: vec![],
+        updates: context.zero_mempool.clone().into_keys().collect(),
+        deposit_withdraws: context.dw_mempool.clone().into_keys().collect(),
     })
 }

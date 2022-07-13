@@ -148,7 +148,7 @@ pub struct GetZeroTransactionsRequest {}
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetZeroTransactionsResponse {
     pub updates: Vec<zk::ZeroTransaction>,
-    pub deposit_withdraws: Vec<zk::DepositWithdraw>,
+    pub deposit_withdraws: Vec<ContractPayment>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
