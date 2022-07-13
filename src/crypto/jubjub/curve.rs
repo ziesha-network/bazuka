@@ -150,6 +150,7 @@ lazy_static! {
         .unwrap(),
         ZkScalar::from_str_vartime("18").unwrap()
     );
+    pub static ref BASE_COFACTOR: PointAffine = BASE.multiply(&ZkScalar::from(8));
     pub static ref ORDER: BigUint = BigUint::from_str(
         "6554484396890773809930967563523245729705921265872317281365359162392183254199"
     )
