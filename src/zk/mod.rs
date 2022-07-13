@@ -12,7 +12,7 @@ use thiserror::Error;
 
 mod state;
 pub use state::*;
-mod groth16;
+pub mod groth16;
 pub mod poseidon4;
 
 #[derive(Error, Debug)]
