@@ -56,6 +56,22 @@ pub struct ContractPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub direction: PaymentDirection<S, ZS>,
 }
 
+impl<H: Hash + PartialEq, S: SignatureScheme + PartialEq, ZS: ZkSignatureScheme + PartialEq> Eq
+    for ContractPayment<H, S, ZS>
+{
+}
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> std::hash::Hash
+    for ContractPayment<H, S, ZS>
+{
+    fn hash<Hasher>(&self, state: &mut Hasher)
+    where
+        Hasher: std::hash::Hasher,
+    {
+        state.write(&bincode::serialize(self).unwrap());
+        state.finish();
+    }
+}
+
 impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> ContractPayment<H, S, ZS> {
     pub fn verify_signature(&self) -> bool {
         let mut unsigned = self.clone();

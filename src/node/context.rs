@@ -1,6 +1,6 @@
 use super::{NodeOptions, OutgoingSender, Peer, PeerAddress, PeerInfo, Timestamp};
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, TransactionStats};
-use crate::core::{Header, Signer, TransactionAndDelta};
+use crate::core::{ContractPayment, Header, Signer, TransactionAndDelta};
 use crate::crypto::SignatureScheme;
 use crate::utils;
 use crate::wallet::Wallet;
@@ -28,6 +28,7 @@ pub struct NodeContext<B: Blockchain> {
 
     pub mempool: HashMap<TransactionAndDelta, TransactionStats>,
     pub zero_mempool: HashMap<zk::ZeroTransaction, TransactionStats>,
+    pub dw_mempool: HashMap<ContractPayment, TransactionStats>,
 
     pub outdated_since: Option<Timestamp>,
     pub banned_headers: HashMap<Header, Timestamp>,

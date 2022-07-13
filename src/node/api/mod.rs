@@ -22,6 +22,8 @@ mod transact;
 pub use transact::*;
 mod transact_zero;
 pub use transact_zero::*;
+mod transact_deposit_withdraw;
+pub use transact_deposit_withdraw::*;
 mod shutdown;
 pub use shutdown::*;
 mod get_zero_transactions;

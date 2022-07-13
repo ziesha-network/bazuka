@@ -1,5 +1,7 @@
 use crate::blockchain::ZkBlockchainPatch;
-use crate::core::{Address, Block, ContractId, Header, Money, TransactionAndDelta};
+use crate::core::{
+    Address, Block, ContractId, ContractPayment, Header, Money, TransactionAndDelta,
+};
 use crate::zk;
 use std::collections::HashMap;
 
@@ -148,3 +150,11 @@ pub struct GetZeroTransactionsResponse {
     pub updates: Vec<zk::ZeroTransaction>,
     pub deposit_withdraws: Vec<zk::DepositWithdraw>,
 }
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct TransactDepositWithdrawRequest {
+    pub tx: ContractPayment,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct TransactDepositWithdrawResponse {}

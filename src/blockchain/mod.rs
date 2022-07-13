@@ -1,9 +1,9 @@
 use thiserror::Error;
 
 use crate::core::{
-    hash::Hash, Account, Address, Block, ContractAccount, ContractId, ContractUpdate, Hasher,
-    Header, Money, PaymentDirection, ProofOfWork, Signature, Transaction, TransactionAndDelta,
-    TransactionData, ZkHasher,
+    hash::Hash, Account, Address, Block, ContractAccount, ContractId, ContractPayment,
+    ContractUpdate, Hasher, Header, Money, PaymentDirection, ProofOfWork, Signature, Transaction,
+    TransactionAndDelta, TransactionData, ZkHasher,
 };
 use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
 use crate::utils;
@@ -130,6 +130,7 @@ pub enum TxSideEffect {
 
 pub trait Blockchain {
     fn validate_zero_transaction(&self, tx: &zk::ZeroTransaction) -> Result<bool, BlockchainError>;
+    fn validate_dw_transaction(&self, tx: &ContractPayment) -> Result<bool, BlockchainError>;
     fn validate_transaction(&self, tx_delta: &TransactionAndDelta)
         -> Result<bool, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
@@ -1088,6 +1089,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self,
         _tx: &zk::ZeroTransaction,
     ) -> Result<bool, BlockchainError> {
+        Ok(true)
+    }
+
+    fn validate_dw_transaction(&self, _tx: &ContractPayment) -> Result<bool, BlockchainError> {
         Ok(true)
     }
 
