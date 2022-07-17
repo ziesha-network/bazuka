@@ -125,14 +125,17 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
         ],
     );
     let test_logic = async {
-        sleep(Duration::from_millis(1000)).await;
-
-        let mut timestamps = Vec::new();
-        for chan in chans.iter() {
-            timestamps.push(chan.stats().await?.timestamp);
-        }
-        let first = timestamps.first().unwrap();
-        assert!(timestamps.iter().all(|t| t == first));
+        assert!(
+            catch_change(|| async {
+                let mut timestamps = Vec::new();
+                for chan in chans.iter() {
+                    timestamps.push(chan.stats().await?.timestamp);
+                }
+                let first = timestamps.first().unwrap();
+                Ok(timestamps.iter().all(|t| t == first))
+            })
+            .await?
+        );
 
         for chan in chans.iter() {
             chan.shutdown().await?;
