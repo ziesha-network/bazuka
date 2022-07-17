@@ -2,6 +2,7 @@
 extern crate lazy_static;
 
 pub mod blockchain;
+
 pub mod config;
 pub mod consensus;
 pub mod core;
@@ -13,3 +14,6 @@ pub mod zk;
 
 #[cfg(feature = "node")]
 pub mod node;
+
+#[cfg(feature = "client")]
+pub mod client;

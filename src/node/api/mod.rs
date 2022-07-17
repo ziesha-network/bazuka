@@ -1,6 +1,6 @@
-use super::{http, Limit, NodeContext, NodeError, Peer, PeerAddress, PeerInfo};
+use super::{http, Limit, NodeContext, NodeError};
 
-pub mod messages;
+use crate::client::messages;
 
 mod get_stats;
 pub use get_stats::*;

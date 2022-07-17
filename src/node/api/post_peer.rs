@@ -1,6 +1,7 @@
 use super::messages::{PostPeerRequest, PostPeerResponse};
-use super::{NodeContext, NodeError, Peer};
+use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
+use crate::client::Peer;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 

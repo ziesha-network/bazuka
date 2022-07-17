@@ -1,40 +1,46 @@
 #[macro_use]
 extern crate lazy_static;
 
-#[cfg(feature = "node")]
-use {
-    bazuka::blockchain::KvStoreChain,
-    bazuka::core::Signer,
-    bazuka::crypto::SignatureScheme,
-    bazuka::db::LevelDbKvStore,
-    bazuka::node::{node_create, NodeError, NodeRequest, PeerAddress},
-    bazuka::wallet::Wallet,
-    colored::Colorize,
-    hyper::server::conn::AddrStream,
-    hyper::service::{make_service_fn, service_fn},
-    hyper::{Body, Client, Request, Response, Server},
-    std::net::SocketAddr,
-    std::path::{Path, PathBuf},
-    std::sync::Arc,
-    structopt::StructOpt,
-    tokio::sync::mpsc,
-    tokio::try_join,
-};
+use bazuka::wallet::Wallet;
 
-use bazuka::config;
-#[cfg(not(feature = "node"))]
+#[cfg(not(any(feature = "node", feature = "client")))]
 use {
     bazuka::blockchain::{Blockchain, KvStoreChain, TransactionStats},
+    bazuka::config,
     bazuka::core::Address,
     bazuka::db::RamKvStore,
-    bazuka::wallet::Wallet,
     std::collections::HashMap,
 };
 
 #[cfg(feature = "node")]
+use {
+    bazuka::blockchain::KvStoreChain,
+    bazuka::client::{NodeRequest, PeerAddress},
+    bazuka::config,
+    bazuka::core::Signer,
+    bazuka::crypto::SignatureScheme,
+    bazuka::db::LevelDbKvStore,
+    bazuka::node::node_create,
+    colored::Colorize,
+    hyper::server::conn::AddrStream,
+    hyper::service::{make_service_fn, service_fn},
+    hyper::{Body, Client, Request, Response, Server},
+    std::path::{Path, PathBuf},
+    std::sync::Arc,
+    tokio::sync::mpsc,
+    tokio::try_join,
+};
+
+#[cfg(feature = "client")]
+use {bazuka::client::NodeError, std::net::SocketAddr, structopt::StructOpt};
+
 #[derive(StructOpt)]
+#[cfg(feature = "client")]
 #[structopt(name = "Bazuka!", about = "Node software for Zeeka Network")]
 enum CliOptions {
+    #[cfg(not(feature = "node"))]
+    Node,
+    #[cfg(feature = "node")]
     Node {
         #[structopt(long)]
         listen: Option<SocketAddr>,
@@ -56,6 +62,7 @@ lazy_static! {
     static ref WALLET: Wallet = Wallet::new(b"random seed".to_vec());
 }
 
+#[cfg(feature = "node")]
 async fn run_node(
     listen: Option<SocketAddr>,
     external: Option<SocketAddr>,
@@ -171,13 +178,14 @@ async fn run_node(
 }
 
 #[cfg(not(tarpaulin_include))]
-#[cfg(feature = "node")]
+#[cfg(feature = "client")]
 #[tokio::main]
 async fn main() -> Result<(), NodeError> {
     env_logger::init();
 
     let opts = CliOptions::from_args();
     match opts {
+        #[cfg(feature = "node")]
         CliOptions::Node {
             listen,
             external,
@@ -186,14 +194,17 @@ async fn main() -> Result<(), NodeError> {
         } => {
             run_node(listen, external, db, bootstrap).await?;
         }
-        CliOptions::Transact { node } => {}
+        #[cfg(not(feature = "node"))]
+        CliOptions::Node { .. } => {
+            panic!("Not feature not turned on!");
+        }
+        CliOptions::Transact { node: _ } => {}
     }
 
     Ok(())
 }
 
-#[cfg(not(tarpaulin_include))]
-#[cfg(not(feature = "node"))]
+#[cfg(not(feature = "client"))]
 fn main() {
     env_logger::init();
 

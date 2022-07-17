@@ -1,7 +1,7 @@
 use super::*;
 
-use super::api::messages::*;
 use crate::blockchain::{BlockchainConfig, KvStoreChain};
+use crate::client::messages::*;
 use crate::config;
 use crate::core::Signer;
 use crate::crypto::SignatureScheme;

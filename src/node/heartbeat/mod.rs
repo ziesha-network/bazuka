@@ -5,9 +5,9 @@ mod sync_clock;
 mod sync_peers;
 mod sync_state;
 
-use super::api::messages::*;
 use super::{http, Limit, NodeContext, NodeError, Peer, PeerAddress};
 use crate::blockchain::Blockchain;
+use crate::client::messages::*;
 use crate::utils;
 use std::sync::Arc;
 use tokio::join;

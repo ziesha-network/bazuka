@@ -10,7 +10,7 @@ use rand::RngCore;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::api::messages::Puzzle;
+use crate::client::messages::Puzzle;
 
 pub type BlockPuzzle = (BlockAndPatch, Puzzle);
 

@@ -6,7 +6,7 @@ use crate::zk;
 use std::collections::HashMap;
 
 use super::{Peer, PeerAddress, PeerInfo};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetStatsRequest {}
