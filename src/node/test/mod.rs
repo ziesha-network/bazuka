@@ -73,11 +73,16 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
         ],
     );
     let test_logic = async {
-        sleep(Duration::from_millis(1000)).await;
-
-        for chan in chans.iter() {
-            assert_eq!(chan.peers().await?.peers.len(), 2);
-        }
+        assert!(
+            catch_change(|| async {
+                let mut peer_counts = Vec::new();
+                for chan in chans.iter() {
+                    peer_counts.push(chan.peers().await?.peers.len());
+                }
+                Ok(peer_counts.into_iter().all(|c| c == 2))
+            })
+            .await?
+        );
 
         for chan in chans.iter() {
             chan.shutdown().await?;
