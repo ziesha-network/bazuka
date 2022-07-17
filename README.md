@@ -23,7 +23,7 @@ Bazuka! is a very early-stage implementation of Zeeka Protocol in Rust and not
 yet complete. But if you are curious enough, you can run it like this:
 
 ```
-cargo run -- --listen 0.0.0.0:8080 --external [your_public_ip]:8080
+cargo run -- node --listen 0.0.0.0:8080 --external [your_public_ip]:8080
 ```
 
 ### Requirements

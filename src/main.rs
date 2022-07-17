@@ -34,15 +34,21 @@ use {
 #[cfg(feature = "node")]
 #[derive(StructOpt)]
 #[structopt(name = "Bazuka!", about = "Node software for Zeeka Network")]
-struct NodeOptions {
-    #[structopt(long)]
-    listen: Option<SocketAddr>,
-    #[structopt(long)]
-    external: Option<SocketAddr>,
-    #[structopt(long, parse(from_os_str))]
-    db: Option<PathBuf>,
-    #[structopt(long)]
-    bootstrap: Vec<String>,
+enum CliOptions {
+    Node {
+        #[structopt(long)]
+        listen: Option<SocketAddr>,
+        #[structopt(long)]
+        external: Option<SocketAddr>,
+        #[structopt(long, parse(from_os_str))]
+        db: Option<PathBuf>,
+        #[structopt(long)]
+        bootstrap: Vec<String>,
+    },
+    Transact {
+        #[structopt(long)]
+        node: SocketAddr,
+    },
 }
 
 #[cfg(not(tarpaulin_include))]
@@ -50,26 +56,21 @@ lazy_static! {
     static ref WALLET: Wallet = Wallet::new(b"random seed".to_vec());
 }
 
-#[cfg(not(tarpaulin_include))]
-#[cfg(feature = "node")]
-#[tokio::main]
-async fn main() -> Result<(), NodeError> {
-    env_logger::init();
-
+async fn run_node(
+    listen: Option<SocketAddr>,
+    external: Option<SocketAddr>,
+    db: Option<PathBuf>,
+    bootstrap: Vec<String>,
+) -> Result<(), NodeError> {
     let (pub_key, priv_key) = Signer::generate_keys(b"mynode");
 
     let public_ip = bazuka::node::upnp::get_public_ip().await;
 
     const DEFAULT_PORT: u16 = 3030;
 
-    let opts = NodeOptions::from_args();
-
-    let listen = opts
-        .listen
-        .unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT)));
+    let listen = listen.unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT)));
     let address = PeerAddress(
-        opts.external
-            .unwrap_or_else(|| SocketAddr::from((public_ip.unwrap(), DEFAULT_PORT))),
+        external.unwrap_or_else(|| SocketAddr::from((public_ip.unwrap(), DEFAULT_PORT))),
     );
 
     println!(
@@ -87,10 +88,9 @@ async fn main() -> Result<(), NodeError> {
 
     // Use hardcoded seed bootstrap nodes if none provided via cli opts
     let bootstrap_nodes = {
-        match opts.bootstrap.len() {
+        match bootstrap.len() {
             0 => bazuka::node::seeds::seed_bootstrap_nodes(),
-            _ => opts
-                .bootstrap
+            _ => bootstrap
                 .clone()
                 .into_iter()
                 .map(|b| PeerAddress(b.parse().unwrap()))
@@ -98,9 +98,7 @@ async fn main() -> Result<(), NodeError> {
         }
     };
 
-    let bazuka_dir = opts
-        .db
-        .unwrap_or_else(|| home::home_dir().unwrap().join(Path::new(".bazuka")));
+    let bazuka_dir = db.unwrap_or_else(|| home::home_dir().unwrap().join(Path::new(".bazuka")));
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
     let node = node_create(
@@ -168,6 +166,28 @@ async fn main() -> Result<(), NodeError> {
     };
 
     try_join!(server_loop, client_loop, node).unwrap();
+
+    Ok(())
+}
+
+#[cfg(not(tarpaulin_include))]
+#[cfg(feature = "node")]
+#[tokio::main]
+async fn main() -> Result<(), NodeError> {
+    env_logger::init();
+
+    let opts = CliOptions::from_args();
+    match opts {
+        CliOptions::Node {
+            listen,
+            external,
+            db,
+            bootstrap,
+        } => {
+            run_node(listen, external, db, bootstrap).await?;
+        }
+        CliOptions::Transact { node } => {}
+    }
 
     Ok(())
 }
