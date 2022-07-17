@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-
 use bazuka::wallet::Wallet;
 
 #[cfg(not(any(feature = "node", feature = "client")))]
@@ -34,14 +31,25 @@ use {
     bazuka::client::{BazukaClient, NodeError},
     bazuka::core::Signer,
     bazuka::crypto::SignatureScheme,
+    serde::{Deserialize, Serialize},
     std::net::SocketAddr,
     structopt::StructOpt,
 };
+
+#[cfg(feature = "client")]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+struct BazukaConfig {
+    seed: String,
+}
 
 #[derive(StructOpt)]
 #[cfg(feature = "client")]
 #[structopt(name = "Bazuka!", about = "Node software for Zeeka Network")]
 enum CliOptions {
+    #[cfg(not(feature = "client"))]
+    Init,
+    #[cfg(feature = "client")]
+    Init { seed: String },
     #[cfg(not(feature = "node"))]
     Node,
     #[cfg(feature = "node")]
@@ -61,19 +69,15 @@ enum CliOptions {
     },
 }
 
-#[cfg(not(tarpaulin_include))]
-lazy_static! {
-    static ref WALLET: Wallet = Wallet::new(b"random seed".to_vec());
-}
-
 #[cfg(feature = "node")]
 async fn run_node(
+    bazuka_config: BazukaConfig,
     listen: Option<SocketAddr>,
     external: Option<SocketAddr>,
     db: Option<PathBuf>,
     bootstrap: Vec<String>,
 ) -> Result<(), NodeError> {
-    let (pub_key, priv_key) = Signer::generate_keys(b"mynode");
+    let (pub_key, priv_key) = Signer::generate_keys(&bazuka_config.seed.as_bytes());
 
     let public_ip = bazuka::node::upnp::get_public_ip().await;
 
@@ -123,7 +127,7 @@ async fn run_node(
         )
         .unwrap(),
         0,
-        Some(WALLET.clone()),
+        Some(Wallet::new(bazuka_config.seed.as_bytes().to_vec())),
         inc_recv,
         out_send,
     );
@@ -188,6 +192,12 @@ async fn main() -> Result<(), NodeError> {
     env_logger::init();
 
     let opts = CliOptions::from_args();
+
+    let conf_path = home::home_dir().unwrap().join(Path::new(".bazuka.yaml"));
+    let conf: Option<BazukaConfig> = std::fs::File::open(conf_path.clone())
+        .ok()
+        .map(|f| serde_yaml::from_reader(f).unwrap());
+
     match opts {
         #[cfg(feature = "node")]
         CliOptions::Node {
@@ -196,20 +206,41 @@ async fn main() -> Result<(), NodeError> {
             db,
             bootstrap,
         } => {
-            run_node(listen, external, db, bootstrap).await?;
+            let conf = conf.expect("Bazuka is not initialized!");
+            run_node(conf.clone(), listen, external, db, bootstrap).await?;
         }
         #[cfg(not(feature = "node"))]
         CliOptions::Node { .. } => {
-            panic!("Not feature not turned on!");
+            println!("Node feature not turned on!");
+        }
+        #[cfg(feature = "client")]
+        CliOptions::Init { seed } => {
+            if conf.is_none() {
+                std::fs::write(
+                    conf_path,
+                    serde_yaml::to_string(&BazukaConfig { seed }).unwrap(),
+                )
+                .unwrap();
+            } else {
+                println!("Bazuka is already initialized!");
+            }
+        }
+        #[cfg(not(feature = "client"))]
+        CliOptions::Init { .. } => {
+            println!("Client feature not turned on!");
         }
         CliOptions::Status { node } => {
-            let sk = Signer::generate_keys(b"smth").1; // Secret-key of client, not wallet!
+            let conf = conf.expect("Bazuka is not initialized!");
+            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(node));
-            let main = async {
-                println!("{:#?}", client.stats().await?);
-                Ok::<(), NodeError>(())
-            };
-            try_join!(main, req_loop).unwrap();
+            try_join!(
+                async {
+                    println!("{:#?}", client.stats().await?);
+                    Ok::<(), NodeError>(())
+                },
+                req_loop
+            )
+            .unwrap();
         }
     }
 
@@ -241,7 +272,7 @@ fn main() {
         }
 
         log::info!("Creating block...");
-        let blk = chain.draft_block(0, &mut txs, &WALLET, true).unwrap().block;
+        let blk = chain.draft_block(0, &mut txs, &abc, true).unwrap().block;
 
         log::info!("Applying block ({} txs)...", blk.body.len());
         chain.extend(chain.get_height().unwrap(), &[blk]).unwrap();
