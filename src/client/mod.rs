@@ -1,4 +1,5 @@
 use crate::core::Signer;
+use crate::core::TransactionAndDelta;
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::utils;
@@ -7,6 +8,7 @@ use hyper::header::{HeaderValue, AUTHORIZATION};
 use hyper::{Body, Method, Request, Response};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
@@ -14,6 +16,7 @@ use tokio::time::timeout;
 mod error;
 pub mod messages;
 pub use error::NodeError;
+use messages::*;
 
 pub type Timestamp = u32;
 
@@ -203,5 +206,131 @@ impl OutgoingSender {
         let body = self.raw(req, limit).await?;
         let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
         Ok(resp)
+    }
+}
+
+#[derive(Clone)]
+pub struct BazukaClient {
+    pub peer: PeerAddress,
+    pub sender: Arc<OutgoingSender>,
+}
+
+impl BazukaClient {
+    pub fn connect(
+        priv_key: ed25519::PrivateKey,
+        peer: PeerAddress,
+    ) -> (impl futures::Future<Output = Result<(), NodeError>>, Self) {
+        let (sender_send, mut sender_recv) = mpsc::unbounded_channel::<NodeRequest>();
+        let client_loop = async move {
+            while let Some(req) = sender_recv.recv().await {
+                let resp = async {
+                    let client = hyper::Client::new();
+                    let resp = client.request(req.body).await?;
+                    Ok::<_, NodeError>(resp)
+                }
+                .await;
+                if let Err(e) = req.resp.send(resp).await {
+                    log::error!("Node not listening to its HTTP request answer: {}", e);
+                }
+            }
+            Ok::<(), NodeError>(())
+        };
+        (
+            client_loop,
+            Self {
+                peer,
+                sender: Arc::new(OutgoingSender {
+                    priv_key,
+                    chan: sender_send,
+                }),
+            },
+        )
+    }
+    pub async fn shutdown(&self) -> Result<(), NodeError> {
+        self.sender
+            .json_post::<ShutdownRequest, ShutdownResponse>(
+                format!("{}/shutdown", self.peer),
+                ShutdownRequest {},
+                Limit::default(),
+            )
+            .await?;
+        Ok(())
+    }
+    pub async fn stats(&self) -> Result<GetStatsResponse, NodeError> {
+        self.sender
+            .json_get::<GetStatsRequest, GetStatsResponse>(
+                format!("{}/stats", self.peer),
+                GetStatsRequest {},
+                Limit::default(),
+            )
+            .await
+    }
+    pub async fn peers(&self) -> Result<GetPeersResponse, NodeError> {
+        self.sender
+            .json_get::<GetPeersRequest, GetPeersResponse>(
+                format!("{}/peers", self.peer),
+                GetPeersRequest {},
+                Limit::default(),
+            )
+            .await
+    }
+
+    pub async fn outdated_heights(&self) -> Result<GetOutdatedHeightsResponse, NodeError> {
+        self.sender
+            .bincode_get::<GetOutdatedHeightsRequest, GetOutdatedHeightsResponse>(
+                format!("{}/bincode/states/outdated", self.peer),
+                GetOutdatedHeightsRequest {},
+                Limit::default(),
+            )
+            .await
+    }
+
+    pub async fn transact(
+        &self,
+        tx_delta: TransactionAndDelta,
+    ) -> Result<TransactResponse, NodeError> {
+        self.sender
+            .bincode_post::<TransactRequest, TransactResponse>(
+                format!("{}/bincode/transact", self.peer),
+                TransactRequest { tx_delta },
+                Limit::default(),
+            )
+            .await
+    }
+
+    pub async fn mine(&self) -> Result<PostMinerSolutionResponse, NodeError> {
+        let puzzle = self
+            .sender
+            .json_get::<GetMinerPuzzleRequest, Puzzle>(
+                format!("{}/miner/puzzle", self.peer),
+                GetMinerPuzzleRequest {},
+                Limit::default(),
+            )
+            .await?;
+        let sol = mine_puzzle(&puzzle);
+        self.sender
+            .json_post::<PostMinerSolutionRequest, PostMinerSolutionResponse>(
+                format!("{}/miner/solution", self.peer),
+                sol,
+                Limit::default(),
+            )
+            .await
+    }
+}
+
+fn mine_puzzle(puzzle: &Puzzle) -> PostMinerSolutionRequest {
+    let key = hex::decode(&puzzle.key).unwrap();
+    let mut blob = hex::decode(&puzzle.blob).unwrap();
+    let mut nonce = 0u64;
+    loop {
+        blob[puzzle.offset..puzzle.offset + puzzle.size].copy_from_slice(&nonce.to_le_bytes());
+        let hash = crate::consensus::pow::hash(&key, &blob);
+        if hash.meets_difficulty(rust_randomx::Difficulty::new(puzzle.target)) {
+            return PostMinerSolutionRequest {
+                nonce: hex::encode(nonce.to_le_bytes()),
+            };
+        }
+
+        nonce += 1;
     }
 }

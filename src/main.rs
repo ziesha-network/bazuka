@@ -17,8 +17,6 @@ use {
     bazuka::blockchain::KvStoreChain,
     bazuka::client::{NodeRequest, PeerAddress},
     bazuka::config,
-    bazuka::core::Signer,
-    bazuka::crypto::SignatureScheme,
     bazuka::db::LevelDbKvStore,
     bazuka::node::node_create,
     colored::Colorize,
@@ -32,7 +30,13 @@ use {
 };
 
 #[cfg(feature = "client")]
-use {bazuka::client::NodeError, std::net::SocketAddr, structopt::StructOpt};
+use {
+    bazuka::client::{BazukaClient, NodeError},
+    bazuka::core::Signer,
+    bazuka::crypto::SignatureScheme,
+    std::net::SocketAddr,
+    structopt::StructOpt,
+};
 
 #[derive(StructOpt)]
 #[cfg(feature = "client")]
@@ -51,7 +55,7 @@ enum CliOptions {
         #[structopt(long)]
         bootstrap: Vec<String>,
     },
-    Transact {
+    Status {
         #[structopt(long)]
         node: SocketAddr,
     },
@@ -198,7 +202,15 @@ async fn main() -> Result<(), NodeError> {
         CliOptions::Node { .. } => {
             panic!("Not feature not turned on!");
         }
-        CliOptions::Transact { node: _ } => {}
+        CliOptions::Status { node } => {
+            let sk = Signer::generate_keys(b"smth").1; // Secret-key of client, not wallet!
+            let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(node));
+            let main = async {
+                println!("{:#?}", client.stats().await?);
+                Ok::<(), NodeError>(())
+            };
+            try_join!(main, req_loop).unwrap();
+        }
     }
 
     Ok(())

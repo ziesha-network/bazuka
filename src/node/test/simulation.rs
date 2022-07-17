@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::blockchain::{BlockchainConfig, KvStoreChain};
-use crate::client::messages::*;
+use crate::client::BazukaClient;
 use crate::config;
 use crate::core::Signer;
 use crate::crypto::SignatureScheme;
@@ -14,7 +14,7 @@ use tokio::time::{sleep, Duration};
 
 struct Node {
     addr: PeerAddress,
-    incoming: SenderWrapper,
+    incoming: BazukaClient,
     outgoing: mpsc::UnboundedReceiver<NodeRequest>,
 }
 
@@ -52,7 +52,7 @@ fn create_test_node(
         node,
         Node {
             addr,
-            incoming: SenderWrapper {
+            incoming: BazukaClient {
                 peer: addr,
                 sender: Arc::new(OutgoingSender {
                     chan: inc_send,
@@ -68,7 +68,7 @@ async fn route(
     rules: Arc<RwLock<Vec<Rule>>>,
     src: PeerAddress,
     mut outgoing: mpsc::UnboundedReceiver<NodeRequest>,
-    incs: HashMap<PeerAddress, SenderWrapper>,
+    incs: HashMap<PeerAddress, BazukaClient>,
 ) -> Result<(), NodeError> {
     while let Some(req) = outgoing.recv().await {
         let rules = rules.read().await.clone();
@@ -111,12 +111,6 @@ async fn route(
     }
 
     Ok(())
-}
-
-#[derive(Clone)]
-pub struct SenderWrapper {
-    peer: PeerAddress,
-    sender: Arc<OutgoingSender>,
 }
 
 #[derive(Clone)]
@@ -173,103 +167,13 @@ impl Rule {
     }
 }
 
-impl SenderWrapper {
-    pub async fn shutdown(&self) -> Result<(), NodeError> {
-        self.sender
-            .json_post::<ShutdownRequest, ShutdownResponse>(
-                format!("{}/shutdown", self.peer),
-                ShutdownRequest {},
-                Limit::default(),
-            )
-            .await?;
-        Ok(())
-    }
-    pub async fn stats(&self) -> Result<GetStatsResponse, NodeError> {
-        self.sender
-            .json_get::<GetStatsRequest, GetStatsResponse>(
-                format!("{}/stats", self.peer),
-                GetStatsRequest {},
-                Limit::default(),
-            )
-            .await
-    }
-    pub async fn peers(&self) -> Result<GetPeersResponse, NodeError> {
-        self.sender
-            .json_get::<GetPeersRequest, GetPeersResponse>(
-                format!("{}/peers", self.peer),
-                GetPeersRequest {},
-                Limit::default(),
-            )
-            .await
-    }
-
-    pub async fn outdated_heights(&self) -> Result<GetOutdatedHeightsResponse, NodeError> {
-        self.sender
-            .bincode_get::<GetOutdatedHeightsRequest, GetOutdatedHeightsResponse>(
-                format!("{}/bincode/states/outdated", self.peer),
-                GetOutdatedHeightsRequest {},
-                Limit::default(),
-            )
-            .await
-    }
-
-    pub async fn transact(
-        &self,
-        tx_delta: TransactionAndDelta,
-    ) -> Result<TransactResponse, NodeError> {
-        self.sender
-            .bincode_post::<TransactRequest, TransactResponse>(
-                format!("{}/bincode/transact", self.peer),
-                TransactRequest { tx_delta },
-                Limit::default(),
-            )
-            .await
-    }
-
-    pub async fn mine(&self) -> Result<PostMinerSolutionResponse, NodeError> {
-        let puzzle = self
-            .sender
-            .json_get::<GetMinerPuzzleRequest, Puzzle>(
-                format!("{}/miner/puzzle", self.peer),
-                GetMinerPuzzleRequest {},
-                Limit::default(),
-            )
-            .await?;
-        let sol = mine_puzzle(&puzzle);
-        self.sender
-            .json_post::<PostMinerSolutionRequest, PostMinerSolutionResponse>(
-                format!("{}/miner/solution", self.peer),
-                sol,
-                Limit::default(),
-            )
-            .await
-    }
-}
-
-fn mine_puzzle(puzzle: &Puzzle) -> PostMinerSolutionRequest {
-    let key = hex::decode(&puzzle.key).unwrap();
-    let mut blob = hex::decode(&puzzle.blob).unwrap();
-    let mut nonce = 0u64;
-    loop {
-        blob[puzzle.offset..puzzle.offset + puzzle.size].copy_from_slice(&nonce.to_le_bytes());
-        let hash = crate::consensus::pow::hash(&key, &blob);
-        if hash.meets_difficulty(rust_randomx::Difficulty::new(puzzle.target)) {
-            return PostMinerSolutionRequest {
-                nonce: hex::encode(nonce.to_le_bytes()),
-            };
-        }
-
-        nonce += 1;
-    }
-}
-
 pub fn test_network(
     rules: Arc<RwLock<Vec<Rule>>>,
     node_opts: Vec<NodeOpts>,
 ) -> (
     impl futures::Future<Output = Result<Vec<()>, NodeError>>,
     impl futures::Future<Output = Result<Vec<()>, NodeError>>,
-    Vec<SenderWrapper>,
+    Vec<BazukaClient>,
 ) {
     let (node_futs, nodes): (Vec<_>, Vec<Node>) = node_opts
         .into_iter()
