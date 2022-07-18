@@ -1,15 +1,15 @@
 use super::*;
 
-#[cfg(feature = "node")]
+#[cfg(feature = "db")]
 use tempdir::TempDir;
 
-#[cfg(feature = "node")]
+#[cfg(feature = "db")]
 fn temp_disk_store() -> Result<LevelDbKvStore, KvStoreError> {
     LevelDbKvStore::new(TempDir::new("bazuka_test").unwrap().path(), 64)
 }
 
 #[test]
-#[cfg(feature = "node")]
+#[cfg(feature = "db")]
 fn test_ram_and_disk_pair_prefix() -> Result<(), KvStoreError> {
     let mut ram = RamKvStore::default();
     let mut disk = temp_disk_store()?;
@@ -44,7 +44,7 @@ fn test_ram_and_disk_pair_prefix() -> Result<(), KvStoreError> {
 }
 
 #[test]
-#[cfg(feature = "node")]
+#[cfg(feature = "db")]
 fn test_ram_and_disk_db_consistency() -> Result<(), KvStoreError> {
     let mut ram = RamKvStore::default();
     let mut disk = temp_disk_store()?;

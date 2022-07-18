@@ -9,6 +9,7 @@ use leveldb::kv::KV;
 use leveldb::options::{Options, ReadOptions, WriteOptions};
 use std::fs;
 use std::path::Path;
+use tempdir::TempDir;
 
 pub struct LevelDbKvStore(Database<StringKey>);
 impl LevelDbKvStore {
@@ -18,6 +19,16 @@ impl LevelDbKvStore {
         options.create_if_missing = true;
         options.cache = Some(Cache::new(cache_size));
         Ok(LevelDbKvStore(Database::open(path, options)?))
+    }
+    pub fn read_only(path: &Path) -> Result<LevelDbKvStore, KvStoreError> {
+        let link_dir = TempDir::new("bazuka_mirror")?.into_path();
+        for p in std::fs::read_dir(path)? {
+            let p = p?;
+            if !p.file_name().eq_ignore_ascii_case("lock") {
+                std::os::unix::fs::symlink(p.path(), link_dir.join(p.file_name()))?;
+            }
+        }
+        LevelDbKvStore::new(&link_dir, 64)
     }
 }
 

@@ -17,7 +17,7 @@ pub enum KvStoreError {
     Corrupted(#[from] bincode::Error),
     #[error("io error: {0}")]
     IO(#[from] std::io::Error),
-    #[cfg(feature = "node")]
+    #[cfg(feature = "db")]
     #[error("leveldb error: {0}")]
     LevelDb(#[from] leveldb::error::Error),
 }
@@ -230,9 +230,9 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
 mod ram;
 pub use ram::*;
 
-#[cfg(feature = "node")]
+#[cfg(feature = "db")]
 mod disk;
-#[cfg(feature = "node")]
+#[cfg(feature = "db")]
 pub use disk::*;
 
 #[cfg(test)]

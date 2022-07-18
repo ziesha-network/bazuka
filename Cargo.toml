@@ -38,11 +38,10 @@ leveldb = { version = "0.8.6", optional = true }
 structopt = { version = "0.3", default-features = false, optional = true }
 async-trait = { version = "0.1.53", optional = true }
 serde_yaml = { version = "0.8", optional = true }
-
-[dev-dependencies]
-tempdir = "0.3.7"
+tempdir = { version = "0.3.7", optional = true }
 
 [features]
 default = ["node"]
+db = ["leveldb", "tempdir"]
 client = ["tokio", "hyper", "futures", "structopt", "serde_yaml"]
-node = ["client", "leveldb", "async-trait"]
+node = ["client", "db", "async-trait"]
