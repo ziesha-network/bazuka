@@ -1,15 +1,15 @@
-use super::messages::{GetZeroTransactionsRequest, GetZeroTransactionsResponse};
+use super::messages::{GetZeroMempoolRequest, GetZeroMempoolResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_zero_transactions<B: Blockchain>(
+pub async fn get_zero_mempool<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
-    _req: GetZeroTransactionsRequest,
-) -> Result<GetZeroTransactionsResponse, NodeError> {
+    _req: GetZeroMempoolRequest,
+) -> Result<GetZeroMempoolResponse, NodeError> {
     let context = context.read().await;
-    Ok(GetZeroTransactionsResponse {
+    Ok(GetZeroMempoolResponse {
         updates: context.zero_mempool.clone().into_keys().collect(),
         deposit_withdraws: context.dw_mempool.clone().into_keys().collect(),
     })

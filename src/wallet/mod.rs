@@ -1,24 +1,28 @@
 use crate::core::{
-    Address, ContractId, ContractUpdate, Money, Signature, Signer, Transaction,
-    TransactionAndDelta, TransactionData,
+    Address, ContractId, ContractPayment, ContractUpdate, Money, PaymentDirection, Signature,
+    Signer, Transaction, TransactionAndDelta, TransactionData, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
+use crate::crypto::ZkSignatureScheme;
 use crate::zk;
 
 #[derive(Clone)]
 pub struct Wallet {
     seed: Vec<u8>,
     private_key: <Signer as SignatureScheme>::Priv,
+    zk_private_key: <ZkSigner as ZkSignatureScheme>::Priv,
     address: Address,
 }
 
 impl Wallet {
     pub fn new(seed: Vec<u8>) -> Self {
         let (pk, sk) = Signer::generate_keys(&seed);
+        let (_, zk_sk) = ZkSigner::generate_keys(&seed);
         Self {
             seed,
             address: Address::PublicKey(pk),
             private_key: sk,
+            zk_private_key: zk_sk,
         }
     }
     pub fn get_address(&self) -> Address {
@@ -100,5 +104,42 @@ impl Wallet {
             tx,
             state_delta: Some(state_delta),
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn contract_deposit_withdraw(
+        &self,
+        contract_id: ContractId,
+        nonce: u32,
+        amount: Money,
+        fee: Money,
+        withdraw: bool,
+    ) -> ContractPayment {
+        let mut tx = ContractPayment {
+            address: self.private_key.clone().into(),
+            zk_address: self.zk_private_key.clone().into(),
+            contract_id,
+            nonce,
+            amount,
+            fee,
+            direction: if withdraw {
+                PaymentDirection::Withdraw(None)
+            } else {
+                PaymentDirection::Deposit(None)
+            },
+        };
+        let bytes = bincode::serialize(&tx).unwrap();
+        match &mut tx.direction {
+            PaymentDirection::Withdraw(sig) => {
+                *sig = Some(ZkSigner::sign(
+                    &self.zk_private_key,
+                    crate::zk::hash_to_scalar(&bytes),
+                ));
+            }
+            PaymentDirection::Deposit(sig) => {
+                *sig = Some(Signer::sign(&self.private_key, &bytes));
+            }
+        }
+        tx
     }
 }

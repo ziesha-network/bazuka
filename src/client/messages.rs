@@ -143,10 +143,10 @@ pub struct ShutdownRequest {}
 pub struct ShutdownResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetZeroTransactionsRequest {}
+pub struct GetZeroMempoolRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetZeroTransactionsResponse {
+pub struct GetZeroMempoolResponse {
     pub updates: Vec<zk::ZeroTransaction>,
     pub deposit_withdraws: Vec<ContractPayment>,
 }

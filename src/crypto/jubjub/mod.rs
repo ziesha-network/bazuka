@@ -1,5 +1,4 @@
-use crate::core::hash::{Hash, Sha3Hasher};
-use crate::zk::{ZkHasher, ZkScalar, ZkScalarRepr};
+use crate::zk::{hash_to_scalar, ZkHasher, ZkScalar, ZkScalarRepr};
 use ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use num_integer::Integer;
@@ -32,6 +31,12 @@ pub struct PrivateKey {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct PublicKey(pub PointCompressed);
+
+impl From<PrivateKey> for PublicKey {
+    fn from(priv_key: PrivateKey) -> Self {
+        Self(priv_key.public_key.compress())
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct Signature {
@@ -77,17 +82,13 @@ impl FromStr for PublicKey {
     }
 }
 
-fn hash_to_fr(inp: &[u8]) -> ZkScalar {
-    ZkScalar::new(&Sha3Hasher::hash(inp))
-}
-
 impl<H: ZkHasher> ZkSignatureScheme for JubJub<H> {
     type Pub = PublicKey;
     type Priv = PrivateKey;
     type Sig = Signature;
     fn generate_keys(seed: &[u8]) -> (PublicKey, PrivateKey) {
-        let randomness = hash_to_fr(seed);
-        let scalar = hash_to_fr(randomness.to_repr().as_ref());
+        let randomness = hash_to_scalar(seed);
+        let scalar = hash_to_scalar(randomness.to_repr().as_ref());
         let point = BASE.multiply(&scalar);
         let pk = PublicKey(point.compress());
         (

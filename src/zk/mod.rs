@@ -1,4 +1,4 @@
-use crate::core::ZkHasher as ZkMainHasher;
+use crate::core::{hash::Hash, Hasher, ZkHasher as ZkMainHasher};
 use crate::crypto::{jubjub, ZkSignatureScheme};
 
 use ff::PrimeField;
@@ -74,6 +74,10 @@ lazy_static! {
 #[PrimeFieldGenerator = "7"]
 #[PrimeFieldReprEndianness = "little"]
 pub struct ZkScalar([u64; 4]);
+
+pub fn hash_to_scalar(inp: &[u8]) -> ZkScalar {
+    ZkScalar::new(&Hasher::hash(inp))
+}
 
 impl ZkScalar {
     pub fn new(num_le: &[u8]) -> Self {

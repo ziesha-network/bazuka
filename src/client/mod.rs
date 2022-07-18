@@ -1,5 +1,4 @@
-use crate::core::Signer;
-use crate::core::TransactionAndDelta;
+use crate::core::{ContractPayment, Signer, TransactionAndDelta};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::utils;
@@ -270,6 +269,29 @@ impl BazukaClient {
             .json_get::<GetPeersRequest, GetPeersResponse>(
                 format!("{}/peers", self.peer),
                 GetPeersRequest {},
+                Limit::default(),
+            )
+            .await
+    }
+
+    pub async fn get_zero_mempool(&self) -> Result<GetZeroMempoolResponse, NodeError> {
+        self.sender
+            .bincode_get::<GetZeroMempoolRequest, GetZeroMempoolResponse>(
+                format!("{}/bincode/mempool/zero", self.peer),
+                GetZeroMempoolRequest {},
+                Limit::default(),
+            )
+            .await
+    }
+
+    pub async fn transact_deposit_withdraw(
+        &self,
+        tx: ContractPayment,
+    ) -> Result<TransactDepositWithdrawResponse, NodeError> {
+        self.sender
+            .bincode_post::<TransactDepositWithdrawRequest, TransactDepositWithdrawResponse>(
+                format!("{}/bincode/transact/dw", self.peer),
+                TransactDepositWithdrawRequest { tx },
                 Limit::default(),
             )
             .await

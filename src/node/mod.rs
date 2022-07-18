@@ -186,13 +186,10 @@ async fn node_service<B: Blockchain>(
                 .await?,
             )?);
         }
-        (Method::GET, "/bincode/zk/transactions") => {
+        (Method::GET, "/bincode/mempool/zero") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_zero_transactions(
-                    Arc::clone(&context),
-                    bincode::deserialize(&body_bytes)?,
-                )
-                .await?,
+                &api::get_zero_mempool(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                    .await?,
             )?);
         }
         _ => {

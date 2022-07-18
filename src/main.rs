@@ -29,7 +29,7 @@ use {
 #[cfg(feature = "client")]
 use {
     bazuka::client::{BazukaClient, NodeError},
-    bazuka::core::Signer,
+    bazuka::core::{Money, Signer},
     bazuka::crypto::SignatureScheme,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
@@ -66,6 +66,16 @@ enum CliOptions {
     Status {
         #[structopt(long)]
         node: SocketAddr,
+    },
+    Deposit {
+        #[structopt(long)]
+        node: SocketAddr,
+        #[structopt(long)]
+        contract: String,
+        #[structopt(long)]
+        amount: Money,
+        #[structopt(long, default_value = "0")]
+        fee: Money,
     },
 }
 
@@ -236,6 +246,28 @@ async fn main() -> Result<(), NodeError> {
             try_join!(
                 async {
                     println!("{:#?}", client.stats().await?);
+                    Ok::<(), NodeError>(())
+                },
+                req_loop
+            )
+            .unwrap();
+        }
+        CliOptions::Deposit {
+            node,
+            contract,
+            amount,
+            fee,
+        } => {
+            let conf = conf.expect("Bazuka is not initialized!");
+            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
+            let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
+            let pay =
+                wallet.contract_deposit_withdraw(contract.parse().unwrap(), 1, amount, fee, false);
+            let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(node));
+            try_join!(
+                async {
+                    println!("{:#?}", client.transact_deposit_withdraw(pay).await?);
+                    println!("{:#?}", client.get_zero_mempool().await?);
                     Ok::<(), NodeError>(())
                 },
                 req_loop
