@@ -46,5 +46,3 @@ jobs:
           cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
-        with:
-          fail_ci_if_error: true
