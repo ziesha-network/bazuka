@@ -244,7 +244,7 @@ async fn main() -> Result<(), NodeError> {
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(node));
             try_join!(
-                async {
+                async move {
                     println!("{:#?}", client.stats().await?);
                     Ok::<(), NodeError>(())
                 },
@@ -265,7 +265,7 @@ async fn main() -> Result<(), NodeError> {
                 wallet.contract_deposit_withdraw(contract.parse().unwrap(), 1, amount, fee, false);
             let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(node));
             try_join!(
-                async {
+                async move {
                     println!("{:#?}", client.transact_deposit_withdraw(pay).await?);
                     println!("{:#?}", client.get_zero_mempool().await?);
                     Ok::<(), NodeError>(())
