@@ -28,6 +28,10 @@ impl Wallet {
     pub fn get_address(&self) -> Address {
         self.address.clone()
     }
+    pub fn sign(&self, tx: &mut Transaction) {
+        let bytes = bincode::serialize(&tx).unwrap();
+        tx.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
+    }
     pub fn create_transaction(
         &self,
         dst: Address,
@@ -42,8 +46,7 @@ impl Wallet {
             fee,
             sig: Signature::Unsigned,
         };
-        let bytes = bincode::serialize(&tx).unwrap();
-        tx.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
+        self.sign(&mut tx);
         TransactionAndDelta {
             tx,
             state_delta: None,
@@ -56,7 +59,6 @@ impl Wallet {
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
-        let (_, sk) = Signer::generate_keys(&self.seed);
         let mut tx = Transaction {
             src: self.get_address(),
             data: TransactionData::CreateContract { contract },
@@ -64,8 +66,7 @@ impl Wallet {
             fee,
             sig: Signature::Unsigned,
         };
-        let bytes = bincode::serialize(&tx).unwrap();
-        tx.sig = Signature::Signed(Signer::sign(&sk, &bytes));
+        self.sign(&mut tx);
         TransactionAndDelta {
             tx,
             state_delta: Some(initial_state.as_delta()),
