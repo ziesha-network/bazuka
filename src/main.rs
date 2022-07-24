@@ -73,6 +73,8 @@ enum CliOptions {
         #[structopt(long)]
         contract: String,
         #[structopt(long)]
+        index: u32,
+        #[structopt(long)]
         amount: Money,
         #[structopt(long, default_value = "0")]
         fee: Money,
@@ -255,14 +257,21 @@ async fn main() -> Result<(), NodeError> {
         CliOptions::Deposit {
             node,
             contract,
+            index,
             amount,
             fee,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
-            let pay =
-                wallet.contract_deposit_withdraw(contract.parse().unwrap(), 1, amount, fee, false);
+            let pay = wallet.contract_deposit_withdraw(
+                contract.parse().unwrap(),
+                index,
+                1,
+                amount,
+                fee,
+                false,
+            );
             let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(node));
             try_join!(
                 async move {
