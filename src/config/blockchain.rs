@@ -149,6 +149,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         // timestamp of 10 previous blocks
         median_timestamp_count: 10,
 
+        // We expect a minimum number of MPN contract updates
+        // in a block to consider it valid
         mpn_num_function_calls: 0,
         mpn_num_deposit_withdraws: 0,
     }
