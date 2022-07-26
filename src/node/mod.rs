@@ -88,13 +88,15 @@ async fn node_service<B: Blockchain>(
 
     let body_bytes = hyper::body::to_bytes(body).await?;
 
+    let needs_signature = false;
+
     // TODO: This doesn't prevent replay attacks
     let is_signed = creds
         .map(|(pub_key, sig)| {
             ed25519::Ed25519::<crate::core::Hasher>::verify(&pub_key, &body_bytes, &sig)
         })
         .unwrap_or(false);
-    if !is_signed {
+    if needs_signature && !is_signed {
         return Err(NodeError::SignatureRequired);
     }
 
@@ -120,6 +122,11 @@ async fn node_service<B: Blockchain>(
         (Method::GET, "/stats") => {
             *response.body_mut() = Body::from(serde_json::to_vec(
                 &api::get_stats(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+            )?);
+        }
+        (Method::GET, "/account") => {
+            *response.body_mut() = Body::from(serde_json::to_vec(
+                &api::get_account(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
             )?);
         }
         (Method::GET, "/peers") => {

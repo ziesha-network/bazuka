@@ -15,6 +15,7 @@ pub type ZkHasher = crate::zk::PoseidonHasher;
 pub type ZkSigner = crypto::jubjub::JubJub<ZkHasher>;
 
 pub type Address = address::Address<Signer>;
+pub type ParseAddressError = address::ParseAddressError;
 pub type Account = address::Account;
 pub type Signature = address::Signature<Signer>;
 pub type Transaction = transaction::Transaction<Hasher, Signer, ZkSigner>;

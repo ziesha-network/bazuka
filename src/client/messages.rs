@@ -1,6 +1,6 @@
 use crate::blockchain::ZkBlockchainPatch;
 use crate::core::{
-    Address, Block, ContractId, ContractPayment, Header, Money, TransactionAndDelta,
+    Account, Address, Block, ContractId, ContractPayment, Header, Money, TransactionAndDelta,
 };
 use crate::zk;
 use std::collections::HashMap;
@@ -17,6 +17,16 @@ pub struct GetStatsResponse {
     pub power: u128,
     pub next_reward: Money,
     pub timestamp: u32,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetAccountRequest {
+    pub address: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetAccountResponse {
+    pub account: Account,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

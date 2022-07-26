@@ -27,6 +27,8 @@ pub enum NodeError {
     Utf8Error(#[from] std::str::Utf8Error),
     #[error("addr parse error happened: {0}")]
     AddrParseError(#[from] std::net::AddrParseError),
+    #[error("cannot parse account address: {0}")]
+    AccountParseAddressError(#[from] crate::core::ParseAddressError),
     #[error("no wallet available")]
     NoWalletError,
     #[error("no block is currently being mined")]

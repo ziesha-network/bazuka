@@ -1,4 +1,4 @@
-use crate::core::{ContractPayment, Signer, TransactionAndDelta};
+use crate::core::{Address, ContractPayment, Signer, TransactionAndDelta};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::utils;
@@ -302,6 +302,18 @@ impl BazukaClient {
             .bincode_get::<GetOutdatedHeightsRequest, GetOutdatedHeightsResponse>(
                 format!("{}/bincode/states/outdated", self.peer),
                 GetOutdatedHeightsRequest {},
+                Limit::default(),
+            )
+            .await
+    }
+
+    pub async fn get_account(&self, address: Address) -> Result<GetAccountResponse, NodeError> {
+        self.sender
+            .json_get::<GetAccountRequest, GetAccountResponse>(
+                format!("{}/account", self.peer),
+                GetAccountRequest {
+                    address: address.to_string(),
+                },
                 Limit::default(),
             )
             .await

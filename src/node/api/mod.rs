@@ -32,3 +32,5 @@ mod get_miner_puzzle;
 pub use get_miner_puzzle::*;
 mod post_miner_solution;
 pub use post_miner_solution::*;
+mod get_account;
+pub use get_account::*;
