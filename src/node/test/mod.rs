@@ -41,7 +41,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
     init();
 
     let rules = Arc::new(RwLock::new(Vec::new()));
-    let conf = blockchain::get_blockchain_config();
+    let conf = blockchain::get_test_blockchain_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&rules),
@@ -98,7 +98,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
     init();
 
     let rules = Arc::new(RwLock::new(Vec::new()));
-    let conf = blockchain::get_blockchain_config();
+    let conf = blockchain::get_test_blockchain_config();
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&rules),
