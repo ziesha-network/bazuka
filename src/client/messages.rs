@@ -41,6 +41,11 @@ pub struct PostMinerSolutionResponse {}
 pub struct GetMinerPuzzleRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetMinerPuzzleResponse {
+    pub puzzle: Option<Puzzle>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Puzzle {
     pub key: String,   // Puzzle key encoded in hex
     pub blob: String,  // Blob encoded in hex

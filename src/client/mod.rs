@@ -335,12 +335,14 @@ impl BazukaClient {
     pub async fn mine(&self) -> Result<PostMinerSolutionResponse, NodeError> {
         let puzzle = self
             .sender
-            .json_get::<GetMinerPuzzleRequest, Puzzle>(
+            .json_get::<GetMinerPuzzleRequest, GetMinerPuzzleResponse>(
                 format!("{}/miner/puzzle", self.peer),
                 GetMinerPuzzleRequest {},
                 Limit::default(),
             )
-            .await?;
+            .await?
+            .puzzle
+            .unwrap(); // TODO: Don't unwrap
         let sol = mine_puzzle(&puzzle);
         self.sender
             .json_post::<PostMinerSolutionRequest, PostMinerSolutionResponse>(

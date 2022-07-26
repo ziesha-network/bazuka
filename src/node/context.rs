@@ -64,18 +64,22 @@ impl<B: Blockchain> NodeContext<B> {
             .collect()
     }
 
-    pub fn get_puzzle(&mut self, wallet: Wallet) -> Result<BlockPuzzle, BlockchainError> {
+    pub fn get_puzzle(&mut self, wallet: Wallet) -> Result<Option<BlockPuzzle>, BlockchainError> {
         let ts = self.network_timestamp();
         let draft = self
             .blockchain
             .draft_block(ts, &mut self.mempool, &wallet, true)?;
-        let puzzle = Puzzle {
-            key: hex::encode(self.blockchain.pow_key(draft.block.header.number)?),
-            blob: hex::encode(bincode::serialize(&draft.block.header).unwrap()),
-            offset: 80,
-            size: 8,
-            target: draft.block.header.proof_of_work.target,
-        };
-        Ok((draft, puzzle))
+        if let Some(draft) = draft {
+            let puzzle = Puzzle {
+                key: hex::encode(self.blockchain.pow_key(draft.block.header.number)?),
+                blob: hex::encode(bincode::serialize(&draft.block.header).unwrap()),
+                offset: 80,
+                size: 8,
+                target: draft.block.header.proof_of_work.target,
+            };
+            Ok(Some((draft, puzzle)))
+        } else {
+            Ok(None)
+        }
     }
 }

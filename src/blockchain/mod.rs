@@ -153,7 +153,7 @@ pub trait Blockchain {
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
         wallet: &Wallet,
         check: bool,
-    ) -> Result<BlockAndPatch, BlockchainError>;
+    ) -> Result<Option<BlockAndPatch>, BlockchainError>;
     fn get_height(&self) -> Result<u64, BlockchainError>;
     fn get_tip(&self) -> Result<Header, BlockchainError>;
     fn get_headers(&self, since: u64, until: Option<u64>) -> Result<Vec<Header>, BlockchainError>;
@@ -927,7 +927,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
         wallet: &Wallet,
         check: bool,
-    ) -> Result<BlockAndPatch, BlockchainError> {
+    ) -> Result<Option<BlockAndPatch>, BlockchainError> {
         let height = self.get_height()?;
         let outdated_contracts = self.get_outdated_contracts()?;
 
@@ -996,10 +996,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             Ok(())
         })?;
 
-        Ok(BlockAndPatch {
+        Ok(Some(BlockAndPatch {
             block: blk,
             patch: block_delta,
-        })
+        }))
     }
 
     fn get_power(&self) -> Result<u128, BlockchainError> {
