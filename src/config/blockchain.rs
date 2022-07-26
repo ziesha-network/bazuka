@@ -148,6 +148,9 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         // New block's timestamp should be higher than median
         // timestamp of 10 previous blocks
         median_timestamp_count: 10,
+
+        mpn_num_function_calls: 0,
+        mpn_num_deposit_withdraws: 0,
     }
 }
 

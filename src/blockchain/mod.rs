@@ -1,5 +1,6 @@
 use thiserror::Error;
 
+use crate::config::blockchain::MPN_CONTRACT_ID;
 use crate::core::{
     hash::Hash, Account, Address, Block, ContractAccount, ContractId, ContractPayment,
     ContractUpdate, Hasher, Header, Money, PaymentDirection, ProofOfWork, Signature, Transaction,
@@ -27,6 +28,8 @@ pub struct BlockchainConfig {
     pub pow_key_change_delay: u64,
     pub pow_key_change_interval: u64,
     pub median_timestamp_count: u64,
+    pub mpn_num_function_calls: usize,
+    pub mpn_num_deposit_withdraws: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -100,6 +103,8 @@ pub enum BlockchainError {
     StateManagerError(#[from] zk::StateManagerError),
     #[error("invalid deposit/withdraw signature")]
     InvalidDepositWithdrawSignature,
+    #[error("insufficient mpn updates")]
+    InsufficientMpnUpdates,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -602,7 +607,30 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::SignatureError);
             }
 
+            let mut num_mpn_function_calls = 0;
+            let mut num_mpn_deposit_withdraws = 0;
+
             for tx in txs.iter() {
+                // Count MPN updates
+                if let TransactionData::UpdateContract {
+                    contract_id,
+                    updates,
+                } = &tx.data
+                {
+                    if *contract_id == *MPN_CONTRACT_ID {
+                        for update in updates.iter() {
+                            match update {
+                                ContractUpdate::DepositWithdraw { .. } => {
+                                    num_mpn_deposit_withdraws += 1;
+                                }
+                                ContractUpdate::FunctionCall { .. } => {
+                                    num_mpn_function_calls += 1;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 body_size += tx.size();
                 // All genesis block txs are allowed to get from Treasury
                 if let TxSideEffect::StateChange {
@@ -615,6 +643,12 @@ impl<K: KvStore> KvStoreChain<K> {
                     state_updates.insert(contract_id, state_change.clone());
                     outdated_contracts.push(contract_id);
                 }
+            }
+
+            if num_mpn_function_calls < self.config.mpn_num_function_calls
+                || num_mpn_deposit_withdraws < self.config.mpn_num_deposit_withdraws
+            {
+                return Err(BlockchainError::InsufficientMpnUpdates);
             }
 
             if (body_size as isize + state_size_delta) as usize > self.config.max_delta_size {
