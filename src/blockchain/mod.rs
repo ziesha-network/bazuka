@@ -448,7 +448,8 @@ impl<K: KvStore> KvStoreChain<K> {
                                         );
                                     }
                                 }
-                                let aux_data = state_builder.compress()?;
+                                let _aux_data = state_builder.compress()?;
+                                let aux_data = zk::ZkCompressedState::default();
                                 (circuit, aux_data, next_state, proof)
                             }
                             ContractUpdate::FunctionCall {
@@ -527,11 +528,18 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn select_transactions(
         &self,
-        txs: &mut HashMap<TransactionAndDelta, TransactionStats>,
+        txs: &HashMap<TransactionAndDelta, TransactionStats>,
         check: bool,
     ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
         let mut sorted = txs.keys().cloned().collect::<Vec<_>>();
-        sorted.sort_by(|t1, t2| t1.tx.nonce.cmp(&t2.tx.nonce));
+        sorted.sort_by_key(|tx| {
+            let is_mpn = if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
+                *contract_id == *MPN_CONTRACT_ID
+            } else {
+                false
+            };
+            (is_mpn, tx.tx.nonce)
+        });
         let (_, result) = self.isolated(|chain| {
             let mut result = Vec::new();
             let mut sz = 0isize;
@@ -543,7 +551,6 @@ impl<K: KvStore> KvStoreChain<K> {
                         && tx.tx.verify_signature()
                         && chain.apply_tx(&tx.tx, false).is_ok())
                 {
-                    txs.remove(&tx);
                     sz += delta;
                     result.push(tx);
                 }
@@ -645,8 +652,9 @@ impl<K: KvStore> KvStoreChain<K> {
                 }
             }
 
-            if num_mpn_function_calls < self.config.mpn_num_function_calls
-                || num_mpn_deposit_withdraws < self.config.mpn_num_deposit_withdraws
+            if !is_genesis
+                && (num_mpn_function_calls < self.config.mpn_num_function_calls
+                    || num_mpn_deposit_withdraws < self.config.mpn_num_deposit_withdraws)
             {
                 return Err(BlockchainError::InsufficientMpnUpdates);
             }
@@ -1023,17 +1031,25 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         };
         blk.header.block_root = blk.merkle_tree().root();
 
-        self.isolated(|chain| {
+        match self.isolated(|chain| {
             chain.apply_block(&blk, false)?; // Check if everything is ok
             chain.update_states(&block_delta)?;
 
             Ok(())
-        })?;
+        }) {
+            Err(BlockchainError::InsufficientMpnUpdates) => Ok(None),
+            Err(e) => Err(e),
+            Ok(_) => {
+                for tx in tx_and_deltas.iter() {
+                    mempool.remove(tx);
+                }
 
-        Ok(Some(BlockAndPatch {
-            block: blk,
-            patch: block_delta,
-        }))
+                Ok(Some(BlockAndPatch {
+                    block: blk,
+                    patch: block_delta,
+                }))
+            }
+        }
     }
 
     fn get_power(&self) -> Result<u128, BlockchainError> {
@@ -1134,10 +1150,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self,
         tx_delta: &TransactionAndDelta,
     ) -> Result<bool, BlockchainError> {
-        Ok(
-            self.get_account(tx_delta.tx.src.clone())?.balance > 0
-                && tx_delta.tx.verify_signature(),
-        )
+        Ok(tx_delta.tx.verify_signature())
     }
     fn generate_state_patch(
         &self,
