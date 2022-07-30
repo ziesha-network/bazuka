@@ -416,7 +416,7 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
     let blk1 = chain
         .draft_block(
             1,
-            &mut with_dummy_stats(&[
+            &with_dummy_stats(&[
                 alice.create_transaction(miner.get_address(), 100, 0, 1),
                 alice.create_transaction(miner.get_address(), 200, 0, 2),
             ]),
@@ -428,7 +428,7 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
     let blk2 = chain
         .draft_block(
             1,
-            &mut with_dummy_stats(&[
+            &with_dummy_stats(&[
                 alice.create_transaction(miner.get_address(), 200, 0, 1),
                 alice.create_transaction(miner.get_address(), 100, 0, 2),
             ]),
@@ -479,7 +479,7 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     // Alice -> 2700 -> Bob (Fee 300)
     chain.apply_block(
         &chain
-            .draft_block(1, &mut with_dummy_stats(&[tx.clone()]), &miner, true)?
+            .draft_block(1, &with_dummy_stats(&[tx.clone()]), &miner, true)?
             .unwrap()
             .block,
         true,
@@ -490,7 +490,7 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     // Alice -> 2700 -> Bob (Fee 300) (NOT APPLIED: DUPLICATED TRANSACTION!)
     chain.apply_block(
         &chain
-            .draft_block(1, &mut with_dummy_stats(&[tx.clone()]), &miner, true)?
+            .draft_block(1, &with_dummy_stats(&[tx.clone()]), &miner, true)?
             .unwrap()
             .block,
         true,
@@ -503,7 +503,7 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     // Alice -> 2700 -> Bob (Fee 300)
     chain.apply_block(
         &chain
-            .draft_block(1, &mut with_dummy_stats(&[tx2]), &miner, true)?
+            .draft_block(1, &with_dummy_stats(&[tx2]), &miner, true)?
             .unwrap()
             .block,
         true,
@@ -542,7 +542,7 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
     // Ensure tx is not included in block and bob has not received funds
     chain.apply_block(
         &chain
-            .draft_block(1, &mut with_dummy_stats(&[tx]), &miner, true)?
+            .draft_block(1, &with_dummy_stats(&[tx]), &miner, true)?
             .unwrap()
             .block,
         true,
@@ -579,12 +579,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     };
 
     // Ensure apply_tx will raise
-    match chain.draft_block(
-        1,
-        &mut with_dummy_stats(&[unsigned_tx.clone()]),
-        &miner,
-        false,
-    ) {
+    match chain.draft_block(1, &with_dummy_stats(&[unsigned_tx.clone()]), &miner, false) {
         Ok(_) => assert!(false, "Unsigned transaction shall not be applied"),
         Err(e) => assert!(matches!(e, BlockchainError::SignatureError)),
     }
@@ -592,7 +587,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     // Ensure tx is not included in block and bob has not received funds
     chain.apply_block(
         &chain
-            .draft_block(1, &mut with_dummy_stats(&[unsigned_tx]), &miner, true)?
+            .draft_block(1, &with_dummy_stats(&[unsigned_tx]), &miner, true)?
             .unwrap()
             .block,
         true,
@@ -635,7 +630,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     };
 
     // Ensure apply_tx will raise
-    match chain.draft_block(1, &mut with_dummy_stats(&[tx.clone()]), &miner, false) {
+    match chain.draft_block(1, &with_dummy_stats(&[tx.clone()]), &miner, false) {
         Ok(_) => assert!(false, "Invalid signed transaction shall not be applied"),
         Err(e) => assert!(matches!(e, BlockchainError::SignatureError)),
     }
@@ -643,7 +638,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     // Ensure tx is not included in block and bob has not received funds
     chain.apply_block(
         &chain
-            .draft_block(1, &mut with_dummy_stats(&[tx]), &miner, true)?
+            .draft_block(1, &with_dummy_stats(&[tx]), &miner, true)?
             .unwrap()
             .block,
         true,
@@ -672,7 +667,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 1,
-                &mut with_dummy_stats(&[alice.create_transaction(bob.get_address(), 2700, 300, 1)]),
+                &with_dummy_stats(&[alice.create_transaction(bob.get_address(), 2700, 300, 1)]),
                 &miner,
                 true,
             )?
@@ -688,7 +683,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 1,
-                &mut with_dummy_stats(&[bob.create_transaction(alice.get_address(), 2600, 200, 1)]),
+                &with_dummy_stats(&[bob.create_transaction(alice.get_address(), 2600, 200, 1)]),
                 &miner,
                 true,
             )?
@@ -704,7 +699,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 2,
-                &mut with_dummy_stats(&[bob.create_transaction(alice.get_address(), 2600, 100, 1)]),
+                &with_dummy_stats(&[bob.create_transaction(alice.get_address(), 2600, 100, 1)]),
                 &miner,
                 true,
             )?
@@ -720,12 +715,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 3,
-                &mut with_dummy_stats(&[alice.create_transaction(
-                    alice.get_address(),
-                    100,
-                    200,
-                    2,
-                )]),
+                &with_dummy_stats(&[alice.create_transaction(alice.get_address(), 100, 200, 2)]),
                 &miner,
                 true,
             )?
@@ -741,12 +731,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 4,
-                &mut with_dummy_stats(&[alice.create_transaction(
-                    alice.get_address(),
-                    20000,
-                    9400,
-                    3,
-                )]),
+                &with_dummy_stats(&[alice.create_transaction(alice.get_address(), 20000, 9400, 3)]),
                 &miner,
                 true,
             )?
@@ -762,12 +747,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 5,
-                &mut with_dummy_stats(&[alice.create_transaction(
-                    alice.get_address(),
-                    1000,
-                    8400,
-                    3,
-                )]),
+                &with_dummy_stats(&[alice.create_transaction(alice.get_address(), 1000, 8400, 3)]),
                 &miner,
                 true,
             )?
@@ -811,7 +791,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let wallet1 = Wallet::new(Vec::from("ABC"));
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
-    let mut conf = blockchain::get_blockchain_config();
+    let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = 0x0000ffff;
     conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
@@ -829,12 +809,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let t1 = wallet1.create_transaction(wallet2.get_address(), 100, 0, 1);
     let mempool = vec![t1];
     let mut draft = chain
-        .draft_block(
-            1650000000,
-            &mut with_dummy_stats(&mempool),
-            &wallet_miner,
-            true,
-        )?
+        .draft_block(1650000000, &with_dummy_stats(&mempool), &wallet_miner, true)?
         .unwrap();
 
     assert!(matches!(
@@ -916,12 +891,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     };
     let mempool = vec![t_valid, t_invalid_unsigned, t_invalid_from_treasury];
     let mut draft = chain
-        .draft_block(
-            1650000000,
-            &mut with_dummy_stats(&mempool),
-            &wallet_miner,
-            true,
-        )?
+        .draft_block(1650000000, &with_dummy_stats(&mempool), &wallet_miner, true)?
         .unwrap();
 
     mine_block(&chain, &mut draft)?;
@@ -959,12 +929,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
 
     let mempool = vec![t1, t2];
     let mut draft = chain
-        .draft_block(
-            1650000000,
-            &mut with_dummy_stats(&mempool),
-            &wallet_miner,
-            true,
-        )?
+        .draft_block(1650000000, &with_dummy_stats(&mempool), &wallet_miner, true)?
         .unwrap();
 
     mine_block(&chain, &mut draft)?;
@@ -1006,12 +971,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let t1 = wallet1.create_transaction(wallet2.get_address(), 1_000_000, 0, 1);
     let mut mempool = vec![t1];
     let mut draft = chain
-        .draft_block(
-            1650000000,
-            &mut with_dummy_stats(&mempool),
-            &wallet_miner,
-            true,
-        )?
+        .draft_block(1650000000, &with_dummy_stats(&mempool), &wallet_miner, true)?
         .unwrap();
 
     mine_block(&chain, &mut draft)?;
@@ -1022,12 +982,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     mempool.push(t2);
 
     let mut draft = chain
-        .draft_block(
-            1650000001,
-            &mut with_dummy_stats(&mempool),
-            &wallet_miner,
-            true,
-        )?
+        .draft_block(1650000001, &with_dummy_stats(&mempool), &wallet_miner, true)?
         .unwrap();
 
     mine_block(&chain, &mut draft)?;

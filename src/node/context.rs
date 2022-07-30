@@ -68,7 +68,7 @@ impl<B: Blockchain> NodeContext<B> {
         let ts = self.network_timestamp();
         let draft = self
             .blockchain
-            .draft_block(ts, &mut self.mempool, &wallet, true)?;
+            .draft_block(ts, &self.mempool, &wallet, true)?;
         if let Some(draft) = draft {
             let puzzle = Puzzle {
                 key: hex::encode(self.blockchain.pow_key(draft.block.header.number)?),

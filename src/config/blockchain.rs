@@ -165,6 +165,8 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     println!("CONT: {}", mpn_contract_id);
 
     let mut conf = get_blockchain_config();
+    conf.mpn_num_deposit_withdraws = 0;
+    conf.mpn_num_function_calls = 0;
     conf.genesis.block.header.proof_of_work.target = 0x007fffff;
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;
     let abc = Wallet::new(Vec::from("ABC"));

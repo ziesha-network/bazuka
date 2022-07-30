@@ -155,7 +155,7 @@ pub trait Blockchain {
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
+        mempool: &HashMap<TransactionAndDelta, TransactionStats>,
         wallet: &Wallet,
         check: bool,
     ) -> Result<Option<BlockAndPatch>, BlockchainError>;
@@ -966,7 +966,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
+        mempool: &HashMap<TransactionAndDelta, TransactionStats>,
         wallet: &Wallet,
         check: bool,
     ) -> Result<Option<BlockAndPatch>, BlockchainError> {
@@ -1039,16 +1039,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }) {
             Err(BlockchainError::InsufficientMpnUpdates) => Ok(None),
             Err(e) => Err(e),
-            Ok(_) => {
-                for tx in tx_and_deltas.iter() {
-                    mempool.remove(tx);
-                }
-
-                Ok(Some(BlockAndPatch {
-                    block: blk,
-                    patch: block_delta,
-                }))
-            }
+            Ok(_) => Ok(Some(BlockAndPatch {
+                block: blk,
+                patch: block_delta,
+            })),
         }
     }
 
