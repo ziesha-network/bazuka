@@ -1163,9 +1163,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn validate_transaction(
         &self,
-        tx_delta: &TransactionAndDelta,
+        _tx_delta: &TransactionAndDelta,
     ) -> Result<bool, BlockchainError> {
-        Ok(tx_delta.tx.verify_signature())
+        Ok(true)
     }
     fn generate_state_patch(
         &self,
