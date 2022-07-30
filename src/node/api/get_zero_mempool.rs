@@ -8,7 +8,8 @@ pub async fn get_zero_mempool<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     _req: GetZeroMempoolRequest,
 ) -> Result<GetZeroMempoolResponse, NodeError> {
-    let context = context.read().await;
+    let mut context = context.write().await;
+    context.cleanup_mempools()?;
     Ok(GetZeroMempoolResponse {
         updates: context.zero_mempool.clone().into_keys().collect(),
         deposit_withdraws: context.dw_mempool.clone().into_keys().collect(),

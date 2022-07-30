@@ -264,17 +264,18 @@ async fn main() -> Result<(), NodeError> {
             let conf = conf.expect("Bazuka is not initialized!");
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
-            let pay = wallet.contract_deposit_withdraw(
-                contract.parse().unwrap(),
-                index,
-                1,
-                amount,
-                fee,
-                false,
-            );
             let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(node));
             try_join!(
                 async move {
+                    let acc = client.get_account(wallet.get_address()).await?.account;
+                    let pay = wallet.contract_deposit_withdraw(
+                        contract.parse().unwrap(),
+                        index,
+                        acc.nonce,
+                        amount,
+                        fee,
+                        false,
+                    );
                     println!("{:#?}", client.transact_deposit_withdraw(pay).await?);
                     println!("{:#?}", client.get_zero_mempool().await?);
                     Ok::<(), NodeError>(())

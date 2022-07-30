@@ -138,6 +138,10 @@ pub trait Blockchain {
         &self,
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
     ) -> Result<(), BlockchainError>;
+    fn cleanup_contract_payment_mempool(
+        &self,
+        mempool: &mut HashMap<ContractPayment, TransactionStats>,
+    ) -> Result<(), BlockchainError>;
     fn validate_zero_transaction(&self, tx: &zk::ZeroTransaction) -> Result<bool, BlockchainError>;
     fn validate_dw_transaction(&self, tx: &ContractPayment) -> Result<bool, BlockchainError>;
     fn validate_transaction(&self, tx_delta: &TransactionAndDelta)
@@ -290,6 +294,27 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::Inconsistency);
             }
         })
+    }
+
+    fn is_contract_payment_valid(&self, dw: &ContractPayment) -> Result<bool, BlockchainError> {
+        let cont_account = self.get_contract_account(dw.contract_id)?;
+        let addr_account = self.get_account(Address::PublicKey(dw.address.clone()))?;
+        if !dw.verify_signature() {
+            return Ok(false);
+        }
+        match &dw.direction {
+            PaymentDirection::Deposit(_) => {
+                if addr_account.nonce != dw.nonce || addr_account.balance < dw.amount {
+                    return Ok(false);
+                }
+            }
+            PaymentDirection::Withdraw(_) => {
+                if cont_account.nonce != dw.nonce || cont_account.balance < dw.amount {
+                    return Ok(false);
+                }
+            }
+        }
+        Ok(true)
     }
 
     fn apply_tx(
@@ -1147,6 +1172,19 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             }
             Ok(())
         })?;
+        Ok(())
+    }
+
+    fn cleanup_contract_payment_mempool(
+        &self,
+        mempool: &mut HashMap<ContractPayment, TransactionStats>,
+    ) -> Result<(), BlockchainError> {
+        // TODO: Sort by nonce?
+        for p in mempool.clone().keys() {
+            if !self.is_contract_payment_valid(p)? {
+                mempool.remove(p);
+            }
+        }
         Ok(())
     }
 
