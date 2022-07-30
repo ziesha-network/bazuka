@@ -134,6 +134,10 @@ pub enum TxSideEffect {
 }
 
 pub trait Blockchain {
+    fn cleanup_mempool(
+        &self,
+        mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
+    ) -> Result<(), BlockchainError>;
     fn validate_zero_transaction(&self, tx: &zk::ZeroTransaction) -> Result<bool, BlockchainError>;
     fn validate_dw_transaction(&self, tx: &ContractPayment) -> Result<bool, BlockchainError>;
     fn validate_transaction(&self, tx_delta: &TransactionAndDelta)
@@ -1126,6 +1130,23 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             Ok(())
         })?;
         self.database.update(&ops)?;
+        Ok(())
+    }
+
+    fn cleanup_mempool(
+        &self,
+        mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
+    ) -> Result<(), BlockchainError> {
+        let mut sorted = mempool.keys().cloned().collect::<Vec<_>>();
+        sorted.sort_by_key(|tx| tx.tx.nonce);
+        self.isolated(|chain| {
+            for tx in sorted.into_iter() {
+                if chain.apply_tx(&tx.tx, false).is_err() {
+                    mempool.remove(&tx);
+                }
+            }
+            Ok(())
+        })?;
         Ok(())
     }
 

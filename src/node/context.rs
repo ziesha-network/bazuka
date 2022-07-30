@@ -64,6 +64,10 @@ impl<B: Blockchain> NodeContext<B> {
             .collect()
     }
 
+    pub fn cleanup_mempool(&mut self) -> Result<(), BlockchainError> {
+        self.blockchain.cleanup_mempool(&mut self.mempool)
+    }
+
     pub fn get_puzzle(&mut self, wallet: Wallet) -> Result<Option<BlockPuzzle>, BlockchainError> {
         let ts = self.network_timestamp();
         let draft = self
