@@ -12,21 +12,26 @@ pub struct Wallet {
     private_key: <Signer as SignatureScheme>::Priv,
     zk_private_key: <ZkSigner as ZkSignatureScheme>::Priv,
     address: Address,
+    zk_address: <ZkSigner as ZkSignatureScheme>::Pub,
 }
 
 impl Wallet {
     pub fn new(seed: Vec<u8>) -> Self {
         let (pk, sk) = Signer::generate_keys(&seed);
-        let (_, zk_sk) = ZkSigner::generate_keys(&seed);
+        let (zk_pk, zk_sk) = ZkSigner::generate_keys(&seed);
         Self {
             seed,
             address: Address::PublicKey(pk),
+            zk_address: zk_pk,
             private_key: sk,
             zk_private_key: zk_sk,
         }
     }
     pub fn get_address(&self) -> Address {
         self.address.clone()
+    }
+    pub fn get_zk_address(&self) -> <ZkSigner as ZkSignatureScheme>::Pub {
+        self.zk_address.clone()
     }
     pub fn sign(&self, tx: &mut Transaction) {
         let bytes = bincode::serialize(&tx).unwrap();

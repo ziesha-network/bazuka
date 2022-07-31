@@ -502,9 +502,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                         );
                                     }
                                 }
-                                let _aux_data = state_builder.compress()?;
-                                println!("RESULT: {:?}", _aux_data);
-                                let aux_data = zk::ZkCompressedState::default();
+                                let aux_data = state_builder.compress()?;
                                 (circuit, aux_data, next_state, proof)
                             }
                             ContractUpdate::FunctionCall {
