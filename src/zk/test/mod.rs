@@ -52,7 +52,9 @@ fn test_zk_list_membership_proof() {
     let mut builder = ZkStateBuilder::<SumHasher>::new(model);
     for i in 0..256 {
         builder
-            .set(ZkDataLocator(vec![1, i]), ZkScalar::from(i as u64))
+            .batch_set(&ZkDeltaPairs(
+                [(ZkDataLocator(vec![1, i]), Some(ZkScalar::from(i as u64)))].into(),
+            ))
             .unwrap();
     }
     for i in 0..256 {
