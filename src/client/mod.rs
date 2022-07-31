@@ -284,14 +284,14 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn transact_deposit_withdraw(
+    pub async fn transact_contract_payment(
         &self,
         tx: ContractPayment,
-    ) -> Result<TransactDepositWithdrawResponse, NodeError> {
+    ) -> Result<TransactContractPaymentResponse, NodeError> {
         self.sender
-            .bincode_post::<TransactDepositWithdrawRequest, TransactDepositWithdrawResponse>(
-                format!("{}/bincode/transact/dw", self.peer),
-                TransactDepositWithdrawRequest { tx },
+            .bincode_post::<TransactContractPaymentRequest, TransactContractPaymentResponse>(
+                format!("{}/bincode/transact/contract_payment", self.peer),
+                TransactContractPaymentRequest { tx },
                 Limit::default(),
             )
             .await

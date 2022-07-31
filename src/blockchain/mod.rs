@@ -29,7 +29,7 @@ pub struct BlockchainConfig {
     pub pow_key_change_interval: u64,
     pub median_timestamp_count: u64,
     pub mpn_num_function_calls: usize,
-    pub mpn_num_deposit_withdraws: usize,
+    pub mpn_num_contract_payments: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -102,7 +102,7 @@ pub enum BlockchainError {
     #[error("state-manager error happened: {0}")]
     StateManagerError(#[from] zk::StateManagerError),
     #[error("invalid deposit/withdraw signature")]
-    InvalidDepositWithdrawSignature,
+    InvalidContractPaymentSignature,
     #[error("insufficient mpn updates")]
     InsufficientMpnUpdates,
 }
@@ -143,7 +143,7 @@ pub trait Blockchain {
         mempool: &mut HashMap<ContractPayment, TransactionStats>,
     ) -> Result<(), BlockchainError>;
     fn validate_zero_transaction(&self, tx: &zk::ZeroTransaction) -> Result<bool, BlockchainError>;
-    fn validate_dw_transaction(&self, tx: &ContractPayment) -> Result<bool, BlockchainError>;
+    fn validate_contract_payment(&self, tx: &ContractPayment) -> Result<bool, BlockchainError>;
     fn validate_transaction(&self, tx_delta: &TransactionAndDelta)
         -> Result<bool, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
@@ -296,20 +296,28 @@ impl<K: KvStore> KvStoreChain<K> {
         })
     }
 
-    fn is_contract_payment_valid(&self, dw: &ContractPayment) -> Result<bool, BlockchainError> {
-        let cont_account = self.get_contract_account(dw.contract_id)?;
-        let addr_account = self.get_account(Address::PublicKey(dw.address.clone()))?;
-        if !dw.verify_signature() {
+    fn is_contract_payment_valid(
+        &self,
+        contract_payment: &ContractPayment,
+    ) -> Result<bool, BlockchainError> {
+        let cont_account = self.get_contract_account(contract_payment.contract_id)?;
+        let addr_account =
+            self.get_account(Address::PublicKey(contract_payment.address.clone()))?;
+        if !contract_payment.verify_signature() {
             return Ok(false);
         }
-        match &dw.direction {
+        match &contract_payment.direction {
             PaymentDirection::Deposit(_) => {
-                if addr_account.nonce != dw.nonce || addr_account.balance < dw.amount {
+                if addr_account.nonce != contract_payment.nonce
+                    || addr_account.balance < contract_payment.amount
+                {
                     return Ok(false);
                 }
             }
             PaymentDirection::Withdraw(_) => {
-                if cont_account.nonce != dw.nonce || cont_account.balance < dw.amount {
+                if cont_account.nonce != contract_payment.nonce
+                    || cont_account.balance < contract_payment.amount
+                {
                     return Ok(false);
                 }
             }
@@ -403,12 +411,12 @@ impl<K: KvStore> KvStoreChain<K> {
                         new_account.height += 1;
 
                         let (circuit, aux_data, next_state, proof) = match update {
-                            ContractUpdate::DepositWithdraw {
-                                deposit_withdraws,
+                            ContractUpdate::Payment {
+                                payments,
                                 next_state,
                                 proof,
                             } => {
-                                let circuit = &contract.deposit_withdraw_function;
+                                let circuit = &contract.payment_function;
                                 let state_model = zk::ZkStateModel::List {
                                     item_type: Box::new(zk::ZkStateModel::Struct {
                                         field_types: vec![
@@ -416,64 +424,65 @@ impl<K: KvStore> KvStoreChain<K> {
                                             zk::ZkStateModel::Scalar, // Amount
                                         ],
                                     }),
-                                    log4_size: contract.log4_deposit_withdraw_capacity,
+                                    log4_size: contract.log4_payment_capacity,
                                 };
                                 let mut state_builder =
                                     zk::ZkStateBuilder::<ZkHasher>::new(state_model);
-                                for (i, dw) in deposit_withdraws.iter().enumerate() {
+                                for (i, contract_payment) in payments.iter().enumerate() {
                                     // Set amount
                                     state_builder.set(
                                         zk::ZkDataLocator(vec![i as u32, 1]),
-                                        zk::ZkScalar::from(dw.amount),
+                                        zk::ZkScalar::from(contract_payment.amount),
                                     )?;
 
-                                    let mut addr_account = chain
-                                        .get_account(Address::PublicKey(dw.address.clone()))?;
-                                    match &dw.direction {
+                                    let mut addr_account = chain.get_account(
+                                        Address::PublicKey(contract_payment.address.clone()),
+                                    )?;
+                                    match &contract_payment.direction {
                                         PaymentDirection::Deposit(_) => {
-                                            if addr_account.nonce != dw.nonce {
+                                            if addr_account.nonce != contract_payment.nonce {
                                                 return Err(
                                                     BlockchainError::InvalidTransactionNonce,
                                                 );
                                             }
-                                            if addr_account.balance < dw.amount {
+                                            if addr_account.balance < contract_payment.amount {
                                                 return Err(BlockchainError::BalanceInsufficient);
                                             }
-                                            addr_account.balance -= dw.amount;
+                                            addr_account.balance -= contract_payment.amount;
                                             addr_account.nonce += 1;
 
-                                            new_account.balance += dw.amount;
+                                            new_account.balance += contract_payment.amount;
                                         }
                                         PaymentDirection::Withdraw(_) => {
-                                            if new_account.nonce != dw.nonce {
+                                            if new_account.nonce != contract_payment.nonce {
                                                 return Err(
                                                     BlockchainError::InvalidTransactionNonce,
                                                 );
                                             }
-                                            if new_account.balance < dw.amount {
+                                            if new_account.balance < contract_payment.amount {
                                                 return Err(
                                                     BlockchainError::ContractBalanceInsufficient,
                                                 );
                                             }
-                                            new_account.balance -= dw.amount;
+                                            new_account.balance -= contract_payment.amount;
                                             new_account.nonce += 1;
 
-                                            addr_account.balance += dw.amount;
+                                            addr_account.balance += contract_payment.amount;
                                         }
                                     }
 
                                     chain.database.update(&[WriteOp::Put(
                                         format!(
                                             "account_{}",
-                                            Address::PublicKey(dw.address.clone())
+                                            Address::PublicKey(contract_payment.address.clone())
                                         )
                                         .into(),
                                         addr_account.into(),
                                     )])?;
 
-                                    if !dw.verify_signature() {
+                                    if !contract_payment.verify_signature() {
                                         return Err(
-                                            BlockchainError::InvalidDepositWithdrawSignature,
+                                            BlockchainError::InvalidContractPaymentSignature,
                                         );
                                     }
                                 }
@@ -644,7 +653,7 @@ impl<K: KvStore> KvStoreChain<K> {
             }
 
             let mut num_mpn_function_calls = 0;
-            let mut num_mpn_deposit_withdraws = 0;
+            let mut num_mpn_contract_payments = 0;
 
             for tx in txs.iter() {
                 // Count MPN updates
@@ -656,8 +665,8 @@ impl<K: KvStore> KvStoreChain<K> {
                     if *contract_id == *MPN_CONTRACT_ID {
                         for update in updates.iter() {
                             match update {
-                                ContractUpdate::DepositWithdraw { .. } => {
-                                    num_mpn_deposit_withdraws += 1;
+                                ContractUpdate::Payment { .. } => {
+                                    num_mpn_contract_payments += 1;
                                 }
                                 ContractUpdate::FunctionCall { .. } => {
                                     num_mpn_function_calls += 1;
@@ -683,7 +692,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
             if !is_genesis
                 && (num_mpn_function_calls < self.config.mpn_num_function_calls
-                    || num_mpn_deposit_withdraws < self.config.mpn_num_deposit_withdraws)
+                    || num_mpn_contract_payments < self.config.mpn_num_contract_payments)
             {
                 return Err(BlockchainError::InsufficientMpnUpdates);
             }
@@ -1195,7 +1204,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(true)
     }
 
-    fn validate_dw_transaction(&self, _tx: &ContractPayment) -> Result<bool, BlockchainError> {
+    fn validate_contract_payment(&self, _tx: &ContractPayment) -> Result<bool, BlockchainError> {
         Ok(true)
     }
 

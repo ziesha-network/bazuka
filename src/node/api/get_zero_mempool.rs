@@ -12,6 +12,10 @@ pub async fn get_zero_mempool<B: Blockchain>(
     context.cleanup_mempools()?;
     Ok(GetZeroMempoolResponse {
         updates: context.zero_mempool.clone().into_keys().collect(),
-        deposit_withdraws: context.dw_mempool.clone().into_keys().collect(),
+        payments: context
+            .contract_payment_mempool
+            .clone()
+            .into_keys()
+            .collect(),
     })
 }

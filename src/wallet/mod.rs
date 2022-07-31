@@ -108,7 +108,7 @@ impl Wallet {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn contract_deposit_withdraw(
+    pub fn pay_contract(
         &self,
         contract_id: ContractId,
         address_index: u32,

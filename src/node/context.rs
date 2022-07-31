@@ -28,7 +28,7 @@ pub struct NodeContext<B: Blockchain> {
 
     pub mempool: HashMap<TransactionAndDelta, TransactionStats>,
     pub zero_mempool: HashMap<zk::ZeroTransaction, TransactionStats>,
-    pub dw_mempool: HashMap<ContractPayment, TransactionStats>,
+    pub contract_payment_mempool: HashMap<ContractPayment, TransactionStats>,
 
     pub outdated_since: Option<Timestamp>,
     pub banned_headers: HashMap<Header, Timestamp>,
@@ -66,7 +66,7 @@ impl<B: Blockchain> NodeContext<B> {
 
     pub fn cleanup_mempools(&mut self) -> Result<(), BlockchainError> {
         self.blockchain
-            .cleanup_contract_payment_mempool(&mut self.dw_mempool)?;
+            .cleanup_contract_payment_mempool(&mut self.contract_payment_mempool)?;
         self.blockchain.cleanup_mempool(&mut self.mempool)?;
         Ok(())
     }

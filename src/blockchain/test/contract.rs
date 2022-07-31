@@ -20,8 +20,8 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
         zk::ZkContract {
             state_model: state_model.clone(),
             initial_state: state_model.compress::<ZkHasher>(&full_state.data)?,
-            log4_deposit_withdraw_capacity: 1,
-            deposit_withdraw_function: zk::ZkVerifierKey::Dummy,
+            log4_payment_capacity: 1,
+            payment_function: zk::ZkVerifierKey::Dummy,
             functions: Vec::new(),
         },
         full_state.data.clone(),

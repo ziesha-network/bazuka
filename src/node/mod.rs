@@ -155,9 +155,9 @@ async fn node_service<B: Blockchain>(
                     .await?,
             )?);
         }
-        (Method::POST, "/bincode/transact/dw") => {
+        (Method::POST, "/bincode/transact/contract_payment") => {
             *response.body_mut() = Body::from(bincode::serialize(
-                &api::transact_deposit_withdraw(
+                &api::transact_contract_payment(
                     Arc::clone(&context),
                     bincode::deserialize(&body_bytes)?,
                 )
@@ -233,7 +233,7 @@ pub async fn node_create<B: Blockchain>(
         wallet,
         mempool: HashMap::new(),
         zero_mempool: HashMap::new(),
-        dw_mempool: HashMap::new(),
+        contract_payment_mempool: HashMap::new(),
         peers: bootstrap
             .into_iter()
             .map(|addr| {

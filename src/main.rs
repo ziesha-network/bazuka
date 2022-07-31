@@ -268,7 +268,7 @@ async fn main() -> Result<(), NodeError> {
             try_join!(
                 async move {
                     let acc = client.get_account(wallet.get_address()).await?.account;
-                    let pay = wallet.contract_deposit_withdraw(
+                    let pay = wallet.pay_contract(
                         contract.parse().unwrap(),
                         index,
                         acc.nonce,
@@ -276,7 +276,7 @@ async fn main() -> Result<(), NodeError> {
                         fee,
                         false,
                     );
-                    println!("{:#?}", client.transact_deposit_withdraw(pay).await?);
+                    println!("{:#?}", client.transact_contract_payment(pay).await?);
                     println!("{:#?}", client.get_zero_mempool().await?);
                     Ok::<(), NodeError>(())
                 },

@@ -347,13 +347,6 @@ pub enum ZkVerifierKey {
     Dummy,
 }
 
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
-pub struct DepositWithdraw {
-    pub index: u32,
-    pub pub_key: jubjub::PublicKey,
-    pub amount: i64,
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct ZeroTransaction {
     pub nonce: u64,
@@ -401,9 +394,9 @@ impl ZeroTransaction {
 pub struct ZkContract {
     pub initial_state: ZkCompressedState, // 32byte
     pub state_model: ZkStateModel,
-    pub log4_deposit_withdraw_capacity: u8, // Number of deposit/withdraws that can be handled
-    pub deposit_withdraw_function: ZkVerifierKey, // VK f(prev_state, io_txs (L1)) -> next_state
-    pub functions: Vec<ZkVerifierKey>,      // Vec<VK> f(prev_state) -> next_state
+    pub log4_payment_capacity: u8, // Number of deposit/withdraws that can be handled
+    pub payment_function: ZkVerifierKey, // VK f(prev_state, io_txs (L1)) -> next_state
+    pub functions: Vec<ZkVerifierKey>, // Vec<VK> f(prev_state) -> next_state
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

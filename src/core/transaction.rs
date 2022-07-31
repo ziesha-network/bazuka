@@ -110,9 +110,9 @@ pub struct ContractAccount {
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum ContractUpdate<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
-    // Proof for DepositWithdrawCircuit(curr_state, next_state, hash(entries))
-    DepositWithdraw {
-        deposit_withdraws: Vec<ContractPayment<H, S, ZS>>,
+    // Proof for PaymentCircuit(curr_state, next_state, hash(entries))
+    Payment {
+        payments: Vec<ContractPayment<H, S, ZS>>,
         next_state: ZkCompressedState,
         proof: ZkProof,
     },

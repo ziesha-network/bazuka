@@ -162,7 +162,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_twisted_edwards_curve_ops() {
+    fn test_twisted_econtract_paymentards_curve_ops() {
         // ((2G) + G) + G
         let mut a = BASE.double();
         a.add_assign(&BASE);
