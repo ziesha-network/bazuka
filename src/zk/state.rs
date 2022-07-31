@@ -65,10 +65,6 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
     pub fn get(&mut self, loc: ZkDataLocator) -> Result<ZkScalar, StateManagerError> {
         KvStoreStateManager::<H>::get_data(&self.db, self.contract_id, &loc)
     }
-    pub fn set(&mut self, loc: ZkDataLocator, value: ZkScalar) -> Result<(), StateManagerError> {
-        KvStoreStateManager::<H>::set_data(&mut self.db, self.contract_id, loc, value)?;
-        Ok(())
-    }
     pub fn compress(self) -> Result<ZkCompressedState, StateManagerError> {
         KvStoreStateManager::<H>::root(&self.db, self.contract_id)
     }

@@ -424,32 +424,40 @@ impl<K: KvStore> KvStoreChain<K> {
                                 let mut state_builder =
                                     zk::ZkStateBuilder::<ZkHasher>::new(state_model);
                                 for (i, contract_payment) in payments.iter().enumerate() {
-                                    state_builder.set(
-                                        zk::ZkDataLocator(vec![i as u32, 0]),
-                                        zk::ZkScalar::from(
-                                            contract_payment.zk_address_index as u64,
-                                        ),
-                                    )?;
-                                    state_builder.set(
-                                        zk::ZkDataLocator(vec![i as u32, 1]),
-                                        zk::ZkScalar::from(match contract_payment.direction {
-                                            PaymentDirection::Deposit(_) => {
-                                                contract_payment.amount as u64
-                                            }
-                                            PaymentDirection::Withdraw(_) => {
-                                                (-(contract_payment.amount as i64)) as u64
-                                            }
-                                        }),
-                                    )?;
                                     let pk = contract_payment.zk_address.0.decompress();
-                                    state_builder.set(
-                                        zk::ZkDataLocator(vec![i as u32, 2]),
-                                        zk::ZkScalar::from(pk.0),
-                                    )?;
-                                    state_builder.set(
-                                        zk::ZkDataLocator(vec![i as u32, 3]),
-                                        zk::ZkScalar::from(pk.1),
-                                    )?;
+                                    state_builder.batch_set(&zk::ZkDeltaPairs(
+                                        [
+                                            (
+                                                zk::ZkDataLocator(vec![i as u32, 0]),
+                                                Some(zk::ZkScalar::from(
+                                                    contract_payment.zk_address_index as u64,
+                                                )),
+                                            ),
+                                            (
+                                                zk::ZkDataLocator(vec![i as u32, 1]),
+                                                Some(zk::ZkScalar::from(
+                                                    match contract_payment.direction {
+                                                        PaymentDirection::Deposit(_) => {
+                                                            contract_payment.amount as u64
+                                                        }
+                                                        PaymentDirection::Withdraw(_) => {
+                                                            (-(contract_payment.amount as i64))
+                                                                as u64
+                                                        }
+                                                    },
+                                                )),
+                                            ),
+                                            (
+                                                zk::ZkDataLocator(vec![i as u32, 2]),
+                                                Some(zk::ZkScalar::from(pk.0)),
+                                            ),
+                                            (
+                                                zk::ZkDataLocator(vec![i as u32, 3]),
+                                                Some(zk::ZkScalar::from(pk.1)),
+                                            ),
+                                        ]
+                                        .into(),
+                                    ))?;
 
                                     let mut addr_account = chain.get_account(
                                         Address::PublicKey(contract_payment.address.clone()),
