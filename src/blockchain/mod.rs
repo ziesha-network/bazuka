@@ -418,21 +418,37 @@ impl<K: KvStore> KvStoreChain<K> {
                             } => {
                                 let circuit = &contract.payment_function;
                                 let state_model = zk::ZkStateModel::List {
-                                    item_type: Box::new(zk::ZkStateModel::Struct {
-                                        field_types: vec![
-                                            zk::ZkStateModel::Scalar, // Pub-key
-                                            zk::ZkStateModel::Scalar, // Amount
-                                        ],
-                                    }),
+                                    item_type: Box::new(zk::CONTRACT_PAYMENT_STATE_MODEL.clone()),
                                     log4_size: contract.log4_payment_capacity,
                                 };
                                 let mut state_builder =
                                     zk::ZkStateBuilder::<ZkHasher>::new(state_model);
                                 for (i, contract_payment) in payments.iter().enumerate() {
-                                    // Set amount
+                                    state_builder.set(
+                                        zk::ZkDataLocator(vec![i as u32, 0]),
+                                        zk::ZkScalar::from(
+                                            contract_payment.zk_address_index as u64,
+                                        ),
+                                    )?;
                                     state_builder.set(
                                         zk::ZkDataLocator(vec![i as u32, 1]),
-                                        zk::ZkScalar::from(contract_payment.amount),
+                                        zk::ZkScalar::from(match contract_payment.direction {
+                                            PaymentDirection::Deposit(_) => {
+                                                contract_payment.amount as u64
+                                            }
+                                            PaymentDirection::Withdraw(_) => {
+                                                (-(contract_payment.amount as i64)) as u64
+                                            }
+                                        }),
+                                    )?;
+                                    let pk = contract_payment.zk_address.0.decompress();
+                                    state_builder.set(
+                                        zk::ZkDataLocator(vec![i as u32, 2]),
+                                        zk::ZkScalar::from(pk.0),
+                                    )?;
+                                    state_builder.set(
+                                        zk::ZkDataLocator(vec![i as u32, 3]),
+                                        zk::ZkScalar::from(pk.1),
                                     )?;
 
                                     let mut addr_account = chain.get_account(
@@ -487,6 +503,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                     }
                                 }
                                 let _aux_data = state_builder.compress()?;
+                                println!("RESULT: {:?}", _aux_data);
                                 let aux_data = zk::ZkCompressedState::default();
                                 (circuit, aux_data, next_state, proof)
                             }

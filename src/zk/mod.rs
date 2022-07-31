@@ -15,6 +15,17 @@ pub use state::*;
 pub mod groth16;
 pub mod poseidon4;
 
+lazy_static! {
+    pub static ref CONTRACT_PAYMENT_STATE_MODEL: ZkStateModel = ZkStateModel::Struct {
+        field_types: vec![
+            ZkStateModel::Scalar, // index
+            ZkStateModel::Scalar, // amount
+            ZkStateModel::Scalar, // pub-x
+            ZkStateModel::Scalar, // pub-y
+        ],
+    };
+}
+
 #[derive(Error, Debug)]
 pub enum ZkError {
     #[error("delta not found")]
