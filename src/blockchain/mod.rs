@@ -306,18 +306,17 @@ impl<K: KvStore> KvStoreChain<K> {
         if !contract_payment.verify_signature() {
             return Ok(false);
         }
+        if addr_account.nonce != contract_payment.nonce {
+            return Ok(false);
+        }
         match &contract_payment.direction {
             PaymentDirection::Deposit(_) => {
-                if addr_account.nonce != contract_payment.nonce
-                    || addr_account.balance < contract_payment.amount
-                {
+                if addr_account.balance < contract_payment.amount {
                     return Ok(false);
                 }
             }
             PaymentDirection::Withdraw(_) => {
-                if cont_account.nonce != contract_payment.nonce
-                    || cont_account.balance < contract_payment.amount
-                {
+                if cont_account.balance < contract_payment.amount {
                     return Ok(false);
                 }
             }
@@ -382,7 +381,6 @@ impl<K: KvStore> KvStoreChain<K> {
                             compressed_state: contract.initial_state,
                             balance: 0,
                             height: 1,
-                            nonce: 0,
                         }
                         .into(),
                     )])?;
@@ -462,35 +460,25 @@ impl<K: KvStore> KvStoreChain<K> {
                                     let mut addr_account = chain.get_account(
                                         Address::PublicKey(contract_payment.address.clone()),
                                     )?;
+                                    if addr_account.nonce != contract_payment.nonce {
+                                        return Err(BlockchainError::InvalidTransactionNonce);
+                                    }
+                                    addr_account.nonce += 1;
                                     match &contract_payment.direction {
                                         PaymentDirection::Deposit(_) => {
-                                            if addr_account.nonce != contract_payment.nonce {
-                                                return Err(
-                                                    BlockchainError::InvalidTransactionNonce,
-                                                );
-                                            }
                                             if addr_account.balance < contract_payment.amount {
                                                 return Err(BlockchainError::BalanceInsufficient);
                                             }
                                             addr_account.balance -= contract_payment.amount;
-                                            addr_account.nonce += 1;
-
                                             new_account.balance += contract_payment.amount;
                                         }
                                         PaymentDirection::Withdraw(_) => {
-                                            if new_account.nonce != contract_payment.nonce {
-                                                return Err(
-                                                    BlockchainError::InvalidTransactionNonce,
-                                                );
-                                            }
                                             if new_account.balance < contract_payment.amount {
                                                 return Err(
                                                     BlockchainError::ContractBalanceInsufficient,
                                                 );
                                             }
                                             new_account.balance -= contract_payment.amount;
-                                            new_account.nonce += 1;
-
                                             addr_account.balance += contract_payment.amount;
                                         }
                                     }

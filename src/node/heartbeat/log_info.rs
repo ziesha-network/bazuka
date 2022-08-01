@@ -23,11 +23,15 @@ pub async fn log_info<B: Blockchain>(
     inf.push(("Tx/Zk Pool", ctx.contract_payment_mempool.len().to_string()));
     inf.push(("Zk Pool", ctx.zero_mempool.len().to_string()));
 
-    let mpn_account = ctx
-        .blockchain
-        .get_contract_account(crate::config::blockchain::MPN_CONTRACT_ID.clone())?;
-    inf.push(("MPN Height", mpn_account.height.to_string()));
-    inf.push(("MPN Balance", mpn_account.balance.to_string()));
+    // TODO: Embed MPN in test environment
+    #[cfg(not(test))]
+    {
+        let mpn_account = ctx
+            .blockchain
+            .get_contract_account(crate::config::blockchain::MPN_CONTRACT_ID.clone())?;
+        inf.push(("MPN Height", mpn_account.height.to_string()));
+        inf.push(("MPN Balance", mpn_account.balance.to_string()));
+    }
 
     println!(
         "{}",
