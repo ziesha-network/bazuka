@@ -11,20 +11,29 @@ pub async fn sync_blocks<B: Blockchain>(
     let height = ctx.blockchain.get_height()?;
 
     // Find the peer that claims the highest power.
-    let most_powerful = ctx
+    let most_powerful = if let Some(most_powerful) = ctx
         .active_peers()
         .into_iter()
         .max_by_key(|p| p.info.as_ref().map(|i| i.power).unwrap_or(0))
-        .ok_or(NodeError::NoPeers)?;
-    drop(ctx);
+    {
+        most_powerful
+    } else {
+        return Ok(());
+    };
 
-    let most_powerful_info = most_powerful.info.as_ref().ok_or(NodeError::NoPeers)?;
+    let most_powerful_info = if let Some(inf) = most_powerful.info.as_ref() {
+        inf
+    } else {
+        return Ok(());
+    };
 
     if most_powerful_info.power <= power {
         return Ok(());
     }
 
     let start_height = std::cmp::min(height, most_powerful_info.height);
+
+    drop(ctx);
 
     // Get all headers starting from the indices that we don't have.
     let mut headers = net
