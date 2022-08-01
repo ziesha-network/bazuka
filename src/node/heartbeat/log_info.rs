@@ -23,6 +23,11 @@ pub async fn log_info<B: Blockchain>(
     inf.push(("Tx/Zk Pool", ctx.contract_payment_mempool.len().to_string()));
     inf.push(("Zk Pool", ctx.zero_mempool.len().to_string()));
 
+    if let Some(wallet) = ctx.wallet.clone() {
+        let acc = ctx.blockchain.get_account(wallet.get_address())?;
+        inf.push(("Balance", acc.balance.to_string()));
+    }
+
     // TODO: Embed MPN in test environment
     #[cfg(not(test))]
     {
