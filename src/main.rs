@@ -79,6 +79,18 @@ enum CliOptions {
         #[structopt(long, default_value = "0")]
         fee: Money,
     },
+    Withdraw {
+        #[structopt(long)]
+        node: SocketAddr,
+        #[structopt(long)]
+        contract: String,
+        #[structopt(long)]
+        index: u32,
+        #[structopt(long)]
+        amount: Money,
+        #[structopt(long, default_value = "0")]
+        fee: Money,
+    },
 }
 
 #[cfg(feature = "node")]
@@ -199,6 +211,46 @@ async fn run_node(
 
 #[cfg(not(tarpaulin_include))]
 #[cfg(feature = "client")]
+async fn deposit_withdraw(
+    conf: BazukaConfig,
+    node: SocketAddr,
+    contract: String,
+    index: u32,
+    amount: Money,
+    fee: Money,
+    withdraw: bool,
+) -> Result<(), NodeError> {
+    let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
+    let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
+    let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(node));
+    try_join!(
+        async move {
+            let acc = client.get_account(wallet.get_address()).await?.account;
+            let pay = wallet.pay_contract(
+                if contract == "mpn" {
+                    bazuka::config::blockchain::MPN_CONTRACT_ID.clone()
+                } else {
+                    contract.parse().unwrap()
+                },
+                index,
+                acc.nonce,
+                amount,
+                fee,
+                withdraw,
+            );
+            println!("{:#?}", client.transact_contract_payment(pay).await?);
+            println!("{:#?}", client.get_zero_mempool().await?);
+            Ok::<(), NodeError>(())
+        },
+        req_loop
+    )
+    .unwrap();
+
+    Ok(())
+}
+
+#[cfg(not(tarpaulin_include))]
+#[cfg(feature = "client")]
 #[tokio::main]
 async fn main() -> Result<(), NodeError> {
     env_logger::init();
@@ -262,31 +314,17 @@ async fn main() -> Result<(), NodeError> {
             fee,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
-            let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
-            let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(node));
-            try_join!(
-                async move {
-                    let acc = client.get_account(wallet.get_address()).await?.account;
-                    let pay = wallet.pay_contract(
-                        if contract == "mpn" {
-                            bazuka::config::blockchain::MPN_CONTRACT_ID.clone()
-                        } else {
-                            contract.parse().unwrap()
-                        },
-                        index,
-                        acc.nonce,
-                        amount,
-                        fee,
-                        false,
-                    );
-                    println!("{:#?}", client.transact_contract_payment(pay).await?);
-                    println!("{:#?}", client.get_zero_mempool().await?);
-                    Ok::<(), NodeError>(())
-                },
-                req_loop
-            )
-            .unwrap();
+            deposit_withdraw(conf, node, contract, index, amount, fee, false).await?;
+        }
+        CliOptions::Withdraw {
+            node,
+            contract,
+            index,
+            amount,
+            fee,
+        } => {
+            let conf = conf.expect("Bazuka is not initialized!");
+            deposit_withdraw(conf, node, contract, index, amount, fee, true).await?;
         }
     }
 
