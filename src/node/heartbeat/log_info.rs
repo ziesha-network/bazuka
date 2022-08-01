@@ -36,6 +36,10 @@ pub async fn log_info<B: Blockchain>(
             .get_contract_account(crate::config::blockchain::MPN_CONTRACT_ID.clone())?;
         inf.push(("MPN Height", mpn_account.height.to_string()));
         inf.push(("MPN Balance", mpn_account.balance.to_string()));
+        inf.push((
+            "MPN Size",
+            mpn_account.compressed_state.state_size.to_string(),
+        ));
     }
 
     println!(
