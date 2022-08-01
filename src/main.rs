@@ -269,7 +269,11 @@ async fn main() -> Result<(), NodeError> {
                 async move {
                     let acc = client.get_account(wallet.get_address()).await?.account;
                     let pay = wallet.pay_contract(
-                        contract.parse().unwrap(),
+                        if contract == "mpn" {
+                            bazuka::config::blockchain::MPN_CONTRACT_ID.clone()
+                        } else {
+                            contract.parse().unwrap()
+                        },
                         index,
                         acc.nonce,
                         amount,
