@@ -299,9 +299,25 @@ impl<K: KvStore> KvStoreChain<K> {
     fn apply_contract_payment(
         &mut self,
         contract_payment: &ContractPayment,
+        in_memory_account: Option<&mut ContractAccount>,
     ) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
-            let mut new_account = chain.get_contract_account(contract_payment.contract_id)?;
+            if !contract_payment.verify_signature() {
+                return Err(BlockchainError::InvalidContractPaymentSignature);
+            }
+
+            // Actual contract-account that exists on DB
+            let mut db_account = chain.get_contract_account(contract_payment.contract_id)?;
+
+            // If a mutable contract-account is supplied already, we will reflect our changes on
+            // that instead of the db
+            let (contract_account, should_update_contract) =
+                if let Some(in_memory_account) = in_memory_account {
+                    (in_memory_account, false)
+                } else {
+                    (&mut db_account, true)
+                };
+
             let mut addr_account =
                 chain.get_account(Address::PublicKey(contract_payment.address.clone()))?;
             if addr_account.nonce != contract_payment.nonce {
@@ -314,20 +330,22 @@ impl<K: KvStore> KvStoreChain<K> {
                         return Err(BlockchainError::BalanceInsufficient);
                     }
                     addr_account.balance -= contract_payment.amount;
-                    new_account.balance += contract_payment.amount;
+                    contract_account.balance += contract_payment.amount;
                 }
                 PaymentDirection::Withdraw(_) => {
-                    if new_account.balance < contract_payment.amount {
+                    if contract_account.balance < contract_payment.amount {
                         return Err(BlockchainError::ContractBalanceInsufficient);
                     }
-                    new_account.balance -= contract_payment.amount;
+                    contract_account.balance -= contract_payment.amount;
                     addr_account.balance += contract_payment.amount;
                 }
             }
-            chain.database.update(&[WriteOp::Put(
-                format!("contract_account_{}", contract_payment.contract_id).into(),
-                new_account.clone().into(),
-            )])?;
+            if should_update_contract {
+                chain.database.update(&[WriteOp::Put(
+                    format!("contract_account_{}", contract_payment.contract_id).into(),
+                    contract_account.clone().into(),
+                )])?;
+            }
             chain.database.update(&[WriteOp::Put(
                 format!(
                     "account_{}",
@@ -475,46 +493,10 @@ impl<K: KvStore> KvStoreChain<K> {
                                         .into(),
                                     ))?;
 
-                                    let mut addr_account = chain.get_account(
-                                        Address::PublicKey(contract_payment.address.clone()),
+                                    chain.apply_contract_payment(
+                                        contract_payment,
+                                        Some(&mut new_account),
                                     )?;
-                                    if addr_account.nonce != contract_payment.nonce {
-                                        return Err(BlockchainError::InvalidTransactionNonce);
-                                    }
-                                    addr_account.nonce += 1;
-                                    match &contract_payment.direction {
-                                        PaymentDirection::Deposit(_) => {
-                                            if addr_account.balance < contract_payment.amount {
-                                                return Err(BlockchainError::BalanceInsufficient);
-                                            }
-                                            addr_account.balance -= contract_payment.amount;
-                                            new_account.balance += contract_payment.amount;
-                                        }
-                                        PaymentDirection::Withdraw(_) => {
-                                            if new_account.balance < contract_payment.amount {
-                                                return Err(
-                                                    BlockchainError::ContractBalanceInsufficient,
-                                                );
-                                            }
-                                            new_account.balance -= contract_payment.amount;
-                                            addr_account.balance += contract_payment.amount;
-                                        }
-                                    }
-
-                                    chain.database.update(&[WriteOp::Put(
-                                        format!(
-                                            "account_{}",
-                                            Address::PublicKey(contract_payment.address.clone())
-                                        )
-                                        .into(),
-                                        addr_account.into(),
-                                    )])?;
-
-                                    if !contract_payment.verify_signature() {
-                                        return Err(
-                                            BlockchainError::InvalidContractPaymentSignature,
-                                        );
-                                    }
                                 }
                                 let aux_data = state_builder.compress()?;
                                 (circuit, aux_data, next_state, proof)
@@ -1221,7 +1203,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         sorted.sort_by_key(|tx| tx.nonce);
         self.isolated(|chain| {
             for tx in sorted.into_iter() {
-                if chain.apply_contract_payment(&tx).is_err() {
+                if chain.apply_contract_payment(&tx, None).is_err() {
                     mempool.remove(&tx);
                 }
             }
@@ -1239,7 +1221,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn validate_contract_payment(&self, tx: &ContractPayment) -> Result<bool, BlockchainError> {
         Ok(self
-            .isolated(|chain| Ok(chain.apply_contract_payment(tx).is_ok()))?
+            .isolated(|chain| Ok(chain.apply_contract_payment(tx, None).is_ok()))?
             .1)
     }
 
