@@ -112,6 +112,8 @@ async fn run_node(
         external.unwrap_or_else(|| SocketAddr::from((public_ip.unwrap(), DEFAULT_PORT))),
     );
 
+    let wallet = Wallet::new(bazuka_config.seed.as_bytes().to_vec());
+
     println!(
         "{} v{}",
         "Bazuka!".bright_green(),
@@ -121,6 +123,17 @@ async fn run_node(
     println!("{} {}", "Listening:".bright_yellow(), listen);
     println!("{} {}", "Internet endpoint:".bright_yellow(), address);
     println!("{} {}", "Peer public-key:".bright_yellow(), pub_key);
+
+    println!(
+        "{} {}",
+        "Wallet address:".bright_yellow(),
+        wallet.get_address()
+    );
+    println!(
+        "{} {}",
+        "Wallet zk address:".bright_yellow(),
+        wallet.get_zk_address()
+    );
 
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let (out_send, mut out_recv) = mpsc::unbounded_channel::<NodeRequest>();
@@ -151,7 +164,7 @@ async fn run_node(
         )
         .unwrap(),
         0,
-        Some(Wallet::new(bazuka_config.seed.as_bytes().to_vec())),
+        Some(wallet),
         inc_recv,
         out_send,
     );
