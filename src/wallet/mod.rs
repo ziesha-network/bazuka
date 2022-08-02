@@ -11,7 +11,7 @@ pub struct Wallet {
     seed: Vec<u8>,
     private_key: <Signer as SignatureScheme>::Priv,
     zk_private_key: <ZkSigner as ZkSignatureScheme>::Priv,
-    address: Address,
+    address: <Signer as SignatureScheme>::Pub,
     zk_address: <ZkSigner as ZkSignatureScheme>::Pub,
 }
 
@@ -21,14 +21,14 @@ impl Wallet {
         let (zk_pk, zk_sk) = ZkSigner::generate_keys(&seed);
         Self {
             seed,
-            address: Address::PublicKey(pk),
+            address: pk,
             zk_address: zk_pk,
             private_key: sk,
             zk_private_key: zk_sk,
         }
     }
     pub fn get_address(&self) -> Address {
-        self.address.clone()
+        Address::PublicKey(self.address.clone())
     }
     pub fn get_zk_address(&self) -> <ZkSigner as ZkSignatureScheme>::Pub {
         self.zk_address.clone()
