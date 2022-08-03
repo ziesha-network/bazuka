@@ -40,6 +40,7 @@ use {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 struct BazukaConfig {
     seed: String,
+    node: SocketAddr,
 }
 
 #[derive(StructOpt)]
@@ -49,7 +50,12 @@ enum CliOptions {
     #[cfg(not(feature = "client"))]
     Init,
     #[cfg(feature = "client")]
-    Init { seed: String },
+    Init {
+        #[structopt(long)]
+        seed: String,
+        #[structopt(long)]
+        node: SocketAddr,
+    },
     #[cfg(not(feature = "node"))]
     Node,
     #[cfg(feature = "node")]
@@ -63,13 +69,8 @@ enum CliOptions {
         #[structopt(long)]
         bootstrap: Vec<String>,
     },
-    Status {
-        #[structopt(long)]
-        node: SocketAddr,
-    },
+    Status {},
     Deposit {
-        #[structopt(long)]
-        node: SocketAddr,
         #[structopt(long)]
         contract: String,
         #[structopt(long)]
@@ -80,8 +81,6 @@ enum CliOptions {
         fee: Money,
     },
     Withdraw {
-        #[structopt(long)]
-        node: SocketAddr,
         #[structopt(long)]
         contract: String,
         #[structopt(long)]
@@ -226,7 +225,6 @@ async fn run_node(
 #[cfg(feature = "client")]
 async fn deposit_withdraw(
     conf: BazukaConfig,
-    node: SocketAddr,
     contract: String,
     index: u32,
     amount: Money,
@@ -235,7 +233,7 @@ async fn deposit_withdraw(
 ) -> Result<(), NodeError> {
     let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
     let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
-    let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(node));
+    let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(conf.node));
     try_join!(
         async move {
             let acc = client.get_account(wallet.get_address()).await?.account;
@@ -291,11 +289,11 @@ async fn main() -> Result<(), NodeError> {
             println!("Node feature not turned on!");
         }
         #[cfg(feature = "client")]
-        CliOptions::Init { seed } => {
+        CliOptions::Init { seed, node } => {
             if conf.is_none() {
                 std::fs::write(
                     conf_path,
-                    serde_yaml::to_string(&BazukaConfig { seed }).unwrap(),
+                    serde_yaml::to_string(&BazukaConfig { seed, node }).unwrap(),
                 )
                 .unwrap();
             } else {
@@ -306,10 +304,10 @@ async fn main() -> Result<(), NodeError> {
         CliOptions::Init { .. } => {
             println!("Client feature not turned on!");
         }
-        CliOptions::Status { node } => {
+        CliOptions::Status {} => {
             let conf = conf.expect("Bazuka is not initialized!");
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
-            let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(node));
+            let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(conf.node));
             try_join!(
                 async move {
                     println!("{:#?}", client.stats().await?);
@@ -320,24 +318,22 @@ async fn main() -> Result<(), NodeError> {
             .unwrap();
         }
         CliOptions::Deposit {
-            node,
             contract,
             index,
             amount,
             fee,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            deposit_withdraw(conf, node, contract, index, amount, fee, false).await?;
+            deposit_withdraw(conf, contract, index, amount, fee, false).await?;
         }
         CliOptions::Withdraw {
-            node,
             contract,
             index,
             amount,
             fee,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            deposit_withdraw(conf, node, contract, index, amount, fee, true).await?;
+            deposit_withdraw(conf, contract, index, amount, fee, true).await?;
         }
     }
 
