@@ -319,6 +319,16 @@ impl BazukaClient {
             .await
     }
 
+    pub async fn get_mpn_account(&self, index: u32) -> Result<GetMpnAccountResponse, NodeError> {
+        self.sender
+            .json_get::<GetMpnAccountRequest, GetMpnAccountResponse>(
+                format!("{}/mpn/account", self.peer),
+                GetMpnAccountRequest { index },
+                Limit::default(),
+            )
+            .await
+    }
+
     pub async fn transact(
         &self,
         tx_delta: TransactionAndDelta,

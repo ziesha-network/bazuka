@@ -34,3 +34,5 @@ mod post_miner_solution;
 pub use post_miner_solution::*;
 mod get_account;
 pub use get_account::*;
+mod get_mpn_account;
+pub use get_mpn_account::*;

@@ -15,6 +15,13 @@ pub use state::*;
 pub mod groth16;
 pub mod poseidon4;
 
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+pub struct MpnAccount {
+    pub nonce: u64,
+    pub address: jubjub::PointAffine,
+    pub balance: u64,
+}
+
 lazy_static! {
     pub static ref CONTRACT_PAYMENT_STATE_MODEL: ZkStateModel = ZkStateModel::Struct {
         field_types: vec![

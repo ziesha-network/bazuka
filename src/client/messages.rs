@@ -30,6 +30,16 @@ pub struct GetAccountResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetMpnAccountRequest {
+    pub index: u32,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetMpnAccountResponse {
+    pub account: zk::MpnAccount,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMinerSolutionRequest {
     pub nonce: String,
 }
