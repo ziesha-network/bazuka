@@ -151,6 +151,11 @@ pub trait Blockchain {
         &self,
         contract_id: ContractId,
     ) -> Result<ContractAccount, BlockchainError>;
+    fn read_state(
+        &self,
+        contract_id: ContractId,
+        locator: zk::ZkDataLocator,
+    ) -> Result<zk::ZkScalar, BlockchainError>;
     fn next_reward(&self) -> Result<Money, BlockchainError>;
     fn will_extend(
         &self,
@@ -1236,6 +1241,19 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             })?
             .1)
     }
+
+    fn read_state(
+        &self,
+        contract_id: ContractId,
+        locator: zk::ZkDataLocator,
+    ) -> Result<zk::ZkScalar, BlockchainError> {
+        Ok(zk::KvStoreStateManager::<ZkHasher>::get_data(
+            &self.database,
+            contract_id,
+            &locator,
+        )?)
+    }
+
     fn generate_state_patch(
         &self,
         heights: HashMap<ContractId, u64>,
