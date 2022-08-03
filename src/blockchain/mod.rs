@@ -320,7 +320,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
             let mut addr_account =
                 chain.get_account(Address::PublicKey(contract_payment.address.clone()))?;
-            if addr_account.nonce != contract_payment.nonce {
+            if contract_payment.nonce != addr_account.nonce + 1 {
                 return Err(BlockchainError::InvalidTransactionNonce);
             }
             addr_account.nonce += 1;

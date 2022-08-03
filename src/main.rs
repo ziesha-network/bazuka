@@ -90,6 +90,14 @@ enum CliOptions {
         #[structopt(long, default_value = "0")]
         fee: Money,
     },
+    Send {
+        #[structopt(long)]
+        to: String,
+        #[structopt(long)]
+        amount: Money,
+        #[structopt(long, default_value = "0")]
+        fee: Money,
+    },
 }
 
 #[cfg(feature = "node")]
@@ -244,7 +252,7 @@ async fn deposit_withdraw(
                     contract.parse().unwrap()
                 },
                 index,
-                acc.nonce,
+                acc.nonce + 1,
                 amount,
                 fee,
                 withdraw,
@@ -334,6 +342,23 @@ async fn main() -> Result<(), NodeError> {
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
             deposit_withdraw(conf, contract, index, amount, fee, true).await?;
+        }
+        CliOptions::Send { to, amount, fee } => {
+            let conf = conf.expect("Bazuka is not initialized!");
+            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
+            let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
+            let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(conf.node));
+            try_join!(
+                async move {
+                    let acc = client.get_account(wallet.get_address()).await?.account;
+                    let tx =
+                        wallet.create_transaction(to.parse().unwrap(), amount, fee, acc.nonce + 1);
+                    println!("{:#?}", client.transact(tx).await?);
+                    Ok::<(), NodeError>(())
+                },
+                req_loop
+            )
+            .unwrap();
         }
     }
 
