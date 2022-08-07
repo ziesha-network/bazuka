@@ -51,6 +51,7 @@ enum CliOptions {
     #[cfg(not(feature = "client"))]
     Init,
     #[cfg(feature = "client")]
+    /// Initialize node/wallet
     Init {
         #[structopt(long)]
         seed: String,
@@ -62,6 +63,7 @@ enum CliOptions {
     #[cfg(not(feature = "node"))]
     Node,
     #[cfg(feature = "node")]
+    /// Run node
     Node {
         #[structopt(long)]
         listen: Option<SocketAddr>,
@@ -74,7 +76,9 @@ enum CliOptions {
         #[structopt(long, default_value = "mainnet")]
         network: String,
     },
+    /// Get status of a node
     Status {},
+    /// Deposit funds to a Zero-Contract
     Deposit {
         #[structopt(long)]
         contract: String,
@@ -85,6 +89,7 @@ enum CliOptions {
         #[structopt(long, default_value = "0")]
         fee: Money,
     },
+    /// Withdraw funds from a Zero-Contract
     Withdraw {
         #[structopt(long)]
         contract: String,
@@ -95,7 +100,7 @@ enum CliOptions {
         #[structopt(long, default_value = "0")]
         fee: Money,
     },
-    // Regular Send
+    /// Send funds through a regular-transaction
     Rsend {
         #[structopt(long)]
         to: String,
@@ -104,6 +109,7 @@ enum CliOptions {
         #[structopt(long, default_value = "0")]
         fee: Money,
     },
+    /// Send funds through a zero-transaction
     Zsend {
         #[structopt(long)]
         from_index: u32,
