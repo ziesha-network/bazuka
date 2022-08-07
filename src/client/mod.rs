@@ -20,7 +20,7 @@ use messages::*;
 
 pub type Timestamp = u32;
 
-const NETWORK_HEADER: &str = "NETWORK";
+pub const NETWORK_HEADER: &str = "NETWORK";
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerAddress(pub SocketAddr); // ip, port

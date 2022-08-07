@@ -12,6 +12,7 @@ use context::NodeContext;
 use crate::blockchain::Blockchain;
 use crate::client::{
     Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, PeerInfo, Timestamp,
+    NETWORK_HEADER,
 };
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
@@ -74,7 +75,18 @@ async fn node_service<B: Blockchain>(
     let qs = req.uri().query().unwrap_or("").to_string();
 
     let creds = fetch_signature(&req)?;
+    let network: String = if let Some(v) = req.headers().get(NETWORK_HEADER) {
+        v.to_str().ok().map(|n| n.to_lowercase())
+    } else {
+        None
+    }
+    .unwrap_or("mainnet".into());
+
     let body = req.into_body();
+
+    if network != context.read().await.opts.network {
+        return Err(NodeError::WrongNetwork);
+    }
 
     // Disallow large requests
     if body

@@ -44,4 +44,6 @@ pub enum NodeError {
     SignatureRequired,
     #[error("zk error: {0}")]
     ZkError(#[from] ZkError),
+    #[error("wrong network")]
+    WrongNetwork,
 }
