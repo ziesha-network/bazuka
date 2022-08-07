@@ -34,8 +34,9 @@ fn create_test_node(
     let chain = KvStoreChain::new(RamKvStore::new(), opts.config).unwrap();
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<NodeRequest>();
+    let simulator_options = config::node::get_simulator_options();
     let node = node_create(
-        config::node::get_simulator_options(),
+        simulator_options.clone(),
         addr,
         opts.priv_key.clone(),
         opts.bootstrap
@@ -56,6 +57,7 @@ fn create_test_node(
                 peer: addr,
                 sender: Arc::new(OutgoingSender {
                     chan: inc_send,
+                    network: simulator_options.network,
                     priv_key: opts.priv_key,
                 }),
             },

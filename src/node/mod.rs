@@ -227,11 +227,12 @@ pub async fn node_create<B: Blockchain>(
     outgoing: mpsc::UnboundedSender<NodeRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
-        opts,
+        opts: opts.clone(),
         address,
         pub_key: ed25519::PublicKey::from(priv_key.clone()),
         shutdown: false,
         outgoing: Arc::new(OutgoingSender {
+            network: opts.network,
             chan: outgoing,
             priv_key,
         }),

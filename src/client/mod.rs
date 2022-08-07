@@ -20,6 +20,8 @@ use messages::*;
 
 pub type Timestamp = u32;
 
+const NETWORK_HEADER: &str = "NETWORK";
+
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerAddress(pub SocketAddr); // ip, port
 
@@ -64,6 +66,7 @@ pub struct NodeRequest {
 
 pub struct OutgoingSender {
     pub priv_key: ed25519::PrivateKey,
+    pub network: String,
     pub chan: mpsc::UnboundedSender<NodeRequest>,
 }
 
@@ -85,8 +88,10 @@ impl Limit {
 }
 
 impl OutgoingSender {
-    pub async fn raw(&self, body: Request<Body>, limit: Limit) -> Result<Body, NodeError> {
+    pub async fn raw(&self, mut body: Request<Body>, limit: Limit) -> Result<Body, NodeError> {
         let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
+        body.headers_mut()
+            .insert(NETWORK_HEADER, HeaderValue::from_str(&self.network)?);
         let req = NodeRequest {
             socket_addr: None,
             body,
@@ -219,6 +224,7 @@ impl BazukaClient {
     pub fn connect(
         priv_key: ed25519::PrivateKey,
         peer: PeerAddress,
+        network: String,
     ) -> (impl futures::Future<Output = Result<(), NodeError>>, Self) {
         let (sender_send, mut sender_recv) = mpsc::unbounded_channel::<NodeRequest>();
         let client_loop = async move {
@@ -241,6 +247,7 @@ impl BazukaClient {
                 peer,
                 sender: Arc::new(OutgoingSender {
                     priv_key,
+                    network,
                     chan: sender_send,
                 }),
             },

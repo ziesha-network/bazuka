@@ -41,6 +41,7 @@ use {
 struct BazukaConfig {
     seed: String,
     node: SocketAddr,
+    network: String,
 }
 
 #[derive(StructOpt)]
@@ -55,6 +56,8 @@ enum CliOptions {
         seed: String,
         #[structopt(long)]
         node: SocketAddr,
+        #[structopt(long, default_value = "mainnet")]
+        network: String,
     },
     #[cfg(not(feature = "node"))]
     Node,
@@ -178,6 +181,7 @@ async fn run_node(
     // data from external world through a heartbeat loop.
     let node = node_create(
         match network.as_ref() {
+            "debug" => config::node::get_debug_options(),
             "chaos" => config::node::get_chaos_options(),
             "mainnet" => config::node::get_mainnet_options(),
             _ => panic!("Network is not supported!"),
@@ -261,7 +265,7 @@ async fn deposit_withdraw(
 ) -> Result<(), NodeError> {
     let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
     let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
-    let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(conf.node));
+    let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(conf.node), conf.network);
     try_join!(
         async move {
             let acc = client.get_account(wallet.get_address()).await?.account;
@@ -318,11 +322,20 @@ async fn main() -> Result<(), NodeError> {
             println!("Node feature not turned on!");
         }
         #[cfg(feature = "client")]
-        CliOptions::Init { seed, node } => {
+        CliOptions::Init {
+            seed,
+            node,
+            network,
+        } => {
             if conf.is_none() {
                 std::fs::write(
                     conf_path,
-                    serde_yaml::to_string(&BazukaConfig { seed, node }).unwrap(),
+                    serde_yaml::to_string(&BazukaConfig {
+                        seed,
+                        node,
+                        network,
+                    })
+                    .unwrap(),
                 )
                 .unwrap();
             } else {
@@ -336,7 +349,8 @@ async fn main() -> Result<(), NodeError> {
         CliOptions::Status {} => {
             let conf = conf.expect("Bazuka is not initialized!");
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
-            let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(conf.node));
+            let (req_loop, client) =
+                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network);
             try_join!(
                 async move {
                     println!("{:#?}", client.stats().await?);
@@ -368,7 +382,8 @@ async fn main() -> Result<(), NodeError> {
             let conf = conf.expect("Bazuka is not initialized!");
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
-            let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(conf.node));
+            let (req_loop, client) =
+                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network);
             try_join!(
                 async move {
                     let acc = client.get_account(wallet.get_address()).await?.account;
@@ -391,7 +406,8 @@ async fn main() -> Result<(), NodeError> {
             let conf = conf.expect("Bazuka is not initialized!");
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
-            let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(conf.node));
+            let (req_loop, client) =
+                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network);
             try_join!(
                 async move {
                     let to: <ZkSigner as ZkSignatureScheme>::Pub = to.parse().unwrap();

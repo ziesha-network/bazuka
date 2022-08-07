@@ -21,6 +21,20 @@ pub fn get_chaos_options() -> NodeOptions {
     opts
 }
 
+pub fn get_debug_options() -> NodeOptions {
+    NodeOptions {
+        heartbeat_interval: Duration::from_secs(1),
+        num_peers: 8,
+        no_response_punish: 60,
+        invalid_data_punish: 120,
+        incorrect_power_punish: 120,
+        max_punish: 600,
+        outdated_heights_threshold: 15,
+        state_unavailable_ban_time: 30,
+        network: "debug".into(),
+    }
+}
+
 pub fn get_simulator_options() -> NodeOptions {
     NodeOptions {
         heartbeat_interval: Duration::from_millis(300),
