@@ -68,6 +68,8 @@ enum CliOptions {
         db: Option<PathBuf>,
         #[structopt(long)]
         bootstrap: Vec<String>,
+        #[structopt(long, default_value = "mainnet")]
+        network: String,
     },
     Status {},
     Deposit {
@@ -120,6 +122,7 @@ async fn run_node(
     external: Option<SocketAddr>,
     db: Option<PathBuf>,
     bootstrap: Vec<String>,
+    network: String,
 ) -> Result<(), NodeError> {
     let (pub_key, priv_key) = Signer::generate_keys(&bazuka_config.seed.as_bytes());
 
@@ -174,7 +177,11 @@ async fn run_node(
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
     let node = node_create(
-        config::node::get_node_options(),
+        match network.as_ref() {
+            "chaos" => config::node::get_chaos_options(),
+            "mainnet" => config::node::get_mainnet_options(),
+            _ => panic!("Network is not supported!"),
+        },
         address,
         priv_key,
         bootstrap_nodes,
@@ -301,9 +308,10 @@ async fn main() -> Result<(), NodeError> {
             external,
             db,
             bootstrap,
+            network,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            run_node(conf.clone(), listen, external, db, bootstrap).await?;
+            run_node(conf.clone(), listen, external, db, bootstrap, network).await?;
         }
         #[cfg(not(feature = "node"))]
         CliOptions::Node { .. } => {

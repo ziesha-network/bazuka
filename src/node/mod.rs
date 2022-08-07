@@ -37,6 +37,7 @@ pub struct NodeOptions {
     pub incorrect_power_punish: u32,
     pub max_punish: u32,
     pub state_unavailable_ban_time: u32,
+    pub network: String,
 }
 
 fn fetch_signature(

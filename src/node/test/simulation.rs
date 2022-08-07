@@ -35,7 +35,7 @@ fn create_test_node(
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let node = node_create(
-        config::node::get_test_node_options(),
+        config::node::get_simulator_options(),
         addr,
         opts.priv_key.clone(),
         opts.bootstrap
