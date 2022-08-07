@@ -22,9 +22,9 @@ pub async fn get_mpn_account<B: Blockchain>(
 
     Ok(GetMpnAccountResponse {
         account: MpnAccount {
-            nonce: 0, // TODO
+            nonce: cells[0].try_into()?,
             address: jubjub::PointAffine(cells[1], cells[2]),
-            balance: 0, // TODO
+            balance: cells[3].try_into()?,
         },
     })
 }

@@ -37,6 +37,8 @@ lazy_static! {
 pub enum ZkError {
     #[error("delta not found")]
     DeltaNotFound,
+    #[error("scalar bigger than u64")]
+    ScalarBiggerThanU64,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -109,16 +111,14 @@ impl ZkScalar {
 }
 
 impl TryInto<u64> for ZkScalar {
-    type Error = &'static str;
+    type Error = ZkError;
 
     fn try_into(self) -> Result<u64, Self::Error> {
         if !self.to_repr().as_ref()[8..].iter().all(|d| *d == 0) {
-            Err("ZkScalar bigger than a u64!")
+            Err(ZkError::ScalarBiggerThanU64)
         } else {
             Ok(u64::from_le_bytes(
-                self.to_repr().as_ref()[..8]
-                    .try_into()
-                    .map_err(|_| "Infallible")?,
+                self.to_repr().as_ref()[..8].try_into().unwrap(),
             ))
         }
     }
@@ -391,11 +391,11 @@ impl std::hash::Hash for ZeroTransaction {
 }
 
 impl ZeroTransaction {
-    pub fn verify(&self, addr: jubjub::PublicKey) -> bool {
-        jubjub::JubJub::<ZkMainHasher>::verify(&addr, self.hash(), &self.sig)
+    pub fn verify(&self, addr: &jubjub::PublicKey) -> bool {
+        jubjub::JubJub::<ZkMainHasher>::verify(addr, self.hash(), &self.sig)
     }
-    pub fn sign(&mut self, sk: jubjub::PrivateKey) {
-        self.sig = jubjub::JubJub::<ZkMainHasher>::sign(&sk, self.hash());
+    pub fn sign(&mut self, sk: &jubjub::PrivateKey) {
+        self.sig = jubjub::JubJub::<ZkMainHasher>::sign(sk, self.hash());
     }
     pub fn hash(&self) -> ZkScalar {
         ZkMainHasher::hash(&[

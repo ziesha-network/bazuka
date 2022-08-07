@@ -57,6 +57,27 @@ impl Wallet {
             state_delta: None,
         }
     }
+    pub fn create_mpn_transaction(
+        &self,
+        from_index: u32,
+        to_index: u32,
+        to: <ZkSigner as ZkSignatureScheme>::Pub,
+        amount: Money,
+        fee: Money,
+        nonce: u64,
+    ) -> zk::ZeroTransaction {
+        let mut tx = zk::ZeroTransaction {
+            nonce,
+            src_index: from_index,
+            dst_index: to_index,
+            dst_pub_key: to,
+            amount,
+            fee,
+            sig: Default::default(),
+        };
+        tx.sign(&self.zk_private_key);
+        tx
+    }
     pub fn create_contract(
         &self,
         contract: zk::ZkContract,

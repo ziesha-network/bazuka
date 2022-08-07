@@ -1,4 +1,5 @@
 use crate::blockchain::BlockchainError;
+use crate::zk::ZkError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -41,4 +42,6 @@ pub enum NodeError {
     InvalidSignatureHeader,
     #[error("signature required on this message")]
     SignatureRequired,
+    #[error("zk error: {0}")]
+    ZkError(#[from] ZkError),
 }
