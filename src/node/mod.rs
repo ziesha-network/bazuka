@@ -64,10 +64,12 @@ fn fetch_signature(
 }
 
 async fn node_service<B: Blockchain>(
-    _client: Option<SocketAddr>,
+    client: Option<SocketAddr>,
     context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
+    let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
+
     let mut response = Response::new(Body::empty());
     let method = req.method().clone();
     let path = req.uri().path().to_string();
@@ -157,9 +159,14 @@ async fn node_service<B: Blockchain>(
             )?);
         }
         (Method::POST, "/shutdown") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::shutdown(Arc::clone(&context), serde_json::from_slice(&body_bytes)?).await?,
-            )?);
+            if is_local {
+                *response.body_mut() = Body::from(serde_json::to_vec(
+                    &api::shutdown(Arc::clone(&context), serde_json::from_slice(&body_bytes)?)
+                        .await?,
+                )?);
+            } else {
+                *response.status_mut() = StatusCode::FORBIDDEN;
+            }
         }
         (Method::POST, "/bincode/transact") => {
             *response.body_mut() = Body::from(bincode::serialize(
