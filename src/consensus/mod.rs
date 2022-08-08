@@ -9,8 +9,11 @@ pub mod pow {
     }
 
     pub fn hash(key: &[u8], input: &[u8]) -> Output {
-        // TODO: Should not keep all of hashers!
         let mut hasher = HASHER.lock().unwrap();
+
+        #[cfg(not(test))]
+        hasher.retain(|k, _| k == &key);
+
         let key = key.to_vec();
         hasher
             .entry(key.clone())
