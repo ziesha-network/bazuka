@@ -16,6 +16,7 @@ use crate::client::{
 };
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
+use crate::utils::local_timestamp;
 use crate::wallet::Wallet;
 use hyper::body::HttpBody;
 use hyper::{Body, Method, Request, Response, StatusCode};
@@ -38,6 +39,7 @@ pub struct NodeOptions {
     pub max_punish: u32,
     pub state_unavailable_ban_time: u32,
     pub network: String,
+    pub ip_request_limit_per_minute: usize,
 }
 
 fn fetch_signature(
@@ -63,9 +65,23 @@ fn fetch_signature(
     Ok(None)
 }
 
+pub struct RequestCounter {
+    last_reset: Timestamp,
+    per_ip: HashMap<IpAddr, usize>,
+}
+
+impl RequestCounter {
+    fn reset(&mut self) {
+        self.per_ip.clear();
+    }
+}
+
 lazy_static! {
-    pub static ref REQUEST_COUNTER: Arc<RwLock<HashMap<IpAddr, usize>>> =
-        Arc::new(RwLock::new(HashMap::new()));
+    pub static ref REQUEST_COUNTER: Arc<RwLock<RequestCounter>> =
+        Arc::new(RwLock::new(RequestCounter {
+            last_reset: 0,
+            per_ip: HashMap::new()
+        }));
 }
 
 async fn node_service<B: Blockchain>(
@@ -73,14 +89,29 @@ async fn node_service<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
+    let opts = context.read().await.opts.clone();
+
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
+
+    let mut response = Response::new(Body::empty());
 
     if let Some(client) = client {
         let mut counter = REQUEST_COUNTER.write().await;
-        *counter.entry(client.ip()).or_insert(0) += 1;
+        let ts = local_timestamp();
+        if ts - counter.last_reset > 60 {
+            counter.reset();
+            counter.last_reset = ts;
+        }
+
+        let cnt = counter.per_ip.entry(client.ip()).or_insert(0);
+        if *cnt > opts.ip_request_limit_per_minute {
+            *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+            return Ok(response);
+        } else {
+            *cnt += 1;
+        }
     }
 
-    let mut response = Response::new(Body::empty());
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     let qs = req.uri().query().unwrap_or("").to_string();
