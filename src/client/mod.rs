@@ -4,7 +4,7 @@ use crate::crypto::SignatureScheme;
 use crate::utils;
 use crate::zk::ZeroTransaction;
 use hyper::body::HttpBody;
-use hyper::header::{HeaderValue, AUTHORIZATION};
+use hyper::header::HeaderValue;
 use hyper::{Body, Method, Request, Response};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -20,7 +20,8 @@ use messages::*;
 
 pub type Timestamp = u32;
 
-pub const NETWORK_HEADER: &str = "NETWORK";
+pub const SIGNATURE_HEADER: &str = "X-ZEEKA-SIGNATURE";
+pub const NETWORK_HEADER: &str = "X-ZEEKA-NETWORK-NAME";
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerAddress(pub SocketAddr); // ip, port
@@ -134,7 +135,7 @@ impl OutgoingSender {
         let sig = hex::encode(bincode::serialize(&Signer::sign(&self.priv_key, &body))?);
         let mut req = req.body(Body::from(body))?;
         req.headers_mut().insert(
-            AUTHORIZATION,
+            SIGNATURE_HEADER,
             HeaderValue::from_str(&format!("{}-{}", pub_key, sig))?,
         );
         Ok(req)

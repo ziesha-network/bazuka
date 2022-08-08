@@ -12,13 +12,12 @@ use context::NodeContext;
 use crate::blockchain::Blockchain;
 use crate::client::{
     Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, PeerInfo, Timestamp,
-    NETWORK_HEADER,
+    NETWORK_HEADER, SIGNATURE_HEADER,
 };
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::wallet::Wallet;
 use hyper::body::HttpBody;
-use hyper::header::AUTHORIZATION;
 use hyper::{Body, Method, Request, Response, StatusCode};
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -44,7 +43,7 @@ pub struct NodeOptions {
 fn fetch_signature(
     req: &Request<Body>,
 ) -> Result<Option<(ed25519::PublicKey, ed25519::Signature)>, NodeError> {
-    if let Some(v) = req.headers().get(AUTHORIZATION) {
+    if let Some(v) = req.headers().get(SIGNATURE_HEADER) {
         let s = v.to_str().map_err(|_| NodeError::InvalidSignatureHeader)?;
         let mut s = s.split('-');
         let (pub_hex, sig_hex) = s
