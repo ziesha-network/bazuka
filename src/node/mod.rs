@@ -73,7 +73,7 @@ async fn node_service<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
-    let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
+    let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
 
     if let Some(client) = client {
         let mut counter = REQUEST_COUNTER.write().await;
