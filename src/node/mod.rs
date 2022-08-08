@@ -20,7 +20,7 @@ use crate::wallet::Wallet;
 use hyper::body::HttpBody;
 use hyper::{Body, Method, Request, Response, StatusCode};
 use std::collections::HashMap;
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -63,12 +63,22 @@ fn fetch_signature(
     Ok(None)
 }
 
+lazy_static! {
+    pub static ref REQUEST_COUNTER: Arc<RwLock<HashMap<IpAddr, usize>>> =
+        Arc::new(RwLock::new(HashMap::new()));
+}
+
 async fn node_service<B: Blockchain>(
     client: Option<SocketAddr>,
     context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
+
+    if let Some(client) = client {
+        let mut counter = REQUEST_COUNTER.write().await;
+        *counter.entry(client.ip()).or_insert(0) += 1;
+    }
 
     let mut response = Response::new(Body::empty());
     let method = req.method().clone();
