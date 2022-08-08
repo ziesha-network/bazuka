@@ -137,7 +137,7 @@ async fn run_node(
 
     let public_ip = bazuka::node::upnp::get_public_ip().await;
 
-    const DEFAULT_PORT: u16 = 3030;
+    const DEFAULT_PORT: u16 = 8765;
 
     let listen = listen.unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT)));
     let address = PeerAddress(
