@@ -66,7 +66,14 @@ impl<B: Blockchain> NodeContext<B> {
 
     pub fn refresh(&mut self) -> Result<(), BlockchainError> {
         // TODO: Remove all inactive peers
-        // TODO: Cleanup banned headers
+
+        let ts = self.network_timestamp();
+        for (h, banned_at) in self.banned_headers.clone().into_iter() {
+            if ts - banned_at > self.opts.state_unavailable_ban_time {
+                self.banned_headers.remove(&h);
+            }
+        }
+
         self.firewall.refresh();
         self.blockchain
             .cleanup_contract_payment_mempool(&mut self.contract_payment_mempool)?;
