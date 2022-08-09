@@ -5,6 +5,7 @@ pub fn get_mainnet_options() -> NodeOptions {
     NodeOptions {
         heartbeat_interval: Duration::from_secs(1),
         num_peers: 8,
+        default_punish: 10,
         no_response_punish: 60,
         invalid_data_punish: 120,
         incorrect_power_punish: 120,
@@ -32,6 +33,7 @@ pub fn get_simulator_options() -> NodeOptions {
     NodeOptions {
         heartbeat_interval: Duration::from_millis(300),
         num_peers: 8,
+        default_punish: 0,
         no_response_punish: 0,
         invalid_data_punish: 0,
         incorrect_power_punish: 0,

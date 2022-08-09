@@ -33,6 +33,7 @@ pub struct NodeOptions {
     pub heartbeat_interval: Duration,
     pub num_peers: usize,
     pub outdated_heights_threshold: u32,
+    pub default_punish: u32,
     pub no_response_punish: u32,
     pub invalid_data_punish: u32,
     pub incorrect_power_punish: u32,
@@ -94,9 +95,9 @@ impl Firewall {
             self.request_count_last_reset = ts;
         }
     }
-    fn punish_peer(&mut self, peer: PeerAddress, secs: u32, max_punish: u32) {
+    fn punish_ip(&mut self, ip: IpAddr, secs: u32, max_punish: u32) {
         let now = local_timestamp();
-        let ts = self.punished_ips.entry(peer.0.ip()).or_insert(0);
+        let ts = self.punished_ips.entry(ip).or_insert(0);
         *ts = std::cmp::min(std::cmp::max(*ts, now) + secs, now + max_punish);
     }
     fn is_ip_punished(&self, ip: IpAddr) -> bool {
@@ -329,7 +330,13 @@ async fn node_service<B: Blockchain>(
         Err(e) => {
             let mut response = Response::new(Body::from(format!("Error: {}", e)));
             *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-            // TODO: Maybe punish?
+            if let Some(client) = client {
+                let mut ctx = context.write().await;
+                let default_punish = ctx.opts.default_punish;
+                let max_punish = ctx.opts.max_punish;
+                ctx.firewall
+                    .punish_ip(client.ip(), default_punish, max_punish);
+            }
             Ok(response)
         }
     }

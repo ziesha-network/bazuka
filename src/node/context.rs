@@ -41,7 +41,7 @@ impl<B: Blockchain> NodeContext<B> {
     }
     pub fn punish(&mut self, bad_peer: PeerAddress, secs: u32) {
         self.firewall
-            .punish_peer(bad_peer, secs, self.opts.max_punish);
+            .punish_ip(bad_peer.0.ip(), secs, self.opts.max_punish);
     }
     pub fn get_info(&self) -> Result<PeerInfo, BlockchainError> {
         Ok(PeerInfo {
