@@ -144,176 +144,195 @@ async fn node_service<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
-    let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
+    match async {
+        let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
+        let mut response = Response::new(Body::empty());
 
-    let mut response = Response::new(Body::empty());
-
-    if let Some(client) = client {
-        let mut ctx = context.write().await;
-        if !ctx.firewall.incoming_permitted(client) {
-            *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
-            return Ok(response);
-        }
-    }
-
-    let method = req.method().clone();
-    let path = req.uri().path().to_string();
-    let qs = req.uri().query().unwrap_or("").to_string();
-
-    let creds = fetch_signature(&req)?;
-    let network: String = if let Some(v) = req.headers().get(NETWORK_HEADER) {
-        v.to_str().ok().map(|n| n.to_lowercase())
-    } else {
-        None
-    }
-    .unwrap_or("mainnet".into());
-
-    let body = req.into_body();
-
-    if network != context.read().await.opts.network {
-        return Err(NodeError::WrongNetwork);
-    }
-
-    // Disallow large requests
-    if body
-        .size_hint()
-        .upper()
-        .map(|u| u > 1024 * 1024)
-        .unwrap_or(true)
-    {
-        *response.status_mut() = StatusCode::PAYLOAD_TOO_LARGE;
-        return Ok(response);
-    }
-
-    let body_bytes = hyper::body::to_bytes(body).await?;
-
-    let needs_signature = false;
-
-    // TODO: This doesn't prevent replay attacks
-    let is_signed = creds
-        .map(|(pub_key, sig)| {
-            ed25519::Ed25519::<crate::core::Hasher>::verify(&pub_key, &body_bytes, &sig)
-        })
-        .unwrap_or(false);
-    if needs_signature && !is_signed {
-        return Err(NodeError::SignatureRequired);
-    }
-
-    match (method, &path[..]) {
-        // Miner will call this to fetch new PoW work.
-        (Method::GET, "/miner/puzzle") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::get_miner_puzzle(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
-            )?);
-        }
-
-        // Miner will call this when he has solved the PoW puzzle.
-        (Method::POST, "/miner/solution") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::post_miner_solution(
-                    Arc::clone(&context),
-                    serde_json::from_slice(&body_bytes)?,
-                )
-                .await?,
-            )?);
-        }
-
-        (Method::GET, "/stats") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::get_stats(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
-            )?);
-        }
-        (Method::GET, "/account") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::get_account(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
-            )?);
-        }
-        (Method::GET, "/mpn/account") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::get_mpn_account(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
-            )?);
-        }
-        (Method::GET, "/peers") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::get_peers(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
-            )?);
-        }
-        (Method::POST, "/peers") => {
-            *response.body_mut() = Body::from(serde_json::to_vec(
-                &api::post_peer(Arc::clone(&context), serde_json::from_slice(&body_bytes)?).await?,
-            )?);
-        }
-        (Method::POST, "/shutdown") => {
-            if is_local {
-                *response.body_mut() = Body::from(serde_json::to_vec(
-                    &api::shutdown(Arc::clone(&context), serde_json::from_slice(&body_bytes)?)
-                        .await?,
-                )?);
-            } else {
-                *response.status_mut() = StatusCode::FORBIDDEN;
+        if let Some(client) = client {
+            let mut ctx = context.write().await;
+            if !ctx.firewall.incoming_permitted(client) {
+                *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+                return Ok(response);
             }
         }
-        (Method::POST, "/bincode/transact") => {
-            *response.body_mut() = Body::from(bincode::serialize(
-                &api::transact(Arc::clone(&context), bincode::deserialize(&body_bytes)?).await?,
-            )?);
-        }
-        (Method::POST, "/bincode/transact/zero") => {
-            *response.body_mut() = Body::from(bincode::serialize(
-                &api::transact_zero(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
-                    .await?,
-            )?);
-        }
-        (Method::POST, "/bincode/transact/contract_payment") => {
-            *response.body_mut() = Body::from(bincode::serialize(
-                &api::transact_contract_payment(
-                    Arc::clone(&context),
-                    bincode::deserialize(&body_bytes)?,
-                )
-                .await?,
-            )?);
-        }
-        (Method::GET, "/bincode/headers") => {
-            *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_headers(Arc::clone(&context), bincode::deserialize(&body_bytes)?).await?,
-            )?);
-        }
-        (Method::GET, "/bincode/blocks") => {
-            *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_blocks(Arc::clone(&context), bincode::deserialize(&body_bytes)?).await?,
-            )?);
-        }
-        (Method::POST, "/bincode/blocks") => {
-            *response.body_mut() = Body::from(bincode::serialize(
-                &api::post_block(Arc::clone(&context), bincode::deserialize(&body_bytes)?).await?,
-            )?);
-        }
-        (Method::GET, "/bincode/states") => {
-            *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_states(Arc::clone(&context), bincode::deserialize(&body_bytes)?).await?,
-            )?);
-        }
-        (Method::GET, "/bincode/states/outdated") => {
-            *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_outdated_heights(
-                    Arc::clone(&context),
-                    bincode::deserialize(&body_bytes)?,
-                )
-                .await?,
-            )?);
-        }
-        (Method::GET, "/bincode/mempool/zero") => {
-            *response.body_mut() = Body::from(bincode::serialize(
-                &api::get_zero_mempool(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
-                    .await?,
-            )?);
-        }
-        _ => {
-            *response.status_mut() = StatusCode::NOT_FOUND;
-        }
-    };
 
-    Ok(response)
+        let method = req.method().clone();
+        let path = req.uri().path().to_string();
+        let qs = req.uri().query().unwrap_or("").to_string();
+
+        let creds = fetch_signature(&req)?;
+        let network: String = if let Some(v) = req.headers().get(NETWORK_HEADER) {
+            v.to_str().ok().map(|n| n.to_lowercase())
+        } else {
+            None
+        }
+        .unwrap_or("mainnet".into());
+
+        let body = req.into_body();
+
+        if network != context.read().await.opts.network {
+            return Err(NodeError::WrongNetwork);
+        }
+
+        // Disallow large requests
+        if body
+            .size_hint()
+            .upper()
+            .map(|u| u > 1024 * 1024)
+            .unwrap_or(true)
+        {
+            *response.status_mut() = StatusCode::PAYLOAD_TOO_LARGE;
+            return Ok(response);
+        }
+
+        let body_bytes = hyper::body::to_bytes(body).await?;
+
+        let needs_signature = false;
+
+        // TODO: This doesn't prevent replay attacks
+        let is_signed = creds
+            .map(|(pub_key, sig)| {
+                ed25519::Ed25519::<crate::core::Hasher>::verify(&pub_key, &body_bytes, &sig)
+            })
+            .unwrap_or(false);
+        if needs_signature && !is_signed {
+            return Err(NodeError::SignatureRequired);
+        }
+
+        match (method, &path[..]) {
+            // Miner will call this to fetch new PoW work.
+            (Method::GET, "/miner/puzzle") => {
+                *response.body_mut() = Body::from(serde_json::to_vec(
+                    &api::get_miner_puzzle(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                )?);
+            }
+
+            // Miner will call this when he has solved the PoW puzzle.
+            (Method::POST, "/miner/solution") => {
+                *response.body_mut() = Body::from(serde_json::to_vec(
+                    &api::post_miner_solution(
+                        Arc::clone(&context),
+                        serde_json::from_slice(&body_bytes)?,
+                    )
+                    .await?,
+                )?);
+            }
+
+            (Method::GET, "/stats") => {
+                *response.body_mut() = Body::from(serde_json::to_vec(
+                    &api::get_stats(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                )?);
+            }
+            (Method::GET, "/account") => {
+                *response.body_mut() = Body::from(serde_json::to_vec(
+                    &api::get_account(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                )?);
+            }
+            (Method::GET, "/mpn/account") => {
+                *response.body_mut() = Body::from(serde_json::to_vec(
+                    &api::get_mpn_account(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                )?);
+            }
+            (Method::GET, "/peers") => {
+                *response.body_mut() = Body::from(serde_json::to_vec(
+                    &api::get_peers(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                )?);
+            }
+            (Method::POST, "/peers") => {
+                *response.body_mut() = Body::from(serde_json::to_vec(
+                    &api::post_peer(Arc::clone(&context), serde_json::from_slice(&body_bytes)?)
+                        .await?,
+                )?);
+            }
+            (Method::POST, "/shutdown") => {
+                if is_local {
+                    *response.body_mut() = Body::from(serde_json::to_vec(
+                        &api::shutdown(Arc::clone(&context), serde_json::from_slice(&body_bytes)?)
+                            .await?,
+                    )?);
+                } else {
+                    *response.status_mut() = StatusCode::FORBIDDEN;
+                }
+            }
+            (Method::POST, "/bincode/transact") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::transact(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
+                )?);
+            }
+            (Method::POST, "/bincode/transact/zero") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::transact_zero(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
+                )?);
+            }
+            (Method::POST, "/bincode/transact/contract_payment") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::transact_contract_payment(
+                        Arc::clone(&context),
+                        bincode::deserialize(&body_bytes)?,
+                    )
+                    .await?,
+                )?);
+            }
+            (Method::GET, "/bincode/headers") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::get_headers(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
+                )?);
+            }
+            (Method::GET, "/bincode/blocks") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::get_blocks(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
+                )?);
+            }
+            (Method::POST, "/bincode/blocks") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::post_block(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
+                )?);
+            }
+            (Method::GET, "/bincode/states") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::get_states(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
+                )?);
+            }
+            (Method::GET, "/bincode/states/outdated") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::get_outdated_heights(
+                        Arc::clone(&context),
+                        bincode::deserialize(&body_bytes)?,
+                    )
+                    .await?,
+                )?);
+            }
+            (Method::GET, "/bincode/mempool/zero") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::get_zero_mempool(
+                        Arc::clone(&context),
+                        bincode::deserialize(&body_bytes)?,
+                    )
+                    .await?,
+                )?);
+            }
+            _ => {
+                *response.status_mut() = StatusCode::NOT_FOUND;
+            }
+        }
+        Ok::<Response<Body>, NodeError>(response)
+    }
+    .await
+    {
+        Ok(resp) => Ok(resp),
+        Err(e) => {
+            let mut response = Response::new(Body::from(format!("Error: {}", e)));
+            *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+            // TODO: Maybe punish?
+            Ok(response)
+        }
+    }
 }
 
 use tokio::sync::mpsc;
