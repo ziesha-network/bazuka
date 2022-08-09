@@ -19,7 +19,7 @@ use {
     colored::Colorize,
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
-    hyper::{Body, Client, Request, Response, Server},
+    hyper::{Body, Client, Request, Response, Server, StatusCode},
     std::path::{Path, PathBuf},
     std::sync::Arc,
     tokio::sync::mpsc,
@@ -228,7 +228,17 @@ async fn run_node(
                             arc_inc_send
                                 .send(req)
                                 .map_err(|_| NodeError::NotListeningError)?;
-                            resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)?
+                            Ok::<Response<Body>, NodeError>(
+                                match resp_rcv.recv().await.ok_or(NodeError::NotAnsweringError)? {
+                                    Ok(resp) => resp,
+                                    Err(e) => {
+                                        let mut resp =
+                                            Response::new(Body::from(format!("Error: {}", e)));
+                                        *resp.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                                        resp
+                                    }
+                                },
+                            )
                         }
                     }))
                 }

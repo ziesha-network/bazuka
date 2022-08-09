@@ -328,8 +328,6 @@ async fn node_service<B: Blockchain>(
     {
         Ok(resp) => Ok(resp),
         Err(e) => {
-            let mut response = Response::new(Body::from(format!("Error: {}", e)));
-            *response.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
             if let Some(client) = client {
                 let mut ctx = context.write().await;
                 let default_punish = ctx.opts.default_punish;
@@ -337,7 +335,7 @@ async fn node_service<B: Blockchain>(
                 ctx.firewall
                     .punish_ip(client.ip(), default_punish, max_punish);
             }
-            Ok(response)
+            Err(e)
         }
     }
 }
