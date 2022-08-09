@@ -9,13 +9,17 @@ pub async fn get_zero_mempool<B: Blockchain>(
     _req: GetZeroMempoolRequest,
 ) -> Result<GetZeroMempoolResponse, NodeError> {
     let mut context = context.write().await;
-    context.refresh()?;
-    Ok(GetZeroMempoolResponse {
-        updates: context.zero_mempool.clone().into_keys().collect(),
-        payments: context
-            .contract_payment_mempool
-            .clone()
-            .into_keys()
-            .collect(),
-    })
+    if context.blockchain.get_outdated_heights()?.len() > 0 {
+        Err(NodeError::StatesOutdated)
+    } else {
+        context.refresh()?;
+        Ok(GetZeroMempoolResponse {
+            updates: context.zero_mempool.clone().into_keys().collect(),
+            payments: context
+                .contract_payment_mempool
+                .clone()
+                .into_keys()
+                .collect(),
+        })
+    }
 }

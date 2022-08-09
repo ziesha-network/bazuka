@@ -46,4 +46,6 @@ pub enum NodeError {
     ZkError(#[from] ZkError),
     #[error("wrong network")]
     WrongNetwork,
+    #[error("states are outdated")]
+    StatesOutdated,
 }
