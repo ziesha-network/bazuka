@@ -1,7 +1,6 @@
 use crate::core::{Address, ContractPayment, Signer, TransactionAndDelta};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
-use crate::utils;
 use crate::zk::ZeroTransaction;
 use hyper::body::HttpBody;
 use hyper::header::HeaderValue;

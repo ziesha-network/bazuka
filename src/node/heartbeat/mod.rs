@@ -1,6 +1,6 @@
 mod log_info;
 
-mod cleanup_mempool;
+mod refresh;
 mod sync_blocks;
 mod sync_clock;
 mod sync_peers;
@@ -18,7 +18,7 @@ use tokio::time::sleep;
 pub async fn heartbeat<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
-    cleanup_mempool::cleanup_mempool(&context).await?;
+    refresh::refresh(&context).await?;
     log_info::log_info(&context).await?;
     sync_clock::sync_clock(&context).await?;
     sync_peers::sync_peers(&context).await?;

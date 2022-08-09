@@ -64,7 +64,10 @@ impl<B: Blockchain> NodeContext<B> {
             .collect()
     }
 
-    pub fn cleanup_mempools(&mut self) -> Result<(), BlockchainError> {
+    pub fn refresh(&mut self) -> Result<(), BlockchainError> {
+        // TODO: Remove all inactive peers
+        // TODO: Cleanup banned headers
+        self.firewall.refresh();
         self.blockchain
             .cleanup_contract_payment_mempool(&mut self.contract_payment_mempool)?;
         self.blockchain.cleanup_mempool(&mut self.mempool)?;

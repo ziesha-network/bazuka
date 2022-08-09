@@ -81,6 +81,7 @@ impl Firewall {
             request_count: HashMap::new(),
         }
     }
+    fn refresh(&mut self) {}
     fn punish_peer(&mut self, peer: PeerAddress, secs: u32, max_punish: u32) {
         let now = local_timestamp();
         let ts = self.punished_ips.entry(peer.0.ip()).or_insert(0);
