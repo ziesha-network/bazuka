@@ -26,6 +26,7 @@ pub async fn post_miner_solution<B: Blockchain>(
         .extend(draft.block.header.number, &[draft.block.clone()])
         .is_ok()
     {
+        context.outdated_since = None;
         let _ = context.blockchain.update_states(&draft.patch.clone());
 
         let peer_addresses = context.random_peers(&mut rand::thread_rng(), context.opts.num_peers);

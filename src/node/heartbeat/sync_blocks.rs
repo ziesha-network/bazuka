@@ -111,7 +111,9 @@ pub async fn sync_blocks<B: Blockchain>(
             )
             .await?;
         let mut ctx = context.write().await;
+
         ctx.blockchain.extend(headers[0].number, &resp.blocks)?;
+        ctx.outdated_since = None;
     } else {
         let mut ctx = context.write().await;
         ctx.punish(most_powerful.address, opts.incorrect_power_punish);
