@@ -42,21 +42,7 @@ pub struct PeerInfo {
 pub struct Peer {
     pub pub_key: Option<ed25519::PublicKey>,
     pub address: PeerAddress,
-    pub punished_until: Timestamp,
     pub info: Option<PeerInfo>,
-}
-
-impl Peer {
-    pub fn is_punished(&self) -> bool {
-        utils::local_timestamp() < self.punished_until
-    }
-    pub fn punish(&mut self, secs: u32, max_punish: u32) {
-        let now = utils::local_timestamp();
-        self.punished_until = std::cmp::min(
-            std::cmp::max(self.punished_until, now) + secs,
-            now + max_punish,
-        );
-    }
 }
 
 pub struct NodeRequest {

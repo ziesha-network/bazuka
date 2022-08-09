@@ -40,9 +40,8 @@ impl<B: Blockchain> NodeContext<B> {
         (utils::local_timestamp() as i32 + self.timestamp_offset) as u32
     }
     pub fn punish(&mut self, bad_peer: PeerAddress, secs: u32) {
-        self.peers
-            .entry(bad_peer)
-            .and_modify(|stats| stats.punish(secs, self.opts.max_punish));
+        self.firewall
+            .punish_peer(bad_peer, secs, self.opts.max_punish);
     }
     pub fn get_info(&self) -> Result<PeerInfo, BlockchainError> {
         Ok(PeerInfo {
@@ -61,7 +60,7 @@ impl<B: Blockchain> NodeContext<B> {
         self.peers
             .values()
             .cloned()
-            .filter(|p| !p.is_punished() && p.address != self.address)
+            .filter(|p| self.firewall.outgoing_permitted(p.address) && p.address != self.address)
             .collect()
     }
 

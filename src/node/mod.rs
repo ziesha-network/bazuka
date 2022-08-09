@@ -67,6 +67,7 @@ fn fetch_signature(
 
 pub struct Firewall {
     limit_per_minute: usize,
+    punished_ips: HashMap<IpAddr, Timestamp>,
     request_count_last_reset: Timestamp,
     request_count: HashMap<IpAddr, usize>,
 }
@@ -75,14 +76,46 @@ impl Firewall {
     pub fn new(limit_per_minute: usize) -> Self {
         Self {
             limit_per_minute,
+            punished_ips: HashMap::new(),
             request_count_last_reset: 0,
             request_count: HashMap::new(),
         }
+    }
+    fn punish_peer(&mut self, peer: PeerAddress, secs: u32, max_punish: u32) {
+        let now = local_timestamp();
+        let ts = self.punished_ips.entry(peer.0.ip()).or_insert(0);
+        *ts = std::cmp::min(std::cmp::max(*ts, now) + secs, now + max_punish);
+    }
+    fn is_ip_punished(&self, ip: IpAddr) -> bool {
+        if let Some(punished_until) = self.punished_ips.get(&ip) {
+            if local_timestamp() < *punished_until {
+                return true;
+            }
+        }
+        false
+    }
+    fn outgoing_permitted(&self, peer: PeerAddress) -> bool {
+        let ip = peer.0.ip();
+
+        if ip.is_loopback() {
+            return true;
+        }
+
+        if self.is_ip_punished(ip) {
+            return false;
+        }
+
+        true
     }
     fn incoming_permitted(&mut self, client: SocketAddr) -> bool {
         if client.ip().is_loopback() {
             return true;
         }
+
+        if self.is_ip_punished(client.ip()) {
+            return false;
+        }
+
         let ts = local_timestamp();
         if ts - self.request_count_last_reset > 60 {
             self.request_count.clear();
@@ -313,7 +346,6 @@ pub async fn node_create<B: Blockchain>(
                     Peer {
                         pub_key: None,
                         address: addr,
-                        punished_until: 0,
                         info: None,
                     },
                 )

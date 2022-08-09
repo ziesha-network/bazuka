@@ -20,7 +20,6 @@ pub async fn post_peer<B: Blockchain>(
             pub_key: None,
             address: req.address,
             info: Some(req.info),
-            punished_until: 0,
         });
     Ok(PostPeerResponse {
         info: context.get_info()?,

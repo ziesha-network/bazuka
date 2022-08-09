@@ -33,7 +33,6 @@ pub async fn sync_peers<B: Blockchain>(
                     pub_key: None,
                     address: p.address,
                     info: None,
-                    punished_until: 0,
                 });
             }
         }
