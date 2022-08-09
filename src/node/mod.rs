@@ -81,7 +81,19 @@ impl Firewall {
             request_count: HashMap::new(),
         }
     }
-    fn refresh(&mut self) {}
+    fn refresh(&mut self) {
+        for ip in self.punished_ips.clone().into_keys() {
+            if !self.is_ip_punished(ip) {
+                self.punished_ips.remove(&ip);
+            }
+        }
+
+        let ts = local_timestamp();
+        if ts - self.request_count_last_reset > 60 {
+            self.request_count.clear();
+            self.request_count_last_reset = ts;
+        }
+    }
     fn punish_peer(&mut self, peer: PeerAddress, secs: u32, max_punish: u32) {
         let now = local_timestamp();
         let ts = self.punished_ips.entry(peer.0.ip()).or_insert(0);
@@ -115,12 +127,6 @@ impl Firewall {
 
         if self.is_ip_punished(client.ip()) {
             return false;
-        }
-
-        let ts = local_timestamp();
-        if ts - self.request_count_last_reset > 60 {
-            self.request_count.clear();
-            self.request_count_last_reset = ts;
         }
 
         let cnt = self.request_count.entry(client.ip()).or_insert(0);
