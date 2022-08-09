@@ -66,13 +66,36 @@ fn fetch_signature(
 }
 
 pub struct Firewall {
-    last_reset: Timestamp,
-    per_ip: HashMap<IpAddr, usize>,
+    limit_per_minute: usize,
+    request_count_last_reset: Timestamp,
+    request_count: HashMap<IpAddr, usize>,
 }
 
 impl Firewall {
-    fn reset(&mut self) {
-        self.per_ip.clear();
+    pub fn new(limit_per_minute: usize) -> Self {
+        Self {
+            limit_per_minute,
+            request_count_last_reset: 0,
+            request_count: HashMap::new(),
+        }
+    }
+    fn incoming_permitted(&mut self, client: SocketAddr) -> bool {
+        if client.ip().is_loopback() {
+            return true;
+        }
+        let ts = local_timestamp();
+        if ts - self.request_count_last_reset > 60 {
+            self.request_count.clear();
+            self.request_count_last_reset = ts;
+        }
+
+        let cnt = self.request_count.entry(client.ip()).or_insert(0);
+        if *cnt > self.limit_per_minute {
+            false
+        } else {
+            *cnt += 1;
+            true
+        }
     }
 }
 
@@ -87,19 +110,9 @@ async fn node_service<B: Blockchain>(
 
     if let Some(client) = client {
         let mut ctx = context.write().await;
-        let limit_per_minute = ctx.opts.ip_request_limit_per_minute;
-        let ts = local_timestamp();
-        if ts - ctx.firewall.last_reset > 60 {
-            ctx.firewall.reset();
-            ctx.firewall.last_reset = ts;
-        }
-
-        let cnt = ctx.firewall.per_ip.entry(client.ip()).or_insert(0);
-        if *cnt > limit_per_minute {
+        if !ctx.firewall.incoming_permitted(client) {
             *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
             return Ok(response);
-        } else {
-            *cnt += 1;
         }
     }
 
@@ -277,10 +290,7 @@ pub async fn node_create<B: Blockchain>(
     outgoing: mpsc::UnboundedSender<NodeRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
-        firewall: Firewall {
-            last_reset: 0,
-            per_ip: HashMap::new(),
-        },
+        firewall: Firewall::new(opts.ip_request_limit_per_minute),
         opts: opts.clone(),
         address,
         pub_key: ed25519::PublicKey::from(priv_key.clone()),
