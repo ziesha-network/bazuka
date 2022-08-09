@@ -65,23 +65,15 @@ fn fetch_signature(
     Ok(None)
 }
 
-pub struct RequestCounter {
+pub struct Firewall {
     last_reset: Timestamp,
     per_ip: HashMap<IpAddr, usize>,
 }
 
-impl RequestCounter {
+impl Firewall {
     fn reset(&mut self) {
         self.per_ip.clear();
     }
-}
-
-lazy_static! {
-    pub static ref REQUEST_COUNTER: Arc<RwLock<RequestCounter>> =
-        Arc::new(RwLock::new(RequestCounter {
-            last_reset: 0,
-            per_ip: HashMap::new()
-        }));
 }
 
 async fn node_service<B: Blockchain>(
@@ -89,22 +81,21 @@ async fn node_service<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
-    let opts = context.read().await.opts.clone();
-
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
 
     let mut response = Response::new(Body::empty());
 
     if let Some(client) = client {
-        let mut counter = REQUEST_COUNTER.write().await;
+        let mut ctx = context.write().await;
+        let limit_per_minute = ctx.opts.ip_request_limit_per_minute;
         let ts = local_timestamp();
-        if ts - counter.last_reset > 60 {
-            counter.reset();
-            counter.last_reset = ts;
+        if ts - ctx.firewall.last_reset > 60 {
+            ctx.firewall.reset();
+            ctx.firewall.last_reset = ts;
         }
 
-        let cnt = counter.per_ip.entry(client.ip()).or_insert(0);
-        if *cnt > opts.ip_request_limit_per_minute {
+        let cnt = ctx.firewall.per_ip.entry(client.ip()).or_insert(0);
+        if *cnt > limit_per_minute {
             *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
             return Ok(response);
         } else {
@@ -286,6 +277,10 @@ pub async fn node_create<B: Blockchain>(
     outgoing: mpsc::UnboundedSender<NodeRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
+        firewall: Firewall {
+            last_reset: 0,
+            per_ip: HashMap::new(),
+        },
         opts: opts.clone(),
         address,
         pub_key: ed25519::PublicKey::from(priv_key.clone()),
