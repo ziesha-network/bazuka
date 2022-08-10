@@ -1,4 +1,5 @@
 use crate::node::NodeOptions;
+use crate::common::*;
 use std::time::Duration;
 
 pub fn get_mainnet_options() -> NodeOptions {
@@ -14,6 +15,7 @@ pub fn get_mainnet_options() -> NodeOptions {
         outdated_heights_threshold: 15,
         state_unavailable_ban_time: 30,
         ip_request_limit_per_minute: 60,
+        traffic_limit_per_15m: 4 * GB,
         network: "mainnet".into(),
     }
 }
@@ -43,6 +45,7 @@ pub fn get_simulator_options() -> NodeOptions {
         outdated_heights_threshold: 5,
         state_unavailable_ban_time: 10,
         ip_request_limit_per_minute: 6000,
+        traffic_limit_per_15m: 4 * GB,
         network: "simulator".into(),
     }
 }

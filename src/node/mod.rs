@@ -42,6 +42,7 @@ pub struct NodeOptions {
     pub state_unavailable_ban_time: u32,
     pub network: String,
     pub ip_request_limit_per_minute: usize,
+    pub traffic_limit_per_15m: u64
 }
 
 fn fetch_signature(
@@ -68,19 +69,25 @@ fn fetch_signature(
 }
 
 pub struct Firewall {
-    limit_per_minute: usize,
+    request_count_limit_per_minute: usize,
+    traffic_limit_per_15m: u64,
     punished_ips: HashMap<IpAddr, Timestamp>,
     request_count_last_reset: Timestamp,
     request_count: HashMap<IpAddr, usize>,
+    traffic_last_reset: Timestamp,
+    traffic: HashMap<IpAddr, u64>,
 }
 
 impl Firewall {
-    pub fn new(limit_per_minute: usize) -> Self {
+    pub fn new(request_count_limit_per_minute: usize, traffic_limit_per_15m: u64) -> Self {
         Self {
-            limit_per_minute,
+            request_count_limit_per_minute,
+            traffic_limit_per_15m,
             punished_ips: HashMap::new(),
             request_count_last_reset: 0,
             request_count: HashMap::new(),
+            traffic_last_reset: 0,
+            traffic: HashMap::new(),
         }
     }
     fn refresh(&mut self) {
@@ -91,10 +98,19 @@ impl Firewall {
         }
 
         let ts = local_timestamp();
+
         if ts - self.request_count_last_reset > 60 {
             self.request_count.clear();
             self.request_count_last_reset = ts;
         }
+
+        if ts - self.traffic_last_reset > 900 {
+            self.traffic.clear();
+            self.traffic_last_reset = ts;
+        }
+    }
+    fn add_traffic(&mut self, ip: IpAddr, amount: u64) {
+        *self.traffic.entry(ip).or_insert(0) += amount;
     }
     fn punish_ip(&mut self, ip: IpAddr, secs: u32, max_punish: u32) {
         let now = local_timestamp();
@@ -131,13 +147,17 @@ impl Firewall {
             return false;
         }
 
-        let cnt = self.request_count.entry(client.ip()).or_insert(0);
-        if *cnt > self.limit_per_minute {
-            false
-        } else {
-            *cnt += 1;
-            true
+        if self.traffic.get(&client.ip()).cloned().unwrap_or(0) > self.traffic_limit_per_15m {
+            return false;
         }
+
+        let cnt = self.request_count.entry(client.ip()).or_insert(0);
+        if *cnt > self.request_count_limit_per_minute {
+            return false;
+        }
+
+        *cnt += 1;
+        true
     }
 }
 
@@ -176,13 +196,11 @@ async fn node_service<B: Blockchain>(
             return Err(NodeError::WrongNetwork);
         }
 
-        // Disallow large requests
-        if body
-            .size_hint()
-            .upper()
-            .map(|u| u > 1024 * 1024)
-            .unwrap_or(true)
-        {
+        if let Some(req_sz) = body.size_hint().upper() {
+            if let Some(client) = client {
+                context.write().await.firewall.add_traffic(client.ip(), req_sz);
+            }
+        } else {
             *response.status_mut() = StatusCode::PAYLOAD_TOO_LARGE;
             return Ok(response);
         }
@@ -323,6 +341,13 @@ async fn node_service<B: Blockchain>(
                 *response.status_mut() = StatusCode::NOT_FOUND;
             }
         }
+
+        if let Some(resp_sz) = response.body().size_hint().upper() {
+            if let Some(client) = client {
+                context.write().await.firewall.add_traffic(client.ip(), resp_sz);
+            }
+        }
+
         Ok::<Response<Body>, NodeError>(response)
     }
     .await
@@ -355,7 +380,7 @@ pub async fn node_create<B: Blockchain>(
     outgoing: mpsc::UnboundedSender<NodeRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
-        firewall: Firewall::new(opts.ip_request_limit_per_minute),
+        firewall: Firewall::new(opts.ip_request_limit_per_minute, opts.traffic_limit_per_15m),
         opts: opts.clone(),
         address,
         pub_key: ed25519::PublicKey::from(priv_key.clone()),
