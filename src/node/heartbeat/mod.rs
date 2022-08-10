@@ -3,6 +3,7 @@ mod log_info;
 mod refresh;
 mod sync_blocks;
 mod sync_clock;
+mod sync_mempool;
 mod sync_peers;
 mod sync_state;
 
@@ -24,6 +25,7 @@ pub async fn heartbeat<B: Blockchain>(
     sync_clock::sync_clock(&context).await?;
     sync_blocks::sync_blocks(&context).await?;
     sync_state::sync_state(&context).await?;
+    sync_mempool::sync_mempool(&context).await?;
     Ok(())
 }
 
