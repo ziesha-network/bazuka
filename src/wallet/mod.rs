@@ -107,7 +107,8 @@ impl Wallet {
         state_delta: zk::ZkDeltaPairs,
         next_state: zk::ZkCompressedState,
         proof: zk::ZkProof,
-        fee: Money,
+        exec_fee: Money,
+        miner_fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
         let (_, sk) = Signer::generate_keys(&self.seed);
@@ -119,10 +120,11 @@ impl Wallet {
                     function_id,
                     next_state,
                     proof,
+                    fee: exec_fee,
                 }],
             },
             nonce,
-            fee,
+            fee: miner_fee,
             sig: Signature::Unsigned,
         };
         let bytes = bincode::serialize(&tx).unwrap();

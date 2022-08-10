@@ -336,17 +336,17 @@ impl<K: KvStore> KvStoreChain<K> {
             addr_account.nonce += 1;
             match &contract_payment.direction {
                 PaymentDirection::Deposit(_) => {
-                    if addr_account.balance < contract_payment.amount {
+                    if addr_account.balance < contract_payment.amount + contract_payment.fee {
                         return Err(BlockchainError::BalanceInsufficient);
                     }
-                    addr_account.balance -= contract_payment.amount;
+                    addr_account.balance -= contract_payment.amount + contract_payment.fee;
                     contract_account.balance += contract_payment.amount;
                 }
                 PaymentDirection::Withdraw(_) => {
-                    if contract_account.balance < contract_payment.amount {
+                    if contract_account.balance < contract_payment.amount + contract_payment.fee {
                         return Err(BlockchainError::ContractBalanceInsufficient);
                     }
-                    contract_account.balance -= contract_payment.amount;
+                    contract_account.balance -= contract_payment.amount + contract_payment.fee;
                     addr_account.balance += contract_payment.amount;
                 }
             }
@@ -448,6 +448,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     updates,
                 } => {
                     let contract = chain.get_contract(*contract_id)?;
+                    let mut executor_fee = 0;
 
                     for update in updates {
                         let prev_account = chain.get_contract_account(*contract_id)?;
@@ -468,6 +469,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                 let mut state_builder =
                                     zk::ZkStateBuilder::<ZkHasher>::new(state_model);
                                 for (i, contract_payment) in payments.iter().enumerate() {
+                                    executor_fee += contract_payment.fee;
                                     let pk = contract_payment.zk_address.0.decompress();
                                     state_builder.batch_set(&zk::ZkDeltaPairs(
                                         [
@@ -515,7 +517,9 @@ impl<K: KvStore> KvStoreChain<K> {
                                 function_id,
                                 next_state,
                                 proof,
+                                fee,
                             } => {
+                                executor_fee += fee;
                                 let circuit = contract
                                     .functions
                                     .get(*function_id as usize)
@@ -536,6 +540,7 @@ impl<K: KvStore> KvStoreChain<K> {
                         }
 
                         new_account.compressed_state = *next_state;
+                        acc_src.balance += executor_fee; // Pay executor fee
 
                         chain.database.update(&[WriteOp::Put(
                             format!("contract_account_{}", contract_id).into(),

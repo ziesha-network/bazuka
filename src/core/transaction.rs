@@ -120,6 +120,7 @@ pub enum ContractUpdate<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
         function_id: u32,
         next_state: ZkCompressedState,
         proof: ZkProof,
+        fee: Money, // Executor fee
     },
 }
 

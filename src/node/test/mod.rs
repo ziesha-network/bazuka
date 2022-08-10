@@ -264,6 +264,7 @@ fn sample_contract_call() -> TransactionAndDelta {
         state_model.compress::<ZkHasher>(&full_state.data).unwrap(),
         zk::ZkProof::Dummy(true),
         0,
+        0,
         1,
     )
 }
