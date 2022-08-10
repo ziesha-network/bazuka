@@ -21,6 +21,13 @@ pub async fn sync_blocks<B: Blockchain>(
                 if inf.power <= ctx.blockchain.get_power()? {
                     return Ok(());
                 }
+
+                log::info!(
+                    "Syncing blocks with: {} (Peer power: {})",
+                    peer.address,
+                    inf.power
+                );
+
                 let start_height = std::cmp::min(ctx.blockchain.get_height()?, inf.height);
                 drop(ctx);
 
@@ -39,6 +46,8 @@ pub async fn sync_blocks<B: Blockchain>(
                     .await?
                     .headers;
 
+                log::info!("Got {} headers...", headers.len());
+
                 // The local blockchain and the peer blockchain both have all blocks
                 // from 0 to height-1, though, the blocks might not be equal. Find
                 // the header from which the fork has happened.
@@ -56,6 +65,8 @@ pub async fn sync_blocks<B: Blockchain>(
                         .headers[0]
                         .clone();
 
+                    log::info!("Got header {}...", index);
+
                     let ctx = context.read().await;
                     let local_header = ctx.blockchain.get_headers(index, 1)?[0].clone();
                     drop(ctx);
@@ -71,11 +82,28 @@ pub async fn sync_blocks<B: Blockchain>(
                     let ctx = context.write().await;
                     let banned = headers.iter().any(|h| ctx.banned_headers.contains_key(h));
 
-                    !banned
-                        && ctx
+                    if banned {
+                        log::warn!("Chain has banned headers!");
+                    }
+
+                    let will_extend =
+                        match ctx
                             .blockchain
                             .will_extend(headers[0].number, &headers, true)
-                            .unwrap_or(false)
+                        {
+                            Ok(result) => {
+                                if !result {
+                                    log::warn!("Chain is not powerful enough!");
+                                }
+                                result
+                            }
+                            Err(e) => {
+                                log::warn!("Chain is invalid! Error: {}", e);
+                                false
+                            }
+                        };
+
+                    !banned && will_extend
                 };
 
                 if will_extend {
