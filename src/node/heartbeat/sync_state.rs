@@ -44,7 +44,7 @@ pub async fn sync_state<B: Blockchain>(
                         outdated_heights: outdated_heights.clone(),
                         to: hex::encode(last_header.hash()),
                     },
-                    Limit::default().size(1024 * 1024).time(1000),
+                    Limit::default().time(30 * MINUTE),
                 )
                 .await?
                 .patch;
