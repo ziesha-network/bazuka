@@ -1,5 +1,5 @@
-use crate::node::NodeOptions;
 use crate::common::*;
+use crate::node::NodeOptions;
 use std::time::Duration;
 
 pub fn get_mainnet_options() -> NodeOptions {

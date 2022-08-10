@@ -42,7 +42,7 @@ pub struct NodeOptions {
     pub state_unavailable_ban_time: u32,
     pub network: String,
     pub ip_request_limit_per_minute: usize,
-    pub traffic_limit_per_15m: u64
+    pub traffic_limit_per_15m: u64,
 }
 
 fn fetch_signature(
@@ -198,7 +198,11 @@ async fn node_service<B: Blockchain>(
 
         if let Some(req_sz) = body.size_hint().upper() {
             if let Some(client) = client {
-                context.write().await.firewall.add_traffic(client.ip(), req_sz);
+                context
+                    .write()
+                    .await
+                    .firewall
+                    .add_traffic(client.ip(), req_sz);
             }
         } else {
             *response.status_mut() = StatusCode::PAYLOAD_TOO_LARGE;
@@ -344,7 +348,11 @@ async fn node_service<B: Blockchain>(
 
         if let Some(resp_sz) = response.body().size_hint().upper() {
             if let Some(client) = client {
-                context.write().await.firewall.add_traffic(client.ip(), resp_sz);
+                context
+                    .write()
+                    .await
+                    .firewall
+                    .add_traffic(client.ip(), resp_sz);
             }
         }
 
