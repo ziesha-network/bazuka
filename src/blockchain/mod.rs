@@ -571,6 +571,16 @@ impl<K: KvStore> KvStoreChain<K> {
                 acc_src.into(),
             )])?;
 
+            // Fees go to the Treasury account first
+            if tx.src != Address::Treasury {
+                let mut acc_treasury = chain.get_account(Address::Treasury)?;
+                acc_treasury.balance += tx.fee;
+                chain.database.update(&[WriteOp::Put(
+                    format!("account_{}", Address::Treasury).into(),
+                    acc_treasury.into(),
+                )])?;
+            }
+
             Ok(side_effect)
         })?;
 

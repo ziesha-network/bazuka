@@ -21,14 +21,29 @@ fn with_dummy_stats(txs: &[TransactionAndDelta]) -> HashMap<TransactionAndDelta,
 
 fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), BlockchainError> {
     while b.get_height()? > 0 {
+        assert_eq!(circulated_money(b)?, 2000000000000000000);
         b.rollback()?;
     }
+    assert_eq!(circulated_money(b)?, 0);
     assert!(matches!(
         b.rollback(),
         Err(BlockchainError::NoBlocksToRollback)
     ));
     assert!(b.database.pairs("".into())?.is_empty());
     Ok(())
+}
+
+fn circulated_money<K: KvStore>(b: &KvStoreChain<K>) -> Result<Money, BlockchainError> {
+    let mut money_sum = 0;
+    for (k, v) in b.database.pairs("account_".into())? {
+        let acc: Account = v.try_into().unwrap();
+        money_sum += acc.balance;
+    }
+    for (k, v) in b.database.pairs("contract_account_".into())? {
+        let acc: ContractAccount = v.try_into().unwrap();
+        money_sum += acc.balance;
+    }
+    Ok(money_sum)
 }
 
 #[test]
