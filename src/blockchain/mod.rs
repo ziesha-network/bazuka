@@ -638,6 +638,8 @@ impl<K: KvStore> KvStoreChain<K> {
 
             // All blocks except genesis block should have a miner reward
             let txs = if !is_genesis {
+                let fee_sum: Money = block.body[1..].iter().map(|t| t.fee).sum();
+
                 let reward_tx = block
                     .body
                     .first()
@@ -651,7 +653,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 }
                 match reward_tx.data {
                     TransactionData::RegularSend { dst: _, amount } => {
-                        if amount != next_reward {
+                        if amount != next_reward + fee_sum {
                             return Err(BlockchainError::InvalidMinerReward);
                         }
                     }
@@ -1040,18 +1042,20 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let last_header = self.get_header(height - 1)?;
         let treasury_nonce = self.get_account(Address::Treasury)?.nonce;
 
+        let tx_and_deltas = self.select_transactions(mempool, check)?;
+        let fee_sum: Money = tx_and_deltas.iter().map(|t| t.tx.fee).sum();
+
         let mut txs = vec![Transaction {
             src: Address::Treasury,
             data: TransactionData::RegularSend {
                 dst: wallet.get_address(),
-                amount: self.next_reward()?,
+                amount: self.next_reward()? + fee_sum,
             },
             nonce: treasury_nonce + 1,
             fee: 0,
             sig: Signature::Unsigned,
         }];
 
-        let tx_and_deltas = self.select_transactions(mempool, check)?;
         let mut block_delta: HashMap<ContractId, zk::ZkStatePatch> = HashMap::new();
         for tx_delta in tx_and_deltas.iter() {
             if let Some(contract_id) = match &tx_delta.tx.data {
