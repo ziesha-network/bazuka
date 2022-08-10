@@ -333,12 +333,22 @@ async fn node_service<B: Blockchain>(
                 )?);
             }
             (Method::GET, "/bincode/mempool/zero") => {
+                if is_local {
+                    *response.body_mut() = Body::from(bincode::serialize(
+                        &api::get_zero_mempool(
+                            Arc::clone(&context),
+                            bincode::deserialize(&body_bytes)?,
+                        )
+                        .await?,
+                    )?);
+                } else {
+                    *response.status_mut() = StatusCode::FORBIDDEN;
+                }
+            }
+            (Method::GET, "/bincode/mempool") => {
                 *response.body_mut() = Body::from(bincode::serialize(
-                    &api::get_zero_mempool(
-                        Arc::clone(&context),
-                        bincode::deserialize(&body_bytes)?,
-                    )
-                    .await?,
+                    &api::get_mempool(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
                 )?);
             }
             _ => {

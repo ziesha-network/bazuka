@@ -1,4 +1,5 @@
 use super::*;
+use crate::common::*;
 
 pub async fn sync_state<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,

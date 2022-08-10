@@ -183,3 +183,13 @@ pub struct TransactContractPaymentRequest {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct TransactContractPaymentResponse {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetMempoolRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetMempoolResponse {
+    pub tx: Vec<TransactionAndDelta>,
+    pub tx_zk: Vec<ContractPayment>,
+    pub zk: Vec<zk::ZeroTransaction>,
+}
