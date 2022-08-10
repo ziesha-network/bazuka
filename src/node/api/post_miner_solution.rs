@@ -3,6 +3,7 @@ use super::messages::{
 };
 use super::{http, Limit, NodeContext, NodeError};
 use crate::blockchain::Blockchain;
+use crate::common::*;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -37,7 +38,7 @@ pub async fn post_miner_solution<B: Blockchain>(
                     block: draft.block.clone(),
                     patch: draft.patch.clone(),
                 },
-                Limit::default().size(1024 * 1024).time(1000),
+                Limit::default().size(1 * KB).time(3 * SECOND),
             )
         })
         .await;

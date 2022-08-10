@@ -97,7 +97,7 @@ pub struct PostBlockResponse {}
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetBlocksRequest {
     pub since: u64,
-    pub until: Option<u64>,
+    pub count: u64,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -127,7 +127,7 @@ pub struct GetStatesResponse {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetHeadersRequest {
     pub since: u64,
-    pub until: Option<u64>,
+    pub count: u64,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

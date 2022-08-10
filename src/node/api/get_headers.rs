@@ -9,7 +9,8 @@ pub async fn get_headers<B: Blockchain>(
     req: GetHeadersRequest,
 ) -> Result<GetHeadersResponse, NodeError> {
     let context = context.read().await;
+    let count = std::cmp::min(context.opts.max_blocks_fetch, req.count);
     Ok(GetHeadersResponse {
-        headers: context.blockchain.get_headers(req.since, req.until)?,
+        headers: context.blockchain.get_headers(req.since, count)?,
     })
 }

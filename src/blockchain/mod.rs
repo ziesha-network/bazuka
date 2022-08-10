@@ -174,8 +174,8 @@ pub trait Blockchain {
     ) -> Result<Option<BlockAndPatch>, BlockchainError>;
     fn get_height(&self) -> Result<u64, BlockchainError>;
     fn get_tip(&self) -> Result<Header, BlockchainError>;
-    fn get_headers(&self, since: u64, until: Option<u64>) -> Result<Vec<Header>, BlockchainError>;
-    fn get_blocks(&self, since: u64, until: Option<u64>) -> Result<Vec<Block>, BlockchainError>;
+    fn get_headers(&self, since: u64, count: u64) -> Result<Vec<Header>, BlockchainError>;
+    fn get_blocks(&self, since: u64, count: u64) -> Result<Vec<Block>, BlockchainError>;
     fn get_power(&self) -> Result<u128, BlockchainError>;
     fn pow_key(&self, index: u64) -> Result<Vec<u8>, BlockchainError>;
 
@@ -991,24 +991,18 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             None => 0,
         })
     }
-    fn get_headers(&self, since: u64, until: Option<u64>) -> Result<Vec<Header>, BlockchainError> {
+    fn get_headers(&self, since: u64, count: u64) -> Result<Vec<Header>, BlockchainError> {
         let mut blks: Vec<Header> = Vec::new();
-        let height = self.get_height()?;
-        for i in since..until.unwrap_or(height) {
-            if i >= height {
-                break;
-            }
+        let until = std::cmp::min(self.get_height()?, since + count);
+        for i in since..until {
             blks.push(self.get_header(i)?);
         }
         Ok(blks)
     }
-    fn get_blocks(&self, since: u64, until: Option<u64>) -> Result<Vec<Block>, BlockchainError> {
+    fn get_blocks(&self, since: u64, count: u64) -> Result<Vec<Block>, BlockchainError> {
         let mut blks: Vec<Block> = Vec::new();
-        let height = self.get_height()?;
-        for i in since..until.unwrap_or(height) {
-            if i >= height {
-                break;
-            }
+        let until = std::cmp::min(self.get_height()?, since + count);
+        for i in since..until {
             blks.push(self.get_block(i)?);
         }
         Ok(blks)

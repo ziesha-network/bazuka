@@ -32,6 +32,7 @@ use tokio::try_join;
 pub struct NodeOptions {
     pub heartbeat_interval: Duration,
     pub num_peers: usize,
+    pub max_blocks_fetch: u64,
     pub outdated_heights_threshold: u32,
     pub default_punish: u32,
     pub no_response_punish: u32,

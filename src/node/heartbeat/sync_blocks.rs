@@ -1,4 +1,5 @@
 use super::*;
+use crate::common::*;
 
 pub async fn sync_blocks<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,
@@ -26,9 +27,9 @@ pub async fn sync_blocks<B: Blockchain>(
                     format!("{}/bincode/headers", peer.address),
                     GetHeadersRequest {
                         since: start_height,
-                        until: None,
+                        count: opts.max_blocks_fetch,
                     },
-                    Limit::default().size(1024 * 1024).time(1000),
+                    Limit::default().size(1 * MB).time(3 * SECOND),
                 )
                 .await?
                 .headers;
@@ -42,16 +43,16 @@ pub async fn sync_blocks<B: Blockchain>(
                         format!("{}/bincode/headers", peer.address),
                         GetHeadersRequest {
                             since: index,
-                            until: Some(index + 1),
+                            count: 1,
                         },
-                        Limit::default().size(1024 * 1024).time(1000),
+                        Limit::default().size(1 * KB).time(1 * SECOND),
                     )
                     .await?
                     .headers[0]
                     .clone();
 
                 let ctx = context.read().await;
-                let local_header = ctx.blockchain.get_headers(index, Some(index + 1))?[0].clone();
+                let local_header = ctx.blockchain.get_headers(index, 1)?[0].clone();
                 drop(ctx);
 
                 if local_header.hash() != peer_header.hash() {
@@ -78,9 +79,9 @@ pub async fn sync_blocks<B: Blockchain>(
                         format!("{}/bincode/blocks", peer.address).to_string(),
                         GetBlocksRequest {
                             since: headers[0].number,
-                            until: None,
+                            count: opts.max_blocks_fetch,
                         },
-                        Limit::default().size(1024 * 1024).time(1000),
+                        Limit::default().size(32 * MB).time(5 * MINUTE),
                     )
                     .await?;
                 let mut ctx = context.write().await;
