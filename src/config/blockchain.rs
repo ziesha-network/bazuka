@@ -1,4 +1,5 @@
 use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
+use crate::common::*;
 use crate::core::{
     Address, Block, ContractId, Header, ProofOfWork, Signature, Transaction, TransactionAndDelta,
     TransactionData, ZkHasher,
@@ -125,8 +126,9 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         },
         total_supply: 2_000_000_000_000_000_000_u64, // 2 Billion ZIK
         reward_ratio: 100_000, // 1/100_000 -> 0.01% of Treasury Supply per block
-        max_delta_size: 1024 * 1024, // Bytes
-        block_time: 60,        // Seconds
+        max_block_size: (1 * MB) as usize,
+        max_delta_size: (1 * MB) as usize,
+        block_time: 60,                // Seconds
         difficulty_calc_interval: 128, // Blocks
 
         // 0 63 -> BAZUKA BASE KEY

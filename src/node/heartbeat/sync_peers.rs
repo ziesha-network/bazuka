@@ -1,4 +1,5 @@
 use super::*;
+use crate::common::*;
 
 pub async fn sync_peers<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,
@@ -16,7 +17,7 @@ pub async fn sync_peers<B: Blockchain>(
             net.json_get::<GetPeersRequest, GetPeersResponse>(
                 format!("{}/peers", peer.address),
                 GetPeersRequest {},
-                Limit::default().size(1024 * 1024).time(1000),
+                Limit::default().size(1 * MB).time(5 * SECOND),
             )
         })
         .await;

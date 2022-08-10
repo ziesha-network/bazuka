@@ -7,6 +7,7 @@ pub async fn sync_blocks<B: Blockchain>(
     let ctx = context.read().await;
     let net = ctx.outgoing.clone();
     let opts = ctx.opts.clone();
+    let max_block_size = ctx.blockchain.config().max_block_size;
     let mut sorted_peers = ctx.active_peers();
     drop(ctx);
 
@@ -29,7 +30,9 @@ pub async fn sync_blocks<B: Blockchain>(
                         since: start_height,
                         count: opts.max_blocks_fetch,
                     },
-                    Limit::default().size(1 * MB).time(3 * SECOND),
+                    Limit::default()
+                        .size(opts.max_blocks_fetch * KB)
+                        .time(3 * SECOND),
                 )
                 .await?
                 .headers;
@@ -81,7 +84,9 @@ pub async fn sync_blocks<B: Blockchain>(
                             since: headers[0].number,
                             count: opts.max_blocks_fetch,
                         },
-                        Limit::default().size(32 * MB).time(5 * MINUTE),
+                        Limit::default()
+                            .size(opts.max_blocks_fetch as u64 * max_block_size as u64 * 2)
+                            .time(opts.max_blocks_fetch as u32 * 30 * SECOND),
                     )
                     .await?;
                 let mut ctx = context.write().await;

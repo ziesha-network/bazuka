@@ -1,4 +1,5 @@
 use super::*;
+use crate::common::*;
 
 pub async fn sync_clock<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,
@@ -23,7 +24,7 @@ pub async fn sync_clock<B: Blockchain>(
                     timestamp,
                     info: info.clone(),
                 },
-                Limit::default().size(1024 * 1024).time(1000),
+                Limit::default().size(1 * KB).time(1 * SECOND),
             )
         })
         .await;

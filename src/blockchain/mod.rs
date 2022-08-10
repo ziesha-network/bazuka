@@ -21,6 +21,7 @@ pub struct BlockchainConfig {
     pub genesis: BlockAndPatch,
     pub total_supply: u64,
     pub reward_ratio: u64,
+    pub max_block_size: usize,
     pub max_delta_size: usize,
     pub block_time: usize,
     pub difficulty_calc_interval: u64,
@@ -91,6 +92,8 @@ pub enum BlockchainError {
     StatesUnavailable,
     #[error("block too big")]
     BlockTooBig,
+    #[error("state-delta too big")]
+    StateDeltaTooBig,
     #[error("compressed-state at specified height not found")]
     CompressedStateNotFound,
     #[error("full-state has invalid deltas")]
@@ -134,6 +137,8 @@ pub enum TxSideEffect {
 }
 
 pub trait Blockchain {
+    fn config(&self) -> &BlockchainConfig;
+
     fn cleanup_mempool(
         &self,
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
@@ -596,16 +601,19 @@ impl<K: KvStore> KvStoreChain<K> {
         });
         let (_, result) = self.isolated(|chain| {
             let mut result = Vec::new();
-            let mut sz = 0isize;
+            let mut block_sz = 0usize;
+            let mut delta_sz = 0isize;
             for tx in sorted.into_iter() {
-                let delta =
-                    tx.tx.size() as isize + tx.state_delta.clone().unwrap_or_default().size();
+                let delta_diff = tx.state_delta.clone().unwrap_or_default().size();
+                let block_diff = tx.tx.size();
                 if !check
-                    || (sz + delta <= chain.config.max_delta_size as isize
+                    || (delta_sz + delta_diff <= chain.config.max_delta_size as isize
+                        && block_sz + block_diff <= chain.config.max_block_size
                         && tx.tx.verify_signature()
                         && chain.apply_tx(&tx.tx, false).is_ok())
                 {
-                    sz += delta;
+                    delta_sz += delta_diff;
+                    block_sz += block_diff;
                     result.push(tx);
                 }
             }
@@ -713,8 +721,12 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InsufficientMpnUpdates);
             }
 
-            if (body_size as isize + state_size_delta) as usize > self.config.max_delta_size {
+            if body_size > self.config.max_block_size {
                 return Err(BlockchainError::BlockTooBig);
+            }
+
+            if state_size_delta > self.config.max_delta_size as isize {
+                return Err(BlockchainError::StateDeltaTooBig);
             }
 
             chain.database.update(&[
@@ -1286,6 +1298,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }
 
         Ok(blockchain_patch)
+    }
+
+    fn config(&self) -> &BlockchainConfig {
+        &self.config
     }
 }
 
