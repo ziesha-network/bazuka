@@ -194,34 +194,25 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
         chans[0].mine().await?;
         assert_eq!(chans[0].stats().await?.height, 4);
 
-        chans[1].mine().await?;
-        assert_eq!(chans[1].stats().await?.height, 2);
-        chans[1].mine().await?;
-        assert_eq!(chans[1].stats().await?.height, 3);
-        chans[1].mine().await?;
-        assert_eq!(chans[1].stats().await?.height, 4);
-        chans[1].mine().await?;
-        assert_eq!(chans[1].stats().await?.height, 5);
-        chans[1].mine().await?;
-        assert_eq!(chans[1].stats().await?.height, 6);
+        for i in 2..51 {
+            chans[1].mine().await?;
+            assert_eq!(chans[1].stats().await?.height, i);
+        }
 
         // Still not synced...
         sleep(Duration::from_millis(2000)).await;
         assert_eq!(chans[0].stats().await?.height, 4);
-        assert_eq!(chans[1].stats().await?.height, 6);
+        assert_eq!(chans[1].stats().await?.height, 50);
 
         // Now we open the connections...
         rules.write().await.clear();
-        assert_eq!(
-            catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
-            6
-        );
-        assert_eq!(chans[1].stats().await?.height, 6);
+        assert!(catch_change(|| async { Ok(chans[0].stats().await?.height == 50) }).await?,);
+        assert_eq!(chans[1].stats().await?.height, 50);
 
         // Now nodes should immediately sync with post_block
         chans[1].mine().await?;
-        assert_eq!(chans[0].stats().await?.height, 7);
-        assert_eq!(chans[1].stats().await?.height, 7);
+        assert_eq!(chans[0].stats().await?.height, 51);
+        assert_eq!(chans[1].stats().await?.height, 51);
 
         for chan in chans.iter() {
             chan.shutdown().await?;
