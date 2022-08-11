@@ -1,3 +1,5 @@
+mod keys;
+
 use thiserror::Error;
 
 use crate::config::blockchain::MPN_CONTRACT_ID;
@@ -262,8 +264,7 @@ impl<K: KvStore> KvStoreChain<K> {
         if index >= self.get_height()? {
             return Err(BlockchainError::BlockNotFound);
         }
-        let block_key: StringKey = format!("block_{:010}", index).into();
-        Ok(match self.database.get(block_key)? {
+        Ok(match self.database.get(keys::block(index))? {
             Some(b) => b.try_into()?,
             None => {
                 return Err(BlockchainError::Inconsistency);
@@ -283,22 +284,24 @@ impl<K: KvStore> KvStoreChain<K> {
         if index == 0 {
             return Ok(zk::ZkCompressedState::empty::<ZkHasher>(state_model));
         }
-        let header_key: StringKey =
-            format!("contract_compressed_state_{}_{}", contract_id, index).into();
-        Ok(match self.database.get(header_key)? {
-            Some(b) => b.try_into()?,
-            None => {
-                return Err(BlockchainError::Inconsistency);
-            }
-        })
+        Ok(
+            match self
+                .database
+                .get(keys::compressed_state_at(&contract_id, index))?
+            {
+                Some(b) => b.try_into()?,
+                None => {
+                    return Err(BlockchainError::Inconsistency);
+                }
+            },
+        )
     }
 
     fn get_header(&self, index: u64) -> Result<Header, BlockchainError> {
         if index >= self.get_height()? {
             return Err(BlockchainError::BlockNotFound);
         }
-        let header_key: StringKey = format!("header_{:010}", index).into();
-        Ok(match self.database.get(header_key)? {
+        Ok(match self.database.get(keys::header(index))? {
             Some(b) => b.try_into()?,
             None => {
                 return Err(BlockchainError::Inconsistency);
@@ -352,16 +355,12 @@ impl<K: KvStore> KvStoreChain<K> {
             }
             if should_update_contract {
                 chain.database.update(&[WriteOp::Put(
-                    format!("contract_account_{}", contract_payment.contract_id).into(),
+                    keys::contract_account(&contract_payment.contract_id),
                     contract_account.clone().into(),
                 )])?;
             }
             chain.database.update(&[WriteOp::Put(
-                format!(
-                    "account_{}",
-                    Address::PublicKey(contract_payment.address.clone())
-                )
-                .into(),
+                keys::account(&Address::PublicKey(contract_payment.address.clone())),
                 addr_account.into(),
             )])?;
             Ok(())
@@ -407,22 +406,21 @@ impl<K: KvStore> KvStoreChain<K> {
                         let mut acc_dst = chain.get_account(dst.clone())?;
                         acc_dst.balance += *amount;
 
-                        chain.database.update(&[WriteOp::Put(
-                            format!("account_{}", dst).into(),
-                            acc_dst.into(),
-                        )])?;
+                        chain
+                            .database
+                            .update(&[WriteOp::Put(keys::account(dst), acc_dst.into())])?;
                     }
                 }
                 TransactionData::CreateContract { contract } => {
                     let contract_id = ContractId::new(tx);
                     chain.database.update(&[WriteOp::Put(
-                        format!("contract_{}", contract_id).into(),
+                        keys::contract(&contract_id),
                         contract.clone().into(),
                     )])?;
                     let compressed_empty =
                         zk::ZkCompressedState::empty::<ZkHasher>(contract.state_model.clone());
                     chain.database.update(&[WriteOp::Put(
-                        format!("contract_account_{}", contract_id).into(),
+                        keys::contract_account(&contract_id),
                         ContractAccount {
                             compressed_state: contract.initial_state,
                             balance: 0,
@@ -431,7 +429,7 @@ impl<K: KvStore> KvStoreChain<K> {
                         .into(),
                     )])?;
                     chain.database.update(&[WriteOp::Put(
-                        format!("contract_compressed_state_{}_{}", contract_id, 1).into(),
+                        keys::compressed_state_at(&contract_id, 1),
                         contract.initial_state.into(),
                     )])?;
                     side_effect = TxSideEffect::StateChange {
@@ -543,15 +541,11 @@ impl<K: KvStore> KvStoreChain<K> {
                         acc_src.balance += executor_fee; // Pay executor fee
 
                         chain.database.update(&[WriteOp::Put(
-                            format!("contract_account_{}", contract_id).into(),
+                            keys::contract_account(contract_id),
                             new_account.clone().into(),
                         )])?;
                         chain.database.update(&[WriteOp::Put(
-                            format!(
-                                "contract_compressed_state_{}_{}",
-                                contract_id, new_account.height
-                            )
-                            .into(),
+                            keys::compressed_state_at(contract_id, new_account.height),
                             (*next_state).into(),
                         )])?;
                         side_effect = TxSideEffect::StateChange {
@@ -566,17 +560,16 @@ impl<K: KvStore> KvStoreChain<K> {
                 }
             }
 
-            chain.database.update(&[WriteOp::Put(
-                format!("account_{}", tx.src).into(),
-                acc_src.into(),
-            )])?;
+            chain
+                .database
+                .update(&[WriteOp::Put(keys::account(&tx.src), acc_src.into())])?;
 
             // Fees go to the Treasury account first
             if tx.src != Address::Treasury {
                 let mut acc_treasury = chain.get_account(Address::Treasury)?;
                 acc_treasury.balance += tx.fee;
                 chain.database.update(&[WriteOp::Put(
-                    format!("account_{}", Address::Treasury).into(),
+                    keys::account(&Address::Treasury),
                     acc_treasury.into(),
                 )])?;
             }
@@ -592,10 +585,9 @@ impl<K: KvStore> KvStoreChain<K> {
         &self,
         index: u64,
     ) -> Result<HashMap<ContractId, ZkCompressedStateChange>, BlockchainError> {
-        let k = format!("contract_updates_{:010}", index).into();
         Ok(self
             .database
-            .get(k)?
+            .get(keys::contract_updates(index))?
             .map(|b| b.try_into())
             .ok_or(BlockchainError::Inconsistency)??)
     }
@@ -755,9 +747,9 @@ impl<K: KvStore> KvStoreChain<K> {
             }
 
             chain.database.update(&[
-                WriteOp::Put("height".into(), (curr_height + 1).into()),
+                WriteOp::Put(keys::height(), (curr_height + 1).into()),
                 WriteOp::Put(
-                    format!("power_{:010}", block.header.number).into(),
+                    keys::power(block.header.number),
                     (block.header.power() + self.get_power()?).into(),
                 ),
             ])?;
@@ -765,30 +757,24 @@ impl<K: KvStore> KvStoreChain<K> {
             let rollback = chain.database.rollback()?;
 
             chain.database.update(&[
+                WriteOp::Put(keys::rollback(block.header.number), rollback.into()),
                 WriteOp::Put(
-                    format!("rollback_{:010}", block.header.number).into(),
-                    rollback.into(),
-                ),
-                WriteOp::Put(
-                    format!("header_{:010}", block.header.number).into(),
+                    keys::header(block.header.number),
                     block.header.clone().into(),
                 ),
+                WriteOp::Put(keys::block(block.header.number), block.into()),
                 WriteOp::Put(
-                    format!("block_{:010}", block.header.number).into(),
-                    block.into(),
-                ),
-                WriteOp::Put(
-                    format!("merkle_{:010}", block.header.number).into(),
+                    keys::merkle(block.header.number),
                     block.merkle_tree().into(),
                 ),
                 WriteOp::Put(
-                    format!("contract_updates_{:010}", block.header.number).into(),
+                    keys::contract_updates(block.header.number),
                     state_updates.into(),
                 ),
                 if outdated_contracts.is_empty() {
-                    WriteOp::Remove("outdated".into())
+                    WriteOp::Remove(keys::outdated())
                 } else {
-                    WriteOp::Put("outdated".into(), outdated_contracts.clone().into())
+                    WriteOp::Put(keys::outdated(), outdated_contracts.clone().into())
                 },
             ])?;
 
@@ -809,8 +795,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 return Err(BlockchainError::NoBlocksToRollback);
             }
 
-            let rollback_key: StringKey = format!("rollback_{:010}", height - 1).into();
-            let rollback: Vec<WriteOp> = match chain.database.get(rollback_key.clone())? {
+            let rollback: Vec<WriteOp> = match chain.database.get(keys::rollback(height - 1))? {
                 Some(b) => b.try_into()?,
                 None => {
                     return Err(BlockchainError::Inconsistency);
@@ -852,15 +837,15 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             chain.database.update(&rollback)?;
             chain.database.update(&[
                 if outdated.is_empty() {
-                    WriteOp::Remove("outdated".into())
+                    WriteOp::Remove(keys::outdated())
                 } else {
-                    WriteOp::Put("outdated".into(), outdated.clone().into())
+                    WriteOp::Put(keys::outdated(), outdated.clone().into())
                 },
-                WriteOp::Remove(format!("header_{:010}", height - 1).into()),
-                WriteOp::Remove(format!("block_{:010}", height - 1).into()),
-                WriteOp::Remove(format!("merkle_{:010}", height - 1).into()),
-                WriteOp::Remove(format!("contract_updates_{:010}", height - 1).into()),
-                WriteOp::Remove(rollback_key),
+                WriteOp::Remove(keys::header(height - 1).into()),
+                WriteOp::Remove(keys::block(height - 1).into()),
+                WriteOp::Remove(keys::merkle(height - 1).into()),
+                WriteOp::Remove(keys::contract_updates(height - 1).into()),
+                WriteOp::Remove(keys::rollback(height - 1)),
             ])?;
 
             Ok(())
@@ -894,10 +879,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         self.get_header(self.get_height()? - 1)
     }
     fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError> {
-        let k = format!("contract_{}", contract_id).into();
         Ok(self
             .database
-            .get(k)?
+            .get(keys::contract(&contract_id))?
             .map(|b| b.try_into())
             .ok_or(BlockchainError::ContractNotFound)??)
     }
@@ -905,17 +889,15 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self,
         contract_id: ContractId,
     ) -> Result<ContractAccount, BlockchainError> {
-        let k = format!("contract_account_{}", contract_id).into();
         Ok(self
             .database
-            .get(k)?
+            .get(keys::contract_account(&contract_id))?
             .map(|b| b.try_into())
             .ok_or(BlockchainError::ContractNotFound)??)
     }
 
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {
-        let k = format!("account_{}", addr).into();
-        Ok(match self.database.get(k)? {
+        Ok(match self.database.get(keys::account(&addr))? {
             Some(b) => b.try_into()?,
             None => Account {
                 balance: if addr == Address::Treasury {
@@ -944,7 +926,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         let mut new_power: u128 = self
             .database
-            .get(format!("power_{:010}", from - 1).into())?
+            .get(keys::power(from - 1))?
             .ok_or(BlockchainError::Inconsistency)?
             .try_into()?;
 
@@ -1140,7 +1122,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         } else {
             Ok(self
                 .database
-                .get(format!("power_{:010}", height - 1).into())?
+                .get(keys::power(height - 1))?
                 .ok_or(BlockchainError::Inconsistency)?
                 .try_into()?)
         }
