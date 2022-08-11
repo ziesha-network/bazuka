@@ -183,6 +183,8 @@ pub trait Blockchain {
     fn get_tip(&self) -> Result<Header, BlockchainError>;
     fn get_headers(&self, since: u64, count: u64) -> Result<Vec<Header>, BlockchainError>;
     fn get_blocks(&self, since: u64, count: u64) -> Result<Vec<Block>, BlockchainError>;
+    fn get_header(&self, index: u64) -> Result<Header, BlockchainError>;
+    fn get_block(&self, index: u64) -> Result<Block, BlockchainError>;
     fn get_power(&self) -> Result<u128, BlockchainError>;
     fn pow_key(&self, index: u64) -> Result<Vec<u8>, BlockchainError>;
 
@@ -260,18 +262,6 @@ impl<K: KvStore> KvStoreChain<K> {
         }
     }
 
-    fn get_block(&self, index: u64) -> Result<Block, BlockchainError> {
-        if index >= self.get_height()? {
-            return Err(BlockchainError::BlockNotFound);
-        }
-        Ok(match self.database.get(keys::block(index))? {
-            Some(b) => b.try_into()?,
-            None => {
-                return Err(BlockchainError::Inconsistency);
-            }
-        })
-    }
-
     fn get_compressed_state_at(
         &self,
         contract_id: ContractId,
@@ -295,18 +285,6 @@ impl<K: KvStore> KvStoreChain<K> {
                 }
             },
         )
-    }
-
-    fn get_header(&self, index: u64) -> Result<Header, BlockchainError> {
-        if index >= self.get_height()? {
-            return Err(BlockchainError::BlockNotFound);
-        }
-        Ok(match self.database.get(keys::header(index))? {
-            Some(b) => b.try_into()?,
-            None => {
-                return Err(BlockchainError::Inconsistency);
-            }
-        })
     }
 
     fn apply_contract_payment(
@@ -787,6 +765,30 @@ impl<K: KvStore> KvStoreChain<K> {
 }
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
+    fn get_header(&self, index: u64) -> Result<Header, BlockchainError> {
+        if index >= self.get_height()? {
+            return Err(BlockchainError::BlockNotFound);
+        }
+        Ok(match self.database.get(keys::header(index))? {
+            Some(b) => b.try_into()?,
+            None => {
+                return Err(BlockchainError::Inconsistency);
+            }
+        })
+    }
+
+    fn get_block(&self, index: u64) -> Result<Block, BlockchainError> {
+        if index >= self.get_height()? {
+            return Err(BlockchainError::BlockNotFound);
+        }
+        Ok(match self.database.get(keys::block(index))? {
+            Some(b) => b.try_into()?,
+            None => {
+                return Err(BlockchainError::Inconsistency);
+            }
+        })
+    }
+
     fn rollback(&mut self) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
             let height = chain.get_height()?;

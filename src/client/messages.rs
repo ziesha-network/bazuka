@@ -133,6 +133,7 @@ pub struct GetHeadersRequest {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetHeadersResponse {
     pub headers: Vec<Header>,
+    pub pow_keys: Vec<Vec<u8>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

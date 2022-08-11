@@ -28,11 +28,14 @@ pub async fn sync_blocks<B: Blockchain>(
                     inf.power
                 );
 
-                let start_height = std::cmp::min(ctx.blockchain.get_height()?, inf.height);
+                let local_height = ctx.blockchain.get_height()?;
+                let start_height = std::cmp::min(local_height, inf.height);
                 drop(ctx);
 
+                // WARN: Chain might change when getting responses from users
+
                 // Get all headers starting from the indices that we don't have.
-                let mut headers = net
+                let resp = net
                     .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
                         format!("{}/bincode/headers", peer.address),
                         GetHeadersRequest {
@@ -43,10 +46,32 @@ pub async fn sync_blocks<B: Blockchain>(
                             .size(opts.max_blocks_fetch * KB)
                             .time(3 * SECOND),
                     )
-                    .await?
-                    .headers;
+                    .await?;
 
-                log::info!("Got {} headers...", headers.len());
+                let (mut headers, pow_keys) = (resp.headers, resp.pow_keys);
+
+                let ctx = context.read().await;
+                for (i, (head, pow_key)) in headers.iter().zip(pow_keys.into_iter()).enumerate() {
+                    // TODO: Check if head has minimum PoW target
+                    if head.number != start_height + i as u64 {
+                        panic!("Bad header number returned!"); // TODO: Punish instead of panicking!
+                    }
+                    if !head.meets_target(&pow_key) {
+                        panic!("Header doesn't meet its target!"); // TODO: Punish instead of panicking!
+                    }
+                    if head.number < local_height
+                        && head == &ctx.blockchain.get_header(head.number)?
+                    {
+                        panic!("Duplicate header given!"); // TODO: Punish instead of panicking!
+                    }
+                }
+                drop(ctx);
+
+                log::info!(
+                    "Got headers {}-{}...",
+                    start_height,
+                    start_height + headers.len() as u64
+                );
 
                 // The local blockchain and the peer blockchain both have all blocks
                 // from 0 to height-1, though, the blocks might not be equal. Find
