@@ -622,7 +622,7 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut block_sz = 0usize;
             let mut delta_sz = 0isize;
             for tx in sorted.into_iter() {
-                if let Ok((_, eff)) = chain.isolated(|chain| chain.apply_tx(&tx.tx, false)) {
+                if let Ok((ops, eff)) = chain.isolated(|chain| chain.apply_tx(&tx.tx, false)) {
                     let delta_diff = if let TxSideEffect::StateChange { state_change, .. } = eff {
                         state_change.state.size() as isize - state_change.prev_state.size() as isize
                     } else {
@@ -635,7 +635,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     {
                         delta_sz += delta_diff;
                         block_sz += block_diff;
-                        chain.apply_tx(&tx.tx, false)?;
+                        chain.database.update(&ops)?;
                         result.push(tx);
                     }
                 }
