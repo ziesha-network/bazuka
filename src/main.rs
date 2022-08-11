@@ -467,7 +467,11 @@ fn main() {
         }
 
         log::info!("Creating block...");
-        let blk = chain.draft_block(0, &mut txs, &abc, true).unwrap().block;
+        let blk = chain
+            .draft_block(0, &mut txs, &abc, true)
+            .unwrap()
+            .unwrap()
+            .block;
 
         log::info!("Applying block ({} txs)...", blk.body.len());
         chain.extend(chain.get_height().unwrap(), &[blk]).unwrap();
