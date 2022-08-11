@@ -6,10 +6,28 @@ use thiserror::Error;
 // All of the Zeeka's supply exists in Treasury account when the blockchain begins.
 // Validator/Miner fees are collected from the Treasury account. This simplifies
 // the process of money creation.
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum Address<S: SignatureScheme> {
     Treasury,
     PublicKey(S::Pub),
+}
+
+impl<S: SignatureScheme> PartialEq for Address<S> {
+    fn eq(&self, other: &Self) -> bool {
+        bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
+    }
+}
+
+impl<S: SignatureScheme> Eq for Address<S> {}
+
+impl<S: SignatureScheme> std::hash::Hash for Address<S> {
+    fn hash<Hasher>(&self, state: &mut Hasher)
+    where
+        Hasher: std::hash::Hasher,
+    {
+        state.write(&bincode::serialize(self).unwrap());
+        state.finish();
+    }
 }
 
 #[derive(Error, Debug)]
