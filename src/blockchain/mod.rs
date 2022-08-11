@@ -622,16 +622,22 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut block_sz = 0usize;
             let mut delta_sz = 0isize;
             for tx in sorted.into_iter() {
-                let delta_diff = tx.state_delta.clone().unwrap_or_default().size();
-                let block_diff = tx.tx.size();
-                if delta_sz + delta_diff <= chain.config.max_delta_size as isize
-                    && block_sz + block_diff <= chain.config.max_block_size
-                    && tx.tx.verify_signature()
-                    && chain.apply_tx(&tx.tx, false).is_ok()
-                {
-                    delta_sz += delta_diff;
-                    block_sz += block_diff;
-                    result.push(tx);
+                if let Ok((_, eff)) = chain.isolated(|chain| chain.apply_tx(&tx.tx, false)) {
+                    let delta_diff = if let TxSideEffect::StateChange { state_change, .. } = eff {
+                        state_change.state.size() as isize - state_change.prev_state.size() as isize
+                    } else {
+                        0
+                    };
+                    let block_diff = tx.tx.size();
+                    if delta_sz + delta_diff <= chain.config.max_delta_size as isize
+                        && block_sz + block_diff <= chain.config.max_block_size
+                        && tx.tx.verify_signature()
+                    {
+                        delta_sz += delta_diff;
+                        block_sz += block_diff;
+                        chain.apply_tx(&tx.tx, false)?;
+                        result.push(tx);
+                    }
                 }
             }
             Ok(result)

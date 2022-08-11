@@ -263,12 +263,6 @@ pub struct ZkDataPairs(pub HashMap<ZkDataLocator, ZkScalar>);
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkDeltaPairs(pub HashMap<ZkDataLocator, Option<ZkScalar>>);
 
-impl ZkDeltaPairs {
-    pub fn size(&self) -> isize {
-        self.0.len() as isize // TODO: Really?
-    }
-}
-
 impl ZkDataPairs {
     pub fn as_delta(&self) -> ZkDeltaPairs {
         ZkDeltaPairs(
