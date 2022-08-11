@@ -614,6 +614,9 @@ impl<K: KvStore> KvStoreChain<K> {
             };
             (is_mpn, tx.tx.nonce)
         });
+        if !check {
+            return Ok(sorted);
+        }
         let (_, result) = self.isolated(|chain| {
             let mut result = Vec::new();
             let mut block_sz = 0usize;
@@ -621,11 +624,10 @@ impl<K: KvStore> KvStoreChain<K> {
             for tx in sorted.into_iter() {
                 let delta_diff = tx.state_delta.clone().unwrap_or_default().size();
                 let block_diff = tx.tx.size();
-                if !check
-                    || (delta_sz + delta_diff <= chain.config.max_delta_size as isize
-                        && block_sz + block_diff <= chain.config.max_block_size
-                        && tx.tx.verify_signature()
-                        && chain.apply_tx(&tx.tx, false).is_ok())
+                if delta_sz + delta_diff <= chain.config.max_delta_size as isize
+                    && block_sz + block_diff <= chain.config.max_block_size
+                    && tx.tx.verify_signature()
+                    && chain.apply_tx(&tx.tx, false).is_ok()
                 {
                     delta_sz += delta_diff;
                     block_sz += block_diff;
