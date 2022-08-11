@@ -1,3 +1,5 @@
+mod keys;
+
 use thiserror::Error;
 
 use super::*;
@@ -85,7 +87,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         id: ContractId,
     ) -> Result<(), StateManagerError> {
         let mut rems = Vec::new();
-        for (k, _) in db.pairs(format!("{}", id).into())? {
+        for (k, _) in db.pairs(keys::local_prefix(&id).into())? {
             rems.push(WriteOp::Remove(k));
         }
         db.update(&rems)?;
@@ -93,7 +95,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     }
 
     pub fn height_of<K: KvStore>(db: &K, id: ContractId) -> Result<u64, StateManagerError> {
-        if let Some(blob) = db.get(format!("{}_height", id).into())? {
+        if let Some(blob) = db.get(keys::local_height(&id))? {
             Ok(blob.try_into()?)
         } else {
             Ok(0)
@@ -159,7 +161,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         db: &K,
         id: ContractId,
     ) -> Result<ZkCompressedState, StateManagerError> {
-        if let Some(blob) = db.get(format!("{}_compressed", id).into())? {
+        if let Some(blob) = db.get(keys::local_root(&id))? {
             Ok(blob.try_into()?)
         } else {
             Ok(ZkCompressedState::empty::<H>(Self::type_of(db, id)?))
@@ -184,8 +186,8 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         }
         db.update(&[
             WriteOp::Remove(rollback_key),
-            WriteOp::Put(format!("{}_compressed", id).into(), root.into()),
-            WriteOp::Put(format!("{}_height", id).into(), (height - 1).into()),
+            WriteOp::Put(keys::local_root(&id), root.into()),
+            WriteOp::Put(keys::local_height(&id), (height - 1).into()),
         ])?;
 
         Ok(Some(root))
@@ -270,14 +272,14 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
 
         db.update(&[
             WriteOp::Put(
-                format!("{}_compressed", id).into(),
+                keys::local_root(&id),
                 ZkCompressedState {
                     state_hash,
                     state_size,
                 }
                 .into(),
             ),
-            WriteOp::Put(format!("{}_height", id).into(), height.into()),
+            WriteOp::Put(keys::local_height(&id), height.into()),
         ])?;
 
         let mut rollback_results = Vec::new();
@@ -325,18 +327,12 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             )?;
         }
         let mut ops = fork.to_ops();
-        ops.push(WriteOp::Put(
-            format!("{}_compressed", id).into(),
-            root.into(),
-        ));
+        ops.push(WriteOp::Put(keys::local_root(&id), root.into()));
         ops.push(WriteOp::Put(
             format!("{}_rollback_{}", id, height).into(),
             (&rollback_patch).into(),
         ));
-        ops.push(WriteOp::Put(
-            format!("{}_height", id).into(),
-            (height + 1).into(),
-        ));
+        ops.push(WriteOp::Put(keys::local_height(&id), (height + 1).into()));
         if height >= MAX_ROLLBACKS {
             ops.push(WriteOp::Remove(
                 format!("{}_rollback_{}", id, height - MAX_ROLLBACKS).into(),
