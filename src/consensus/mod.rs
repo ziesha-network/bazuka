@@ -1,6 +1,7 @@
 pub mod pow {
     use rust_randomx::{Context, Hasher};
     use serde::{Deserialize, Serialize};
+    use std::cmp::Ordering;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
 
@@ -8,8 +9,23 @@ pub mod pow {
     pub struct Difficulty(pub u32);
 
     impl Difficulty {
-        pub fn power(&self) -> u128 {
+        pub fn powerf(&self) -> f64 {
             rust_randomx::Difficulty::new(self.0).power()
+        }
+        pub fn power(&self) -> u128 {
+            self.powerf() as u128
+        }
+    }
+
+    impl Ord for Difficulty {
+        fn cmp(&self, other: &Self) -> Ordering {
+            self.powerf().partial_cmp(&other.powerf()).unwrap()
+        }
+    }
+
+    impl PartialOrd for Difficulty {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            Some(self.cmp(other))
         }
     }
 

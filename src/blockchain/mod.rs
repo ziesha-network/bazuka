@@ -184,6 +184,7 @@ impl<K: KvStore> KvStoreChain<K> {
             Ok(utils::calc_pow_difficulty(
                 self.config.difficulty_calc_interval,
                 self.config.block_time,
+                self.config.minimum_pow_difficulty,
                 &last_block.proof_of_work,
                 &prev_block.proof_of_work,
             ))
@@ -875,6 +876,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     != utils::calc_pow_difficulty(
                         self.config.difficulty_calc_interval,
                         self.config.block_time,
+                        self.config.minimum_pow_difficulty,
                         &last_header.proof_of_work,
                         &last_pow,
                     )

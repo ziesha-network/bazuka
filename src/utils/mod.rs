@@ -18,6 +18,7 @@ pub fn median<T: Clone + std::cmp::Ord>(inps: &[T]) -> T {
 pub fn calc_pow_difficulty(
     diff_calc_interval: u64,
     block_time: usize,
+    min_diff: crate::consensus::pow::Difficulty,
     last_pow: &ProofOfWork,
     prev_pow: &ProofOfWork,
 ) -> crate::consensus::pow::Difficulty {
@@ -25,5 +26,8 @@ pub fn calc_pow_difficulty(
     let avg_block_time = time_delta / (diff_calc_interval - 1) as u32;
     let diff_change = (block_time as f32 / avg_block_time as f32).clamp(0.5f32, 2f32);
     let new_diff = rust_randomx::Difficulty::new(last_pow.target.0).scale(diff_change);
-    crate::consensus::pow::Difficulty(new_diff.to_u32())
+    std::cmp::max(
+        crate::consensus::pow::Difficulty(new_diff.to_u32()),
+        min_diff,
+    )
 }
