@@ -1,5 +1,3 @@
-mod keys;
-
 use thiserror::Error;
 
 use crate::config::blockchain::MPN_CONTRACT_ID;
@@ -8,7 +6,7 @@ use crate::core::{
     ContractUpdate, Hasher, Header, Money, PaymentDirection, ProofOfWork, Signature, Transaction,
     TransactionAndDelta, TransactionData, ZkHasher,
 };
-use crate::db::{KvStore, KvStoreError, RamMirrorKvStore, StringKey, WriteOp};
+use crate::db::{keys, KvStore, KvStoreError, RamMirrorKvStore, WriteOp};
 use crate::utils;
 use crate::wallet::Wallet;
 use crate::zk;

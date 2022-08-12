@@ -1,3 +1,5 @@
+pub mod keys;
+
 use crate::blockchain::{ZkBlockchainPatch, ZkCompressedStateChange};
 use crate::core::{hash::Hash, Account, Block, ContractAccount, ContractId, Hasher, Header};
 use crate::crypto::merkle::MerkleTree;

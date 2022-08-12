@@ -1,10 +1,8 @@
-mod keys;
-
 use thiserror::Error;
 
 use super::*;
 use crate::core::ContractId;
-use crate::db::{KvStore, KvStoreError, RamKvStore, StringKey, WriteOp};
+use crate::db::{keys, KvStore, KvStoreError, RamKvStore, StringKey, WriteOp};
 use ff::Field;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -44,7 +42,7 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
         .unwrap();
         let mut db = RamKvStore::new();
         db.update(&[WriteOp::Put(
-            format!("contract_{}", contract_id).into(),
+            keys::contract(&contract_id),
             ZkContract {
                 initial_state: ZkCompressedState::empty::<H>(state_model.clone()),
                 state_model,
@@ -151,7 +149,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
 
     pub fn type_of<K: KvStore>(db: &K, id: ContractId) -> Result<ZkStateModel, StateManagerError> {
         let cont: ZkContract = db
-            .get(format!("contract_{}", id).into())?
+            .get(keys::contract(&id))?
             .ok_or(StateManagerError::ContractNotFound)?
             .try_into()?;
         Ok(cont.state_model)
