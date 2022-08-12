@@ -182,6 +182,13 @@ async fn node_service<B: Blockchain>(
         let path = req.uri().path().to_string();
         let qs = req.uri().query().unwrap_or("").to_string();
 
+        log::info!(
+            "{} -> {} {}",
+            client.map(|c| c.to_string()).unwrap_or("UNKNOWN".into()),
+            method,
+            req.uri()
+        );
+
         let creds = fetch_signature(&req)?;
         let network: String = if let Some(v) = req.headers().get(NETWORK_HEADER) {
             v.to_str().ok().map(|n| n.to_lowercase())
