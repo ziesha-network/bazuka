@@ -1,3 +1,5 @@
+use super::UNIT;
+
 use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
 use crate::consensus::pow::Difficulty;
@@ -127,8 +129,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 .collect(),
             },
         },
-        total_supply: 2_000_000_000_000_000_000_u64, // 2 Billion ZIK
-        reward_ratio: 100_000, // 1/100_000 -> 0.01% of Treasury Supply per block
+        total_supply: 2_000_000_000_u64 * UNIT, // 2 Billion ZIK
+        reward_ratio: 100_000,                  // 1/100_000 -> 0.01% of Treasury Supply per block
         max_block_size: (1 * MB) as usize,
         max_delta_size: (1 * MB) as usize,
         block_time: 60,                // Seconds
