@@ -18,6 +18,7 @@ pub async fn sync_blocks<B: Blockchain>(
             let mut success = true;
             while success {
                 let ctx = context.read().await;
+                let min_target = ctx.blockchain.config().minimum_pow_difficulty;
                 if inf.power <= ctx.blockchain.get_power()? {
                     return Ok(());
                 }
@@ -32,7 +33,7 @@ pub async fn sync_blocks<B: Blockchain>(
                 let start_height = std::cmp::min(local_height, inf.height);
                 drop(ctx);
 
-                // WARN: Chain might change when getting responses from users
+                // WARN: Chain might change when getting responses from users, maybe get all data needed before dropping ctx
 
                 // Get all headers starting from the indices that we don't have.
                 let resp = net
@@ -50,19 +51,19 @@ pub async fn sync_blocks<B: Blockchain>(
 
                 let (mut headers, pow_keys) = (resp.headers, resp.pow_keys);
 
+                // TODO: Check parent hashes
                 let ctx = context.read().await;
                 for (i, (head, pow_key)) in headers.iter().zip(pow_keys.into_iter()).enumerate() {
-                    // TODO: Check if head has minimum PoW target
-                    if head.number != start_height + i as u64 {
-                        panic!("Bad header number returned!"); // TODO: Punish instead of panicking!
+                    if head.proof_of_work.target < min_target || !head.meets_target(&pow_key) {
+                        panic!("Header doesn't meet min target!");
                     }
-                    if !head.meets_target(&pow_key) {
-                        panic!("Header doesn't meet its target!"); // TODO: Punish instead of panicking!
+                    if head.number != start_height + i as u64 {
+                        panic!("Bad header number returned!");
                     }
                     if head.number < local_height
                         && head == &ctx.blockchain.get_header(head.number)?
                     {
-                        panic!("Duplicate header given!"); // TODO: Punish instead of panicking!
+                        panic!("Duplicate header given!");
                     }
                 }
                 drop(ctx);
@@ -77,7 +78,7 @@ pub async fn sync_blocks<B: Blockchain>(
                 // from 0 to height-1, though, the blocks might not be equal. Find
                 // the header from which the fork has happened.
                 for index in (0..start_height).rev() {
-                    let peer_header = net
+                    let peer_resp = net
                         .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
                             format!("{}/bincode/headers", peer.address),
                             GetHeadersRequest {
@@ -86,9 +87,21 @@ pub async fn sync_blocks<B: Blockchain>(
                             },
                             Limit::default().size(1 * KB).time(1 * SECOND),
                         )
-                        .await?
-                        .headers[0]
-                        .clone();
+                        .await?;
+                    let (peer_header, peer_pow_key) =
+                        (peer_resp.headers[0].clone(), peer_resp.pow_keys[0].clone());
+
+                    if peer_header.proof_of_work.target < min_target
+                        || !peer_header.meets_target(&peer_pow_key)
+                    {
+                        panic!("Header doesn't meet min target!");
+                    }
+                    if peer_header.number != index as u64 {
+                        panic!("Bad header number!");
+                    }
+                    if peer_header.hash() != headers[0].parent_hash {
+                        panic!("Bad header hash!");
+                    }
 
                     log::info!("Got header {}...", index);
 
