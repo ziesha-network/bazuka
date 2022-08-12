@@ -145,6 +145,10 @@ impl<K: KvStore> KvStoreChain<K> {
         if chain.get_height()? == 0 {
             chain.apply_block(&config.genesis.block, true)?;
             chain.update_states(&config.genesis.patch)?;
+        } else {
+            if config.genesis.block != chain.get_block(0)? {
+                return Err(BlockchainError::DifferentGenesis);
+            }
         }
         Ok(chain)
     }

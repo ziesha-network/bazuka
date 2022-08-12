@@ -6,6 +6,8 @@ use thiserror::Error;
 pub enum BlockchainError {
     #[error("kvstore error happened: {0}")]
     KvStoreError(#[from] KvStoreError),
+    #[error("different genesis block exists on the database")]
+    DifferentGenesis,
     #[error("transaction signature is invalid")]
     SignatureError,
     #[error("balance insufficient")]
