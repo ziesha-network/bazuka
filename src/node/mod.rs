@@ -173,6 +173,7 @@ async fn node_service<B: Blockchain>(
         if let Some(client) = client {
             let mut ctx = context.write().await;
             if !ctx.firewall.incoming_permitted(client) {
+                log::warn!("{} -> Firewall dropped request!", client);
                 *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
                 return Ok(response);
             }
