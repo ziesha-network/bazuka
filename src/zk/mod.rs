@@ -1,4 +1,4 @@
-use crate::core::{hash::Hash, Hasher, ZkHasher as ZkMainHasher};
+use crate::core::{hash::Hash, Hasher, Money, ZkHasher as ZkMainHasher};
 use crate::crypto::{jubjub, ZkSignatureScheme};
 
 use ff::PrimeField;
@@ -365,8 +365,8 @@ pub struct ZeroTransaction {
     pub src_index: u32,
     pub dst_index: u32,
     pub dst_pub_key: jubjub::PublicKey,
-    pub amount: u64,
-    pub fee: u64,
+    pub amount: Money,
+    pub fee: Money,
     pub sig: jubjub::Signature,
 }
 
@@ -396,8 +396,8 @@ impl ZeroTransaction {
             ZkScalar::from(self.nonce),
             ZkScalar::from(self.src_index as u64),
             ZkScalar::from(self.dst_index as u64),
-            ZkScalar::from(self.amount),
-            ZkScalar::from(self.fee),
+            ZkScalar::from(self.amount.0),
+            ZkScalar::from(self.fee.0),
         ])
     }
 }

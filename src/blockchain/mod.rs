@@ -22,7 +22,7 @@ use crate::consensus::pow::Difficulty;
 #[derive(Clone)]
 pub struct BlockchainConfig {
     pub genesis: BlockAndPatch,
-    pub total_supply: u64,
+    pub total_supply: Money,
     pub reward_ratio: u64,
     pub max_block_size: usize,
     pub max_delta_size: usize,
@@ -336,7 +336,7 @@ impl<K: KvStore> KvStoreChain<K> {
                         keys::contract_account(&contract_id),
                         ContractAccount {
                             compressed_state: contract.initial_state,
-                            balance: 0,
+                            balance: Money(0),
                             height: 1,
                         }
                         .into(),
@@ -359,7 +359,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     updates,
                 } => {
                     let contract = chain.get_contract(*contract_id)?;
-                    let mut executor_fee = 0;
+                    let mut executor_fee = Money(0);
 
                     for update in updates {
                         let prev_account = chain.get_contract_account(*contract_id)?;
@@ -395,11 +395,12 @@ impl<K: KvStore> KvStoreChain<K> {
                                                 Some(zk::ZkScalar::from(
                                                     match contract_payment.direction {
                                                         PaymentDirection::Deposit(_) => {
-                                                            contract_payment.amount as u64
+                                                            contract_payment.amount.into()
                                                         }
                                                         PaymentDirection::Withdraw(_) => {
-                                                            (-(contract_payment.amount as i64))
-                                                                as u64
+                                                            let as_u64: u64 =
+                                                                contract_payment.amount.into();
+                                                            (-(as_u64 as i64)) as u64
                                                         }
                                                     },
                                                 )),
@@ -430,7 +431,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                 proof,
                                 fee,
                             } => {
-                                executor_fee += fee;
+                                executor_fee += *fee;
                                 let circuit = contract
                                     .functions
                                     .get(*function_id as usize)
@@ -566,7 +567,12 @@ impl<K: KvStore> KvStoreChain<K> {
 
             // All blocks except genesis block should have a miner reward
             let txs = if !is_genesis {
-                let fee_sum: Money = block.body[1..].iter().map(|t| t.fee).sum();
+                let fee_sum = Money(
+                    block.body[1..]
+                        .iter()
+                        .map(|t| -> u64 { t.fee.into() })
+                        .sum(),
+                );
 
                 let reward_tx = block
                     .body
@@ -574,7 +580,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     .ok_or(BlockchainError::MinerRewardNotFound)?;
 
                 if reward_tx.src != Address::Treasury
-                    || reward_tx.fee != 0
+                    || reward_tx.fee != Money(0)
                     || reward_tx.sig != Signature::Unsigned
                 {
                     return Err(BlockchainError::InvalidMinerReward);
@@ -840,7 +846,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 balance: if addr == Address::Treasury {
                     self.config.total_supply
                 } else {
-                    0
+                    Money(0)
                 },
                 nonce: 0,
             },
@@ -986,7 +992,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let treasury_nonce = self.get_account(Address::Treasury)?.nonce;
 
         let tx_and_deltas = self.select_transactions(mempool, check)?;
-        let fee_sum: Money = tx_and_deltas.iter().map(|t| t.tx.fee).sum();
+        let fee_sum = Money(
+            tx_and_deltas
+                .iter()
+                .map(|t| -> u64 { t.tx.fee.into() })
+                .sum(),
+        );
 
         let mut txs = vec![Transaction {
             src: Address::Treasury,
@@ -995,7 +1006,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 amount: self.next_reward()? + fee_sum,
             },
             nonce: treasury_nonce + 1,
-            fee: 0,
+            fee: Money(0),
             sig: Signature::Unsigned,
         }];
 

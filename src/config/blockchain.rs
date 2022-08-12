@@ -4,8 +4,8 @@ use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
-    Address, Block, ContractId, Header, ProofOfWork, Signature, Transaction, TransactionAndDelta,
-    TransactionData, ZkHasher,
+    Address, Block, ContractId, Header, Money, ProofOfWork, Signature, Transaction,
+    TransactionAndDelta, TransactionData, ZkHasher,
 };
 use crate::zk;
 
@@ -47,7 +47,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
             contract: mpn_contract,
         },
         nonce: 2,
-        fee: 0,
+        fee: Money(0),
         sig: Signature::Unsigned,
     };
     TransactionAndDelta {
@@ -107,10 +107,10 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                     dst: "0x62f58b091997c0b85a851e08b3cbc5e86ac285b9bd4392ffc4cb5391cad98671"
                         .parse()
                         .unwrap(),
-                    amount: 100000000,
+                    amount: Money(100000000),
                 },
                 nonce: 1,
-                fee: 0,
+                fee: Money(0),
                 sig: Signature::Unsigned,
             },
             mpn_tx_delta.tx,
@@ -129,8 +129,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 .collect(),
             },
         },
-        total_supply: 2_000_000_000_u64 * UNIT, // 2 Billion ZIK
-        reward_ratio: 100_000,                  // 1/100_000 -> 0.01% of Treasury Supply per block
+        total_supply: Money(2_000_000_000_u64 * UNIT), // 2 Billion ZIK
+        reward_ratio: 100_000, // 1/100_000 -> 0.01% of Treasury Supply per block
         max_block_size: (1 * MB) as usize,
         max_delta_size: (1 * MB) as usize,
         block_time: 60,                // Seconds
@@ -177,10 +177,10 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             dst: abc.get_address(),
-            amount: 10000,
+            amount: Money(10000),
         },
         nonce: 3,
-        fee: 0,
+        fee: Money(0),
         sig: Signature::Unsigned,
     });
     conf.genesis.patch = ZkBlockchainPatch {

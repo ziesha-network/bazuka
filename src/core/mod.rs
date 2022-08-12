@@ -2,11 +2,12 @@ mod address;
 mod blocks;
 pub mod hash;
 mod header;
+mod money;
 mod transaction;
 
 use crate::crypto;
 
-pub type Money = u64;
+pub use money::Money;
 
 pub type Hasher = hash::Sha3Hasher;
 pub type Signer = crypto::ed25519::Ed25519<Hasher>;

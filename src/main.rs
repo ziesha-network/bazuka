@@ -4,7 +4,7 @@ use bazuka::wallet::Wallet;
 use {
     bazuka::blockchain::{Blockchain, KvStoreChain, TransactionStats},
     bazuka::config,
-    bazuka::core::Address,
+    bazuka::core::{Address, Money},
     bazuka::db::RamKvStore,
     std::collections::HashMap,
 };
@@ -460,7 +460,7 @@ fn main() {
         let mut txs = HashMap::new();
         for _ in 0..7400 {
             txs.insert(
-                abc.create_transaction(Address::Treasury, 0, 0, nonce),
+                abc.create_transaction(Address::Treasury, Money(0), Money(0), nonce),
                 TransactionStats { first_seen: 0 },
             );
             nonce += 1;
