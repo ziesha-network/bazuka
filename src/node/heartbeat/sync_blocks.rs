@@ -15,8 +15,8 @@ pub async fn sync_blocks<B: Blockchain>(
 
     for peer in sorted_peers.iter().rev() {
         if let Some(inf) = peer.info.as_ref() {
-            let mut success = true;
-            while success {
+            loop {
+                let mut failed = false;
                 let ctx = context.read().await;
                 let min_target = ctx.blockchain.config().minimum_pow_difficulty;
                 if inf.power <= ctx.blockchain.get_power()? {
@@ -55,18 +55,28 @@ pub async fn sync_blocks<B: Blockchain>(
                 let ctx = context.read().await;
                 for (i, (head, pow_key)) in headers.iter().zip(pow_keys.into_iter()).enumerate() {
                     if head.proof_of_work.target < min_target || !head.meets_target(&pow_key) {
-                        panic!("Header doesn't meet min target!");
+                        log::warn!("Header doesn't meet min target!");
+                        failed = true;
+                        break;
                     }
                     if head.number != start_height + i as u64 {
-                        panic!("Bad header number returned!");
+                        log::warn!("Bad header number returned!");
+                        failed = true;
+                        break;
                     }
                     if head.number < local_height
                         && head == &ctx.blockchain.get_header(head.number)?
                     {
-                        panic!("Duplicate header given!");
+                        log::warn!("Duplicate header given!");
+                        failed = true;
+                        break;
                     }
                 }
                 drop(ctx);
+
+                if failed {
+                    break;
+                }
 
                 log::info!(
                     "Got headers {}-{}...",
@@ -95,13 +105,19 @@ pub async fn sync_blocks<B: Blockchain>(
                         && (peer_header.proof_of_work.target < min_target
                             || !peer_header.meets_target(&peer_pow_key))
                     {
-                        panic!("Header doesn't meet min target!");
+                        log::warn!("Header doesn't meet min target!");
+                        failed = true;
+                        break;
                     }
                     if peer_header.number != index as u64 {
-                        panic!("Bad header number!");
+                        log::warn!("Bad header number!");
+                        failed = true;
+                        break;
                     }
                     if peer_header.hash() != headers[0].parent_hash {
-                        panic!("Bad header hash!");
+                        log::warn!("Bad header hash!");
+                        failed = true;
+                        break;
                     }
 
                     log::info!("Got header {}...", index);
@@ -117,57 +133,72 @@ pub async fn sync_blocks<B: Blockchain>(
                     }
                 }
 
-                let will_extend = {
-                    let ctx = context.write().await;
-                    let banned = headers.iter().any(|h| ctx.banned_headers.contains_key(h));
+                if failed {
+                    break;
+                }
 
-                    if banned {
-                        log::warn!("Chain has banned headers!");
+                let ctx = context.read().await;
+                if headers.iter().any(|h| ctx.banned_headers.contains_key(h)) {
+                    log::warn!("Chain has banned headers!");
+                    break;
+                }
+
+                let will_extend =
+                    match ctx
+                        .blockchain
+                        .will_extend(headers[0].number, &headers, true)
+                    {
+                        Ok(result) => {
+                            if !result {
+                                log::warn!("Chain is not powerful enough!");
+                            }
+                            result
+                        }
+                        Err(e) => {
+                            log::warn!("Chain is invalid! Error: {}", e);
+                            false
+                        }
+                    };
+
+                if !will_extend {
+                    break;
+                }
+
+                drop(ctx);
+
+                if let Ok(resp) = net
+                    .bincode_get::<GetBlocksRequest, GetBlocksResponse>(
+                        format!("{}/bincode/blocks", peer.address).to_string(),
+                        GetBlocksRequest {
+                            since: headers[0].number,
+                            count: opts.max_blocks_fetch,
+                        },
+                        Limit::default()
+                            .size(opts.max_blocks_fetch as u64 * max_block_size as u64 * 2)
+                            .time(opts.max_blocks_fetch as u32 * 30 * SECOND),
+                    )
+                    .await
+                {
+                    let mut ctx = context.write().await;
+
+                    match ctx.blockchain.extend(headers[0].number, &resp.blocks) {
+                        Ok(_) => {
+                            ctx.outdated_since = None;
+                        }
+                        Err(e) => {
+                            log::warn!("Cannot extend the blockchain. Error: {}", e);
+                            break;
+                        }
                     }
-
-                    let will_extend =
-                        match ctx
-                            .blockchain
-                            .will_extend(headers[0].number, &headers, true)
-                        {
-                            Ok(result) => {
-                                if !result {
-                                    log::warn!("Chain is not powerful enough!");
-                                }
-                                result
-                            }
-                            Err(e) => {
-                                log::warn!("Chain is invalid! Error: {}", e);
-                                false
-                            }
-                        };
-
-                    !banned && will_extend
-                };
-
-                if will_extend {
-                    let resp = net
-                        .bincode_get::<GetBlocksRequest, GetBlocksResponse>(
-                            format!("{}/bincode/blocks", peer.address).to_string(),
-                            GetBlocksRequest {
-                                since: headers[0].number,
-                                count: opts.max_blocks_fetch,
-                            },
-                            Limit::default()
-                                .size(opts.max_blocks_fetch as u64 * max_block_size as u64 * 2)
-                                .time(opts.max_blocks_fetch as u32 * 30 * SECOND),
-                        )
-                        .await?;
-                    let mut ctx = context.write().await;
-
-                    ctx.blockchain.extend(headers[0].number, &resp.blocks)?;
-                    ctx.outdated_since = None;
                 } else {
-                    let mut ctx = context.write().await;
-                    ctx.punish(peer.address, opts.incorrect_power_punish);
-                    success = false;
+                    log::warn!("Network error! Cannot fetch blocks...");
+                    break;
                 }
             }
+            context
+                .write()
+                .await
+                .punish(peer.address, opts.incorrect_power_punish);
         }
     }
 
