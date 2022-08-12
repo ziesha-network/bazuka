@@ -1,5 +1,6 @@
 use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
+use crate::consensus::pow::Difficulty;
 use crate::core::{
     Address, Block, ContractId, Header, ProofOfWork, Signature, Transaction, TransactionAndDelta,
     TransactionData, ZkHasher,
@@ -84,6 +85,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
+    let min_diff = Difficulty(0x02ffffff);
+
     let blk = Block {
         header: Header {
             parent_hash: Default::default(),
@@ -91,7 +94,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             block_root: Default::default(),
             proof_of_work: ProofOfWork {
                 timestamp: 0,
-                target: 0x02ffffff,
+                target: min_diff,
                 nonce: 0,
             },
         },
@@ -148,6 +151,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         // in a block to consider it valid
         mpn_num_function_calls: 0,
         mpn_num_contract_payments: 1,
+
+        minimum_pow_difficulty: min_diff,
     }
 }
 
@@ -155,12 +160,15 @@ pub fn get_blockchain_config() -> BlockchainConfig {
 pub fn get_test_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
-    println!("CONT: {}", mpn_contract_id);
+
+    let min_diff = Difficulty(0x007fffff);
 
     let mut conf = get_blockchain_config();
     conf.mpn_num_contract_payments = 0;
     conf.mpn_num_function_calls = 0;
-    conf.genesis.block.header.proof_of_work.target = 0x007fffff;
+    conf.minimum_pow_difficulty = min_diff;
+    conf.genesis.block.header.proof_of_work.target = min_diff;
+
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;
     let abc = Wallet::new(Vec::from("ABC"));
     conf.genesis.block.body.push(Transaction {

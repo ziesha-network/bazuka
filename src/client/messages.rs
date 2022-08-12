@@ -1,4 +1,5 @@
 use crate::blockchain::ZkBlockchainPatch;
+use crate::consensus::pow::Difficulty;
 use crate::core::{
     Account, Address, Block, ContractId, ContractPayment, Header, Money, TransactionAndDelta,
 };
@@ -57,11 +58,11 @@ pub struct GetMinerPuzzleResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Puzzle {
-    pub key: String,   // Puzzle key encoded in hex
-    pub blob: String,  // Blob encoded in hex
-    pub offset: usize, // From which byte the nonce starts?
-    pub size: usize,   // How big is the nonce? (Bytes)
-    pub target: u32,   // Difficulty target
+    pub key: String,        // Puzzle key encoded in hex
+    pub blob: String,       // Blob encoded in hex
+    pub offset: usize,      // From which byte the nonce starts?
+    pub size: usize,        // How big is the nonce? (Bytes)
+    pub target: Difficulty, // Difficulty target
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

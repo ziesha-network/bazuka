@@ -377,8 +377,7 @@ fn mine_puzzle(puzzle: &Puzzle) -> PostMinerSolutionRequest {
     let mut nonce = 0u64;
     loop {
         blob[puzzle.offset..puzzle.offset + puzzle.size].copy_from_slice(&nonce.to_le_bytes());
-        let hash = crate::consensus::pow::hash(&key, &blob);
-        if hash.meets_difficulty(rust_randomx::Difficulty::new(puzzle.target)) {
+        if crate::consensus::pow::meets_difficulty(&key, &blob, puzzle.target) {
             return PostMinerSolutionRequest {
                 nonce: hex::encode(nonce.to_le_bytes()),
             };

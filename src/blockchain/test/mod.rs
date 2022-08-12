@@ -8,7 +8,7 @@ mod contract;
 
 fn easy_config() -> BlockchainConfig {
     let mut conf = blockchain::get_test_blockchain_config();
-    conf.genesis.block.header.proof_of_work.target = 0x00ffffff;
+    conf.genesis.block.header.proof_of_work.target = Difficulty(0x00ffffff);
 
     conf
 }
@@ -109,7 +109,7 @@ fn test_correct_target_calculation() -> Result<(), BlockchainError> {
     let mut wrong_pow = chain
         .draft_block(120, &mut HashMap::new(), &miner, true)?
         .unwrap();
-    wrong_pow.block.header.proof_of_work.target = 0x01ffffff;
+    wrong_pow.block.header.proof_of_work.target = Difficulty(0x01ffffff);
     assert!(matches!(
         chain.apply_block(&wrong_pow.block, true),
         Err(BlockchainError::DifficultyTargetWrong)
@@ -131,76 +131,112 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
         .draft_block(40, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x00ffffff)
+    );
     chain.extend(1, &[draft.block])?;
     draft = chain
         .draft_block(80, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x00ffffff)
+    );
     chain.extend(2, &[draft.block])?;
     draft = chain
         .draft_block(120, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x00aaaaaa);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x00aaaaaa)
+    );
     chain.extend(3, &[draft.block])?;
 
     draft = chain
         .draft_block(210, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x00aaaaaa);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x00aaaaaa)
+    );
     chain.extend(4, &[draft.block])?;
     draft = chain
         .draft_block(300, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x00aaaaaa);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x00aaaaaa)
+    );
     chain.extend(5, &[draft.block])?;
     draft = chain
         .draft_block(390, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x00ffffff)
+    );
     chain.extend(6, &[draft.block])?;
 
     draft = chain
         .draft_block(391, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x00ffffff)
+    );
     chain.extend(7, &[draft.block])?;
     draft = chain
         .draft_block(392, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x00ffffff);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x00ffffff)
+    );
     chain.extend(8, &[draft.block])?;
     draft = chain
         .draft_block(393, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x007fffff);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x007fffff)
+    );
     chain.extend(9, &[draft.block])?;
 
     draft = chain
         .draft_block(1000, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x007fffff);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x007fffff)
+    );
     chain.extend(10, &[draft.block])?;
     draft = chain
         .draft_block(2000, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x007fffff);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x007fffff)
+    );
     chain.extend(11, &[draft.block])?;
     draft = chain
         .draft_block(3000, &mut HashMap::new(), &miner, true)?
         .unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target, 0x00fffffe);
+    assert_eq!(
+        draft.block.header.proof_of_work.target,
+        Difficulty(0x00fffffe)
+    );
     chain.extend(12, &[draft.block])?;
 
     // TODO: Check difficulty overflow (One can't make 0x00ffffff easier)
@@ -211,7 +247,7 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
 
     for i in 0..headers.len() {
         let mut broken_headers = headers.clone();
-        broken_headers[i].proof_of_work.target = 0x00aabbcc;
+        broken_headers[i].proof_of_work.target = Difficulty(0x00aabbcc);
         assert!(matches!(
             chain2.will_extend(1, &broken_headers, true),
             Err(BlockchainError::DifficultyTargetWrong)
@@ -807,7 +843,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let wallet2 = Wallet::new(Vec::from("CBA"));
 
     let mut conf = blockchain::get_test_blockchain_config();
-    conf.genesis.block.header.proof_of_work.target = 0x0000ffff;
+    conf.genesis.block.header.proof_of_work.target = Difficulty(0x0000ffff);
     conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {

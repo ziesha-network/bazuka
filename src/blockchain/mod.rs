@@ -17,6 +17,8 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::consensus::pow::Difficulty;
+
 #[derive(Clone)]
 pub struct BlockchainConfig {
     pub genesis: BlockAndPatch,
@@ -32,6 +34,7 @@ pub struct BlockchainConfig {
     pub median_timestamp_count: u64,
     pub mpn_num_function_calls: usize,
     pub mpn_num_contract_payments: usize,
+    pub minimum_pow_difficulty: Difficulty,
 }
 
 #[derive(Debug, Clone)]
@@ -173,7 +176,7 @@ impl<K: KvStore> KvStoreChain<K> {
         ))
     }
 
-    fn next_difficulty(&self) -> Result<u32, BlockchainError> {
+    fn next_difficulty(&self) -> Result<Difficulty, BlockchainError> {
         let height = self.get_height()?;
         let last_block = self.get_header(height - 1)?;
         if height % self.config.difficulty_calc_interval == 0 {

@@ -447,7 +447,7 @@ fn main() {
     env_logger::init();
 
     let mut conf = config::blockchain::get_blockchain_config();
-    conf.genesis.block.header.proof_of_work.target = 0x00ffffff;
+    conf.genesis.block.header.proof_of_work.target = bazuka::consensus::pow::Difficulty(0x00ffffff);
 
     let mut chain = KvStoreChain::new(RamKvStore::new(), conf).unwrap();
 

@@ -1,4 +1,4 @@
-use rust_randomx::Difficulty;
+use crate::consensus::pow::Difficulty;
 
 use super::hash::Hash;
 
@@ -7,7 +7,7 @@ pub struct ProofOfWork {
     /// when the miner started mining this block
     pub timestamp: u32,
     /// difficulty target
-    pub target: u32,
+    pub target: Difficulty,
     /// arbitrary data
     pub nonce: u64,
 }
@@ -33,12 +33,11 @@ impl<H: Hash> Header<H> {
 
     // Approximate number of hashes run in order to generate this block
     pub fn power(&self) -> u128 {
-        Difficulty::new(self.proof_of_work.target).power()
+        self.proof_of_work.target.power()
     }
 
     pub fn meets_target(&self, key: &[u8]) -> bool {
         let bin = bincode::serialize(&self).expect("convert header to bincode format");
-        crate::consensus::pow::hash(key, &bin)
-            .meets_difficulty(Difficulty::new(self.proof_of_work.target))
+        crate::consensus::pow::meets_difficulty(key, &bin, self.proof_of_work.target)
     }
 }
