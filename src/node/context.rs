@@ -40,6 +40,7 @@ impl<B: Blockchain> NodeContext<B> {
         (utils::local_timestamp() as i32 + self.timestamp_offset) as u32
     }
     pub fn punish(&mut self, bad_peer: PeerAddress, secs: u32) {
+        log::warn!("Punishing {} for {} seconds...", bad_peer, secs);
         self.firewall
             .punish_ip(bad_peer.0.ip(), secs, self.opts.max_punish);
     }
