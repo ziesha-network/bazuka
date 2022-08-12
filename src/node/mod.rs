@@ -379,6 +379,7 @@ async fn node_service<B: Blockchain>(
                 ctx.firewall
                     .punish_ip(client.ip(), default_punish, max_punish);
             }
+            log::error!("Error: {}", e);
             Err(e)
         }
     }
