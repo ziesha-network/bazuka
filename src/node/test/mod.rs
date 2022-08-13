@@ -5,7 +5,7 @@ use simulation::*;
 
 use crate::blockchain::BlockchainError;
 use crate::config::blockchain;
-use crate::core::{ContractId, Signer, TransactionAndDelta, ZkHasher};
+use crate::core::{ContractId, Money, Signer, TransactionAndDelta, ZkHasher};
 use crate::crypto::SignatureScheme;
 use crate::zk;
 use std::str::FromStr;
@@ -254,8 +254,8 @@ fn sample_contract_call() -> TransactionAndDelta {
         state_delta.clone(),
         state_model.compress::<ZkHasher>(&full_state.data).unwrap(),
         zk::ZkProof::Dummy(true),
-        0,
-        0,
+        Money(0),
+        Money(0),
         1,
     )
 }

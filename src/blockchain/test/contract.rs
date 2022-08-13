@@ -25,7 +25,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
             functions: Vec::new(),
         },
         full_state.data.clone(),
-        0,
+        Money(0),
         1,
     );
 
@@ -84,8 +84,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         state_delta.clone(),
         state_model.compress::<ZkHasher>(&full_state.data)?,
         zk::ZkProof::Dummy(true),
-        0,
-        0,
+        Money(0),
+        Money(0),
         1,
     );
 
@@ -223,8 +223,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     state_delta.clone(),
                     state_model.compress::<ZkHasher>(&full_state.data)?,
                     zk::ZkProof::Dummy(true),
-                    0,
-                    0,
+                    Money(0),
+                    Money(0),
                     1,
                 )
                 .tx,
@@ -245,8 +245,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     state_delta.clone(),
                     state_model.compress::<ZkHasher>(&full_state.data)?,
                     zk::ZkProof::Dummy(true),
-                    0,
-                    0,
+                    Money(0),
+                    Money(0),
                     2,
                 )
                 .tx,
@@ -264,8 +264,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     state_delta.clone(),
                     state_model.compress::<ZkHasher>(&full_state.data)?,
                     zk::ZkProof::Dummy(true),
-                    0,
-                    0,
+                    Money(0),
+                    Money(0),
                     2,
                 )
                 .tx,
@@ -283,8 +283,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     state_delta,
                     state_model.compress::<ZkHasher>(&full_state.data)?,
                     zk::ZkProof::Dummy(false),
-                    0,
-                    0,
+                    Money(0),
+                    Money(0),
                     2,
                 )
                 .tx,
