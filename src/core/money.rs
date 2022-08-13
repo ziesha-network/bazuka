@@ -46,6 +46,9 @@ impl FromStr for Money {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut s = s.trim().to_string();
         if let Some(dot_pos) = s.find('.') {
+            if s == "." {
+                return Err(ParseMoneyError::Invalid);
+            }
             let dot_rpos = s.len() - 1 - dot_pos;
             if dot_rpos > UNIT_ZEROS as usize {
                 return Err(ParseMoneyError::Invalid);
@@ -126,5 +129,52 @@ mod tests {
             format!("{}", Money(123456789987654321)),
             format!("123456789.987654321{}", SYMBOL)
         );
+    }
+
+    #[test]
+    fn test_str_to_money() {
+        assert_eq!("0".parse::<Money>().unwrap(), Money(0));
+        assert_eq!("0.".parse::<Money>().unwrap(), Money(0));
+        assert_eq!("0.0".parse::<Money>().unwrap(), Money(0));
+        assert_eq!("1".parse::<Money>().unwrap(), Money(1000000000));
+        assert_eq!("1.".parse::<Money>().unwrap(), Money(1000000000));
+        assert_eq!("1.0".parse::<Money>().unwrap(), Money(1000000000));
+        assert_eq!("123".parse::<Money>().unwrap(), Money(123000000000));
+        assert_eq!("123.".parse::<Money>().unwrap(), Money(123000000000));
+        assert_eq!("123.0".parse::<Money>().unwrap(), Money(123000000000));
+        assert_eq!("123.1".parse::<Money>().unwrap(), Money(123100000000));
+        assert_eq!("123.100".parse::<Money>().unwrap(), Money(123100000000));
+        assert_eq!(
+            "123.100000000".parse::<Money>().unwrap(),
+            Money(123100000000)
+        );
+        assert_eq!("123.123456".parse::<Money>().unwrap(), Money(123123456000));
+        assert_eq!(
+            "123.123456000".parse::<Money>().unwrap(),
+            Money(123123456000)
+        );
+        assert_eq!(
+            "123.123456789".parse::<Money>().unwrap(),
+            Money(123123456789)
+        );
+        assert_eq!("123.0001".parse::<Money>().unwrap(), Money(123000100000));
+        assert_eq!(
+            "123.000000001".parse::<Money>().unwrap(),
+            Money(123000000001)
+        );
+        assert_eq!("0.0001".parse::<Money>().unwrap(), Money(100000));
+        assert_eq!("0.000000001".parse::<Money>().unwrap(), Money(1));
+        assert_eq!(".0001".parse::<Money>().unwrap(), Money(100000));
+        assert_eq!(".000000001".parse::<Money>().unwrap(), Money(1));
+        assert_eq!(".123456789".parse::<Money>().unwrap(), Money(123456789));
+        assert_eq!(" 123 ".parse::<Money>().unwrap(), Money(123000000000));
+        assert_eq!(" 123.456 ".parse::<Money>().unwrap(), Money(123456000000));
+        assert!("123.234.123".parse::<Money>().is_err());
+        assert!("k123".parse::<Money>().is_err());
+        assert!("12 34".parse::<Money>().is_err());
+        assert!(".".parse::<Money>().is_err());
+        assert!(" . ".parse::<Money>().is_err());
+        assert!("12 .".parse::<Money>().is_err());
+        assert!(". 12".parse::<Money>().is_err());
     }
 }
