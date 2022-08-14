@@ -124,10 +124,14 @@ mod tests {
 
     #[test]
     fn test_money_to_str() {
-        assert_eq!(format!("{}", Money(0)), format!("0.{}", SYMBOL));
+        assert_eq!(format!("{}", Money(0)), format!("0.0{}", SYMBOL));
         assert_eq!(format!("{}", Money(1)), format!("0.000000001{}", SYMBOL));
         assert_eq!(format!("{}", Money(12)), format!("0.000000012{}", SYMBOL));
         assert_eq!(format!("{}", Money(1234)), format!("0.000001234{}", SYMBOL));
+        assert_eq!(
+            format!("{}", Money(123000000000)),
+            format!("123.0{}", SYMBOL)
+        );
         assert_eq!(
             format!("{}", Money(123456789)),
             format!("0.123456789{}", SYMBOL)
