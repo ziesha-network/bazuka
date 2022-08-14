@@ -71,6 +71,12 @@ impl Into<u64> for Money {
     }
 }
 
+impl From<u64> for Money {
+    fn from(val: u64) -> Self {
+        Self(val)
+    }
+}
+
 impl AddAssign for Money {
     fn add_assign(&mut self, other: Self) {
         self.0 += other.0;
