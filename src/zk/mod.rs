@@ -110,6 +110,13 @@ impl ZkScalar {
     }
 }
 
+impl From<Money> for ZkScalar {
+    fn from(m: Money) -> Self {
+        let as_u64: u64 = m.into();
+        Self::from(as_u64)
+    }
+}
+
 impl TryInto<u64> for ZkScalar {
     type Error = ZkError;
 
