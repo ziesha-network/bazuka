@@ -37,6 +37,11 @@ impl std::fmt::Display for Money {
                 break;
             }
         }
+        if let Some(last) = s.chars().last() {
+            if last == '.' {
+                s.push('0');
+            }
+        }
         write!(f, "{}{}", s, SYMBOL)
     }
 }
