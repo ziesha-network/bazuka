@@ -111,6 +111,7 @@ pub struct ContractAccount {
 pub enum ContractUpdate<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     // Proof for PaymentCircuit(curr_state, next_state, hash(entries))
     Payment {
+        circuit_id: u32,
         payments: Vec<ContractPayment<H, S, ZS>>,
         next_state: ZkCompressedState,
         proof: ZkProof,

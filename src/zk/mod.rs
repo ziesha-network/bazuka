@@ -69,15 +69,13 @@ pub fn check_proof(
                 false
             }
         }
+        #[cfg(test)]
         ZkVerifierKey::Dummy => {
             if let ZkProof::Dummy(result) = proof {
                 *result
             } else {
                 false
             }
-        }
-        _ => {
-            unimplemented!()
         }
     }
 }
@@ -362,8 +360,14 @@ impl ZkCompressedState {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ZkVerifierKey {
     Groth16(Box<groth16::Groth16VerifyingKey>),
-    Plonk(u8),
+    #[cfg(test)]
     Dummy,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ZkPaymentVerifierKey {
+    pub verifier_key: ZkVerifierKey,
+    pub log4_payment_capacity: u8,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -413,15 +417,14 @@ impl ZeroTransaction {
 pub struct ZkContract {
     pub initial_state: ZkCompressedState, // 32byte
     pub state_model: ZkStateModel,
-    pub log4_payment_capacity: u8, // Number of deposit/withdraws that can be handled
-    pub payment_function: ZkVerifierKey, // VK f(prev_state, io_txs (L1)) -> next_state
-    pub functions: Vec<ZkVerifierKey>, // Vec<VK> f(prev_state) -> next_state
+    pub payment_functions: Vec<ZkPaymentVerifierKey>, // VK f(prev_state, io_txs (L1)) -> next_state
+    pub functions: Vec<ZkVerifierKey>,                // Vec<VK> f(prev_state) -> next_state
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ZkProof {
     Groth16(Box<groth16::Groth16Proof>),
-    Plonk(u8),
+    #[cfg(test)]
     Dummy(bool),
 }
 

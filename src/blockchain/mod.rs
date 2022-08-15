@@ -368,14 +368,19 @@ impl<K: KvStore> KvStoreChain<K> {
 
                         let (circuit, aux_data, next_state, proof) = match update {
                             ContractUpdate::Payment {
+                                circuit_id,
                                 payments,
                                 next_state,
                                 proof,
                             } => {
-                                let circuit = &contract.payment_function;
+                                let payment_func = contract
+                                    .payment_functions
+                                    .get(*circuit_id as usize)
+                                    .ok_or(BlockchainError::ContractFunctionNotFound)?;
+                                let circuit = &payment_func.verifier_key;
                                 let state_model = zk::ZkStateModel::List {
                                     item_type: Box::new(zk::CONTRACT_PAYMENT_STATE_MODEL.clone()),
-                                    log4_size: contract.log4_payment_capacity,
+                                    log4_size: payment_func.log4_payment_capacity,
                                 };
                                 let mut state_builder =
                                     zk::ZkStateBuilder::<ZkHasher>::new(state_model);

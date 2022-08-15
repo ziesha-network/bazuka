@@ -37,8 +37,10 @@ fn get_mpn_contract() -> TransactionAndDelta {
     let mpn_contract = zk::ZkContract {
         state_model: mpn_state_model.clone(),
         initial_state: zk::ZkCompressedState::empty::<ZkHasher>(mpn_state_model),
-        log4_payment_capacity: 1,
-        payment_function: zk::ZkVerifierKey::Groth16(Box::new(MPN_PAYMENT_VK.clone())),
+        payment_functions: vec![zk::ZkPaymentVerifierKey {
+            verifier_key: zk::ZkVerifierKey::Groth16(Box::new(MPN_PAYMENT_VK.clone())),
+            log4_payment_capacity: 1,
+        }],
         functions: vec![zk::ZkVerifierKey::Groth16(Box::new(MPN_UPDATE_VK.clone()))],
     };
     let mpn_contract_create_tx = Transaction {
@@ -74,7 +76,10 @@ fn get_test_mpn_contract() -> TransactionAndDelta {
                 .state_model
                 .compress::<ZkHasher>(&init_state)
                 .unwrap();
-            contract.payment_function = zk::ZkVerifierKey::Dummy;
+            contract.payment_functions = vec![zk::ZkPaymentVerifierKey {
+                verifier_key: zk::ZkVerifierKey::Dummy,
+                log4_payment_capacity: 1,
+            }];
             contract.functions = vec![zk::ZkVerifierKey::Dummy];
         }
         _ => panic!(),

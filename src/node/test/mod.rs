@@ -228,7 +228,7 @@ fn sample_contract_call() -> TransactionAndDelta {
     let updater = Wallet::new(Vec::from("ABC"));
 
     let cid =
-        ContractId::from_str("8e29ab55ec0cb0d7b470bcb8340fc0d8409fe0a8365a255e58687879c4076bc2")
+        ContractId::from_str("d6ed5ac05b69c75ecf8b9a0c902b99ad9710c11e7e52d19d8e9e9debb8a0388e")
             .unwrap();
     let state_model = zk::ZkStateModel::List {
         item_type: Box::new(zk::ZkStateModel::Scalar),
