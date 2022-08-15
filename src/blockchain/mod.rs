@@ -7,6 +7,7 @@ use crate::core::{
     ContractUpdate, Hasher, Header, Money, PaymentDirection, ProofOfWork, Signature, Transaction,
     TransactionAndDelta, TransactionData, ZkHasher,
 };
+use crate::crypto::jubjub;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
 use crate::utils;
 use crate::wallet::Wallet;
@@ -84,6 +85,7 @@ pub trait Blockchain {
     fn validate_transaction(&self, tx_delta: &TransactionAndDelta)
         -> Result<bool, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
+    fn get_mpn_account(&self, index: u32) -> Result<zk::MpnAccount, BlockchainError>;
     fn get_contract_account(
         &self,
         contract_id: ContractId,
@@ -855,6 +857,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 },
                 nonce: 0,
             },
+        })
+    }
+
+    fn get_mpn_account(&self, index: u32) -> Result<zk::MpnAccount, BlockchainError> {
+        let cells = (0..4)
+            .map(|i| self.read_state(*MPN_CONTRACT_ID, zk::ZkDataLocator(vec![index, i as u32])))
+            .collect::<Result<Vec<zk::ZkScalar>, BlockchainError>>()?;
+        Ok(zk::MpnAccount {
+            nonce: cells[0].try_into()?,
+            address: jubjub::PointAffine(cells[1], cells[2]),
+            balance: cells[3].try_into()?,
         })
     }
 
