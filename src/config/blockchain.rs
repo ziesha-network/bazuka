@@ -137,8 +137,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         total_supply: Money(2_000_000_000_u64 * UNIT), // 2 Billion ZIK
         reward_ratio: 100_000, // 1/100_000 -> 0.01% of Treasury Supply per block
         max_block_size: (1 * MB) as usize,
-        max_delta_size: (1 * MB) as usize,
-        block_time: 60,                // Seconds
+        max_delta_count: 1024, // Only allow max of 1024 ZkScalar cells to be added per block
+        block_time: 60,        // Seconds
         difficulty_calc_interval: 128, // Blocks
 
         // 0 63 -> BAZUKA BASE KEY

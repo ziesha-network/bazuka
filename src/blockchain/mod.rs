@@ -25,7 +25,7 @@ pub struct BlockchainConfig {
     pub total_supply: Money,
     pub reward_ratio: u64,
     pub max_block_size: usize,
-    pub max_delta_size: usize,
+    pub max_delta_count: usize,
     pub block_time: usize,
     pub difficulty_calc_interval: u64,
     pub pow_base_key: &'static [u8],
@@ -531,7 +531,7 @@ impl<K: KvStore> KvStoreChain<K> {
         let (_, result) = self.isolated(|chain| {
             let mut result = Vec::new();
             let mut block_sz = 0usize;
-            let mut delta_sz = 0isize;
+            let mut delta_cnt = 0isize;
             for tx in sorted.into_iter() {
                 if let Ok((ops, eff)) = chain.isolated(|chain| chain.apply_tx(&tx.tx, false)) {
                     let delta_diff = if let TxSideEffect::StateChange { state_change, .. } = eff {
@@ -540,11 +540,11 @@ impl<K: KvStore> KvStoreChain<K> {
                         0
                     };
                     let block_diff = tx.tx.size();
-                    if delta_sz + delta_diff <= chain.config.max_delta_size as isize
+                    if delta_cnt + delta_diff <= chain.config.max_delta_count as isize
                         && block_sz + block_diff <= chain.config.max_block_size
                         && tx.tx.verify_signature()
                     {
-                        delta_sz += delta_diff;
+                        delta_cnt += delta_diff;
                         block_sz += block_diff;
                         chain.database.update(&ops)?;
                         result.push(tx);
@@ -666,7 +666,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::BlockTooBig);
             }
 
-            if state_size_delta > self.config.max_delta_size as isize {
+            if state_size_delta > self.config.max_delta_count as isize {
                 return Err(BlockchainError::StateDeltaTooBig);
             }
 
