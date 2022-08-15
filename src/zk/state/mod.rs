@@ -2,6 +2,7 @@ use thiserror::Error;
 
 use super::*;
 use crate::core::ContractId;
+use crate::crypto::jubjub;
 use crate::db::{keys, KvStore, KvStoreError, RamKvStore, StringKey, WriteOp};
 use ff::Field;
 use std::collections::HashMap;
@@ -21,6 +22,8 @@ pub enum StateManagerError {
     LocatorParseError(#[from] ParseZkDataLocatorError),
     #[error("not locating a tree")]
     NonTreeLocatorError,
+    #[error("zk error: {0}")]
+    ZkError(#[from] ZkError),
 }
 
 #[derive(Clone)]
@@ -79,6 +82,21 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
 }
 
 impl<H: ZkHasher> KvStoreStateManager<H> {
+    pub fn get_mpn_account<K: KvStore>(
+        db: &K,
+        mpn_contract_id: ContractId,
+        index: u32,
+    ) -> Result<MpnAccount, StateManagerError> {
+        let cells = (0..4)
+            .map(|i| Self::get_data(db, mpn_contract_id, &ZkDataLocator(vec![index, i as u32])))
+            .collect::<Result<Vec<ZkScalar>, StateManagerError>>()?;
+        Ok(MpnAccount {
+            nonce: cells[0].try_into()?,
+            address: jubjub::PointAffine(cells[1], cells[2]),
+            balance: cells[3].try_into()?,
+        })
+    }
+
     pub fn delete_contract<K: KvStore>(
         db: &mut K,
         id: ContractId,
