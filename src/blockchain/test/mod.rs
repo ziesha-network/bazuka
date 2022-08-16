@@ -786,7 +786,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
     assert_eq!(chain.get_account(alice.get_address())?.balance, Money(9600));
     assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
 
-    // Alice -> 100 -> Alice (Fee 200)
+    // Alice -> 100 -> Alice (Fee 200) (SELF PAYMENT NOT ALLOWED)
     chain.apply_block(
         &chain
             .draft_block(
@@ -804,10 +804,10 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .block,
         true,
     )?;
-    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(9400));
+    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(9600));
     assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
 
-    // Alice -> 20000 -> Alice (Fee 9400) (BALANCE INSUFFICIENT even though sending to herself)
+    // Alice -> 20000 -> Alice (Fee 9400) (SELF PAYMENT NOT ALLOWED)
     chain.apply_block(
         &chain
             .draft_block(
@@ -825,10 +825,10 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .block,
         true,
     )?;
-    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(9400));
+    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(9600));
     assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
 
-    // Alice -> 1000 -> Alice (Fee 8400)
+    // Alice -> 1000 -> Alice (Fee 8400) (SELF PAYMENT NOT ALLOWED)
     chain.apply_block(
         &chain
             .draft_block(
@@ -846,7 +846,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .block,
         true,
     )?;
-    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(1000));
+    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(9600));
     assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
 
     rollback_till_empty(&mut chain)?;

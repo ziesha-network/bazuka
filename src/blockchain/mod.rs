@@ -358,20 +358,20 @@ impl<K: KvStore> KvStoreChain<K> {
 
             match &tx.data {
                 TransactionData::RegularSend { dst, amount } => {
+                    if *dst == tx.src {
+                        return Err(BlockchainError::SelfPaymentNotAllowed);
+                    }
                     if acc_src.balance < *amount {
                         return Err(BlockchainError::BalanceInsufficient);
                     }
+                    acc_src.balance -= *amount;
 
-                    if *dst != tx.src {
-                        acc_src.balance -= *amount;
+                    let mut acc_dst = chain.get_account(dst.clone())?;
+                    acc_dst.balance += *amount;
 
-                        let mut acc_dst = chain.get_account(dst.clone())?;
-                        acc_dst.balance += *amount;
-
-                        chain
-                            .database
-                            .update(&[WriteOp::Put(keys::account(dst), acc_dst.into())])?;
-                    }
+                    chain
+                        .database
+                        .update(&[WriteOp::Put(keys::account(dst), acc_dst.into())])?;
                 }
                 TransactionData::CreateContract { contract } => {
                     let contract_id = ContractId::new(tx);
@@ -434,6 +434,11 @@ impl<K: KvStore> KvStoreChain<K> {
                                 let mut state_builder =
                                     zk::ZkStateBuilder::<ZkHasher>::new(state_model);
                                 for (i, contract_payment) in payments.iter().enumerate() {
+                                    if Address::PublicKey(contract_payment.address.clone())
+                                        == tx.src
+                                    {
+                                        return Err(BlockchainError::CannotExecuteOwnPayments);
+                                    }
                                     executor_fee += contract_payment.fee;
                                     let pk = contract_payment.zk_address.0.decompress();
                                     state_builder.batch_set(&zk::ZkDeltaPairs(
