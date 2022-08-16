@@ -11,10 +11,15 @@ pub async fn transact_zero<B: Blockchain>(
     let mut context = context.write().await;
     let now = context.network_timestamp();
     // Prevent spamming mempool
-    if context.blockchain.validate_zero_transaction(&req.tx)? {
-        context
-            .zero_mempool
-            .insert(req.tx, TransactionStats { first_seen: now });
+    match context.blockchain.validate_zero_transaction(&req.tx) {
+        Ok(_) => {
+            context
+                .zero_mempool
+                .insert(req.tx, TransactionStats { first_seen: now });
+        }
+        Err(e) => {
+            log::warn!("Rejected zero-transaction. Error: {}", e);
+        }
     }
     Ok(TransactZeroResponse {})
 }

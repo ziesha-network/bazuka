@@ -11,10 +11,15 @@ pub async fn transact_contract_payment<B: Blockchain>(
     let mut context = context.write().await;
     let now = context.network_timestamp();
     // Prevent spamming mempool
-    if context.blockchain.validate_contract_payment(&req.tx)? {
-        context
-            .contract_payment_mempool
-            .insert(req.tx, TransactionStats { first_seen: now });
+    match context.blockchain.validate_contract_payment(&req.tx) {
+        Ok(_) => {
+            context
+                .contract_payment_mempool
+                .insert(req.tx, TransactionStats { first_seen: now });
+        }
+        Err(e) => {
+            log::warn!("Rejected contract payment. Error: {}", e);
+        }
     }
     Ok(TransactContractPaymentResponse {})
 }

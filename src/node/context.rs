@@ -79,6 +79,8 @@ impl<B: Blockchain> NodeContext<B> {
         self.blockchain
             .cleanup_contract_payment_mempool(&mut self.contract_payment_mempool)?;
         self.blockchain.cleanup_mempool(&mut self.mempool)?;
+        self.blockchain
+            .cleanup_zero_mempool(&mut self.zero_mempool)?;
         Ok(())
     }
 

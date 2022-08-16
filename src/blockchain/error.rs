@@ -74,4 +74,6 @@ pub enum BlockchainError {
     InvalidContractPaymentSignature,
     #[error("insufficient mpn updates")]
     InsufficientMpnUpdates,
+    #[error("invalid zero-transaction")]
+    InvalidZeroTransaction,
 }
