@@ -97,6 +97,34 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         })
     }
 
+    pub fn set_mpn_account<K: KvStore>(
+        db: &mut K,
+        mpn_contract_id: ContractId,
+        index: u32,
+        acc: MpnAccount,
+        size_diff: &mut u32,
+    ) -> Result<(), StateManagerError> {
+        let vals = [
+            acc.nonce.into(),
+            acc.address.0,
+            acc.address.1,
+            acc.balance.into(),
+        ];
+        vals.into_iter()
+            .enumerate()
+            .map(|(i, val)| {
+                Self::set_data(
+                    db,
+                    mpn_contract_id,
+                    ZkDataLocator(vec![index, i as u32]),
+                    val,
+                    size_diff,
+                )
+            })
+            .collect::<Result<Vec<ZkScalar>, StateManagerError>>()?;
+        Ok(())
+    }
+
     pub fn delete_contract<K: KvStore>(
         db: &mut K,
         id: ContractId,

@@ -19,7 +19,7 @@ pub mod poseidon4;
 pub struct MpnAccount {
     pub nonce: u64,
     pub address: jubjub::PointAffine,
-    pub balance: u64,
+    pub balance: Money,
 }
 
 lazy_static! {
@@ -126,6 +126,14 @@ impl TryInto<u64> for ZkScalar {
                 self.to_repr().as_ref()[..8].try_into().unwrap(),
             ))
         }
+    }
+}
+
+impl TryInto<Money> for ZkScalar {
+    type Error = ZkError;
+
+    fn try_into(self) -> Result<Money, Self::Error> {
+        Ok(Money(self.try_into()?))
     }
 }
 
