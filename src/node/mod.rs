@@ -340,10 +340,10 @@ async fn node_service<B: Blockchain>(
                     .await?,
                 )?);
             }
-            (Method::GET, "/bincode/mempool/zero") => {
+            (Method::GET, "/bincode/mempool/drain") => {
                 if is_local {
                     *response.body_mut() = Body::from(bincode::serialize(
-                        &api::get_zero_mempool(
+                        &api::drain_zero_mempool(
                             Arc::clone(&context),
                             bincode::deserialize(&body_bytes)?,
                         )

@@ -268,10 +268,10 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn get_zero_mempool(&self) -> Result<GetZeroMempoolResponse, NodeError> {
+    pub async fn drain_zero_mempool(&self) -> Result<GetZeroMempoolResponse, NodeError> {
         self.sender
             .bincode_get::<GetZeroMempoolRequest, GetZeroMempoolResponse>(
-                format!("{}/bincode/mempool/zero", self.peer),
+                format!("{}/bincode/mempool/drain", self.peer),
                 GetZeroMempoolRequest {},
                 Limit::default(),
             )
