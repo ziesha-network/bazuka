@@ -712,7 +712,9 @@ impl<K: KvStore> KvStoreChain<K> {
                     state_size_delta += state_change.state.size() as isize
                         - state_change.prev_state.size() as isize;
                     state_updates.insert(contract_id, state_change.clone());
-                    outdated_contracts.push(contract_id);
+                    if !outdated_contracts.contains(&contract_id) {
+                        outdated_contracts.push(contract_id);
+                    }
                 }
             }
 
