@@ -410,11 +410,11 @@ impl<K: KvStore> KvStoreChain<K> {
                     let contract = chain.get_contract(*contract_id)?;
                     let mut executor_fee = Money(0);
 
-                    for update in updates {
-                        let prev_account = chain.get_contract_account(*contract_id)?;
-                        let mut new_account = prev_account.clone();
-                        new_account.height += 1;
+                    let prev_account = chain.get_contract_account(*contract_id)?;
+                    let mut new_account = prev_account.clone();
+                    new_account.height += 1;
 
+                    for update in updates {
                         let (circuit, aux_data, next_state, proof) = match update {
                             ContractUpdate::Payment {
                                 circuit_id,
@@ -509,7 +509,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
                         if !zk::check_proof(
                             circuit,
-                            &prev_account.compressed_state,
+                            &new_account.compressed_state,
                             &aux_data,
                             next_state,
                             proof,
@@ -519,24 +519,24 @@ impl<K: KvStore> KvStoreChain<K> {
 
                         new_account.compressed_state = *next_state;
                         acc_src.balance += executor_fee; // Pay executor fee
-
-                        chain.database.update(&[WriteOp::Put(
-                            keys::contract_account(contract_id),
-                            new_account.clone().into(),
-                        )])?;
-                        chain.database.update(&[WriteOp::Put(
-                            keys::compressed_state_at(contract_id, new_account.height),
-                            (*next_state).into(),
-                        )])?;
-                        side_effect = TxSideEffect::StateChange {
-                            contract_id: *contract_id,
-                            state_change: ZkCompressedStateChange {
-                                prev_height: prev_account.height,
-                                prev_state: prev_account.compressed_state,
-                                state: *next_state,
-                            },
-                        };
                     }
+
+                    chain.database.update(&[WriteOp::Put(
+                        keys::contract_account(contract_id),
+                        new_account.clone().into(),
+                    )])?;
+                    chain.database.update(&[WriteOp::Put(
+                        keys::compressed_state_at(contract_id, new_account.height),
+                        new_account.compressed_state.into(),
+                    )])?;
+                    side_effect = TxSideEffect::StateChange {
+                        contract_id: *contract_id,
+                        state_change: ZkCompressedStateChange {
+                            prev_height: prev_account.height,
+                            prev_state: prev_account.compressed_state,
+                            state: new_account.compressed_state,
+                        },
+                    };
                 }
             }
 
