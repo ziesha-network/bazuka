@@ -298,6 +298,7 @@ async fn deposit_withdraw(
                 withdraw,
             );
             println!("{:#?}", client.transact_contract_payment(pay).await?);
+            println!("{:#?}", client.get_zero_mempool().await?);
             Ok::<(), NodeError>(())
         },
         req_loop

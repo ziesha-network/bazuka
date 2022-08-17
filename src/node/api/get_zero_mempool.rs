@@ -4,7 +4,7 @@ use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn drain_zero_mempool<B: Blockchain>(
+pub async fn get_zero_mempool<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     _req: GetZeroMempoolRequest,
 ) -> Result<GetZeroMempoolResponse, NodeError> {
@@ -14,11 +14,11 @@ pub async fn drain_zero_mempool<B: Blockchain>(
     } else {
         context.refresh()?;
         Ok(GetZeroMempoolResponse {
-            updates: context.zero_mempool.drain().map(|(tx, _)| tx).collect(),
+            updates: context.zero_mempool.clone().into_keys().collect(),
             payments: context
                 .contract_payment_mempool
-                .drain()
-                .map(|(tx, _)| tx)
+                .clone()
+                .into_keys()
                 .collect(),
         })
     }
