@@ -495,7 +495,13 @@ impl<K: KvStore> KvStoreChain<K> {
                                     .functions
                                     .get(*function_id as usize)
                                     .ok_or(BlockchainError::ContractFunctionNotFound)?;
-                                let aux_data = zk::ZkCompressedState::default();
+                                let mut state_builder =
+                                    zk::ZkStateBuilder::<ZkHasher>::new(zk::ZkStateModel::Scalar);
+                                state_builder.batch_set(&zk::ZkDeltaPairs(
+                                    [(zk::ZkDataLocator(vec![]), Some(zk::ZkScalar::from(*fee)))]
+                                        .into(),
+                                ))?;
+                                let aux_data = state_builder.compress()?;
                                 (circuit, aux_data, next_state, proof)
                             }
                         };
