@@ -47,7 +47,7 @@ pub async fn sync_state<B: Blockchain>(
                     },
                     Limit::default().time(30 * MINUTE),
                 )
-                .await?
+                .await? // TODO: Do not throw error, punish if needed
                 .patch;
             match context.write().await.blockchain.update_states(&patch) {
                 Ok(_) => {}
