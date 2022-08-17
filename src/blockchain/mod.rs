@@ -491,6 +491,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                 fee,
                             } => {
                                 executor_fee += *fee;
+                                new_account.balance -= *fee;
                                 let circuit = contract
                                     .functions
                                     .get(*function_id as usize)
