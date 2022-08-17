@@ -49,9 +49,11 @@ pub async fn sync_state<B: Blockchain>(
                 )
                 .await?
                 .patch;
-            let mut ctx = context.write().await;
-            if ctx.blockchain.update_states(&patch).is_ok() {
-                break;
+            match context.write().await.blockchain.update_states(&patch) {
+                Ok(_) => {}
+                Err(e) => {
+                    log::warn!("Wrong state-patch given! Error: {}", e);
+                }
             }
         }
     }
