@@ -81,6 +81,24 @@ impl<B: Blockchain> NodeContext<B> {
         self.blockchain.cleanup_mempool(&mut self.mempool)?;
         self.blockchain
             .cleanup_zero_mempool(&mut self.zero_mempool)?;
+
+        if let Some(max) = self.opts.tx_max_time_alive {
+            for (tx, stats) in self.mempool.clone().into_iter() {
+                if ts - stats.first_seen > max {
+                    self.mempool.remove(&tx);
+                }
+            }
+            for (tx, stats) in self.contract_payment_mempool.clone().into_iter() {
+                if ts - stats.first_seen > max {
+                    self.contract_payment_mempool.remove(&tx);
+                }
+            }
+            for (tx, stats) in self.zero_mempool.clone().into_iter() {
+                if ts - stats.first_seen > max {
+                    self.zero_mempool.remove(&tx);
+                }
+            }
+        }
         Ok(())
     }
 

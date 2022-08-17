@@ -30,6 +30,7 @@ use tokio::try_join;
 
 #[derive(Debug, Clone)]
 pub struct NodeOptions {
+    pub tx_max_time_alive: Option<u32>,
     pub heartbeat_interval: Duration,
     pub num_peers: usize,
     pub max_blocks_fetch: u64,

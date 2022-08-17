@@ -4,6 +4,7 @@ use std::time::Duration;
 
 pub fn get_mainnet_options() -> NodeOptions {
     NodeOptions {
+        tx_max_time_alive: Some(60),
         heartbeat_interval: Duration::from_secs(1),
         num_peers: 8,
         max_blocks_fetch: 16,
@@ -34,6 +35,7 @@ pub fn get_debug_options() -> NodeOptions {
 
 pub fn get_simulator_options() -> NodeOptions {
     NodeOptions {
+        tx_max_time_alive: None,
         heartbeat_interval: Duration::from_millis(300),
         num_peers: 8,
         max_blocks_fetch: 16,
