@@ -875,7 +875,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(ret)
     }
     fn get_outdated_contracts(&self) -> Result<Vec<ContractId>, BlockchainError> {
-        Ok(match self.database.get("outdated".into())? {
+        Ok(match self.database.get(keys::outdated())? {
             Some(b) => {
                 let val: Vec<ContractId> = b.try_into()?;
                 if val.is_empty() {
@@ -1025,7 +1025,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
     fn get_height(&self) -> Result<u64, BlockchainError> {
-        Ok(match self.database.get("height".into())? {
+        Ok(match self.database.get(keys::height())? {
             Some(b) => b.try_into()?,
             None => 0,
         })
@@ -1212,9 +1212,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             }
 
             chain.database.update(&[if outdated_contracts.is_empty() {
-                WriteOp::Remove("outdated".into())
+                WriteOp::Remove(keys::outdated())
             } else {
-                WriteOp::Put("outdated".into(), outdated_contracts.clone().into())
+                WriteOp::Put(keys::outdated(), outdated_contracts.clone().into())
             }])?;
 
             Ok(())

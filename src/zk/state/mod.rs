@@ -170,10 +170,11 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                         proof_part[i] = if layer == log4_size - 1 {
                             Self::get_data(db, id, &tree_loc.index(leaf_index as u32))?
                         } else {
-                            match db.get(
-                                format!("{}_{}_aux_{}", id, tree_loc, aux_offset + leaf_index)
-                                    .into(),
-                            )? {
+                            match db.get(keys::local_tree_aux(
+                                &id,
+                                &tree_loc,
+                                aux_offset + leaf_index,
+                            ))? {
                                 Some(b) => b.try_into()?,
                                 None => default_value,
                             }
@@ -217,7 +218,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     ) -> Result<Option<ZkCompressedState>, StateManagerError> {
         let mut root = Self::root(db, id)?;
         let height = Self::height_of(db, id)?;
-        let rollback_key: StringKey = format!("{}_rollback_{}", id, height - 1).into();
+        let rollback_key = keys::local_rollback_to_height(&id, height);
         let rollback_patch = if let Some(patch) = Self::rollback_of(db, id, 1)? {
             patch
         } else {
@@ -260,11 +261,12 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         away: u64,
     ) -> Result<Option<ZkDeltaPairs>, StateManagerError> {
         let height = Self::height_of(db, id)?;
-        let rollback_key: StringKey = format!("{}_rollback_{}", id, height - away).into();
-        Ok(match db.get(rollback_key)? {
-            Some(b) => Some(b.try_into()?),
-            None => None,
-        })
+        Ok(
+            match db.get(keys::local_rollback_to_height(&id, height - away))? {
+                Some(b) => Some(b.try_into()?),
+                None => None,
+            },
+        )
     }
 
     pub fn get_full_state<K: KvStore>(
@@ -273,7 +275,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     ) -> Result<ZkState, StateManagerError> {
         const MAX_ROLLBACKS: u64 = 5;
         let mut data = ZkDataPairs(Default::default());
-        for (k, v) in db.pairs(format!("{}_s_", id).into())? {
+        for (k, v) in db.pairs(keys::local_scalar_value_prefix(&id).into())? {
             let loc = ZkDataLocator::from_str(k.0.split('_').nth(2).unwrap())?;
             data.0.insert(loc, v.try_into()?);
         }
@@ -282,7 +284,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         for i in 0..MAX_ROLLBACKS {
             if height > i {
                 rollbacks.push(
-                    match db.get(format!("{}_rollback_{}", id, height - i - 1).into())? {
+                    match db.get(keys::local_rollback_to_height(&id, height - i - 1))? {
                         Some(b) => b.try_into()?,
                         None => {
                             break;
@@ -303,7 +305,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         state: &ZkState,
     ) -> Result<(ZkCompressedState, Vec<ZkCompressedState>), StateManagerError> {
         let contract_type = Self::type_of(db, id)?;
-        for (k, _) in db.pairs(format!("{}_", id).into())? {
+        for (k, _) in db.pairs(keys::local_prefix(&id).into())? {
             db.update(&[WriteOp::Remove(k)])?;
         }
 
@@ -339,7 +341,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                 )?;
             }
             db.update(&[WriteOp::Put(
-                format!("{}_rollback_{}", id, height - 1 - i as u64).into(),
+                keys::local_rollback_to_height(&id, height - 1 - i as u64),
                 rollback.into(),
             )])?;
             rollback_results.push(root);
@@ -372,14 +374,15 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         let mut ops = fork.to_ops();
         ops.push(WriteOp::Put(keys::local_root(&id), root.into()));
         ops.push(WriteOp::Put(
-            format!("{}_rollback_{}", id, height).into(),
+            keys::local_rollback_to_height(&id, height),
             (&rollback_patch).into(),
         ));
         ops.push(WriteOp::Put(keys::local_height(&id), (height + 1).into()));
         if height >= MAX_ROLLBACKS {
-            ops.push(WriteOp::Remove(
-                format!("{}_rollback_{}", id, height - MAX_ROLLBACKS).into(),
-            ));
+            ops.push(WriteOp::Remove(keys::local_rollback_to_height(
+                &id,
+                height - MAX_ROLLBACKS,
+            )));
         }
         db.update(&ops)?;
         Ok(())
@@ -405,12 +408,12 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             if !prev_is_zero {
                 *size_diff -= 1;
             }
-            WriteOp::Remove(format!("{}_s_{}", id, locator).into())
+            WriteOp::Remove(keys::local_value(&id, &locator, true))
         } else {
             if prev_is_zero {
                 *size_diff += 1;
             }
-            WriteOp::Put(format!("{}_s_{}", id, locator).into(), value.into())
+            WriteOp::Put(keys::local_value(&id, &locator, true), value.into())
         });
 
         while let Some(curr_loc) = locator.0.pop() {
@@ -435,10 +438,11 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                                 full_loc.0.push(leaf_index as u32);
                                 Self::get_data(db, id, &full_loc)?
                             } else {
-                                match db.get(
-                                    format!("{}_{}_aux_{}", id, locator, aux_offset + leaf_index)
-                                        .into(),
-                                )? {
+                                match db.get(keys::local_tree_aux(
+                                    &id,
+                                    &locator,
+                                    aux_offset + leaf_index,
+                                ))? {
                                     Some(b) => b.try_into()?,
                                     None => default_value,
                                 }
@@ -453,11 +457,11 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                         if layer > 0 {
                             let parent_aux_offset = ((1 << (2 * layer)) - 1) / 3;
                             let parent_index = parent_aux_offset + curr_ind;
-                            let aux_key = format!("{}_{}_aux_{}", id, locator, parent_index);
+                            let aux_key = keys::local_tree_aux(&id, &locator, parent_index);
                             ops.push(if value == default_value {
-                                WriteOp::Remove(aux_key.into())
+                                WriteOp::Remove(aux_key)
                             } else {
-                                WriteOp::Put(aux_key.into(), value.into())
+                                WriteOp::Put(aux_key, value.into())
                             });
                         }
                     }
@@ -481,9 +485,9 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             }
 
             ops.push(if value == curr_type.compress_default::<H>() {
-                WriteOp::Remove(format!("{}_{}", id, locator).into())
+                WriteOp::Remove(keys::local_value(&id, &locator, false))
             } else {
-                WriteOp::Put(format!("{}_{}", id, locator).into(), value.into())
+                WriteOp::Put(keys::local_value(&id, &locator, false), value.into())
             });
         }
 
@@ -498,19 +502,11 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     ) -> Result<ZkScalar, StateManagerError> {
         let sub_type = Self::type_of(db, cid)?.locate(locator)?;
         Ok(
-            match db.get(
-                format!(
-                    "{}_{}{}",
-                    cid,
-                    if sub_type == ZkStateModel::Scalar {
-                        "s_"
-                    } else {
-                        ""
-                    },
-                    locator
-                )
-                .into(),
-            )? {
+            match db.get(keys::local_value(
+                &cid,
+                &locator,
+                sub_type == ZkStateModel::Scalar,
+            ))? {
                 Some(b) => b.try_into()?,
                 None => sub_type.compress_default::<H>(),
             },

@@ -1,5 +1,6 @@
 use super::*;
 use crate::core::{Address, ContractId};
+use crate::zk::ZkDataLocator;
 
 pub fn height() -> StringKey {
     "height".into()
@@ -59,4 +60,41 @@ pub fn local_height(contract_id: &ContractId) -> StringKey {
 
 pub fn local_root(contract_id: &ContractId) -> StringKey {
     format!("{}_compressed", local_prefix(contract_id)).into()
+}
+
+pub fn local_tree_aux(
+    contract_id: &ContractId,
+    tree_loc: &ZkDataLocator,
+    aux_id: u32,
+) -> StringKey {
+    format!("{}_{}_aux_{}", local_prefix(contract_id), tree_loc, aux_id).into()
+}
+
+pub fn local_rollback_to_height(contract_id: &ContractId, height: u64) -> StringKey {
+    format!("{}_rollback_{}", local_prefix(contract_id), height).into()
+}
+
+pub fn local_scalar_value_prefix(contract_id: &ContractId) -> String {
+    format!("{}_s", local_prefix(contract_id),).into()
+}
+
+pub fn local_non_scalar_value_prefix(contract_id: &ContractId) -> String {
+    format!("{}", local_prefix(contract_id),).into()
+}
+
+pub fn local_value(
+    contract_id: &ContractId,
+    locator: &ZkDataLocator,
+    is_scalar: bool,
+) -> StringKey {
+    format!(
+        "{}_{}",
+        if is_scalar {
+            local_scalar_value_prefix(contract_id)
+        } else {
+            local_non_scalar_value_prefix(contract_id)
+        },
+        locator
+    )
+    .into()
 }
