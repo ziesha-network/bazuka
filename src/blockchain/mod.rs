@@ -232,24 +232,13 @@ impl<K: KvStore> KvStoreChain<K> {
     fn apply_contract_payment(
         &mut self,
         contract_payment: &ContractPayment,
-        in_memory_account: Option<&mut ContractAccount>,
     ) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
             if !contract_payment.verify_signature() {
                 return Err(BlockchainError::InvalidContractPaymentSignature);
             }
 
-            // Actual contract-account that exists on DB
-            let mut db_account = chain.get_contract_account(contract_payment.contract_id)?;
-
-            // If a mutable contract-account is supplied already, we will reflect our changes on
-            // that instead of the db
-            let (contract_account, should_update_contract) =
-                if let Some(in_memory_account) = in_memory_account {
-                    (in_memory_account, false)
-                } else {
-                    (&mut db_account, true)
-                };
+            let mut contract_account = chain.get_contract_account(contract_payment.contract_id)?;
 
             let mut addr_account =
                 chain.get_account(Address::PublicKey(contract_payment.address.clone()))?;
@@ -273,12 +262,10 @@ impl<K: KvStore> KvStoreChain<K> {
                     addr_account.balance += contract_payment.amount;
                 }
             }
-            if should_update_contract {
-                chain.database.update(&[WriteOp::Put(
-                    keys::contract_account(&contract_payment.contract_id),
-                    contract_account.clone().into(),
-                )])?;
-            }
+            chain.database.update(&[WriteOp::Put(
+                keys::contract_account(&contract_payment.contract_id),
+                contract_account.clone().into(),
+            )])?;
             chain.database.update(&[WriteOp::Put(
                 keys::account(&Address::PublicKey(contract_payment.address.clone())),
                 addr_account.into(),
@@ -411,8 +398,14 @@ impl<K: KvStore> KvStoreChain<K> {
                     let mut executor_fee = Money(0);
 
                     let prev_account = chain.get_contract_account(*contract_id)?;
-                    let mut new_account = prev_account.clone();
-                    new_account.height += 1;
+
+                    // Increase height
+                    let mut cont_account = chain.get_contract_account(*contract_id)?;
+                    cont_account.height += 1;
+                    chain.database.update(&[WriteOp::Put(
+                        keys::contract_account(contract_id),
+                        cont_account.into(),
+                    )])?;
 
                     for update in updates {
                         let (circuit, aux_data, next_state, proof) = match update {
@@ -476,10 +469,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                         .into(),
                                     ))?;
 
-                                    chain.apply_contract_payment(
-                                        contract_payment,
-                                        Some(&mut new_account),
-                                    )?;
+                                    chain.apply_contract_payment(contract_payment)?;
                                 }
                                 let aux_data = state_builder.compress()?;
                                 (circuit, aux_data, next_state, proof)
@@ -491,7 +481,14 @@ impl<K: KvStore> KvStoreChain<K> {
                                 fee,
                             } => {
                                 executor_fee += *fee;
-                                new_account.balance -= *fee;
+
+                                let mut cont_account = chain.get_contract_account(*contract_id)?;
+                                cont_account.balance -= *fee;
+                                chain.database.update(&[WriteOp::Put(
+                                    keys::contract_account(contract_id),
+                                    cont_account.into(),
+                                )])?;
+
                                 let circuit = contract
                                     .functions
                                     .get(*function_id as usize)
@@ -509,7 +506,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
                         if !zk::check_proof(
                             circuit,
-                            &new_account.compressed_state,
+                            &prev_account.compressed_state,
                             &aux_data,
                             next_state,
                             proof,
@@ -517,24 +514,28 @@ impl<K: KvStore> KvStoreChain<K> {
                             return Err(BlockchainError::IncorrectZkProof);
                         }
 
-                        new_account.compressed_state = *next_state;
+                        let mut cont_account = chain.get_contract_account(*contract_id)?;
+                        cont_account.compressed_state = *next_state;
+                        chain.database.update(&[WriteOp::Put(
+                            keys::contract_account(contract_id),
+                            cont_account.into(),
+                        )])?;
+
                         acc_src.balance += executor_fee; // Pay executor fee
                     }
 
+                    let cont_account = chain.get_contract_account(*contract_id)?;
+
                     chain.database.update(&[WriteOp::Put(
-                        keys::contract_account(contract_id),
-                        new_account.clone().into(),
-                    )])?;
-                    chain.database.update(&[WriteOp::Put(
-                        keys::compressed_state_at(contract_id, new_account.height),
-                        new_account.compressed_state.into(),
+                        keys::compressed_state_at(contract_id, cont_account.height),
+                        cont_account.compressed_state.into(),
                     )])?;
                     side_effect = TxSideEffect::StateChange {
                         contract_id: *contract_id,
                         state_change: ZkCompressedStateChange {
                             prev_height: prev_account.height,
                             prev_state: prev_account.compressed_state,
-                            state: new_account.compressed_state,
+                            state: cont_account.compressed_state,
                         },
                     };
                 }
@@ -1248,7 +1249,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         sorted.sort_by_key(|tx| tx.nonce);
         self.isolated(|chain| {
             for tx in sorted.into_iter() {
-                if chain.apply_contract_payment(&tx, None).is_err() {
+                if chain.apply_contract_payment(&tx).is_err() {
                     mempool.remove(&tx);
                 }
             }
@@ -1284,7 +1285,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn validate_contract_payment(&self, tx: &ContractPayment) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            chain.apply_contract_payment(tx, None)?;
+            chain.apply_contract_payment(tx)?;
             Ok(())
         })?;
         Ok(())
