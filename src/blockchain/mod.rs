@@ -444,25 +444,23 @@ impl<K: KvStore> KvStoreChain<K> {
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u32, 1]),
+                                                Some(zk::ZkScalar::from(contract_payment.amount)),
+                                            ),
+                                            (
+                                                zk::ZkDataLocator(vec![i as u32, 2]),
                                                 Some(zk::ZkScalar::from(
                                                     match contract_payment.direction {
-                                                        PaymentDirection::Deposit(_) => {
-                                                            contract_payment.amount.into()
-                                                        }
-                                                        PaymentDirection::Withdraw(_) => {
-                                                            let as_u64: u64 =
-                                                                contract_payment.amount.into();
-                                                            (-(as_u64 as i64)) as u64
-                                                        }
+                                                        PaymentDirection::Deposit(_) => 0,
+                                                        PaymentDirection::Withdraw(_) => 1,
                                                     },
                                                 )),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 2]),
+                                                zk::ZkDataLocator(vec![i as u32, 3]),
                                                 Some(zk::ZkScalar::from(pk.0)),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 3]),
+                                                zk::ZkDataLocator(vec![i as u32, 4]),
                                                 Some(zk::ZkScalar::from(pk.1)),
                                             ),
                                         ]

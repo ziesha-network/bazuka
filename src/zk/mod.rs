@@ -27,6 +27,7 @@ lazy_static! {
         field_types: vec![
             ZkStateModel::Scalar, // index
             ZkStateModel::Scalar, // amount
+            ZkStateModel::Scalar, // direction
             ZkStateModel::Scalar, // pub-x
             ZkStateModel::Scalar, // pub-y
         ],
