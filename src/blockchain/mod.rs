@@ -502,17 +502,16 @@ impl<K: KvStore> KvStoreChain<K> {
                             }
                         };
 
+                        let mut cont_account = chain.get_contract_account(*contract_id)?;
                         if !zk::check_proof(
                             circuit,
-                            &prev_account.compressed_state,
+                            &cont_account.compressed_state,
                             &aux_data,
                             next_state,
                             proof,
                         ) {
                             return Err(BlockchainError::IncorrectZkProof);
                         }
-
-                        let mut cont_account = chain.get_contract_account(*contract_id)?;
                         cont_account.compressed_state = *next_state;
                         chain.database.update(&[WriteOp::Put(
                             keys::contract_account(contract_id),
