@@ -7,6 +7,7 @@ use std::str::FromStr;
 #[derive(Clone)]
 struct SumHasher;
 impl ZkHasher for SumHasher {
+    const MAX_ARITY: usize = 16;
     fn hash(vals: &[ZkScalar]) -> ZkScalar {
         let mut sum = ZkScalar::from(0);
         for v in vals.iter() {

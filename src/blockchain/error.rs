@@ -80,4 +80,6 @@ pub enum BlockchainError {
     SelfPaymentNotAllowed,
     #[error("executor cannot execute his own payments")]
     CannotExecuteOwnPayments,
+    #[error("contract contains invalid state-model")]
+    InvalidStateModel,
 }

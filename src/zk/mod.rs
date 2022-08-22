@@ -46,6 +46,7 @@ pub enum ZkError {
 pub struct ZkStateProof(Vec<ZkScalar>);
 
 pub trait ZkHasher: Clone {
+    const MAX_ARITY: usize;
     fn hash(vals: &[ZkScalar]) -> ZkScalar;
 }
 
@@ -166,6 +167,19 @@ pub enum ZkLocatorError {
 }
 
 impl ZkStateModel {
+    pub fn is_valid<H: ZkHasher>(&self) -> bool {
+        match self {
+            ZkStateModel::Struct { field_types } => {
+                if field_types.len() > H::MAX_ARITY {
+                    false
+                } else {
+                    field_types.iter().all(|ft| ft.is_valid::<H>())
+                }
+            }
+            ZkStateModel::List { item_type, .. } => item_type.is_valid::<H>(),
+            ZkStateModel::Scalar => true,
+        }
+    }
     pub fn locate(&self, locator: &ZkDataLocator) -> Result<ZkStateModel, ZkLocatorError> {
         let mut curr = self.clone();
         for l in locator.0.iter() {
@@ -295,6 +309,7 @@ impl ZkDataPairs {
 #[derive(Debug, Clone, PartialEq, Eq, std::hash::Hash)]
 pub struct PoseidonHasher;
 impl ZkHasher for PoseidonHasher {
+    const MAX_ARITY: usize = poseidon::MAX_ARITY;
     fn hash(vals: &[ZkScalar]) -> ZkScalar {
         poseidon::poseidon(vals)
     }

@@ -361,6 +361,9 @@ impl<K: KvStore> KvStoreChain<K> {
                         .update(&[WriteOp::Put(keys::account(dst), acc_dst.into())])?;
                 }
                 TransactionData::CreateContract { contract } => {
+                    if !contract.state_model.is_valid::<ZkHasher>() {
+                        return Err(BlockchainError::InvalidStateModel);
+                    }
                     let contract_id = ContractId::new(tx);
                     chain.database.update(&[WriteOp::Put(
                         keys::contract(&contract_id),

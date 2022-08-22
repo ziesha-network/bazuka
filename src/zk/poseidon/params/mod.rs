@@ -22,6 +22,8 @@ const PARAM_FILES: [&str; 16] = [
     include_str!("poseidon_params_n255_t17_alpha5_M128.txt"),
 ];
 
+pub const MAX_ARITY: usize = PARAM_FILES.len();
+
 fn read_constants(line: &str) -> Vec<ZkScalar> {
     let mut constants_str = line.to_string().replace("0x", "");
     constants_str.retain(|c| c != '\'' && c != '[' && c != ']' && c != ' ');
