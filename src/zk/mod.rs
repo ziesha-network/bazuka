@@ -13,7 +13,7 @@ use thiserror::Error;
 mod state;
 pub use state::*;
 pub mod groth16;
-pub mod poseidon4;
+pub mod poseidon;
 
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 pub struct MpnAccount {
@@ -296,20 +296,7 @@ impl ZkDataPairs {
 pub struct PoseidonHasher;
 impl ZkHasher for PoseidonHasher {
     fn hash(vals: &[ZkScalar]) -> ZkScalar {
-        let mut buf = [ZkScalar::default(); 4];
-        buf[0] = vals[0];
-
-        for chunk in vals[1..].chunks(3) {
-            for (i, scalar) in chunk.iter().enumerate() {
-                buf[i + 1] = *scalar;
-            }
-            buf[0] = poseidon4::poseidon4(buf[0], buf[1], buf[2], buf[3]);
-            for item in buf.iter_mut().skip(1) {
-                *item = ZkScalar::default();
-            }
-        }
-
-        buf[0]
+        poseidon::poseidon(vals)
     }
 }
 
