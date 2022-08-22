@@ -1,73 +1,49 @@
-mod constants;
+mod params;
+pub use params::*;
 
-use super::{ZkScalar, ZkScalarRepr};
-pub use constants::*;
-use ff::{Field, PrimeField};
-use hex;
+use super::ZkScalar;
+use ff::Field;
 use std::ops::MulAssign;
 
-lazy_static! {
-    pub static ref ROUND_CONSTANTS: [ZkScalar; 340] = {
-        ROUND_CONSTANTS_HEX.map(|c| {
-            let mut m = [0u8; 32];
-            hex::decode_to_slice(c, &mut m).unwrap();
-            m.reverse();
-            ZkScalar::from_repr(ZkScalarRepr(m)).unwrap()
-        })
-    };
-    pub static ref MDS_MATRIX: [[ZkScalar; WIDTH]; WIDTH] = {
-        MDS_MATRIX_HEX.map(|cr| {
-            cr.map(|c| {
-                let mut m = [0u8; 32];
-                hex::decode_to_slice(c, &mut m).unwrap();
-                m.reverse();
-                ZkScalar::from_repr(ZkScalarRepr(m)).unwrap()
-            })
-        })
-    };
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Poseidon4State {
+#[derive(Debug, Clone, PartialEq)]
+struct PoseidonState {
     constants_offset: usize,
     present_elements: u64,
-    elements: [ZkScalar; WIDTH],
+    elements: Vec<ZkScalar>,
 }
 
-impl Default for Poseidon4State {
-    fn default() -> Self {
-        Poseidon4State {
-            present_elements: 0u64,
-            constants_offset: 0,
-            elements: [ZkScalar::from(0u64); WIDTH],
-        }
+impl PoseidonState {
+    fn arity(&self) -> usize {
+        self.elements.len() - 1
     }
-}
 
-impl Poseidon4State {
-    pub fn new(a: ZkScalar, b: ZkScalar, c: ZkScalar, d: ZkScalar) -> Self {
+    pub fn new(elems: &[ZkScalar]) -> Self {
+        let mut elements = elems.to_vec();
+        elements.insert(0, ZkScalar::zero());
         Self {
             present_elements: 0u64,
             constants_offset: 0,
-            elements: [ZkScalar::from(0u64), a, b, c, d],
+            elements,
         }
     }
 
     pub fn hash(&mut self) -> ZkScalar {
+        let params = params_for_arity(self.arity());
+
         self.elements[0] = ZkScalar::from(self.present_elements);
 
         // 20 consts (4 * 5)
-        for _ in 0..ROUNDSF / 2 {
+        for _ in 0..params.full_rounds / 2 {
             self.full_round();
         }
 
         // 300 consts (60 * 5)
-        for _ in 0..ROUNDSP {
+        for _ in 0..params.partial_rounds {
             self.partial_round();
         }
 
         // 20 consts (4 * 50)
-        for _ in 0..ROUNDSF / 2 {
+        for _ in 0..params.full_rounds / 2 {
             self.full_round();
         }
 
@@ -97,10 +73,11 @@ impl Poseidon4State {
     }
 
     fn add_round_constants(&mut self) {
+        let params = params_for_arity(self.arity());
         let mut constants_offset = self.constants_offset;
 
         self.elements.iter_mut().for_each(|l| {
-            *l += ROUND_CONSTANTS[constants_offset];
+            *l += params.round_constants[constants_offset];
             constants_offset += 1;
         });
 
@@ -108,11 +85,12 @@ impl Poseidon4State {
     }
 
     fn product_mds(&mut self) {
-        let mut result = [ZkScalar::from(0u64); WIDTH];
+        let params = params_for_arity(self.arity());
+        let mut result = vec![ZkScalar::from(0u64); self.elements.len()];
 
-        for j in 0..WIDTH {
-            for k in 0..WIDTH {
-                result[j] += MDS_MATRIX[j][k] * self.elements[k];
+        for j in 0..self.elements.len() {
+            for k in 0..self.elements.len() {
+                result[j] += params.mds_constants[j][k] * self.elements[k];
             }
         }
 
@@ -127,8 +105,8 @@ fn quintic_s_box(l: &mut ZkScalar) {
     l.mul_assign(&tmp); // l^5
 }
 
-pub fn poseidon4(a: ZkScalar, b: ZkScalar, c: ZkScalar, d: ZkScalar) -> ZkScalar {
-    let mut h = Poseidon4State::new(a, b, c, d);
+pub fn poseidon(vals: &[ZkScalar]) -> ZkScalar {
+    let mut h = PoseidonState::new(vals);
     h.hash()
 }
 
@@ -139,12 +117,12 @@ mod tests {
 
     #[test]
     fn hash_det() {
-        let mut h = Poseidon4State::new(
+        let mut h = PoseidonState::new(&[
             ZkScalar::one(),
             ZkScalar::one(),
             ZkScalar::one(),
             ZkScalar::one(),
-        );
+        ]);
 
         let mut h2 = h.clone();
         let result = h.hash();
