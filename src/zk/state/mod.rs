@@ -3,7 +3,7 @@ use thiserror::Error;
 use super::*;
 use crate::core::ContractId;
 use crate::crypto::jubjub;
-use crate::db::{keys, KvStore, KvStoreError, RamKvStore, StringKey, WriteOp};
+use crate::db::{keys, KvStore, KvStoreError, RamKvStore, WriteOp};
 use ff::Field;
 use std::collections::HashMap;
 use std::str::FromStr;
