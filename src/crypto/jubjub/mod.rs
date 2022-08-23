@@ -128,6 +128,10 @@ impl<H: ZkHasher> ZkSignatureScheme for JubJub<H> {
     fn verify(pk: &PublicKey, message: ZkScalar, sig: &Signature) -> bool {
         let pk = pk.0.decompress();
 
+        if !pk.is_on_curve() || !sig.r.is_on_curve() {
+            return false;
+        }
+
         // h=H(R,A,M)
         let h = H::hash(&[sig.r.0, sig.r.1, pk.0, pk.1, message]);
 

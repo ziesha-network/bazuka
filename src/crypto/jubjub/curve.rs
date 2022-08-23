@@ -36,6 +36,13 @@ impl AddAssign<&PointAffine> for PointAffine {
 }
 
 impl PointAffine {
+    pub fn is_on_curve(&self) -> bool {
+        self.1 * self.1 - self.0 * self.0
+            == ZkScalar::one() + *D * self.0 * self.0 * self.1 * self.1
+    }
+    pub fn is_infinity(&self) -> bool {
+        self.0.is_zero().into() && (self.1 == ZkScalar::one() || self.1 == -ZkScalar::one())
+    }
     pub fn zero() -> Self {
         Self(ZkScalar::zero(), ZkScalar::one())
     }
