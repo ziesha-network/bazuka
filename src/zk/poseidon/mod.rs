@@ -116,7 +116,7 @@ mod tests {
     use ff::Field;
 
     #[test]
-    fn hash_det() {
+    fn test_hash_deterministic() {
         let mut h = PoseidonState::new(&[
             ZkScalar::one(),
             ZkScalar::one(),
@@ -128,5 +128,17 @@ mod tests {
         let result = h.hash();
 
         assert_eq!(result, h2.hash());
+    }
+
+    #[test]
+    fn test_hash_reflects_changes() {
+        for arity in 1..MAX_ARITY + 1 {
+            let mut vals = vec![ZkScalar::zero(); arity];
+            let original = poseidon(&vals);
+            for i in 0..vals.len() {
+                vals[i] = ZkScalar::one();
+                assert!(poseidon(&vals) != original);
+            }
+        }
     }
 }
