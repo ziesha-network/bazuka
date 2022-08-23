@@ -110,6 +110,12 @@ impl ZkScalar {
     }
 }
 
+impl From<u32> for ZkScalar {
+    fn from(u: u32) -> Self {
+        Self::from(u as u64)
+    }
+}
+
 impl From<Money> for ZkScalar {
     fn from(m: Money) -> Self {
         let as_u64: u64 = m.into();
