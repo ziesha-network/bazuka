@@ -24,7 +24,7 @@ impl PoseidonState {
     }
 
     pub fn hash(&mut self) -> ZkScalar {
-        let params = params_for_width(self.elements.len()).unwrap();
+        let params = PoseidonParams::for_width(self.elements.len()).unwrap();
 
         self.elements[0] = ZkScalar::from(self.present_elements);
 

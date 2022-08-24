@@ -66,7 +66,7 @@ pub struct PoseidonParams {
 }
 
 lazy_static! {
-    pub static ref PARAMS: [PoseidonParams; 16] = PARAM_FILES
+    static ref PARAMS: [PoseidonParams; 16] = PARAM_FILES
         .iter()
         .map(|src| parse_params(src))
         .collect::<Vec<_>>()
@@ -74,6 +74,8 @@ lazy_static! {
         .unwrap();
 }
 
-pub fn params_for_width(width: usize) -> Option<&'static PoseidonParams> {
-    PARAMS.get(width - 2)
+impl PoseidonParams {
+    pub fn for_width(width: usize) -> Option<&'static Self> {
+        PARAMS.get(width - 2)
+    }
 }
