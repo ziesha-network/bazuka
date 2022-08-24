@@ -74,6 +74,6 @@ lazy_static! {
         .unwrap();
 }
 
-pub fn params_for_arity(arity: usize) -> &'static PoseidonParams {
-    &PARAMS[arity - 1]
+pub fn params_for_width(width: usize) -> Option<&'static PoseidonParams> {
+    PARAMS.get(width - 2)
 }
