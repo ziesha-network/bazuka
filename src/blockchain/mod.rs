@@ -579,13 +579,18 @@ impl<K: KvStore> KvStoreChain<K> {
         check: bool,
     ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
         let mut sorted = txs.keys().cloned().collect::<Vec<_>>();
-        sorted.sort_by_key(|tx| {
+        sorted.sort_unstable_by_key(|tx| {
+            let cost = tx.tx.size();
             let is_mpn = if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
                 *contract_id == *MPN_CONTRACT_ID
             } else {
                 false
             };
-            (is_mpn, tx.tx.nonce)
+            (
+                is_mpn,
+                Into::<u64>::into(tx.tx.fee) / cost as u64,
+                -(tx.tx.nonce as i32),
+            )
         });
         if !check {
             return Ok(sorted);
@@ -594,7 +599,7 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut result = Vec::new();
             let mut block_sz = 0usize;
             let mut delta_cnt = 0isize;
-            for tx in sorted.into_iter() {
+            for tx in sorted.into_iter().rev() {
                 if let Ok((ops, eff)) = chain.isolated(|chain| chain.apply_tx(&tx.tx, false)) {
                     let delta_diff = if let TxSideEffect::StateChange { state_change, .. } = eff {
                         state_change.state.size() as isize - state_change.prev_state.size() as isize
@@ -1228,10 +1233,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self,
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
     ) -> Result<(), BlockchainError> {
-        let mut sorted = mempool.keys().cloned().collect::<Vec<_>>();
-        sorted.sort_by_key(|tx| tx.tx.nonce);
         self.isolated(|chain| {
-            for tx in sorted.into_iter() {
+            for tx in mempool.clone().into_keys() {
                 if chain.apply_tx(&tx.tx, false).is_err() {
                     mempool.remove(&tx);
                 }
@@ -1245,10 +1248,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self,
         mempool: &mut HashMap<ContractPayment, TransactionStats>,
     ) -> Result<(), BlockchainError> {
-        let mut sorted = mempool.keys().cloned().collect::<Vec<_>>();
-        sorted.sort_by_key(|tx| tx.nonce);
         self.isolated(|chain| {
-            for tx in sorted.into_iter() {
+            for tx in mempool.clone().into_keys() {
                 if chain.apply_contract_payment(&tx).is_err() {
                     mempool.remove(&tx);
                 }
@@ -1262,10 +1263,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self,
         mempool: &mut HashMap<zk::ZeroTransaction, TransactionStats>,
     ) -> Result<(), BlockchainError> {
-        let mut sorted = mempool.keys().cloned().collect::<Vec<_>>();
-        sorted.sort_by_key(|tx| tx.nonce);
         self.isolated(|chain| {
-            for tx in sorted.into_iter() {
+            for tx in mempool.clone().into_keys() {
                 if chain.apply_zero_tx(&tx).is_err() {
                     mempool.remove(&tx);
                 }
