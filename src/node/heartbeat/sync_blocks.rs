@@ -45,7 +45,7 @@ pub async fn sync_blocks<B: Blockchain>(
                         },
                         Limit::default()
                             .size(opts.max_blocks_fetch * KB)
-                            .time(3 * SECOND),
+                            .time(5 * SECOND),
                     )
                     .await?;
 
@@ -95,7 +95,7 @@ pub async fn sync_blocks<B: Blockchain>(
                                 since: index,
                                 count: 1,
                             },
-                            Limit::default().size(1 * KB).time(1 * SECOND),
+                            Limit::default().size(1 * KB).time(3 * SECOND),
                         )
                         .await?;
                     let (peer_header, peer_pow_key) =
