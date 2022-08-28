@@ -34,7 +34,7 @@ want to mine Zeeka, you will need to install ![zoro](https://github.com/zeeka-ne
  * Make sure you have installed `libssl-dev` and `cmake` packages.
  * Install the Rust toolchain (https://rustup.rs/)
  * Clone the `bazuka` repo: `git clone https://github.com/zeeka-network/bazuka`.
- * Compile and install: `cd bazuka && cargo install .`
+ * Compile and install: `cd bazuka && cargo install --path .`
 
 Now if you want to join the `debug` testnet, you first have to initialize your
 node by running:
