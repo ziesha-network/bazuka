@@ -31,9 +31,8 @@ pub async fn log_info<B: Blockchain>(
     // TODO: Embed MPN in test environment
     #[cfg(not(test))]
     {
-        let mpn_account = ctx
-            .blockchain
-            .get_contract_account(crate::config::blockchain::MPN_CONTRACT_ID.clone())?;
+        let mpn_contract_id = ctx.blockchain.config().mpn_contract_id;
+        let mpn_account = ctx.blockchain.get_contract_account(mpn_contract_id)?;
         inf.push(("MPN Height", mpn_account.height.to_string()));
         inf.push(("MPN Balance", mpn_account.balance.to_string()));
         inf.push((

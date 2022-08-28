@@ -29,7 +29,7 @@ use {
 #[cfg(feature = "client")]
 use {
     bazuka::client::{BazukaClient, NodeError},
-    bazuka::core::{Money, Signer, ZkSigner},
+    bazuka::core::{ContractId, Money, Signer, ZkSigner},
     bazuka::crypto::{SignatureScheme, ZkSignatureScheme},
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
@@ -273,6 +273,7 @@ async fn run_node(
 #[cfg(feature = "client")]
 async fn deposit_withdraw(
     conf: BazukaConfig,
+    mpn_contract_id: ContractId,
     contract: String,
     index: u32,
     amount: Money,
@@ -287,7 +288,7 @@ async fn deposit_withdraw(
             let acc = client.get_account(wallet.get_address()).await?.account;
             let pay = wallet.pay_contract(
                 if contract == "mpn" {
-                    bazuka::config::blockchain::MPN_CONTRACT_ID.clone()
+                    mpn_contract_id
                 } else {
                     contract.parse().unwrap()
                 },
@@ -320,6 +321,8 @@ async fn main() -> Result<(), NodeError> {
     let conf: Option<BazukaConfig> = std::fs::File::open(conf_path.clone())
         .ok()
         .map(|f| serde_yaml::from_reader(f).unwrap());
+
+    let mpn_contract_id = config::blockchain::get_blockchain_config().mpn_contract_id;
 
     match opts {
         #[cfg(feature = "node")]
@@ -383,7 +386,7 @@ async fn main() -> Result<(), NodeError> {
             fee,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            deposit_withdraw(conf, contract, index, amount, fee, false).await?;
+            deposit_withdraw(conf, mpn_contract_id, contract, index, amount, fee, false).await?;
         }
         CliOptions::Withdraw {
             contract,
@@ -392,7 +395,7 @@ async fn main() -> Result<(), NodeError> {
             fee,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            deposit_withdraw(conf, contract, index, amount, fee, true).await?;
+            deposit_withdraw(conf, mpn_contract_id, contract, index, amount, fee, true).await?;
         }
         CliOptions::Rsend { to, amount, fee } => {
             let conf = conf.expect("Bazuka is not initialized!");

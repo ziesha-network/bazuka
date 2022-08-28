@@ -1,7 +1,6 @@
 mod error;
 pub use error::*;
 
-use crate::config::blockchain::MPN_CONTRACT_ID;
 use crate::core::{
     hash::Hash, Account, Address, Block, ContractAccount, ContractId, ContractPayment,
     ContractUpdate, Hasher, Header, Money, PaymentDirection, ProofOfWork, Signature, Transaction,
@@ -33,6 +32,7 @@ pub struct BlockchainConfig {
     pub pow_key_change_delay: u64,
     pub pow_key_change_interval: u64,
     pub median_timestamp_count: u64,
+    pub mpn_contract_id: ContractId,
     pub mpn_num_function_calls: usize,
     pub mpn_num_contract_payments: usize,
     pub minimum_pow_difficulty: Difficulty,
@@ -292,7 +292,7 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut size_diff = 0;
             zk::KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut chain.database,
-                *MPN_CONTRACT_ID,
+                self.config.mpn_contract_id,
                 tx.src_index,
                 zk::MpnAccount {
                     address: src.address.clone(),
@@ -303,7 +303,7 @@ impl<K: KvStore> KvStoreChain<K> {
             )?;
             zk::KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut chain.database,
-                *MPN_CONTRACT_ID,
+                self.config.mpn_contract_id,
                 tx.dst_index,
                 zk::MpnAccount {
                     address: tx.dst_pub_key.0.decompress(),
@@ -582,7 +582,7 @@ impl<K: KvStore> KvStoreChain<K> {
         sorted.sort_unstable_by_key(|tx| {
             let cost = tx.tx.size();
             let is_mpn = if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
-                *contract_id == *MPN_CONTRACT_ID
+                *contract_id == self.config.mpn_contract_id
             } else {
                 false
             };
@@ -694,7 +694,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     updates,
                 } = &tx.data
                 {
-                    if *contract_id == *MPN_CONTRACT_ID {
+                    if *contract_id == self.config.mpn_contract_id {
                         for update in updates.iter() {
                             match update {
                                 ContractUpdate::Payment { .. } => {
@@ -930,7 +930,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_mpn_account(&self, index: u32) -> Result<zk::MpnAccount, BlockchainError> {
         Ok(zk::KvStoreStateManager::<ZkHasher>::get_mpn_account(
             &self.database,
-            *MPN_CONTRACT_ID,
+            self.config.mpn_contract_id,
             index,
         )?)
     }
