@@ -71,3 +71,23 @@ transaction slots per update.
 
 People who want to transfer their Zeeka tokens cheaply, would need to deposit
 their funds to MPN through the `deposit` command.
+
+### [WIP] How to mine ℤeeka?
+
+In order to be a miner, besides working on a PoW puzzle, you will also need to
+execute the MPN contract on each block you generate. The `zoro` software is
+a CPU-executor of MPN contract. First install `zoro`, then make sure the
+proving-parameters are in the right place and then run:
+
+```sh
+zoro --node 127.0.0.1:8765 --seed [seed phrase for the executor account]
+```
+
+After a new block is generated, the `uzi-miner` should start working on the PoW
+puzzle, so you will also need to have `uzi-miner` running on your system:
+
+```sh
+uzi-miner --node 127.0.0.1:8765 --threads 32
+```
+
+(Note: Change number of `--threads` based on the spec of your system)
