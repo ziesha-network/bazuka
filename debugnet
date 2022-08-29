@@ -2,6 +2,7 @@
 
 while :
 do
+	git pull origin testnet/debug
+	git checkout testnet/debug
 	timeout 3600 cargo run -- $@
-	git pull origin master
 done
