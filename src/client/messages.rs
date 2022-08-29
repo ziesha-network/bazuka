@@ -18,6 +18,7 @@ pub struct GetStatsResponse {
     pub power: u128,
     pub next_reward: Money,
     pub timestamp: u32,
+    pub version: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

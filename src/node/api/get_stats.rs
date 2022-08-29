@@ -14,5 +14,6 @@ pub async fn get_stats<B: Blockchain>(
         power: context.blockchain.get_power()?,
         next_reward: context.blockchain.next_reward()?,
         timestamp: context.network_timestamp(),
+        version: env!("CARGO_PKG_VERSION").into(),
     })
 }
