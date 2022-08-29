@@ -251,15 +251,17 @@ async fn run_node(
     // channel to the Internet and piping back the responses.
     let client_loop = async {
         while let Some(req) = out_recv.recv().await {
-            let resp = async {
-                let client = Client::new();
-                let resp = client.request(req.body).await?;
-                Ok::<_, NodeError>(resp)
-            }
-            .await;
-            if let Err(e) = req.resp.send(resp).await {
-                log::debug!("Node not listening to its HTTP request answer: {}", e);
-            }
+            tokio::spawn(async move {
+                let resp = async {
+                    let client = Client::new();
+                    let resp = client.request(req.body).await?;
+                    Ok::<_, NodeError>(resp)
+                }
+                .await;
+                if let Err(e) = req.resp.send(resp).await {
+                    log::debug!("Node not listening to its HTTP request answer: {}", e);
+                }
+            });
         }
         Ok::<(), NodeError>(())
     };
