@@ -53,7 +53,7 @@ Run your node:
 
 ```sh
 bazuka node --listen 0.0.0.0:8765 --external [your external ip]:8765 \
-  --network debug --db ~/.bazuka-debug --bootstrap [comma separated list of bootstrap nodes]
+  --network debug --db ~/.bazuka-debug --bootstrap [bootstrap node 1] --bootstrap [bootstrap node 2] ...
 ```
 
 You can use the nodes introduced by the community as your `--bootstrap` nodes.
