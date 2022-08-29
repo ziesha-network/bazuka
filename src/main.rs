@@ -12,7 +12,7 @@ use {
 #[cfg(feature = "node")]
 use {
     bazuka::blockchain::KvStoreChain,
-    bazuka::client::{NodeRequest, PeerAddress},
+    bazuka::client::{Limit, NodeRequest, PeerAddress},
     bazuka::config,
     bazuka::db::LevelDbKvStore,
     bazuka::node::node_create,
@@ -221,6 +221,7 @@ async fn run_node(
                             let (resp_snd, mut resp_rcv) =
                                 mpsc::channel::<Result<Response<Body>, NodeError>>(1);
                             let req = NodeRequest {
+                                limit: Limit::default(),
                                 socket_addr: Some(client),
                                 body: req,
                                 resp: resp_snd,
@@ -254,7 +255,11 @@ async fn run_node(
             tokio::spawn(async move {
                 let resp = async {
                     let client = Client::new();
-                    let resp = client.request(req.body).await?;
+                    let resp = if let Some(time_limit) = req.limit.time {
+                        tokio::time::timeout(time_limit, client.request(req.body)).await?
+                    } else {
+                        client.request(req.body).await
+                    }?;
                     Ok::<_, NodeError>(resp)
                 }
                 .await;

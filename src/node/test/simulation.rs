@@ -101,6 +101,7 @@ async fn route(
 
         let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
         let inc_req = NodeRequest {
+            limit: Limit::default(),
             socket_addr: None,
             body: req.body,
             resp: resp_snd,

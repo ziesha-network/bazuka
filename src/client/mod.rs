@@ -45,6 +45,7 @@ pub struct Peer {
 }
 
 pub struct NodeRequest {
+    pub limit: Limit,
     pub socket_addr: Option<SocketAddr>,
     pub body: Request<Body>,
     pub resp: mpsc::Sender<Result<Response<Body>, NodeError>>,
@@ -56,7 +57,7 @@ pub struct OutgoingSender {
     pub chan: mpsc::UnboundedSender<NodeRequest>,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Limit {
     pub time: Option<Duration>,
     pub size: Option<u64>,
@@ -79,6 +80,7 @@ impl OutgoingSender {
         body.headers_mut()
             .insert(NETWORK_HEADER, HeaderValue::from_str(&self.network)?);
         let req = NodeRequest {
+            limit: limit.clone(),
             socket_addr: None,
             body,
             resp: resp_snd,
