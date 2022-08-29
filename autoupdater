@@ -1,0 +1,7 @@
+#!/bin/bash
+
+while :
+do
+	timeout 3600 cargo run -- $@
+	git pull origin master
+done
