@@ -258,7 +258,7 @@ async fn run_node(
             }
             .await;
             if let Err(e) = req.resp.send(resp).await {
-                log::error!("Node not listening to its HTTP request answer: {}", e);
+                log::debug!("Node not listening to its HTTP request answer: {}", e);
             }
         }
         Ok::<(), NodeError>(())
