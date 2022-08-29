@@ -39,10 +39,23 @@ impl<B: Blockchain> NodeContext<B> {
     pub fn network_timestamp(&self) -> u32 {
         (utils::local_timestamp() as i32 + self.timestamp_offset) as u32
     }
-    pub fn punish(&mut self, bad_peer: PeerAddress, secs: u32) {
+    pub fn punish_bad_behavior(&mut self, bad_peer: PeerAddress, secs: u32, reason: &str) {
+        log::warn!("Peer {} is behaving bad! Reason: {}", bad_peer, reason);
         log::warn!("Punishing {} for {} seconds...", bad_peer, secs);
-        self.firewall
-            .punish_ip(bad_peer.0.ip(), secs, self.opts.max_punish);
+        self.firewall.punish_bad(bad_peer.0.ip(), secs);
+    }
+    pub fn punish_unresponsive(&mut self, bad_peer: PeerAddress) {
+        log::warn!("Peer {} is unresponsive!", bad_peer);
+        log::warn!(
+            "Punishing {} for {} seconds...",
+            bad_peer,
+            self.opts.no_response_punish
+        );
+        self.firewall.punish_unresponsive(
+            bad_peer.0.ip(),
+            self.opts.no_response_punish,
+            self.opts.max_punish,
+        );
     }
     pub fn get_info(&self) -> Result<PeerInfo, BlockchainError> {
         Ok(PeerInfo {

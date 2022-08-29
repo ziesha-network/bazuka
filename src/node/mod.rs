@@ -72,7 +72,8 @@ fn fetch_signature(
 pub struct Firewall {
     request_count_limit_per_minute: usize,
     traffic_limit_per_15m: u64,
-    punished_ips: HashMap<IpAddr, Timestamp>,
+    bad_ips: HashMap<IpAddr, Timestamp>,
+    unresponsive_ips: HashMap<IpAddr, Timestamp>,
     request_count_last_reset: Timestamp,
     request_count: HashMap<IpAddr, usize>,
     traffic_last_reset: Timestamp,
@@ -84,7 +85,8 @@ impl Firewall {
         Self {
             request_count_limit_per_minute,
             traffic_limit_per_15m,
-            punished_ips: HashMap::new(),
+            bad_ips: HashMap::new(),
+            unresponsive_ips: HashMap::new(),
             request_count_last_reset: 0,
             request_count: HashMap::new(),
             traffic_last_reset: 0,
@@ -92,9 +94,14 @@ impl Firewall {
         }
     }
     fn refresh(&mut self) {
-        for ip in self.punished_ips.clone().into_keys() {
-            if !self.is_ip_punished(ip) {
-                self.punished_ips.remove(&ip);
+        for ip in self.bad_ips.clone().into_keys() {
+            if !self.is_ip_bad(ip) {
+                self.bad_ips.remove(&ip);
+            }
+        }
+        for ip in self.unresponsive_ips.clone().into_keys() {
+            if !self.is_ip_dead(ip) {
+                self.unresponsive_ips.remove(&ip);
             }
         }
 
@@ -113,13 +120,26 @@ impl Firewall {
     fn add_traffic(&mut self, ip: IpAddr, amount: u64) {
         *self.traffic.entry(ip).or_insert(0) += amount;
     }
-    fn punish_ip(&mut self, ip: IpAddr, secs: u32, max_punish: u32) {
+    fn punish_bad(&mut self, ip: IpAddr, secs: u32) {
         let now = local_timestamp();
-        let ts = self.punished_ips.entry(ip).or_insert(0);
+        let ts = self.bad_ips.entry(ip).or_insert(0);
+        *ts = std::cmp::max(*ts, now) + secs;
+    }
+    fn punish_unresponsive(&mut self, ip: IpAddr, secs: u32, max_punish: u32) {
+        let now = local_timestamp();
+        let ts = self.unresponsive_ips.entry(ip).or_insert(0);
         *ts = std::cmp::min(std::cmp::max(*ts, now) + secs, now + max_punish);
     }
-    fn is_ip_punished(&self, ip: IpAddr) -> bool {
-        if let Some(punished_until) = self.punished_ips.get(&ip) {
+    fn is_ip_bad(&self, ip: IpAddr) -> bool {
+        if let Some(punished_until) = self.bad_ips.get(&ip) {
+            if local_timestamp() < *punished_until {
+                return true;
+            }
+        }
+        false
+    }
+    fn is_ip_dead(&self, ip: IpAddr) -> bool {
+        if let Some(punished_until) = self.unresponsive_ips.get(&ip) {
             if local_timestamp() < *punished_until {
                 return true;
             }
@@ -133,7 +153,7 @@ impl Firewall {
             return true;
         }
 
-        if self.is_ip_punished(ip) {
+        if self.is_ip_bad(ip) || self.is_ip_dead(ip) {
             return false;
         }
 
@@ -144,7 +164,7 @@ impl Firewall {
             return true;
         }
 
-        if self.is_ip_punished(client.ip()) {
+        if self.is_ip_bad(client.ip()) {
             return false;
         }
 
@@ -384,9 +404,7 @@ async fn node_service<B: Blockchain>(
             if let Some(client) = client {
                 let mut ctx = context.write().await;
                 let default_punish = ctx.opts.default_punish;
-                let max_punish = ctx.opts.max_punish;
-                ctx.firewall
-                    .punish_ip(client.ip(), default_punish, max_punish);
+                ctx.firewall.punish_bad(client.ip(), default_punish);
             }
             log::error!("Error: {}", e);
             Err(e)

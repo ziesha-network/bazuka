@@ -50,7 +50,6 @@ pub async fn heartbeater<B: Blockchain>(
 fn punish_non_responding<B: Blockchain, R: Clone, E>(
     ctx: &mut RwLockWriteGuard<'_, NodeContext<B>>,
     resps: &[(Peer, Result<R, E>)],
-    amount: u32,
 ) -> Vec<(PeerAddress, R)> {
     resps
         .iter()
@@ -58,7 +57,7 @@ fn punish_non_responding<B: Blockchain, R: Clone, E>(
             if let Ok(resp) = resp {
                 Some((peer.address, resp.clone()))
             } else {
-                ctx.punish(peer.address, amount);
+                ctx.punish_unresponsive(peer.address);
                 None
             }
         })

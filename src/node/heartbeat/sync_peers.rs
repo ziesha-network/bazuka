@@ -24,7 +24,7 @@ pub async fn sync_peers<B: Blockchain>(
 
     {
         let mut ctx = context.write().await;
-        let resps = punish_non_responding(&mut ctx, &peer_responses, opts.no_response_punish)
+        let resps = punish_non_responding(&mut ctx, &peer_responses)
             .into_iter()
             .map(|(_, r)| r.peers)
             .collect::<Vec<_>>();

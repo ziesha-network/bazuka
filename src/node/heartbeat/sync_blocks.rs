@@ -195,10 +195,11 @@ pub async fn sync_blocks<B: Blockchain>(
                     break;
                 }
             }
-            context
-                .write()
-                .await
-                .punish(peer.address, opts.incorrect_power_punish);
+            context.write().await.punish_bad_behavior(
+                peer.address,
+                opts.incorrect_power_punish,
+                "Cannot sync blocks!",
+            );
         }
     }
 
