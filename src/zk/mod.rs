@@ -58,7 +58,9 @@ pub fn check_proof(
     proof: &ZkProof,
 ) -> bool {
     match vk {
-        ZkVerifierKey::Groth16(vk) => {
+        ZkVerifierKey::Groth16(vk) =>
+        {
+            #[allow(irrefutable_let_patterns)]
             if let ZkProof::Groth16(proof) = proof {
                 groth16::groth16_verify(
                     vk,
