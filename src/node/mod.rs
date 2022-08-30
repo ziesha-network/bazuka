@@ -11,8 +11,8 @@ use context::NodeContext;
 
 use crate::blockchain::Blockchain;
 use crate::client::{
-    Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, PeerInfo, Timestamp,
-    NETWORK_HEADER, SIGNATURE_HEADER,
+    messages::SocialProfiles, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress,
+    PeerInfo, Timestamp, NETWORK_HEADER, SIGNATURE_HEADER,
 };
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
@@ -422,12 +422,14 @@ pub async fn node_create<B: Blockchain>(
     blockchain: B,
     timestamp_offset: i32,
     wallet: Option<Wallet>,
+    social_profiles: SocialProfiles,
     mut incoming: mpsc::UnboundedReceiver<NodeRequest>,
     outgoing: mpsc::UnboundedSender<NodeRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
         firewall: Firewall::new(opts.ip_request_limit_per_minute, opts.traffic_limit_per_15m),
         opts: opts.clone(),
+        social_profiles,
         address,
         pub_key: ed25519::PublicKey::from(priv_key.clone()),
         shutdown: false,

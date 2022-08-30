@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::blockchain::{BlockchainConfig, KvStoreChain};
-use crate::client::BazukaClient;
+use crate::client::{messages::SocialProfiles, BazukaClient};
 use crate::config;
 use crate::core::Signer;
 use crate::crypto::SignatureScheme;
@@ -46,6 +46,7 @@ fn create_test_node(
         chain,
         opts.timestamp_offset,
         opts.wallet,
+        SocialProfiles::default(),
         inc_recv,
         out_send,
     );

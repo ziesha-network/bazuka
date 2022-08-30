@@ -10,6 +10,7 @@ pub async fn get_stats<B: Blockchain>(
 ) -> Result<GetStatsResponse, NodeError> {
     let context = context.read().await;
     Ok(GetStatsResponse {
+        social_profiles: context.social_profiles.clone(),
         height: context.blockchain.get_height()?,
         power: context.blockchain.get_power()?,
         next_reward: context.blockchain.next_reward()?,

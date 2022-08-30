@@ -12,7 +12,7 @@ use {
 #[cfg(feature = "node")]
 use {
     bazuka::blockchain::KvStoreChain,
-    bazuka::client::{Limit, NodeRequest, PeerAddress},
+    bazuka::client::{messages::SocialProfiles, Limit, NodeRequest, PeerAddress},
     bazuka::config,
     bazuka::db::LevelDbKvStore,
     bazuka::node::node_create,
@@ -75,6 +75,8 @@ enum CliOptions {
         bootstrap: Vec<String>,
         #[structopt(long, default_value = "mainnet")]
         network: String,
+        #[structopt(long)]
+        discord_handle: Option<String>,
     },
     /// Get status of a node
     Status {},
@@ -127,6 +129,7 @@ enum CliOptions {
 #[cfg(feature = "node")]
 async fn run_node(
     bazuka_config: BazukaConfig,
+    social_profiles: SocialProfiles,
     listen: Option<SocketAddr>,
     external: Option<SocketAddr>,
     db: Option<PathBuf>,
@@ -202,6 +205,7 @@ async fn run_node(
         .unwrap(),
         0,
         Some(wallet),
+        social_profiles,
         inc_recv,
         out_send,
     );
@@ -339,9 +343,21 @@ async fn main() -> Result<(), NodeError> {
             db,
             bootstrap,
             network,
+            discord_handle,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            run_node(conf.clone(), listen, external, db, bootstrap, network).await?;
+            run_node(
+                conf.clone(),
+                SocialProfiles {
+                    discord: discord_handle,
+                },
+                listen,
+                external,
+                db,
+                bootstrap,
+                network,
+            )
+            .await?;
         }
         #[cfg(not(feature = "node"))]
         CliOptions::Node { .. } => {

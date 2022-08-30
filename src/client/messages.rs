@@ -9,11 +9,17 @@ use std::collections::HashMap;
 use super::{Peer, PeerAddress, PeerInfo};
 use serde::{Deserialize, Serialize};
 
+#[derive(Deserialize, Serialize, Debug, Clone, Default)]
+pub struct SocialProfiles {
+    pub discord: Option<String>,
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetStatsRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetStatsResponse {
+    pub social_profiles: SocialProfiles,
     pub height: u64,
     pub power: u128,
     pub next_reward: Money,

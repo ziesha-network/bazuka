@@ -61,6 +61,10 @@ You either have to run your node on a machine with a static IP, or configure a N
 Virtual Server in order to expose your node on a public IP. Specify your public IP
 through the `--external` option.
 
+Highly recommended to also provide your Discord handle through the
+`--discord-handle` flag. By providing your handle, you will leave our bots a
+way to contact you regarding the problems you may have in your node and its status.
+
 ### What is the Main Payment Network?
 
 The Main Payment Network (MPN) is a special, builtin smart-contract that is
