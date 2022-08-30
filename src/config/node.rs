@@ -4,15 +4,15 @@ use std::time::Duration;
 
 pub fn get_mainnet_options() -> NodeOptions {
     NodeOptions {
-        tx_max_time_alive: Some(60),
+        tx_max_time_alive: Some(600),
         heartbeat_interval: Duration::from_secs(5),
         num_peers: 8,
         max_blocks_fetch: 16,
-        default_punish: 10,
-        no_response_punish: 60,
-        invalid_data_punish: 120,
-        incorrect_power_punish: 120,
-        max_punish: 600,
+        default_punish: 60,
+        no_response_punish: 600,
+        invalid_data_punish: 3600,
+        incorrect_power_punish: 3600,
+        max_punish: 7200,
         outdated_heights_threshold: 15,
         state_unavailable_ban_time: 30,
         ip_request_limit_per_minute: 60,
