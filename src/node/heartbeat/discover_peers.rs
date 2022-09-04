@@ -1,5 +1,4 @@
 use super::*;
-use crate::common::*;
 
 pub async fn discover_peers<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,

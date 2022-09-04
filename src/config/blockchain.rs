@@ -48,7 +48,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
         data: TransactionData::CreateContract {
             contract: mpn_contract,
         },
-        nonce: 2,
+        nonce: 1,
         fee: Money(0),
         sig: Signature::Unsigned,
     };
@@ -92,7 +92,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
-    let min_diff = Difficulty(0x02ffffff);
+    let min_diff = Difficulty(0x03ffffff);
 
     let blk = Block {
         header: Header {
@@ -105,21 +105,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 nonce: 0,
             },
         },
-        body: vec![
-            Transaction {
-                src: Address::Treasury,
-                data: TransactionData::RegularSend {
-                    dst: "0x62f58b091997c0b85a851e08b3cbc5e86ac285b9bd4392ffc4cb5391cad98671"
-                        .parse()
-                        .unwrap(),
-                    amount: Money(100000000),
-                },
-                nonce: 1,
-                fee: Money(0),
-                sig: Signature::Unsigned,
-            },
-            mpn_tx_delta.tx,
-        ],
+        body: vec![mpn_tx_delta.tx],
     };
 
     BlockchainConfig {
@@ -157,7 +143,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
 
         // We expect a minimum number of MPN contract updates
         // in a block to consider it valid
-        mpn_num_function_calls: 0,
+        mpn_num_function_calls: 1,
         mpn_num_contract_payments: 1,
 
         minimum_pow_difficulty: min_diff,
@@ -168,6 +154,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
 pub fn get_test_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
+    println!("{}", mpn_contract_id);
 
     let min_diff = Difficulty(0x007fffff);
 
@@ -178,7 +165,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.minimum_pow_difficulty = min_diff;
     conf.genesis.block.header.proof_of_work.target = min_diff;
 
-    conf.genesis.block.body[1] = get_test_mpn_contract().tx;
+    conf.genesis.block.body[0] = get_test_mpn_contract().tx;
     let abc = Wallet::new(Vec::from("ABC"));
     conf.genesis.block.body.push(Transaction {
         src: Address::Treasury,
@@ -186,7 +173,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
             dst: abc.get_address(),
             amount: Money(10000),
         },
-        nonce: 3,
+        nonce: 2,
         fee: Money(0),
         sig: Signature::Unsigned,
     });
