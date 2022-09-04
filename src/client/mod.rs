@@ -38,13 +38,6 @@ pub struct PeerInfo {
     pub power: u128,
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct Peer {
-    pub pub_key: Option<ed25519::PublicKey>,
-    pub address: PeerAddress,
-    pub info: Option<PeerInfo>,
-}
-
 pub struct NodeRequest {
     pub limit: Limit,
     pub socket_addr: Option<SocketAddr>,

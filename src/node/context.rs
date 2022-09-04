@@ -26,7 +26,7 @@ pub struct NodeContext<B: Blockchain> {
     pub outgoing: Arc<OutgoingSender>,
     pub blockchain: B,
     pub wallet: Option<Wallet>,
-    pub peers: HashMap<PeerAddress, Peer>,
+    pub peer_man: HashMap<PeerAddress, Peer>,
     pub timestamp_offset: i32,
     pub miner_puzzle: Option<BlockPuzzle>,
 

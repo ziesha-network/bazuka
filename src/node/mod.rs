@@ -6,6 +6,7 @@ mod context;
 mod firewall;
 mod heartbeat;
 mod http;
+mod peer_manager;
 pub mod seeds;
 pub mod upnp;
 use crate::blockchain::Blockchain;
@@ -21,6 +22,7 @@ use context::NodeContext;
 use firewall::Firewall;
 use hyper::body::HttpBody;
 use hyper::{Body, Method, Request, Response, StatusCode};
+use peer_manager::PeerManager;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -345,19 +347,7 @@ pub async fn node_create<B: Blockchain>(
         mempool: HashMap::new(),
         zero_mempool: HashMap::new(),
         contract_payment_mempool: HashMap::new(),
-        peers: bootstrap
-            .into_iter()
-            .map(|addr| {
-                (
-                    addr,
-                    Peer {
-                        pub_key: None,
-                        address: addr,
-                        info: None,
-                    },
-                )
-            })
-            .collect(),
+        peer_manager: PeerManager::new(bootstrap),
         timestamp_offset,
         banned_headers: HashMap::new(),
         outdated_since: None,

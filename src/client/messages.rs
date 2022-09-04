@@ -90,7 +90,7 @@ pub struct GetPeersRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetPeersResponse {
-    pub peers: Vec<Peer>,
+    pub peers: Vec<PeerAddress>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
