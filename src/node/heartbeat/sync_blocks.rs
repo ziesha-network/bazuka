@@ -36,7 +36,7 @@ pub async fn sync_blocks<B: Blockchain>(
                 // WARN: Chain might change when getting responses from users, maybe get all data needed before dropping ctx
 
                 // Get all headers starting from the indices that we don't have.
-                let resp = net
+                let resp = if let Ok(resp) = net
                     .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
                         format!("{}/bincode/headers", peer.address),
                         GetHeadersRequest {
@@ -47,7 +47,12 @@ pub async fn sync_blocks<B: Blockchain>(
                             .size(opts.max_blocks_fetch * KB)
                             .time(5 * SECOND),
                     )
-                    .await?;
+                    .await
+                {
+                    resp
+                } else {
+                    break;
+                };
 
                 let (mut headers, pow_keys) = (resp.headers, resp.pow_keys);
 
@@ -88,7 +93,7 @@ pub async fn sync_blocks<B: Blockchain>(
                 // from 0 to height-1, though, the blocks might not be equal. Find
                 // the header from which the fork has happened.
                 for index in (0..start_height).rev() {
-                    let peer_resp = net
+                    let peer_resp = if let Ok(resp) = net
                         .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
                             format!("{}/bincode/headers", peer.address),
                             GetHeadersRequest {
@@ -97,7 +102,18 @@ pub async fn sync_blocks<B: Blockchain>(
                             },
                             Limit::default().size(1 * KB).time(3 * SECOND),
                         )
-                        .await?;
+                        .await
+                    {
+                        resp
+                    } else {
+                        failed = true;
+                        break;
+                    };
+                    if peer_resp.headers.is_empty() || peer_resp.pow_keys.is_empty() {
+                        failed = true;
+                        break;
+                    }
+
                     let (peer_header, peer_pow_key) =
                         (peer_resp.headers[0].clone(), peer_resp.pow_keys[0].clone());
 
