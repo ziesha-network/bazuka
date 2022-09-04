@@ -38,7 +38,7 @@ fn create_test_node(
     let node = node_create(
         simulator_options.clone(),
         "simulator",
-        addr,
+        Some(addr),
         opts.priv_key.clone(),
         opts.bootstrap
             .iter()
