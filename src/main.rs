@@ -189,12 +189,8 @@ async fn run_node(
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
     let node = node_create(
-        match network.as_ref() {
-            "debug" => config::node::get_debug_options(),
-            "chaos" => config::node::get_chaos_options(),
-            "mainnet" => config::node::get_mainnet_options(),
-            _ => panic!("Network is not supported!"),
-        },
+        config::node::get_node_options(),
+        &network,
         address,
         priv_key,
         bootstrap_nodes,

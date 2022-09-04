@@ -2,7 +2,7 @@ use crate::common::*;
 use crate::node::NodeOptions;
 use std::time::Duration;
 
-pub fn get_mainnet_options() -> NodeOptions {
+pub fn get_node_options() -> NodeOptions {
     NodeOptions {
         tx_max_time_alive: Some(600),
         heartbeat_interval: Duration::from_secs(5),
@@ -17,20 +17,7 @@ pub fn get_mainnet_options() -> NodeOptions {
         state_unavailable_ban_time: 30,
         ip_request_limit_per_minute: 60,
         traffic_limit_per_15m: 4 * GB,
-        network: "mainnet".into(),
     }
-}
-
-pub fn get_chaos_options() -> NodeOptions {
-    let mut opts = get_mainnet_options();
-    opts.network = "chaos".into();
-    opts
-}
-
-pub fn get_debug_options() -> NodeOptions {
-    let mut opts = get_mainnet_options();
-    opts.network = "debug".into();
-    opts
 }
 
 pub fn get_simulator_options() -> NodeOptions {
@@ -48,6 +35,5 @@ pub fn get_simulator_options() -> NodeOptions {
         state_unavailable_ban_time: 10,
         ip_request_limit_per_minute: 6000,
         traffic_limit_per_15m: 4 * GB,
-        network: "simulator".into(),
     }
 }

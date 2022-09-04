@@ -19,6 +19,7 @@ pub struct NodeContext<B: Blockchain> {
     pub firewall: Firewall,
     pub social_profiles: SocialProfiles,
     pub opts: NodeOptions,
+    pub network: String,
     pub pub_key: <Signer as SignatureScheme>::Pub,
     pub address: PeerAddress,
     pub shutdown: bool,

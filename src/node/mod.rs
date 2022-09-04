@@ -41,7 +41,6 @@ pub struct NodeOptions {
     pub incorrect_power_punish: u32,
     pub max_punish: u32,
     pub state_unavailable_ban_time: u32,
-    pub network: String,
     pub ip_request_limit_per_minute: usize,
     pub traffic_limit_per_15m: u64,
 }
@@ -221,7 +220,7 @@ async fn node_service<B: Blockchain>(
 
         let body = req.into_body();
 
-        if network != context.read().await.opts.network {
+        if network != context.read().await.network {
             return Err(NodeError::WrongNetwork);
         }
 
@@ -416,6 +415,7 @@ use tokio::sync::mpsc;
 
 pub async fn node_create<B: Blockchain>(
     opts: NodeOptions,
+    network: &str,
     address: PeerAddress,
     priv_key: ed25519::PrivateKey,
     bootstrap: Vec<PeerAddress>,
@@ -429,12 +429,13 @@ pub async fn node_create<B: Blockchain>(
     let context = Arc::new(RwLock::new(NodeContext {
         firewall: Firewall::new(opts.ip_request_limit_per_minute, opts.traffic_limit_per_15m),
         opts: opts.clone(),
+        network: network.into(),
         social_profiles,
         address,
         pub_key: ed25519::PublicKey::from(priv_key.clone()),
         shutdown: false,
         outgoing: Arc::new(OutgoingSender {
-            network: opts.network,
+            network: network.into(),
             chan: outgoing,
             priv_key,
         }),

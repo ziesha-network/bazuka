@@ -37,6 +37,7 @@ fn create_test_node(
     let simulator_options = config::node::get_simulator_options();
     let node = node_create(
         simulator_options.clone(),
+        "simulator",
         addr,
         opts.priv_key.clone(),
         opts.bootstrap
@@ -58,7 +59,7 @@ fn create_test_node(
                 peer: addr,
                 sender: Arc::new(OutgoingSender {
                     chan: inc_send,
-                    network: simulator_options.network,
+                    network: "simulator".into(),
                     priv_key: opts.priv_key,
                 }),
             },
