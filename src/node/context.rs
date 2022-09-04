@@ -82,7 +82,11 @@ impl<B: Blockchain> NodeContext<B> {
     }
 
     pub fn refresh(&mut self) -> Result<(), BlockchainError> {
-        // TODO: Remove all inactive peers
+        for p in self.peers.clone().into_keys() {
+            if self.firewall.is_peer_dead(p) {
+                self.peers.remove(&p);
+            }
+        }
 
         let ts = self.network_timestamp();
         for (h, banned_at) in self.banned_headers.clone().into_iter() {
