@@ -1,5 +1,7 @@
 use super::*;
 use crate::common::*;
+use rand::prelude::IteratorRandom;
+use rand::rngs::OsRng;
 
 pub async fn sync_peers<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,
@@ -28,6 +30,10 @@ pub async fn sync_peers<B: Blockchain>(
         let resps = punish_non_responding(&mut ctx, &peer_responses)
             .into_iter()
             .map(|(_, r)| r.peers)
+            .collect::<Vec<_>>()
+            .into_iter()
+            .choose_multiple(&mut OsRng, ctx.opts.num_peers)
+            .into_iter()
             .collect::<Vec<_>>();
         for peers in resps {
             for p in peers {
