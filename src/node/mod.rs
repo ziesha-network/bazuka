@@ -305,7 +305,7 @@ use tokio::sync::mpsc;
 pub async fn node_create<B: Blockchain>(
     opts: NodeOptions,
     network: &str,
-    address: PeerAddress,
+    address: Option<PeerAddress>,
     priv_key: ed25519::PrivateKey,
     bootstrap: Vec<PeerAddress>,
     blockchain: B,

@@ -69,6 +69,8 @@ enum CliOptions {
         listen: Option<SocketAddr>,
         #[structopt(long)]
         external: Option<SocketAddr>,
+        #[structopt(long)]
+        client_only: bool,
         #[structopt(long, parse(from_os_str))]
         db: Option<PathBuf>,
         #[structopt(long)]
@@ -132,20 +134,24 @@ async fn run_node(
     social_profiles: SocialProfiles,
     listen: Option<SocketAddr>,
     external: Option<SocketAddr>,
+    client_only: bool,
     db: Option<PathBuf>,
     bootstrap: Vec<String>,
     network: String,
 ) -> Result<(), NodeError> {
     let (pub_key, priv_key) = Signer::generate_keys(&bazuka_config.seed.as_bytes());
 
-    let public_ip = bazuka::node::upnp::get_public_ip().await;
-
     const DEFAULT_PORT: u16 = 8765;
 
     let listen = listen.unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT)));
-    let address = PeerAddress(
-        external.unwrap_or_else(|| SocketAddr::from((public_ip.unwrap(), DEFAULT_PORT))),
-    );
+    let address = if client_only {
+        None
+    } else {
+        let public_ip = bazuka::node::upnp::get_public_ip().await;
+        Some(PeerAddress(external.unwrap_or_else(|| {
+            SocketAddr::from((public_ip.unwrap(), DEFAULT_PORT))
+        })))
+    };
 
     let wallet = Wallet::new(bazuka_config.seed.as_bytes().to_vec());
 
@@ -156,7 +162,9 @@ async fn run_node(
     );
     println!();
     println!("{} {}", "Listening:".bright_yellow(), listen);
-    println!("{} {}", "Internet endpoint:".bright_yellow(), address);
+    if let Some(addr) = &address {
+        println!("{} {}", "Internet endpoint:".bright_yellow(), addr);
+    }
     println!("{} {}", "Peer public-key:".bright_yellow(), pub_key);
 
     println!(
@@ -339,6 +347,7 @@ async fn main() -> Result<(), NodeError> {
             bootstrap,
             network,
             discord_handle,
+            client_only,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
             run_node(
@@ -348,6 +357,7 @@ async fn main() -> Result<(), NodeError> {
                 },
                 listen,
                 external,
+                client_only,
                 db,
                 bootstrap,
                 network,

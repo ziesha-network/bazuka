@@ -21,7 +21,7 @@ pub struct NodeContext<B: Blockchain> {
     pub opts: NodeOptions,
     pub network: String,
     pub pub_key: <Signer as SignatureScheme>::Pub,
-    pub address: PeerAddress,
+    pub address: Option<PeerAddress>, // None means node is not exposed on the Internet
     pub shutdown: bool,
     pub outgoing: Arc<OutgoingSender>,
     pub blockchain: B,
@@ -77,7 +77,9 @@ impl<B: Blockchain> NodeContext<B> {
         self.peers
             .values()
             .cloned()
-            .filter(|p| self.firewall.outgoing_permitted(p.address) && p.address != self.address)
+            .filter(|p| {
+                self.firewall.outgoing_permitted(p.address) && Some(p.address) != self.address
+            })
             .collect()
     }
 
