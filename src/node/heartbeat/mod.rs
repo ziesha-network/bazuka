@@ -1,5 +1,6 @@
 mod log_info;
 
+mod discover_peers;
 mod refresh;
 mod sync_blocks;
 mod sync_clock;
@@ -22,6 +23,7 @@ pub async fn heartbeat<B: Blockchain>(
     refresh::refresh(&context).await?;
     log_info::log_info(&context).await?;
     sync_peers::sync_peers(&context).await?;
+    discover_peers::discover_peers(&context).await?;
     sync_clock::sync_clock(&context).await?;
     sync_blocks::sync_blocks(&context).await?;
     sync_state::sync_state(&context).await?;
