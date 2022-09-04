@@ -76,21 +76,63 @@ transaction slots per update.
 People who want to transfer their Zeeka tokens cheaply, would need to deposit
 their funds to MPN through the `deposit` command.
 
-### [WIP] How to mine ℤeeka?
+### How to mine ℤeeka?
 
 In order to be a miner, besides working on a PoW puzzle, you will also need to
 execute the MPN contract on each block you generate. The `zoro` software is
-a CPU-executor of MPN contract. First install `zoro`, then make sure the
-proving-parameters are in the right place and then run:
+a CPU-executor of MPN contract. In order to run `zoro`, you'll need a machine
+with at least 32GB of RAM. If you want to be competitive you'll also need a
+competitive CPU. (In future versions, GPU will be used instead of CPU)
 
-```sh
-zoro --node 127.0.0.1:8765 --seed [seed phrase for the executor account]
+1. Make sure Bazuka is the latest version.
+
+```
+cd bazuka
+git pull origin master
+cargo install --path .
 ```
 
-After a new block is generated, the `uzi-miner` should start working on the PoW
-puzzle, so you will also need to have `uzi-miner` running on your system:
+If you get a `DifferentGenesis` error, it means that the genesis block has changed
+in the updated software. So you need to start fresh. Remove the `~/.bazuka-debug`
+folder by running: `rm -rf ~/.bazuka-debug`
+
+Now run Bazuka again.
+
+2. Install the MPN executor (`zoro`)
+
+```
+git clone https://github.com/zeeka-network/zoro
+cd zoro
+cargo install --path .
+```
+
+3. Download the proving parameters
+
+- Payment parameters (~700MB): https://drive.google.com/file/d/1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0/view?usp=sharing
+- Update parameters (~6GB): https://drive.google.com/file/d/149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO/view?usp=sharing
+
+
+4. Run `zoro` beside your node
+
+zoro --node 127.0.0.1:8765 --seed fewfe --network debug \
+  --update-params [path to update_params.dat] --payment-params [path to payment_params.dat]
 
 ```sh
+zoro --node 127.0.0.1:8765 --seed [seed phrase for the executor account] --network debug \
+  --update-circuit-params [path to update_params.dat] --payment-circuit-params [path to payment_params.dat] \
+  --db [absolute path to ~/.bazuka-debug]
+```
+
+(Note: The seed phrase for the executor account needs to be different from the
+seed you use for your node!)
+
+5. After a new block is generated, the `uzi-miner` should start working on the PoW
+puzzle, so you will also need to have `uzi-miner` running on your system:
+
+```
+git clone https://github.com/zeeka-network/uzi-miner
+cd uzi-miner
+cargo install --path .
 uzi-miner --node 127.0.0.1:8765 --threads 32
 ```
 
