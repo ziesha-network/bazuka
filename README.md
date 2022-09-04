@@ -114,9 +114,6 @@ cargo install --path .
 
 4. Run `zoro` beside your node
 
-zoro --node 127.0.0.1:8765 --seed fewfe --network debug \
-  --update-params [path to update_params.dat] --payment-params [path to payment_params.dat]
-
 ```sh
 zoro --node 127.0.0.1:8765 --seed [seed phrase for the executor account] --network debug \
   --update-circuit-params [path to update_params.dat] --payment-circuit-params [path to payment_params.dat] \
