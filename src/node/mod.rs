@@ -79,6 +79,8 @@ async fn node_service<B: Blockchain>(
         let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
         let mut response = Response::new(Body::empty());
 
+        let is_loopback = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
+
         if let Some(client) = client {
             let mut ctx = context.write().await;
             if !ctx.firewall.incoming_permitted(client) {
@@ -109,7 +111,7 @@ async fn node_service<B: Blockchain>(
 
         let body = req.into_body();
 
-        if network != context.read().await.network {
+        if !is_loopback && network != context.read().await.network {
             return Err(NodeError::WrongNetwork);
         }
 
