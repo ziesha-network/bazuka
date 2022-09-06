@@ -218,6 +218,11 @@ async fn node_service<B: Blockchain>(
                     .await?,
                 )?);
             }
+            (Method::GET, "/json/blocks") => {
+                *response.body_mut() = Body::from(serde_json::to_vec(
+                    &api::get_blocks(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                )?);
+            }
             (Method::GET, "/bincode/headers") => {
                 *response.body_mut() = Body::from(bincode::serialize(
                     &api::get_headers(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
