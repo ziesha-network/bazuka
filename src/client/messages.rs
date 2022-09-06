@@ -6,7 +6,7 @@ use crate::core::{
 use crate::zk;
 use std::collections::HashMap;
 
-use super::{Peer, PeerAddress, PeerInfo};
+use super::{explorer::ExplorerBlock, Peer, PeerAddress, PeerInfo};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
@@ -111,6 +111,18 @@ pub struct GetBlocksRequest {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetBlocksResponse {
     pub blocks: Vec<Block>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetExplorerBlocksRequest {
+    pub since: u64,
+    pub count: u64,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetExplorerBlocksResponse {
+    pub pow_hashes: Vec<String>,
+    pub blocks: Vec<ExplorerBlock>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

@@ -12,6 +12,8 @@ mod post_block;
 pub use post_block::*;
 mod get_blocks;
 pub use get_blocks::*;
+mod get_explorer_blocks;
+pub use get_explorer_blocks::*;
 mod get_states;
 pub use get_states::*;
 mod get_outdated_heights;
