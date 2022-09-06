@@ -13,6 +13,7 @@ use tokio::sync::mpsc;
 use tokio::time::timeout;
 
 mod error;
+pub mod explorer;
 pub mod messages;
 pub use error::NodeError;
 use messages::*;
