@@ -277,7 +277,7 @@ impl From<&Block> for ExplorerBlock {
     fn from(obj: &Block) -> Self {
         Self {
             header: (&obj.header).into(),
-            body: Vec::new(),
+            body: obj.body.iter().map(|tx| tx.into()).collect(),
         }
     }
 }
