@@ -82,6 +82,8 @@ enum CliOptions {
     },
     /// Get status of a node
     Status {},
+    /// Get wallet info
+    Wallet {},
     /// Deposit funds to a Zero-Contract
     Deposit {
         #[structopt(long)]
@@ -462,6 +464,41 @@ async fn main() -> Result<(), NodeError> {
                     let tx = wallet
                         .create_mpn_transaction(from_index, to_index, to, amount, fee, acc.nonce);
                     println!("{:#?}", client.zero_transact(tx).await?);
+                    Ok::<(), NodeError>(())
+                },
+                req_loop
+            )
+            .unwrap();
+        }
+        CliOptions::Wallet {} => {
+            let conf = conf.expect("Bazuka is not initialized!");
+            let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
+            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
+
+            println!(
+                "{} {}",
+                "Wallet address:".bright_yellow(),
+                wallet.get_address()
+            );
+            println!(
+                "{} {}",
+                "Wallet zk-address:".bright_yellow(),
+                wallet.get_zk_address()
+            );
+
+            let (req_loop, client) =
+                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network);
+            try_join!(
+                async move {
+                    println!(
+                        "{} {}",
+                        "Balance:".bright_yellow(),
+                        client
+                            .get_account(wallet.get_address())
+                            .await
+                            .map(|resp| resp.account.balance.to_string())
+                            .unwrap_or("Node not available!".into())
+                    );
                     Ok::<(), NodeError>(())
                 },
                 req_loop
