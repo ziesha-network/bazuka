@@ -108,15 +108,18 @@ cargo install --path .
 
 3. Download the proving parameters
 
-- Payment parameters (~700MB):
+- Payment parameters (~700MB): https://drive.google.com/file/d/1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0/view?usp=sharing
+- Update parameters (~6GB): https://drive.google.com/file/d/149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO/view?usp=sharing
+
+  Or if you want to download them through command-line:
+
 ```
-wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0" -O ~/bazuka/payment_params.dat && rm -rf /tmp/cookies.txt
+wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0" -O payment_params.dat && rm -rf /tmp/cookies.txt
 ```
-- Update parameters (~6GB): 
+
 ```
-wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO" -O ~/bazuka/update_params.dat && rm -rf /tmp/cookies.txt
+wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO" -O update_params.dat && rm -rf /tmp/cookies.txt
 ```
-payment_params.dat and update_params.dat are now located in the ~/bazuka directory.
 
 4. Run `zoro` beside your node
 
