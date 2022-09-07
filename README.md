@@ -34,10 +34,19 @@ want to mine Zeeka, you will need to install ![zoro](https://github.com/zeeka-ne
  * Make sure you have installed `libssl-dev` and `cmake` packages.
  * Install the Rust toolchain (https://rustup.rs/)
  * Clone the `bazuka` repo: `git clone https://github.com/zeeka-network/bazuka`.
+ * Install cargo: `apt install cargo -y`
  * Compile and install: `cd bazuka && cargo install --path .`
+ * warning: be sure to add `/root/.cargo/bin` to your PATH to be able to run the installed binaries:
+```
+if [ -d "$HOME/.cargo/bin" ] ; then
+  PATH="$PATH:$HOME/.cargo/bin"
+fi
+```
 
 Now if you want to join the `debug` testnet, you first have to initialize your
 node by running:
+
+ * Example seed: `38b4d78c7d6582fb170f6c19330a7e37e6964212@rues.forum.info:8765`
 
 ```sh
 bazuka init --seed [your seed phrase] --network debug --node 127.0.0.1:8765
@@ -54,6 +63,9 @@ Run your node:
 ```sh
 bazuka node --listen 0.0.0.0:8765 --external [your external ip]:8765 \
   --network debug --db ~/.bazuka-debug --bootstrap [bootstrap node 1] --bootstrap [bootstrap node 2] ...
+```
+```
+bazuka node
 ```
 
 You can use the nodes introduced by the community as your `--bootstrap` nodes.
@@ -147,3 +159,21 @@ competitive CPU. (In future versions, GPU will be used instead of CPU)
    ```
 
    (Note: Change number of `--threads` based on the spec of your system)
+
+### Useful commands:
+
+`bazuka deposit`     Deposit funds to a Zero-Contract
+
+`bazuka help`       Prints this message or the help of the given subcommand(s)
+
+`bazuka init`        Initialize node/wallet
+
+`bazuka node`        Run node
+
+`bazuka rsend`      Send funds through a regular-transaction
+
+`bazuka status`     Get status of a node
+
+`bazuka withdraw`    Withdraw funds from a Zero-Contract
+
+`bazuka zsend`       Send funds through a zero-transaction
