@@ -12,7 +12,7 @@ pub mod upnp;
 use crate::blockchain::Blockchain;
 use crate::client::{
     messages::SocialProfiles, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress,
-    PeerInfo, Timestamp, NETWORK_HEADER, SIGNATURE_HEADER,
+    Timestamp, NETWORK_HEADER, SIGNATURE_HEADER,
 };
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;

@@ -1,4 +1,6 @@
-use super::{Firewall, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerInfo, Timestamp};
+use super::{
+    Firewall, NodeError, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerManager, Timestamp,
+};
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, TransactionStats};
 use crate::client::messages::SocialProfiles;
 use crate::core::{ContractPayment, Header, Signer, TransactionAndDelta};
@@ -26,7 +28,7 @@ pub struct NodeContext<B: Blockchain> {
     pub outgoing: Arc<OutgoingSender>,
     pub blockchain: B,
     pub wallet: Option<Wallet>,
-    pub peer_man: HashMap<PeerAddress, Peer>,
+    pub peer_manager: PeerManager,
     pub timestamp_offset: i32,
     pub miner_puzzle: Option<BlockPuzzle>,
 
@@ -60,8 +62,10 @@ impl<B: Blockchain> NodeContext<B> {
             self.opts.max_punish,
         );
     }
-    pub fn get_info(&self) -> Result<PeerInfo, BlockchainError> {
-        Ok(PeerInfo {
+    pub fn get_info(&self) -> Result<Peer, NodeError> {
+        Ok(Peer {
+            address: self.address.ok_or(NodeError::NodeIsClientOnly)?,
+            pub_key: self.pub_key.clone(),
             height: self.blockchain.get_height()?,
             power: self.blockchain.get_power()?,
         })
@@ -74,7 +78,8 @@ impl<B: Blockchain> NodeContext<B> {
             .collect()
     }
     pub fn active_peers(&self) -> Vec<Peer> {
-        self.peers
+        self.peer_manager
+            .get_peers()
             .values()
             .cloned()
             .filter(|p| {
@@ -84,9 +89,9 @@ impl<B: Blockchain> NodeContext<B> {
     }
 
     pub fn refresh(&mut self) -> Result<(), BlockchainError> {
-        for p in self.peers.clone().into_keys() {
+        for p in self.peer_manager.addresses() {
             if self.firewall.is_peer_dead(p) {
-                self.peers.remove(&p);
+                self.peer_manager.remove_peer(&p);
             }
         }
 

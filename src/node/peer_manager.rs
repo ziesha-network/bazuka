@@ -1,15 +1,7 @@
-use crate::client::{PeerAddress, PeerInfo};
-use crate::crypto::ed25519;
+use crate::client::{Peer, PeerAddress};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Clone, Debug)]
-pub struct Peer {
-    pub pub_key: ed25519::PublicKey,
-    pub address: PeerAddress,
-    pub info: PeerInfo,
-}
-
-struct PeerManager {
+pub struct PeerManager {
     candidates: HashSet<PeerAddress>,
     peers: HashMap<PeerAddress, Peer>,
 }
@@ -20,5 +12,28 @@ impl PeerManager {
             candidates: bootstrap.into_iter().collect(),
             peers: HashMap::new(),
         }
+    }
+    pub fn remove_peer(&mut self, addr: &PeerAddress) {
+        self.peers.remove(&addr);
+        self.candidates.remove(&addr);
+    }
+    pub fn addresses(&self) -> Vec<PeerAddress> {
+        self.candidates
+            .iter()
+            .chain(self.peers.keys())
+            .cloned()
+            .collect()
+    }
+    pub fn get_peers(&self) -> &HashMap<PeerAddress, Peer> {
+        &self.peers
+    }
+    pub fn add_candidate(&mut self, addr: PeerAddress) {
+        if !self.peers.contains_key(&addr) {
+            self.candidates.insert(addr);
+        }
+    }
+    pub fn add_peer(&mut self, addr: PeerAddress, peer: Peer) {
+        self.candidates.remove(&addr);
+        self.peers.insert(addr, peer);
     }
 }

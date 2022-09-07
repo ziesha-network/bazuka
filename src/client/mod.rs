@@ -33,7 +33,9 @@ impl std::fmt::Display for PeerAddress {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct PeerInfo {
+pub struct Peer {
+    pub address: PeerAddress,
+    pub pub_key: ed25519::PublicKey,
     pub height: u64,
     pub power: u128,
 }

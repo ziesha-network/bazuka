@@ -6,7 +6,7 @@ use crate::core::{
 use crate::zk;
 use std::collections::HashMap;
 
-use super::{explorer::ExplorerBlock, Peer, PeerAddress, PeerInfo};
+use super::{explorer::ExplorerBlock, Peer, PeerAddress};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
@@ -73,15 +73,14 @@ pub struct Puzzle {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct PostPeerRequest {
-    pub address: PeerAddress,
-    pub info: PeerInfo,
-    pub timestamp: u32,
+pub enum HandshakeRequest {
+    Node { address: PeerAddress, peer: Peer },
+    Client,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct PostPeerResponse {
-    pub info: PeerInfo,
+pub struct HandshakeResponse {
+    pub peer: Peer,
     pub timestamp: u32,
 }
 

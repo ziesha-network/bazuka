@@ -34,7 +34,7 @@ pub async fn sync_state<B: Blockchain>(
         let same_height_peers = ctx
             .active_peers()
             .into_iter()
-            .filter(|p| p.info.as_ref().map(|i| i.height == height).unwrap_or(false));
+            .filter(|p| p.height == height);
         drop(ctx);
 
         for peer in same_height_peers {

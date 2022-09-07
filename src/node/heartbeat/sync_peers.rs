@@ -37,11 +37,7 @@ pub async fn sync_peers<B: Blockchain>(
                 .choose_multiple(&mut OsRng, ctx.opts.num_peers)
                 .into_iter()
             {
-                ctx.peers.entry(p.address).or_insert(Peer {
-                    pub_key: None,
-                    address: p.address,
-                    info: None,
-                });
+                ctx.peer_manager.add_candidate(p);
             }
         }
     }
