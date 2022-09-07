@@ -1,6 +1,7 @@
 use super::messages::{GetMempoolRequest, GetMempoolResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
+use crate::core::TransactionData;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -10,8 +11,21 @@ pub async fn get_mempool<B: Blockchain>(
 ) -> Result<GetMempoolResponse, NodeError> {
     let mut context = context.write().await;
     context.refresh()?;
+    let mpn_contract_id = context.blockchain.config().mpn_contract_id;
     Ok(GetMempoolResponse {
-        tx: context.mempool.clone().into_keys().collect(),
+        tx: context
+            .mempool
+            .clone()
+            .into_keys()
+            .filter(|tx| {
+                // Do not share MPN txs with others! It's a competetion :)
+                if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
+                    contract_id != &mpn_contract_id
+                } else {
+                    true
+                }
+            })
+            .collect(),
         tx_zk: context
             .contract_payment_mempool
             .clone()
