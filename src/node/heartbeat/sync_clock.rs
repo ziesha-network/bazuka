@@ -6,41 +6,42 @@ pub async fn sync_clock<B: Blockchain>(
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
 
-    // Sync-clock not run when no-expose enabled
-    if let Some(address) = ctx.address.clone() {
-        let opts = ctx.opts.clone();
+    let handshake_req = match ctx.get_info()? {
+        Some(peer) => HandshakeRequest::Node {
+            address: peer.address,
+            peer,
+        },
+        None => HandshakeRequest::Client,
+    };
 
-        let net = ctx.outgoing.clone();
+    let opts = ctx.opts.clone();
 
-        let info = ctx.get_info()?;
-        let peer_addresses = ctx.random_peers(&mut rand::thread_rng(), opts.num_peers);
-        drop(ctx);
+    let net = ctx.outgoing.clone();
 
-        log::info!("Syncing clocks with: {:?}", peer_addresses);
-        let peer_responses: Vec<(Peer, Result<HandshakeResponse, NodeError>)> =
-            http::group_request(&peer_addresses, |peer| {
-                net.json_post::<HandshakeRequest, HandshakeResponse>(
-                    format!("{}/peers", peer.address),
-                    HandshakeRequest::Node {
-                        address,
-                        peer: info.clone(),
-                    },
-                    Limit::default().size(1 * KB).time(3 * SECOND),
-                )
-            })
-            .await;
+    let peer_addresses = ctx.random_peers(&mut rand::thread_rng(), opts.num_peers);
+    drop(ctx);
 
-        {
-            let mut ctx = context.write().await;
-            let timestamps = punish_non_responding(&mut ctx, &peer_responses)
-                .into_iter()
-                .map(|(_, r)| r.timestamp)
-                .collect::<Vec<_>>();
-            if !timestamps.is_empty() {
-                // Set timestamp_offset according to median timestamp of the network
-                let median_timestamp = utils::median(&timestamps);
-                ctx.timestamp_offset = median_timestamp as i32 - utils::local_timestamp() as i32;
-            }
+    log::info!("Syncing clocks with: {:?}", peer_addresses);
+    let peer_responses: Vec<(Peer, Result<HandshakeResponse, NodeError>)> =
+        http::group_request(&peer_addresses, |peer| {
+            net.json_post::<HandshakeRequest, HandshakeResponse>(
+                format!("{}/peers", peer.address),
+                handshake_req.clone(),
+                Limit::default().size(1 * KB).time(3 * SECOND),
+            )
+        })
+        .await;
+
+    {
+        let mut ctx = context.write().await;
+        let timestamps = punish_non_responding(&mut ctx, &peer_responses)
+            .into_iter()
+            .map(|(_, r)| r.timestamp)
+            .collect::<Vec<_>>();
+        if !timestamps.is_empty() {
+            // Set timestamp_offset according to median timestamp of the network
+            let median_timestamp = utils::median(&timestamps);
+            ctx.timestamp_offset = median_timestamp as i32 - utils::local_timestamp() as i32;
         }
     }
     Ok(())

@@ -62,13 +62,15 @@ impl<B: Blockchain> NodeContext<B> {
             self.opts.max_punish,
         );
     }
-    pub fn get_info(&self) -> Result<Peer, NodeError> {
-        Ok(Peer {
-            address: self.address.ok_or(NodeError::NodeIsClientOnly)?,
+    pub fn get_info(&self) -> Result<Option<Peer>, NodeError> {
+        let height = self.blockchain.get_height()?;
+        let power = self.blockchain.get_power()?;
+        Ok(self.address.map(|address| Peer {
+            address,
+            height,
+            power,
             pub_key: self.pub_key.clone(),
-            height: self.blockchain.get_height()?,
-            power: self.blockchain.get_power()?,
-        })
+        }))
     }
     pub fn random_peers<R: RngCore>(&self, rng: &mut R, count: usize) -> Vec<Peer> {
         self.active_peers()
