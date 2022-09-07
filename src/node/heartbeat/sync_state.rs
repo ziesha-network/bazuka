@@ -8,7 +8,7 @@ pub async fn sync_state<B: Blockchain>(
 
     let net = ctx.outgoing.clone();
 
-    let ts = ctx.network_timestamp();
+    let ts = ctx.local_timestamp();
 
     let outdated_heights = ctx.blockchain.get_outdated_heights()?;
     if !outdated_heights.is_empty() && ctx.outdated_since.is_none() {

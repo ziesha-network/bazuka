@@ -46,7 +46,6 @@ pub struct NodeOptions {
     pub state_unavailable_ban_time: u32,
     pub ip_request_limit_per_minute: usize,
     pub traffic_limit_per_15m: u64,
-    pub unresponsive_count_limit_per_15m: usize,
 }
 
 fn fetch_signature(
@@ -302,7 +301,7 @@ async fn node_service<B: Blockchain>(
             if let Some(client) = client {
                 let mut ctx = context.write().await;
                 let default_punish = ctx.opts.default_punish;
-                ctx.firewall.punish_bad(client.ip(), default_punish);
+                ctx.punish_bad_behavior(client.ip(), default_punish);
             }
             log::error!("Error: {}", e);
             Err(e)
@@ -326,11 +325,7 @@ pub async fn node_create<B: Blockchain>(
     outgoing: mpsc::UnboundedSender<NodeRequest>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
-        firewall: Firewall::new(
-            opts.ip_request_limit_per_minute,
-            opts.traffic_limit_per_15m,
-            opts.unresponsive_count_limit_per_15m,
-        ),
+        firewall: Firewall::new(opts.ip_request_limit_per_minute, opts.traffic_limit_per_15m),
         opts: opts.clone(),
         network: network.into(),
         social_profiles,
@@ -347,7 +342,7 @@ pub async fn node_create<B: Blockchain>(
         mempool: HashMap::new(),
         zero_mempool: HashMap::new(),
         contract_payment_mempool: HashMap::new(),
-        peer_manager: PeerManager::new(bootstrap),
+        peer_manager: PeerManager::new(bootstrap, local_timestamp()),
         timestamp_offset,
         banned_headers: HashMap::new(),
         outdated_since: None,

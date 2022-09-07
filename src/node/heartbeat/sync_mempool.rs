@@ -25,7 +25,7 @@ pub async fn sync_mempool<B: Blockchain>(
 
     {
         let mut ctx = context.write().await;
-        let now = ctx.network_timestamp();
+        let now = ctx.local_timestamp();
         let resps = punish_non_responding(&mut ctx, &peer_responses)
             .into_iter()
             .map(|(_, r)| (r.tx, r.tx_zk, r.zk))

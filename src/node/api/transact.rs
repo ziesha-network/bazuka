@@ -9,7 +9,7 @@ pub async fn transact<B: Blockchain>(
     req: TransactRequest,
 ) -> Result<TransactResponse, NodeError> {
     let mut context = context.write().await;
-    let now = context.network_timestamp();
+    let now = context.local_timestamp();
     // Prevent spamming mempool
     match context.blockchain.validate_transaction(&req.tx_delta) {
         Ok(_) => {
