@@ -73,6 +73,10 @@ millions of accounts that can transfer ℤ with each other with nearly zero-cost
 transactions. It uses the Groth16 proving system and has a fixed number of
 transaction slots per update.
 
+<p align="center">
+    <img width="500" src="https://user-images.githubusercontent.com/4275654/188954000-450b32ad-c5e8-4714-9664-3afa40400508.png" alt="Deposit/Withdraw/Rsend/Zsend">
+</p>
+
 People who want to transfer their Zeeka tokens cheaply, would need to deposit
 their funds to MPN through the `deposit` command.
 
