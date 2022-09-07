@@ -86,60 +86,60 @@ competitive CPU. (In future versions, GPU will be used instead of CPU)
 
 1. Make sure Bazuka is the latest version.
 
-```
-cd bazuka
-git pull origin master
-cargo install --path .
-```
+  ```
+  cd bazuka
+  git pull origin master
+  cargo install --path .
+  ```
 
-If you get a `DifferentGenesis` error, it means that the genesis block has changed
-in the updated software. So you need to start fresh. Remove the `~/.bazuka-debug`
-folder by running: `rm -rf ~/.bazuka-debug`
+  If you get a `DifferentGenesis` error, it means that the genesis block has changed
+  in the updated software. So you need to start fresh. Remove the `~/.bazuka-debug`
+  folder by running: `rm -rf ~/.bazuka-debug`
 
-Now run Bazuka again.
+  Now run Bazuka again.
 
 2. Install the MPN executor (`zoro`)
 
-```
-git clone https://github.com/zeeka-network/zoro
-cd zoro
-cargo install --path .
-```
+  ```
+  git clone https://github.com/zeeka-network/zoro
+  cd zoro
+  cargo install --path .
+  ```
 
 3. Download the proving parameters
 
-- Payment parameters (~700MB): https://drive.google.com/file/d/1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0/view?usp=sharing
-- Update parameters (~6GB): https://drive.google.com/file/d/149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO/view?usp=sharing
+  - Payment parameters (~700MB): https://drive.google.com/file/d/1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0/view?usp=sharing
+  - Update parameters (~6GB): https://drive.google.com/file/d/149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO/view?usp=sharing
 
   Or if you want to download them through command-line:
 
-```
-wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0" -O payment_params.dat && rm -rf /tmp/cookies.txt
-```
+  ```
+  wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1sR-dJlr4W_A0sk37NkZaZm8UncMxqM-0" -O payment_params.dat && rm -rf /tmp/cookies.txt
+  ```
 
-```
-wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO" -O update_params.dat && rm -rf /tmp/cookies.txt
-```
+  ```
+  wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=149tUhC0oXJxsXDnx7vODkOZtIYzC_5HO" -O update_params.dat && rm -rf /tmp/cookies.txt
+  ```
 
 4. Run `zoro` beside your node
 
-```sh
-zoro --node 127.0.0.1:8765 --seed [seed phrase for the executor account] --network debug \
-  --update-circuit-params [path to update_params.dat] --payment-circuit-params [path to payment_params.dat] \
-  --db [absolute path to ~/.bazuka-debug]
-```
+  ```sh
+  zoro --node 127.0.0.1:8765 --seed [seed phrase for the executor account] --network debug \
+    --update-circuit-params [path to update_params.dat] --payment-circuit-params [path to payment_params.dat] \
+    --db [absolute path to ~/.bazuka-debug]
+  ```
 
-(Note: The seed phrase for the executor account needs to be different from the
-seed you use for your node!)
+  (Note: The seed phrase for the executor account needs to be different from the
+  seed you use for your node!)
 
 5. After a new block is generated, the `uzi-miner` should start working on the PoW
-puzzle, so you will also need to have `uzi-miner` running on your system:
+  puzzle, so you will also need to have `uzi-miner` running on your system:
 
-```
-git clone https://github.com/zeeka-network/uzi-miner
-cd uzi-miner
-cargo install --path .
-uzi-miner --node 127.0.0.1:8765 --threads 32
-```
+  ```
+  git clone https://github.com/zeeka-network/uzi-miner
+  cd uzi-miner
+  cargo install --path .
+  uzi-miner --node 127.0.0.1:8765 --threads 32
+  ```
 
-(Note: Change number of `--threads` based on the spec of your system)
+  (Note: Change number of `--threads` based on the spec of your system)
