@@ -30,7 +30,7 @@ pub struct NodeOpts {
 fn create_test_node(
     opts: NodeOpts,
 ) -> (impl futures::Future<Output = Result<(), NodeError>>, Node) {
-    let addr = PeerAddress(SocketAddr::from(([127, 0, 0, 1], opts.addr)));
+    let addr = PeerAddress(SocketAddr::from(([123, 234, 123, opts.addr as u8], 8765)));
     let chain = KvStoreChain::new(RamKvStore::new(), opts.config).unwrap();
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<NodeRequest>();
@@ -42,7 +42,7 @@ fn create_test_node(
         opts.priv_key.clone(),
         opts.bootstrap
             .iter()
-            .map(|p| PeerAddress(SocketAddr::from(([127, 0, 0, 1], *p))))
+            .map(|p| PeerAddress(SocketAddr::from(([123, 234, 123, *p as u8], 8765))))
             .collect(),
         chain,
         opts.timestamp_offset,
@@ -96,7 +96,7 @@ async fn route(
                     sleep(dur).await;
                 }
                 Action::Redirect(port) => {
-                    dst = PeerAddress(SocketAddr::from(([127, 0, 0, 1], port)));
+                    dst = PeerAddress(SocketAddr::from(([123, 234, 123, port as u8], 8765)));
                 }
             }
         }

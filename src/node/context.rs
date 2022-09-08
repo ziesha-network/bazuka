@@ -8,8 +8,6 @@ use crate::crypto::SignatureScheme;
 use crate::utils;
 use crate::wallet::Wallet;
 use crate::zk;
-use rand::seq::IteratorRandom;
-use rand::RngCore;
 use std::collections::HashMap;
 use std::sync::Arc;
 
