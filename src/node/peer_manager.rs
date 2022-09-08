@@ -1,17 +1,38 @@
 use crate::client::{Peer, PeerAddress};
-use crate::utils;
 use std::collections::HashMap;
+use std::net::IpAddr;
+
+struct CandidateDetails {
+    address: PeerAddress,
+    candidated_since: u32,
+}
+
+#[derive(Clone)]
+struct PunishmentDetails {
+    punished_till: u32,
+}
 
 pub struct PeerManager {
-    candidates: HashMap<PeerAddress, u32>,  // Candidate since?
-    punishments: HashMap<PeerAddress, u32>, // Punished until?
-    peers: HashMap<PeerAddress, Peer>,
+    candidates: HashMap<IpAddr, CandidateDetails>,
+    punishments: HashMap<IpAddr, PunishmentDetails>,
+    peers: HashMap<IpAddr, Peer>,
 }
 
 impl PeerManager {
     pub fn new(bootstrap: Vec<PeerAddress>, now: u32) -> Self {
         Self {
-            candidates: bootstrap.into_iter().map(|b| (b, now)).collect(),
+            candidates: bootstrap
+                .into_iter()
+                .map(|b| {
+                    (
+                        b.ip(),
+                        CandidateDetails {
+                            address: b,
+                            candidated_since: now,
+                        },
+                    )
+                })
+                .collect(),
             punishments: HashMap::new(),
             peers: HashMap::new(),
         }
@@ -19,51 +40,67 @@ impl PeerManager {
 
     pub fn refresh(&mut self, now: u32) {
         // Mark punished peers as candidates after the punishment time has ended
-        for (peer, punished_till) in self.punishments.clone().into_iter() {
-            if now > punished_till {
-                self.punishments.remove(&peer);
-                self.mark_as_candidate(now, &peer);
+        for (ip, punish_details) in self.punishments.clone().into_iter() {
+            if now > punish_details.punished_till {
+                self.punishments.remove(&ip);
             }
         }
 
         // Remove candidates that are older than a certain time
         self.candidates
-            .retain(|_, candidate_since| (now - *candidate_since) < 600); // TODO: Remove hardcoded number
+            .retain(|_, det| (now - det.candidated_since) < 600); // TODO: Remove hardcoded number
     }
 
-    pub fn is_punished(&self, now: u32, peer: &PeerAddress) -> bool {
+    pub fn is_ip_punished(&self, now: u32, ip: IpAddr) -> bool {
         self.punishments
-            .get(peer)
-            .map(|till| now < *till)
+            .get(&ip)
+            .map(|det| now < det.punished_till)
             .unwrap_or(false)
     }
 
     // Punish peer for a certain time
-    pub fn punish_peer(&mut self, now: u32, peer: &PeerAddress) {
-        self.candidates.remove(peer);
-        self.peers.remove(peer);
-        self.punishments.insert(*peer, now + 3600);
+    pub fn punish_ip_for(&mut self, now: u32, ip: IpAddr, secs: u32) {
+        self.candidates.remove(&ip);
+        self.peers.remove(&ip);
+        self.punishments.insert(
+            ip,
+            PunishmentDetails {
+                punished_till: now + secs,
+            },
+        );
     }
 
     pub fn mark_as_candidate(&mut self, now: u32, addr: &PeerAddress) {
-        if self.peers.contains_key(&addr) {
-            self.peers.remove(&addr);
-            self.candidates.insert(*addr, utils::local_timestamp());
+        if self.peers.contains_key(&addr.ip()) {
+            self.peers.remove(&addr.ip());
+            self.candidates.insert(
+                addr.ip(),
+                CandidateDetails {
+                    address: *addr,
+                    candidated_since: now,
+                },
+            );
         }
     }
 
-    pub fn get_peers(&self) -> &HashMap<PeerAddress, Peer> {
+    pub fn get_peers(&self) -> &HashMap<IpAddr, Peer> {
         &self.peers
     }
 
     pub fn add_candidate(&mut self, now: u32, addr: PeerAddress) {
-        if !self.peers.contains_key(&addr) {
-            self.candidates.insert(addr, utils::local_timestamp());
+        if !self.peers.contains_key(&addr.ip()) {
+            self.candidates.insert(
+                addr.ip(),
+                CandidateDetails {
+                    address: addr,
+                    candidated_since: now,
+                },
+            );
         }
     }
 
-    pub fn add_peer(&mut self, addr: PeerAddress, peer: Peer) {
-        self.candidates.remove(&addr);
-        self.peers.insert(addr, peer);
+    pub fn add_peer(&mut self, peer: Peer) {
+        self.candidates.remove(&peer.address.ip());
+        self.peers.insert(peer.address.ip(), peer);
     }
 }

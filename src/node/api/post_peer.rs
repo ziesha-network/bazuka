@@ -9,8 +9,8 @@ pub async fn post_peer<B: Blockchain>(
     req: HandshakeRequest,
 ) -> Result<HandshakeResponse, NodeError> {
     let mut context = context.write().await;
-    if let HandshakeRequest::Node { address, peer } = req {
-        context.peer_manager.add_peer(address, peer);
+    if let HandshakeRequest::Node(peer) = req {
+        context.peer_manager.add_peer(peer);
     }
 
     Ok(HandshakeResponse {

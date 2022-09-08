@@ -41,10 +41,6 @@ impl Firewall {
             return true;
         }
 
-        if self.is_ip_bad(client.ip()) {
-            return false;
-        }
-
         if self.traffic.get(&client.ip()).cloned().unwrap_or(0) > self.traffic_limit_per_15m {
             return false;
         }

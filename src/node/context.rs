@@ -50,7 +50,8 @@ impl<B: Blockchain> NodeContext<B> {
     pub fn punish_bad_behavior(&mut self, bad_peer: PeerAddress, secs: u32, reason: &str) {
         log::warn!("Peer {} is behaving bad! Reason: {}", bad_peer, reason);
         log::warn!("Punishing {} for {} seconds...", bad_peer, secs);
-        self.firewall.punish_bad(bad_peer.0.ip(), secs);
+        self.peer_manager
+            .punish_ip_for(self.local_timestamp(), bad_peer.ip(), secs);
     }
     pub fn punish_unresponsive(&mut self, bad_peer: PeerAddress) {
         log::warn!("Peer {} is unresponsive!", bad_peer);

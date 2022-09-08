@@ -84,6 +84,12 @@ async fn node_service<B: Blockchain>(
 
         if let Some(client) = client {
             let mut ctx = context.write().await;
+            let now = ctx.local_timestamp();
+            if !ctx.peer_manager.is_ip_punished(now, client.ip()) {
+                log::warn!("{} -> PeerManager dropped request!", client);
+                *response.status_mut() = StatusCode::FORBIDDEN;
+                return Ok(response);
+            }
             if !ctx.firewall.incoming_permitted(client) {
                 log::warn!("{} -> Firewall dropped request!", client);
                 *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
@@ -301,7 +307,9 @@ async fn node_service<B: Blockchain>(
             if let Some(client) = client {
                 let mut ctx = context.write().await;
                 let default_punish = ctx.opts.default_punish;
-                ctx.punish_bad_behavior(client.ip(), default_punish);
+                let now = ctx.local_timestamp();
+                ctx.peer_manager
+                    .punish_ip_for(now, client.ip(), default_punish);
             }
             log::error!("Error: {}", e);
             Err(e)
