@@ -46,6 +46,7 @@ pub struct NodeOptions {
     pub state_unavailable_ban_time: u32,
     pub ip_request_limit_per_minute: usize,
     pub traffic_limit_per_15m: u64,
+    pub candidate_remove_threshold: u32,
 }
 
 fn fetch_signature(
@@ -350,7 +351,12 @@ pub async fn node_create<B: Blockchain>(
         mempool: HashMap::new(),
         zero_mempool: HashMap::new(),
         contract_payment_mempool: HashMap::new(),
-        peer_manager: PeerManager::new(address, bootstrap, local_timestamp()),
+        peer_manager: PeerManager::new(
+            address,
+            bootstrap,
+            local_timestamp(),
+            opts.candidate_remove_threshold,
+        ),
         timestamp_offset,
         banned_headers: HashMap::new(),
         outdated_since: None,

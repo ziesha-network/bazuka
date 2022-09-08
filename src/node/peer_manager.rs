@@ -14,6 +14,7 @@ struct PunishmentDetails {
 }
 
 pub struct PeerManager {
+    candidate_remove_threshold: u32,
     self_addr: Option<PeerAddress>,
     candidates: HashMap<IpAddr, CandidateDetails>,
     punishments: HashMap<IpAddr, PunishmentDetails>,
@@ -21,8 +22,14 @@ pub struct PeerManager {
 }
 
 impl PeerManager {
-    pub fn new(self_addr: Option<PeerAddress>, bootstrap: Vec<PeerAddress>, now: u32) -> Self {
+    pub fn new(
+        self_addr: Option<PeerAddress>,
+        bootstrap: Vec<PeerAddress>,
+        now: u32,
+        candidate_remove_threshold: u32,
+    ) -> Self {
         Self {
+            candidate_remove_threshold,
             self_addr,
             candidates: bootstrap
                 .into_iter()
@@ -51,7 +58,7 @@ impl PeerManager {
 
         // Remove candidates that are older than a certain time
         self.candidates
-            .retain(|_, det| (now - det.candidated_since) < 600); // TODO: Remove hardcoded number
+            .retain(|_, det| (now - det.candidated_since) < self.candidate_remove_threshold);
     }
 
     pub fn is_ip_punished(&self, now: u32, ip: IpAddr) -> bool {
