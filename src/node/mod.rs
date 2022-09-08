@@ -191,8 +191,12 @@ async fn node_service<B: Blockchain>(
             }
             (Method::POST, "/peers") => {
                 *response.body_mut() = Body::from(serde_json::to_vec(
-                    &api::post_peer(Arc::clone(&context), serde_json::from_slice(&body_bytes)?)
-                        .await?,
+                    &api::post_peer(
+                        client,
+                        Arc::clone(&context),
+                        serde_json::from_slice(&body_bytes)?,
+                    )
+                    .await?,
                 )?);
             }
             (Method::POST, "/shutdown") => {

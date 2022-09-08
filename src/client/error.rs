@@ -50,4 +50,6 @@ pub enum NodeError {
     WrongNetwork,
     #[error("states are outdated")]
     StatesOutdated,
+    #[error("requester ip is different with proposed peer")]
+    HandshakeClientMismatch,
 }
