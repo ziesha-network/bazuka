@@ -28,7 +28,7 @@ impl PeerManager {
 
         // Remove candidates that are older than a certain time
         self.candidates
-            .retain(|_, candidate_since| *candidate_since < 600); // TODO: Remove hardcoded number
+            .retain(|_, candidate_since| (now - *candidate_since) < 600); // TODO: Remove hardcoded number
     }
 
     pub fn is_punished(&self, now: u32, peer: &PeerAddress) -> bool {
