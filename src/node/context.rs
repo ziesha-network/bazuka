@@ -69,21 +69,6 @@ impl<B: Blockchain> NodeContext<B> {
             pub_key: self.pub_key.clone(),
         }))
     }
-    pub fn random_peers<R: RngCore>(&self, rng: &mut R, count: usize) -> Vec<Peer> {
-        self.active_peers()
-            .into_iter()
-            .choose_multiple(rng, count)
-            .into_iter()
-            .collect()
-    }
-    pub fn active_peers(&self) -> Vec<Peer> {
-        self.peer_manager
-            .get_peers()
-            .values()
-            .cloned()
-            .filter(|p| Some(p.address) != self.address)
-            .collect()
-    }
 
     pub fn refresh(&mut self) -> Result<(), BlockchainError> {
         let local_ts = self.local_timestamp();

@@ -32,9 +32,11 @@ pub async fn sync_state<B: Blockchain>(
 
         // Find clients which their height is equal with our height
         let same_height_peers = ctx
-            .active_peers()
-            .into_iter()
-            .filter(|p| p.height == height);
+            .peer_manager
+            .get_peers()
+            .filter(|p| p.height == height)
+            .cloned()
+            .collect::<Vec<_>>();
         drop(ctx);
 
         for peer in same_height_peers {

@@ -15,7 +15,7 @@ pub async fn sync_clock<B: Blockchain>(
 
     let net = ctx.outgoing.clone();
 
-    let peer_addresses = ctx.random_peers(&mut rand::thread_rng(), opts.num_peers);
+    let peer_addresses = ctx.peer_manager.random_peers(opts.num_peers);
     drop(ctx);
 
     log::info!("Syncing clocks with: {:?}", peer_addresses);

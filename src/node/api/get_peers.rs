@@ -11,7 +11,8 @@ pub async fn get_peers<B: Blockchain>(
     let context = context.read().await;
     let num_peers = context.opts.num_peers;
     let peers = context
-        .random_peers(&mut rand::thread_rng(), num_peers)
+        .peer_manager
+        .random_peers(num_peers)
         .into_iter()
         .map(|p| p.address)
         .collect();

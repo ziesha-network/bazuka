@@ -1,4 +1,5 @@
 use crate::client::{Peer, PeerAddress};
+use rand::prelude::IteratorRandom;
 use std::collections::HashMap;
 use std::net::IpAddr;
 
@@ -13,14 +14,16 @@ struct PunishmentDetails {
 }
 
 pub struct PeerManager {
+    self_addr: Option<PeerAddress>,
     candidates: HashMap<IpAddr, CandidateDetails>,
     punishments: HashMap<IpAddr, PunishmentDetails>,
     peers: HashMap<IpAddr, Peer>,
 }
 
 impl PeerManager {
-    pub fn new(bootstrap: Vec<PeerAddress>, now: u32) -> Self {
+    pub fn new(self_addr: Option<PeerAddress>, bootstrap: Vec<PeerAddress>, now: u32) -> Self {
         Self {
+            self_addr,
             candidates: bootstrap
                 .into_iter()
                 .map(|b| {
@@ -83,11 +86,31 @@ impl PeerManager {
         }
     }
 
-    pub fn get_peers(&self) -> &HashMap<IpAddr, Peer> {
-        &self.peers
+    pub fn get_peers(&self) -> std::collections::hash_map::Values<'_, IpAddr, Peer> {
+        self.peers.values()
+    }
+
+    pub fn random_candidates(&self, count: usize) -> Vec<PeerAddress> {
+        self.candidates
+            .values()
+            .choose_multiple(&mut rand::thread_rng(), count)
+            .into_iter()
+            .map(|p| p.address)
+            .collect()
+    }
+
+    pub fn random_peers(&self, count: usize) -> Vec<Peer> {
+        self.get_peers()
+            .choose_multiple(&mut rand::thread_rng(), count)
+            .into_iter()
+            .cloned()
+            .collect()
     }
 
     pub fn add_candidate(&mut self, now: u32, addr: PeerAddress) {
+        if self.self_addr == Some(addr) {
+            return;
+        }
         if !self.peers.contains_key(&addr.ip()) {
             self.candidates.insert(
                 addr.ip(),
@@ -100,6 +123,9 @@ impl PeerManager {
     }
 
     pub fn add_peer(&mut self, peer: Peer) {
+        if self.self_addr == Some(peer.address) {
+            return;
+        }
         self.candidates.remove(&peer.address.ip());
         self.peers.insert(peer.address.ip(), peer);
     }

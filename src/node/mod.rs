@@ -337,7 +337,7 @@ pub async fn node_create<B: Blockchain>(
         opts: opts.clone(),
         network: network.into(),
         social_profiles,
-        address,
+        address: address.clone(),
         pub_key: ed25519::PublicKey::from(priv_key.clone()),
         shutdown: false,
         outgoing: Arc::new(OutgoingSender {
@@ -350,7 +350,7 @@ pub async fn node_create<B: Blockchain>(
         mempool: HashMap::new(),
         zero_mempool: HashMap::new(),
         contract_payment_mempool: HashMap::new(),
-        peer_manager: PeerManager::new(bootstrap, local_timestamp()),
+        peer_manager: PeerManager::new(address, bootstrap, local_timestamp()),
         timestamp_offset,
         banned_headers: HashMap::new(),
         outdated_since: None,
