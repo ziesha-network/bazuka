@@ -11,10 +11,13 @@ use leveldb::iterator::LevelDBIterator;
 use leveldb::kv::KV;
 use leveldb::options::{Options, ReadOptions, WriteOptions};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tempdir::TempDir;
 
-pub struct ReadOnlyLevelDbKvStore(Database<StringKey>);
+pub struct ReadOnlyLevelDbKvStore {
+    mirror_path: PathBuf,
+    db: Option<Database<StringKey>>,
+}
 pub struct LevelDbSnapshot<'a>(Snapshot<'a, StringKey>);
 impl ReadOnlyLevelDbKvStore {
     pub fn read_only(
@@ -30,10 +33,20 @@ impl ReadOnlyLevelDbKvStore {
         }
         let mut options = Options::new();
         options.cache = Some(Cache::new(cache_size));
-        Ok(ReadOnlyLevelDbKvStore(Database::open(&link_dir, options)?))
+        Ok(ReadOnlyLevelDbKvStore {
+            db: Some(Database::open(&link_dir, options)?),
+            mirror_path: link_dir.into(),
+        })
     }
     pub fn snapshot(&self) -> LevelDbSnapshot {
-        LevelDbSnapshot(self.0.snapshot())
+        LevelDbSnapshot(self.db.as_ref().unwrap().snapshot())
+    }
+}
+
+impl Drop for ReadOnlyLevelDbKvStore {
+    fn drop(&mut self) {
+        self.db = None;
+        let _ = std::fs::remove_dir_all(&self.mirror_path);
     }
 }
 
