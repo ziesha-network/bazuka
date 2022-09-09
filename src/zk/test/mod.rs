@@ -77,7 +77,7 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
             .unwrap();
 
     db.update(&[WriteOp::Put(
-        format!("contract_{}", c0).into(),
+        format!("CONT-{}", c0).into(),
         empty_contract::<SumHasher>(ZkStateModel::Scalar).into(),
     )])?;
 
@@ -107,7 +107,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
             .unwrap();
 
     db.update(&[WriteOp::Put(
-        format!("contract_{}", c0).into(),
+        format!("CONT-{}", c0).into(),
         empty_contract::<SumHasher>(ZkStateModel::Struct {
             field_types: vec![ZkStateModel::Scalar, ZkStateModel::Scalar],
         })
@@ -188,7 +188,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
     let mut roots = Vec::new();
 
     db.update(&[WriteOp::Put(
-        format!("contract_{}", c0).into(),
+        format!("CONT-{}", c0).into(),
         empty_contract::<PoseidonHasher>(ZkStateModel::List {
             log4_size: 3,
             item_type: Box::new(ZkStateModel::Struct {

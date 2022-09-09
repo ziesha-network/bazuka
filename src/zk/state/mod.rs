@@ -276,7 +276,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         const MAX_ROLLBACKS: u64 = 5;
         let mut data = ZkDataPairs(Default::default());
         for (k, v) in db.pairs(keys::local_scalar_value_prefix(&id).into())? {
-            let loc = ZkDataLocator::from_str(k.0.split('_').nth(2).unwrap())?;
+            let loc = ZkDataLocator::from_str(k.0.split('-').nth(3).unwrap())?;
             data.0.insert(loc, v.try_into()?);
         }
         let mut rollbacks = Vec::<ZkDeltaPairs>::new();
