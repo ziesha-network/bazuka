@@ -564,11 +564,10 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn get_changed_states(
         &self,
-        index: u64,
     ) -> Result<HashMap<ContractId, ZkCompressedStateChange>, BlockchainError> {
         Ok(self
             .database
-            .get(keys::contract_updates(index))?
+            .get(keys::contract_updates())?
             .map(|b| b.try_into())
             .ok_or(BlockchainError::Inconsistency)??)
     }
@@ -754,10 +753,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     keys::merkle(block.header.number),
                     block.merkle_tree().into(),
                 ),
-                WriteOp::Put(
-                    keys::contract_updates(block.header.number),
-                    state_updates.into(),
-                ),
+                WriteOp::Put(keys::contract_updates(), state_updates.into()),
             ])?;
 
             let rollback = chain.database.rollback()?;
@@ -820,7 +816,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             };
 
             let mut outdated = chain.get_outdated_contracts()?;
-            let changed_states = chain.get_changed_states(height - 1)?;
+            let changed_states = chain.get_changed_states()?;
 
             for (cid, comp) in changed_states {
                 if comp.prev_height == 0 {

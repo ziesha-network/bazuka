@@ -46,8 +46,8 @@ pub fn contract(contract_id: &ContractId) -> StringKey {
     format!("contract_{}", contract_id).into()
 }
 
-pub fn contract_updates(index: u64) -> StringKey {
-    format!("contract_updates_{:010}", index).into()
+pub fn contract_updates() -> StringKey {
+    "contract_updates".into()
 }
 
 pub fn local_prefix(contract_id: &ContractId) -> String {
