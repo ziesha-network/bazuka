@@ -745,12 +745,6 @@ impl<K: KvStore> KvStoreChain<K> {
                     keys::power(block.header.number),
                     (block.header.power() + self.get_power()?).into(),
                 ),
-            ])?;
-
-            let rollback = chain.database.rollback()?;
-
-            chain.database.update(&[
-                WriteOp::Put(keys::rollback(block.header.number), rollback.into()),
                 WriteOp::Put(
                     keys::header(block.header.number),
                     block.header.clone().into(),
@@ -764,6 +758,12 @@ impl<K: KvStore> KvStoreChain<K> {
                     keys::contract_updates(block.header.number),
                     state_updates.into(),
                 ),
+            ])?;
+
+            let rollback = chain.database.rollback()?;
+
+            chain.database.update(&[
+                WriteOp::Put(keys::rollback(block.header.number), rollback.into()),
                 if outdated_contracts.is_empty() {
                     WriteOp::Remove(keys::outdated())
                 } else {
@@ -852,18 +852,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             }
 
             chain.database.update(&rollback)?;
-            chain.database.update(&[
-                if outdated.is_empty() {
-                    WriteOp::Remove(keys::outdated())
-                } else {
-                    WriteOp::Put(keys::outdated(), outdated.clone().into())
-                },
-                WriteOp::Remove(keys::header(height - 1).into()),
-                WriteOp::Remove(keys::block(height - 1).into()),
-                WriteOp::Remove(keys::merkle(height - 1).into()),
-                WriteOp::Remove(keys::contract_updates(height - 1).into()),
-                WriteOp::Remove(keys::rollback(height - 1)),
-            ])?;
+            chain.database.update(&[if outdated.is_empty() {
+                WriteOp::Remove(keys::outdated())
+            } else {
+                WriteOp::Put(keys::outdated(), outdated.clone().into())
+            }])?;
 
             Ok(())
         })?;
