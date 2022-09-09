@@ -13,9 +13,10 @@ use {
 use {
     bazuka::blockchain::KvStoreChain,
     bazuka::client::{messages::SocialProfiles, Limit, NodeRequest, PeerAddress},
+    bazuka::common::*,
     bazuka::config,
     bazuka::db::LevelDbKvStore,
-    bazuka::node::node_create,
+    bazuka::node::{node_create, Firewall},
     colored::Colorize,
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
@@ -196,6 +197,10 @@ async fn run_node(
     };
 
     let bazuka_dir = db.unwrap_or_else(|| home::home_dir().unwrap().join(Path::new(".bazuka")));
+
+    // 60 request per minute / 4GB per 15min
+    let firewall = Firewall::new(60, 4 * GB);
+
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
     let node = node_create(
@@ -214,6 +219,7 @@ async fn run_node(
         social_profiles,
         inc_recv,
         out_send,
+        Some(firewall),
     );
 
     // Async loop that is responsible for getting incoming HTTP requests through a

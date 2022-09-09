@@ -1,4 +1,3 @@
-use crate::common::*;
 use crate::node::NodeOptions;
 use std::time::Duration;
 
@@ -15,8 +14,6 @@ pub fn get_node_options() -> NodeOptions {
         max_punish: 7200,
         outdated_heights_threshold: 15,
         state_unavailable_ban_time: 30,
-        ip_request_limit_per_minute: 60,
-        traffic_limit_per_15m: 4 * GB,
         candidate_remove_threshold: 600,
     }
 }
@@ -34,8 +31,6 @@ pub fn get_simulator_options() -> NodeOptions {
         max_punish: 0,
         outdated_heights_threshold: 5,
         state_unavailable_ban_time: 10,
-        ip_request_limit_per_minute: 6000,
-        traffic_limit_per_15m: 4 * GB,
         candidate_remove_threshold: 600,
     }
 }

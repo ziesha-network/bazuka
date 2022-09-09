@@ -19,7 +19,7 @@ use crate::crypto::SignatureScheme;
 use crate::utils::local_timestamp;
 use crate::wallet::Wallet;
 use context::NodeContext;
-use firewall::Firewall;
+pub use firewall::Firewall;
 use hyper::body::HttpBody;
 use hyper::{Body, Method, Request, Response, StatusCode};
 use peer_manager::PeerManager;
@@ -44,8 +44,6 @@ pub struct NodeOptions {
     pub incorrect_power_punish: u32,
     pub max_punish: u32,
     pub state_unavailable_ban_time: u32,
-    pub ip_request_limit_per_minute: usize,
-    pub traffic_limit_per_15m: u64,
     pub candidate_remove_threshold: u32,
 }
 
@@ -91,10 +89,12 @@ async fn node_service<B: Blockchain>(
                 *response.status_mut() = StatusCode::FORBIDDEN;
                 return Ok(response);
             }
-            if !ctx.firewall.incoming_permitted(client) {
-                log::warn!("{} -> Firewall dropped request!", client);
-                *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
-                return Ok(response);
+            if let Some(firewall) = &mut ctx.firewall {
+                if !firewall.incoming_permitted(client) {
+                    log::warn!("{} -> Firewall dropped request!", client);
+                    *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+                    return Ok(response);
+                }
             }
         }
 
@@ -125,11 +125,10 @@ async fn node_service<B: Blockchain>(
 
         if let Some(req_sz) = body.size_hint().upper() {
             if let Some(client) = client {
-                context
-                    .write()
-                    .await
-                    .firewall
-                    .add_traffic(client.ip(), req_sz);
+                let mut ctx = context.write().await;
+                if let Some(firewall) = &mut ctx.firewall {
+                    firewall.add_traffic(client.ip(), req_sz);
+                }
             }
         } else {
             *response.status_mut() = StatusCode::PAYLOAD_TOO_LARGE;
@@ -295,11 +294,10 @@ async fn node_service<B: Blockchain>(
 
         if let Some(resp_sz) = response.body().size_hint().upper() {
             if let Some(client) = client {
-                context
-                    .write()
-                    .await
-                    .firewall
-                    .add_traffic(client.ip(), resp_sz);
+                let mut ctx = context.write().await;
+                if let Some(firewall) = &mut ctx.firewall {
+                    firewall.add_traffic(client.ip(), resp_sz);
+                }
             }
         }
 
@@ -336,9 +334,10 @@ pub async fn node_create<B: Blockchain>(
     social_profiles: SocialProfiles,
     mut incoming: mpsc::UnboundedReceiver<NodeRequest>,
     outgoing: mpsc::UnboundedSender<NodeRequest>,
+    firewall: Option<Firewall>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
-        firewall: Firewall::new(opts.ip_request_limit_per_minute, opts.traffic_limit_per_15m),
+        firewall,
         opts: opts.clone(),
         network: network.into(),
         social_profiles,

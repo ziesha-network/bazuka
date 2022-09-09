@@ -50,6 +50,7 @@ fn create_test_node(
         SocialProfiles::default(),
         inc_recv,
         out_send,
+        None,
     );
     (
         node,

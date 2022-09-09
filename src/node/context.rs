@@ -16,7 +16,7 @@ use crate::client::messages::Puzzle;
 pub type BlockPuzzle = (BlockAndPatch, Puzzle);
 
 pub struct NodeContext<B: Blockchain> {
-    pub firewall: Firewall,
+    pub firewall: Option<Firewall>,
     pub social_profiles: SocialProfiles,
     pub opts: NodeOptions,
     pub network: String,
@@ -78,7 +78,10 @@ impl<B: Blockchain> NodeContext<B> {
             }
         }
 
-        self.firewall.refresh(local_ts);
+        if let Some(firewall) = &mut self.firewall {
+            firewall.refresh(local_ts);
+        }
+
         self.blockchain
             .cleanup_contract_payment_mempool(&mut self.contract_payment_mempool)?;
         self.blockchain.cleanup_mempool(&mut self.mempool)?;
