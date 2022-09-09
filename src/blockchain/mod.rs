@@ -848,11 +848,14 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             }
 
             chain.database.update(&rollback)?;
-            chain.database.update(&[if outdated.is_empty() {
-                WriteOp::Remove(keys::outdated())
-            } else {
-                WriteOp::Put(keys::outdated(), outdated.clone().into())
-            }])?;
+            chain.database.update(&[
+                WriteOp::Remove(keys::rollback(height - 1)),
+                if outdated.is_empty() {
+                    WriteOp::Remove(keys::outdated())
+                } else {
+                    WriteOp::Put(keys::outdated(), outdated.clone().into())
+                },
+            ])?;
 
             Ok(())
         })?;
