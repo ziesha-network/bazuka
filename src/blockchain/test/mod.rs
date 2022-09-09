@@ -36,11 +36,11 @@ fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), Blockc
 
 fn circulated_money<K: KvStore>(b: &KvStoreChain<K>) -> Result<Money, BlockchainError> {
     let mut money_sum = Money(0);
-    for (_, v) in b.database.pairs("account_".into())? {
+    for (_, v) in b.database.pairs("ACC-".into())? {
         let acc: Account = v.try_into().unwrap();
         money_sum += acc.balance;
     }
-    for (_, v) in b.database.pairs("contract_account_".into())? {
+    for (_, v) in b.database.pairs("CONT-ACC".into())? {
         let acc: ContractAccount = v.try_into().unwrap();
         money_sum += acc.balance;
     }
