@@ -84,7 +84,7 @@ async fn node_service<B: Blockchain>(
         if let Some(client) = client {
             let mut ctx = context.write().await;
             let now = ctx.local_timestamp();
-            if !ctx.peer_manager.is_ip_punished(now, client.ip()) {
+            if ctx.peer_manager.is_ip_punished(now, client.ip()) {
                 log::warn!("{} -> PeerManager dropped request!", client);
                 *response.status_mut() = StatusCode::FORBIDDEN;
                 return Ok(response);
