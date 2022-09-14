@@ -2,7 +2,7 @@
 
 while :
 do
-	git checkout testnet/debug
-	git pull origin testnet/debug
+	git checkout master
+	git pull origin master
 	timeout --foreground 3600 cargo run --release -- $@
 done
