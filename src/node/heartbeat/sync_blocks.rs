@@ -22,10 +22,9 @@ pub async fn sync_blocks<B: Blockchain>(
                 return Ok(());
             }
 
-            log::info!(
+            println!(
                 "Syncing blocks with: {} (Peer power: {})",
-                peer.address,
-                peer.power
+                peer.address, peer.power
             );
 
             let local_height = ctx.blockchain.get_height()?;
@@ -195,6 +194,7 @@ pub async fn sync_blocks<B: Blockchain>(
 
                 match ctx.blockchain.extend(headers[0].number, &resp.blocks) {
                     Ok(_) => {
+                        println!("Height advanced to {}!", ctx.blockchain.get_height()?);
                         ctx.outdated_since = None;
                     }
                     Err(e) => {
