@@ -14,8 +14,9 @@ pub async fn sync_blocks<B: Blockchain>(
     sorted_peers.sort_by_key(|p| p.power);
 
     for peer in sorted_peers.iter().rev() {
+        let mut net_fail = false;
+        let mut chain_fail = false;
         loop {
-            let mut failed = false;
             let ctx = context.read().await;
             let min_target = ctx.blockchain.config().minimum_pow_difficulty;
             if peer.power <= ctx.blockchain.get_power()? {
@@ -49,6 +50,7 @@ pub async fn sync_blocks<B: Blockchain>(
             {
                 resp
             } else {
+                net_fail = true;
                 break;
             };
 
@@ -59,23 +61,23 @@ pub async fn sync_blocks<B: Blockchain>(
             for (i, (head, pow_key)) in headers.iter().zip(pow_keys.into_iter()).enumerate() {
                 if head.proof_of_work.target < min_target || !head.meets_target(&pow_key) {
                     log::warn!("Header doesn't meet min target!");
-                    failed = true;
+                    chain_fail = true;
                     break;
                 }
                 if head.number != start_height + i as u64 {
                     log::warn!("Bad header number returned!");
-                    failed = true;
+                    chain_fail = true;
                     break;
                 }
                 if head.number < local_height && head == &ctx.blockchain.get_header(head.number)? {
                     log::warn!("Duplicate header given!");
-                    failed = true;
+                    chain_fail = true;
                     break;
                 }
             }
             drop(ctx);
 
-            if failed {
+            if chain_fail || net_fail {
                 break;
             }
 
@@ -102,11 +104,11 @@ pub async fn sync_blocks<B: Blockchain>(
                 {
                     resp
                 } else {
-                    failed = true;
+                    net_fail = true;
                     break;
                 };
                 if peer_resp.headers.is_empty() || peer_resp.pow_keys.is_empty() {
-                    failed = true;
+                    chain_fail = true;
                     break;
                 }
 
@@ -118,17 +120,17 @@ pub async fn sync_blocks<B: Blockchain>(
                         || !peer_header.meets_target(&peer_pow_key))
                 {
                     log::warn!("Header doesn't meet min target!");
-                    failed = true;
+                    chain_fail = true;
                     break;
                 }
                 if peer_header.number != index as u64 {
                     log::warn!("Bad header number!");
-                    failed = true;
+                    chain_fail = true;
                     break;
                 }
                 if peer_header.hash() != headers[0].parent_hash {
                     log::warn!("Bad header hash!");
-                    failed = true;
+                    chain_fail = true;
                     break;
                 }
 
@@ -145,12 +147,13 @@ pub async fn sync_blocks<B: Blockchain>(
                 }
             }
 
-            if failed {
+            if chain_fail || net_fail {
                 break;
             }
 
             let ctx = context.read().await;
             if headers.iter().any(|h| ctx.banned_headers.contains_key(h)) {
+                chain_fail = true;
                 log::warn!("Chain has banned headers!");
                 break;
             }
@@ -172,6 +175,7 @@ pub async fn sync_blocks<B: Blockchain>(
             };
 
             if !will_extend {
+                chain_fail = true;
                 break;
             }
 
@@ -198,20 +202,24 @@ pub async fn sync_blocks<B: Blockchain>(
                         ctx.outdated_since = None;
                     }
                     Err(e) => {
+                        chain_fail = true;
                         log::warn!("Cannot extend the blockchain. Error: {}", e);
                         break;
                     }
                 }
             } else {
+                net_fail = true;
                 log::warn!("Network error! Cannot fetch blocks...");
                 break;
             }
         }
-        context.write().await.punish_bad_behavior(
-            peer.address,
-            opts.incorrect_power_punish,
-            "Cannot sync blocks!",
-        );
+        if chain_fail {
+            context.write().await.punish_bad_behavior(
+                peer.address,
+                opts.incorrect_power_punish,
+                "Cannot sync blocks!",
+            );
+        }
     }
 
     Ok(())
