@@ -8,7 +8,7 @@ pub async fn sync_state<B: Blockchain>(
 
     let net = ctx.outgoing.clone();
 
-    let ts = ctx.network_timestamp();
+    let ts = ctx.local_timestamp();
 
     let outdated_heights = ctx.blockchain.get_outdated_heights()?;
     if !outdated_heights.is_empty() && ctx.outdated_since.is_none() {
@@ -32,9 +32,11 @@ pub async fn sync_state<B: Blockchain>(
 
         // Find clients which their height is equal with our height
         let same_height_peers = ctx
-            .active_peers()
-            .into_iter()
-            .filter(|p| p.info.as_ref().map(|i| i.height == height).unwrap_or(false));
+            .peer_manager
+            .get_peers()
+            .filter(|p| p.height == height)
+            .cloned()
+            .collect::<Vec<_>>();
         drop(ctx);
 
         for peer in same_height_peers {

@@ -9,7 +9,7 @@ pub async fn transact_zero<B: Blockchain>(
     req: TransactZeroRequest,
 ) -> Result<TransactZeroResponse, NodeError> {
     let mut context = context.write().await;
-    let now = context.network_timestamp();
+    let now = context.local_timestamp();
     // Prevent spamming mempool
     match context.blockchain.validate_zero_transaction(&req.tx) {
         Ok(_) => {

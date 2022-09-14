@@ -10,7 +10,7 @@ pub async fn sync_mempool<B: Blockchain>(
     let net = ctx.outgoing.clone();
     let opts = ctx.opts.clone();
 
-    let peer_addresses = ctx.random_peers(&mut rand::thread_rng(), opts.num_peers);
+    let peer_addresses = ctx.peer_manager.random_peers(opts.num_peers);
     drop(ctx);
 
     let peer_responses: Vec<(Peer, Result<GetMempoolResponse, NodeError>)> =
@@ -25,7 +25,7 @@ pub async fn sync_mempool<B: Blockchain>(
 
     {
         let mut ctx = context.write().await;
-        let now = ctx.network_timestamp();
+        let now = ctx.local_timestamp();
         let resps = punish_non_responding(&mut ctx, &peer_responses)
             .into_iter()
             .map(|(_, r)| (r.tx, r.tx_zk, r.zk))

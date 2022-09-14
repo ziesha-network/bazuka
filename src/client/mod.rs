@@ -6,7 +6,7 @@ use hyper::body::HttpBody;
 use hyper::header::HeaderValue;
 use hyper::{Body, Method, Request, Response};
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -26,6 +26,12 @@ pub const NETWORK_HEADER: &str = "X-ZEEKA-NETWORK-NAME";
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerAddress(pub SocketAddr); // ip, port
 
+impl PeerAddress {
+    pub fn ip(&self) -> IpAddr {
+        self.0.ip()
+    }
+}
+
 impl std::fmt::Display for PeerAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "http://{}", self.0)
@@ -33,16 +39,11 @@ impl std::fmt::Display for PeerAddress {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct PeerInfo {
+pub struct Peer {
+    pub address: PeerAddress,
+    pub pub_key: ed25519::PublicKey,
     pub height: u64,
     pub power: u128,
-}
-
-#[derive(Deserialize, Serialize, Clone, Debug)]
-pub struct Peer {
-    pub pub_key: Option<ed25519::PublicKey>,
-    pub address: PeerAddress,
-    pub info: Option<PeerInfo>,
 }
 
 pub struct NodeRequest {

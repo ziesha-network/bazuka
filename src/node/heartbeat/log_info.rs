@@ -14,7 +14,10 @@ pub async fn log_info<B: Blockchain>(
             ctx.blockchain.get_outdated_contracts()?.len().to_string(),
         ),
         ("Timestamp", ctx.network_timestamp().to_string()),
-        ("Active peers", ctx.active_peers().len().to_string()),
+        (
+            "Active peers",
+            ctx.peer_manager.get_peers().len().to_string(),
+        ),
     ]);
 
     inf.push(("Power", ctx.blockchain.get_power()?.to_string()));

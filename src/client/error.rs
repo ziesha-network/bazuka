@@ -8,6 +8,8 @@ pub enum NodeError {
     NotListeningError,
     #[error("node not answering")]
     NotAnsweringError,
+    #[error("node is run in client-only mode")]
+    NodeIsClientOnly,
     #[error("blockchain error happened: {0}")]
     BlockchainError(#[from] BlockchainError),
     #[error("server error happened: {0}")]
@@ -48,4 +50,6 @@ pub enum NodeError {
     WrongNetwork,
     #[error("states are outdated")]
     StatesOutdated,
+    #[error("requester ip is different with proposed peer")]
+    HandshakeClientMismatch,
 }

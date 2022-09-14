@@ -6,21 +6,23 @@ mod context;
 mod firewall;
 mod heartbeat;
 mod http;
+mod peer_manager;
 pub mod seeds;
 pub mod upnp;
 use crate::blockchain::Blockchain;
 use crate::client::{
     messages::SocialProfiles, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress,
-    PeerInfo, Timestamp, NETWORK_HEADER, SIGNATURE_HEADER,
+    Timestamp, NETWORK_HEADER, SIGNATURE_HEADER,
 };
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::utils::local_timestamp;
 use crate::wallet::Wallet;
 use context::NodeContext;
-use firewall::Firewall;
+pub use firewall::Firewall;
 use hyper::body::HttpBody;
 use hyper::{Body, Method, Request, Response, StatusCode};
+use peer_manager::PeerManager;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -42,9 +44,7 @@ pub struct NodeOptions {
     pub incorrect_power_punish: u32,
     pub max_punish: u32,
     pub state_unavailable_ban_time: u32,
-    pub ip_request_limit_per_minute: usize,
-    pub traffic_limit_per_15m: u64,
-    pub unresponsive_count_limit_per_15m: usize,
+    pub candidate_remove_threshold: u32,
 }
 
 fn fetch_signature(
@@ -83,10 +83,18 @@ async fn node_service<B: Blockchain>(
 
         if let Some(client) = client {
             let mut ctx = context.write().await;
-            if !ctx.firewall.incoming_permitted(client) {
-                log::warn!("{} -> Firewall dropped request!", client);
-                *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+            let now = ctx.local_timestamp();
+            if ctx.peer_manager.is_ip_punished(now, client.ip()) {
+                log::warn!("{} -> PeerManager dropped request!", client);
+                *response.status_mut() = StatusCode::FORBIDDEN;
                 return Ok(response);
+            }
+            if let Some(firewall) = &mut ctx.firewall {
+                if !firewall.incoming_permitted(client) {
+                    log::warn!("{} -> Firewall dropped request!", client);
+                    *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+                    return Ok(response);
+                }
             }
         }
 
@@ -117,11 +125,10 @@ async fn node_service<B: Blockchain>(
 
         if let Some(req_sz) = body.size_hint().upper() {
             if let Some(client) = client {
-                context
-                    .write()
-                    .await
-                    .firewall
-                    .add_traffic(client.ip(), req_sz);
+                let mut ctx = context.write().await;
+                if let Some(firewall) = &mut ctx.firewall {
+                    firewall.add_traffic(client.ip(), req_sz);
+                }
             }
         } else {
             *response.status_mut() = StatusCode::PAYLOAD_TOO_LARGE;
@@ -183,8 +190,12 @@ async fn node_service<B: Blockchain>(
             }
             (Method::POST, "/peers") => {
                 *response.body_mut() = Body::from(serde_json::to_vec(
-                    &api::post_peer(Arc::clone(&context), serde_json::from_slice(&body_bytes)?)
-                        .await?,
+                    &api::post_peer(
+                        client,
+                        Arc::clone(&context),
+                        serde_json::from_slice(&body_bytes)?,
+                    )
+                    .await?,
                 )?);
             }
             (Method::POST, "/shutdown") => {
@@ -283,11 +294,10 @@ async fn node_service<B: Blockchain>(
 
         if let Some(resp_sz) = response.body().size_hint().upper() {
             if let Some(client) = client {
-                context
-                    .write()
-                    .await
-                    .firewall
-                    .add_traffic(client.ip(), resp_sz);
+                let mut ctx = context.write().await;
+                if let Some(firewall) = &mut ctx.firewall {
+                    firewall.add_traffic(client.ip(), resp_sz);
+                }
             }
         }
 
@@ -300,7 +310,9 @@ async fn node_service<B: Blockchain>(
             if let Some(client) = client {
                 let mut ctx = context.write().await;
                 let default_punish = ctx.opts.default_punish;
-                ctx.firewall.punish_bad(client.ip(), default_punish);
+                let now = ctx.local_timestamp();
+                ctx.peer_manager
+                    .punish_ip_for(now, client.ip(), default_punish);
             }
             log::error!("Error: {}", e);
             Err(e)
@@ -322,17 +334,14 @@ pub async fn node_create<B: Blockchain>(
     social_profiles: SocialProfiles,
     mut incoming: mpsc::UnboundedReceiver<NodeRequest>,
     outgoing: mpsc::UnboundedSender<NodeRequest>,
+    firewall: Option<Firewall>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
-        firewall: Firewall::new(
-            opts.ip_request_limit_per_minute,
-            opts.traffic_limit_per_15m,
-            opts.unresponsive_count_limit_per_15m,
-        ),
+        firewall,
         opts: opts.clone(),
         network: network.into(),
         social_profiles,
-        address,
+        address: address.clone(),
         pub_key: ed25519::PublicKey::from(priv_key.clone()),
         shutdown: false,
         outgoing: Arc::new(OutgoingSender {
@@ -345,19 +354,12 @@ pub async fn node_create<B: Blockchain>(
         mempool: HashMap::new(),
         zero_mempool: HashMap::new(),
         contract_payment_mempool: HashMap::new(),
-        peers: bootstrap
-            .into_iter()
-            .map(|addr| {
-                (
-                    addr,
-                    Peer {
-                        pub_key: None,
-                        address: addr,
-                        info: None,
-                    },
-                )
-            })
-            .collect(),
+        peer_manager: PeerManager::new(
+            address,
+            bootstrap,
+            local_timestamp(),
+            opts.candidate_remove_threshold,
+        ),
         timestamp_offset,
         banned_headers: HashMap::new(),
         outdated_since: None,

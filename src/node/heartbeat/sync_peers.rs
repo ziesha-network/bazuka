@@ -1,5 +1,6 @@
 use super::*;
 use crate::common::*;
+use crate::utils::local_timestamp;
 use rand::prelude::IteratorRandom;
 use rand::rngs::OsRng;
 
@@ -11,7 +12,7 @@ pub async fn sync_peers<B: Blockchain>(
     let net = ctx.outgoing.clone();
     let opts = ctx.opts.clone();
 
-    let peer_addresses = ctx.random_peers(&mut rand::thread_rng(), opts.num_peers);
+    let peer_addresses = ctx.peer_manager.random_peers(opts.num_peers);
     drop(ctx);
 
     log::info!("Syncing peers with: {:?}", peer_addresses);
@@ -27,21 +28,21 @@ pub async fn sync_peers<B: Blockchain>(
 
     {
         let mut ctx = context.write().await;
+
         let resps = punish_non_responding(&mut ctx, &peer_responses)
             .into_iter()
             .map(|(_, r)| r.peers)
             .collect::<Vec<_>>();
+
+        let now = local_timestamp();
+
         for peers in resps {
             for p in peers
                 .into_iter()
                 .choose_multiple(&mut OsRng, ctx.opts.num_peers)
                 .into_iter()
             {
-                ctx.peers.entry(p.address).or_insert(Peer {
-                    pub_key: None,
-                    address: p.address,
-                    info: None,
-                });
+                ctx.peer_manager.add_candidate(now, p);
             }
         }
     }

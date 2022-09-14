@@ -30,7 +30,7 @@ pub async fn post_miner_solution<B: Blockchain>(
         context.outdated_since = None;
         let _ = context.blockchain.update_states(&draft.patch.clone());
 
-        let peer_addresses = context.random_peers(&mut rand::thread_rng(), context.opts.num_peers);
+        let peer_addresses = context.peer_manager.random_peers(context.opts.num_peers);
         http::group_request(&peer_addresses, |peer| {
             net.bincode_post::<PostBlockRequest, PostBlockResponse>(
                 format!("{}/bincode/blocks", peer.address),
