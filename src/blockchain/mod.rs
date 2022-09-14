@@ -564,11 +564,10 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn get_changed_states(
         &self,
-        index: u64,
     ) -> Result<HashMap<ContractId, ZkCompressedStateChange>, BlockchainError> {
         Ok(self
             .database
-            .get(keys::contract_updates(index))?
+            .get(keys::contract_updates())?
             .map(|b| b.try_into())
             .ok_or(BlockchainError::Inconsistency)??)
     }
@@ -745,12 +744,6 @@ impl<K: KvStore> KvStoreChain<K> {
                     keys::power(block.header.number),
                     (block.header.power() + self.get_power()?).into(),
                 ),
-            ])?;
-
-            let rollback = chain.database.rollback()?;
-
-            chain.database.update(&[
-                WriteOp::Put(keys::rollback(block.header.number), rollback.into()),
                 WriteOp::Put(
                     keys::header(block.header.number),
                     block.header.clone().into(),
@@ -760,10 +753,13 @@ impl<K: KvStore> KvStoreChain<K> {
                     keys::merkle(block.header.number),
                     block.merkle_tree().into(),
                 ),
-                WriteOp::Put(
-                    keys::contract_updates(block.header.number),
-                    state_updates.into(),
-                ),
+                WriteOp::Put(keys::contract_updates(), state_updates.into()),
+            ])?;
+
+            let rollback = chain.database.rollback()?;
+
+            chain.database.update(&[
+                WriteOp::Put(keys::rollback(block.header.number), rollback.into()),
                 if outdated_contracts.is_empty() {
                     WriteOp::Remove(keys::outdated())
                 } else {
@@ -820,7 +816,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             };
 
             let mut outdated = chain.get_outdated_contracts()?;
-            let changed_states = chain.get_changed_states(height - 1)?;
+            let changed_states = chain.get_changed_states()?;
 
             for (cid, comp) in changed_states {
                 if comp.prev_height == 0 {
@@ -853,16 +849,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
             chain.database.update(&rollback)?;
             chain.database.update(&[
+                WriteOp::Remove(keys::rollback(height - 1)),
                 if outdated.is_empty() {
                     WriteOp::Remove(keys::outdated())
                 } else {
                     WriteOp::Put(keys::outdated(), outdated.clone().into())
                 },
-                WriteOp::Remove(keys::header(height - 1).into()),
-                WriteOp::Remove(keys::block(height - 1).into()),
-                WriteOp::Remove(keys::merkle(height - 1).into()),
-                WriteOp::Remove(keys::contract_updates(height - 1).into()),
-                WriteOp::Remove(keys::rollback(height - 1)),
             ])?;
 
             Ok(())

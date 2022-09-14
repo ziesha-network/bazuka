@@ -36,11 +36,11 @@ fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), Blockc
 
 fn circulated_money<K: KvStore>(b: &KvStoreChain<K>) -> Result<Money, BlockchainError> {
     let mut money_sum = Money(0);
-    for (_, v) in b.database.pairs("account_".into())? {
+    for (_, v) in b.database.pairs("ACC-".into())? {
         let acc: Account = v.try_into().unwrap();
         money_sum += acc.balance;
     }
-    for (_, v) in b.database.pairs("contract_account_".into())? {
+    for (_, v) in b.database.pairs("CONT-ACC".into())? {
         let acc: ContractAccount = v.try_into().unwrap();
         money_sum += acc.balance;
     }
@@ -74,7 +74,7 @@ fn test_get_header_and_get_block() -> Result<(), BlockchainError> {
 
     broken_chain
         .database
-        .update(&vec![WriteOp::Put("height".into(), 3u64.into())])?;
+        .update(&vec![WriteOp::Put("HGT".into(), 3u64.into())])?;
 
     assert!(matches!(
         broken_chain.get_block(2),
