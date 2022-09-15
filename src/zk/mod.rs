@@ -261,7 +261,7 @@ impl std::fmt::Display for ZkDataLocator {
                 .iter()
                 .map(|n| format!("{:x}", n))
                 .collect::<Vec<_>>()
-                .join("-")
+                .join("_")
         )?;
         Ok(())
     }
@@ -277,7 +277,7 @@ impl std::str::FromStr for ZkDataLocator {
     type Err = ParseZkDataLocatorError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(
-            s.split('-')
+            s.split('_')
                 .map(|s| u32::from_str_radix(s, 16))
                 .collect::<Result<Vec<u32>, _>>()
                 .map_err(|_| ParseZkDataLocatorError::Invalid)?,
