@@ -314,7 +314,11 @@ async fn node_service<B: Blockchain>(
                 ctx.peer_manager
                     .punish_ip_for(now, client.ip(), default_punish);
             }
-            log::error!("Error: {}", e);
+            log::warn!(
+                "{} -> Error: {}",
+                client.map(|c| c.to_string()).unwrap_or("UNKNOWN".into()),
+                e
+            );
             Err(e)
         }
     }
