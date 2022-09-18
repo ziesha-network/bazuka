@@ -38,5 +38,7 @@ mod get_account;
 pub use get_account::*;
 mod get_mpn_account;
 pub use get_mpn_account::*;
+mod get_explorer_mpn_accounts;
+pub use get_explorer_mpn_accounts::*;
 mod get_mempool;
 pub use get_mempool::*;

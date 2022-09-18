@@ -2,10 +2,29 @@ use crate::core::{
     Block, ContractPayment, ContractUpdate, Header, PaymentDirection, ProofOfWork, Transaction,
     TransactionData,
 };
+use crate::crypto::jubjub::*;
 use crate::zk::{
-    ZkCompressedState, ZkContract, ZkPaymentVerifierKey, ZkProof, ZkStateModel, ZkVerifierKey,
+    MpnAccount, ZkCompressedState, ZkContract, ZkPaymentVerifierKey, ZkProof, ZkStateModel,
+    ZkVerifierKey,
 };
 use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerMpnAccount {
+    pub nonce: u64,
+    pub address: String,
+    pub balance: u64,
+}
+
+impl From<&MpnAccount> for ExplorerMpnAccount {
+    fn from(obj: &MpnAccount) -> Self {
+        Self {
+            nonce: obj.nonce,
+            address: PublicKey(obj.address.compress()).to_string(),
+            balance: obj.balance.into(),
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerProofOfWork {

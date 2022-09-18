@@ -91,6 +91,12 @@ pub trait Blockchain {
 
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn get_mpn_account(&self, index: u32) -> Result<zk::MpnAccount, BlockchainError>;
+    fn get_mpn_accounts(
+        &self,
+        page: usize,
+        page_size: usize,
+    ) -> Result<Vec<(u32, zk::MpnAccount)>, BlockchainError>;
+
     fn get_contract_account(
         &self,
         contract_id: ContractId,
@@ -924,6 +930,19 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             &self.database,
             self.config.mpn_contract_id,
             index,
+        )?)
+    }
+
+    fn get_mpn_accounts(
+        &self,
+        page: usize,
+        page_size: usize,
+    ) -> Result<Vec<(u32, zk::MpnAccount)>, BlockchainError> {
+        Ok(zk::KvStoreStateManager::<ZkHasher>::get_mpn_accounts(
+            &self.database,
+            self.config.mpn_contract_id,
+            page,
+            page_size,
         )?)
     }
 

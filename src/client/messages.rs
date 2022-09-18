@@ -6,7 +6,10 @@ use crate::core::{
 use crate::zk;
 use std::collections::HashMap;
 
-use super::{explorer::ExplorerBlock, Peer, PeerAddress};
+use super::{
+    explorer::{ExplorerBlock, ExplorerMpnAccount},
+    Peer, PeerAddress,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
@@ -45,6 +48,17 @@ pub struct GetMpnAccountRequest {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMpnAccountResponse {
     pub account: zk::MpnAccount,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetExplorerMpnAccountsRequest {
+    pub page: usize,
+    pub page_size: usize,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetExplorerMpnAccountsResponse {
+    pub accounts: HashMap<u32, ExplorerMpnAccount>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

@@ -97,6 +97,29 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         })
     }
 
+    pub fn get_mpn_accounts<K: KvStore>(
+        db: &K,
+        mpn_contract_id: ContractId,
+        page: usize,
+        page_size: usize,
+    ) -> Result<Vec<(u32, MpnAccount)>, StateManagerError> {
+        let mut indices = Vec::new();
+        for (k, _) in db.pairs(keys::local_scalar_value_prefix(&mpn_contract_id).into())? {
+            let loc = ZkDataLocator::from_str(k.0.split('-').nth(3).unwrap())?;
+            indices.push(loc.0[0]);
+        }
+        indices.sort_unstable();
+        indices.dedup();
+        let mut accs = Vec::new();
+        for ind in indices.into_iter().skip(page_size * page).take(page_size) {
+            accs.push((
+                ind,
+                KvStoreStateManager::<H>::get_mpn_account::<K>(db, mpn_contract_id, ind)?,
+            ));
+        }
+        Ok(accs)
+    }
+
     pub fn set_mpn_account<K: KvStore>(
         db: &mut K,
         mpn_contract_id: ContractId,
