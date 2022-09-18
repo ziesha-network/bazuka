@@ -1340,8 +1340,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         };
         for (cid, height) in heights {
             if !outdated_contracts.contains(&cid) {
-                let away =
-                    zk::KvStoreStateManager::<ZkHasher>::height_of(&self.database, cid)? - height;
+                let local_height =
+                    zk::KvStoreStateManager::<ZkHasher>::height_of(&self.database, cid)?;
+                if height > local_height {
+                    return Err(BlockchainError::StatesUnavailable);
+                }
+                let away = local_height - height;
                 blockchain_patch.patches.insert(
                     cid,
                     if let Some(delta) =
