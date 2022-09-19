@@ -199,7 +199,7 @@ pub async fn sync_blocks<B: Blockchain>(
                 match ctx.blockchain.extend(headers[0].number, &resp.blocks) {
                     Ok(_) => {
                         println!("Height advanced to {}!", ctx.blockchain.get_height()?);
-                        ctx.outdated_since = None;
+                        ctx.on_update()?;
                     }
                     Err(e) => {
                         chain_fail = true;

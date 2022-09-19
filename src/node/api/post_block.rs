@@ -12,7 +12,7 @@ pub async fn post_block<B: Blockchain>(
     context
         .blockchain
         .extend(req.block.header.number, &[req.block])?;
-    context.outdated_since = None;
+    context.on_update()?;
     context.blockchain.update_states(&req.patch)?;
     Ok(PostBlockResponse {})
 }

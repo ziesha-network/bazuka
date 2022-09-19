@@ -23,7 +23,7 @@ pub async fn sync_state<B: Blockchain>(
                 let tip = ctx.blockchain.get_tip()?;
                 ctx.banned_headers.insert(tip, ts);
                 ctx.blockchain.rollback()?;
-                ctx.outdated_since = None;
+                ctx.on_update()?;
                 return Ok(());
             }
         }

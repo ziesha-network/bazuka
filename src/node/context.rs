@@ -108,6 +108,13 @@ impl<B: Blockchain> NodeContext<B> {
         Ok(())
     }
 
+    /// Is called whenever chain is extended or rolled back
+    pub fn on_update(&mut self) -> Result<(), BlockchainError> {
+        self.outdated_since = None;
+        self.miner_puzzle = None;
+        Ok(())
+    }
+
     pub fn get_puzzle(&mut self, wallet: Wallet) -> Result<Option<BlockPuzzle>, BlockchainError> {
         let ts = self.network_timestamp();
         let draft = self
