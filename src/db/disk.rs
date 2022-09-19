@@ -109,11 +109,14 @@ impl<'a> KvStore for LevelDbSnapshot<'a> {
     fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
         let it = self.0.iter(ReadOptions::new());
         it.seek(&prefix);
-        Ok(it
-            .collect::<Vec<_>>()
-            .into_iter()
-            .take_while(|(k, _)| k.0.starts_with(&prefix.0))
-            .map(|(k, v)| (k, Blob(v)))
-            .collect())
+        let mut result = HashMap::new();
+        for (k, v) in it {
+            if k.0.starts_with(&prefix.0) {
+                result.insert(k, Blob(v));
+            } else {
+                break;
+            }
+        }
+        Ok(result)
     }
 }
