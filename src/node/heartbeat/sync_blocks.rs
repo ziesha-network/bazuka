@@ -56,6 +56,18 @@ pub async fn sync_blocks<B: Blockchain>(
 
             let (mut headers, pow_keys) = (resp.headers, resp.pow_keys);
 
+            if headers.is_empty() || pow_keys.is_empty() {
+                log::warn!("Peer returned no headers!");
+                chain_fail = true;
+                break;
+            }
+
+            if headers.len() != pow_keys.len() {
+                log::warn!("PoW keys are not provided along headers!");
+                chain_fail = true;
+                break;
+            }
+
             // TODO: Check parent hashes
             let ctx = context.read().await;
             for (i, (head, pow_key)) in headers.iter().zip(pow_keys.into_iter()).enumerate() {
@@ -108,6 +120,7 @@ pub async fn sync_blocks<B: Blockchain>(
                     break;
                 };
                 if peer_resp.headers.is_empty() || peer_resp.pow_keys.is_empty() {
+                    log::warn!("Peer is not providing claimed headers!");
                     chain_fail = true;
                     break;
                 }
@@ -219,6 +232,8 @@ pub async fn sync_blocks<B: Blockchain>(
                 opts.incorrect_power_punish,
                 "Cannot sync blocks!",
             );
+        } else if net_fail {
+            context.write().await.punish_unresponsive(peer.address);
         }
     }
 
