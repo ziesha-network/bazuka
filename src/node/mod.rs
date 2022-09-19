@@ -75,11 +75,9 @@ async fn node_service<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
+    let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
     match async {
-        let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
         let mut response = Response::new(Body::empty());
-
-        let is_loopback = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
 
         if let Some(client) = client {
             let mut ctx = context.write().await;
@@ -119,7 +117,7 @@ async fn node_service<B: Blockchain>(
 
         let body = req.into_body();
 
-        if !is_loopback && network != context.read().await.network {
+        if !is_local && network != context.read().await.network {
             return Err(NodeError::WrongNetwork);
         }
 
@@ -314,11 +312,13 @@ async fn node_service<B: Blockchain>(
         Ok(resp) => Ok(resp),
         Err(e) => {
             if let Some(client) = client {
-                let mut ctx = context.write().await;
-                let default_punish = ctx.opts.default_punish;
-                let now = ctx.local_timestamp();
-                ctx.peer_manager
-                    .punish_ip_for(now, client.ip(), default_punish);
+                if !is_local {
+                    let mut ctx = context.write().await;
+                    let default_punish = ctx.opts.default_punish;
+                    let now = ctx.local_timestamp();
+                    ctx.peer_manager
+                        .punish_ip_for(now, client.ip(), default_punish);
+                }
             }
             log::warn!(
                 "{} -> Error: {}",
