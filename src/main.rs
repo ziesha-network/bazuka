@@ -515,39 +515,3 @@ async fn main() -> Result<(), NodeError> {
 
     Ok(())
 }
-
-#[cfg(not(feature = "client"))]
-fn main() {
-    env_logger::init();
-
-    let mut conf = config::blockchain::get_blockchain_config();
-    conf.genesis.block.header.proof_of_work.target = bazuka::consensus::pow::Difficulty(0x00ffffff);
-
-    let mut chain = KvStoreChain::new(RamKvStore::new(), conf).unwrap();
-
-    let mut nonce = 1;
-
-    let abc = Wallet::new(Vec::from("ABC"));
-
-    loop {
-        log::info!("Creating txs...");
-        let mut txs = HashMap::new();
-        for _ in 0..7400 {
-            txs.insert(
-                abc.create_transaction(Address::Treasury, Money(0), Money(0), nonce),
-                TransactionStats { first_seen: 0 },
-            );
-            nonce += 1;
-        }
-
-        log::info!("Creating block...");
-        let blk = chain
-            .draft_block(0, &mut txs, &abc, true)
-            .unwrap()
-            .unwrap()
-            .block;
-
-        log::info!("Applying block ({} txs)...", blk.body.len());
-        chain.extend(chain.get_height().unwrap(), &[blk]).unwrap();
-    }
-}
