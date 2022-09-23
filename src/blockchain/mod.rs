@@ -447,16 +447,10 @@ impl<K: KvStore> KvStoreChain<K> {
                                         [
                                             (
                                                 zk::ZkDataLocator(vec![i as u32, 0]),
-                                                Some(zk::ZkScalar::from(
-                                                    contract_payment.zk_address_index as u64,
-                                                )),
-                                            ),
-                                            (
-                                                zk::ZkDataLocator(vec![i as u32, 1]),
                                                 Some(zk::ZkScalar::from(contract_payment.amount)),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 2]),
+                                                zk::ZkDataLocator(vec![i as u32, 1]),
                                                 Some(zk::ZkScalar::from(
                                                     match contract_payment.direction {
                                                         PaymentDirection::Deposit(_) => 0,
@@ -465,11 +459,11 @@ impl<K: KvStore> KvStoreChain<K> {
                                                 )),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 3]),
+                                                zk::ZkDataLocator(vec![i as u32, 2]),
                                                 Some(zk::ZkScalar::from(pk.0)),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 4]),
+                                                zk::ZkDataLocator(vec![i as u32, 3]),
                                                 Some(zk::ZkScalar::from(pk.1)),
                                             ),
                                         ]

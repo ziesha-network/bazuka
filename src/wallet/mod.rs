@@ -144,11 +144,10 @@ impl Wallet {
         amount: Money,
         fee: Money,
         withdraw: bool,
-    ) -> ContractPayment {
+    ) -> (u32, ContractPayment) {
         let mut tx = ContractPayment {
             address: self.private_key.clone().into(),
             zk_address: self.zk_private_key.clone().into(),
-            zk_address_index: address_index,
             contract_id,
             nonce,
             amount,
@@ -171,6 +170,6 @@ impl Wallet {
                 *sig = Some(Signer::sign(&self.private_key, &bytes));
             }
         }
-        tx
+        (address_index, tx)
     }
 }

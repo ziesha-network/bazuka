@@ -49,9 +49,8 @@ pub enum PaymentDirection<S: SignatureScheme, ZS: ZkSignatureScheme> {
 pub struct ContractPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub address: S::Pub,
     pub zk_address: ZS::Pub,
-    pub zk_address_index: u32, // Help locating the zk_address in a a huge database
     pub contract_id: ContractId<H>, // Makes sure the payment can only run on this contract.
-    pub nonce: u32,            // Makes sure a contract payment cannot be replayed on this contract.
+    pub nonce: u32, // Makes sure a contract payment cannot be replayed on this contract.
     pub amount: Money,
     pub fee: Money, // Executor fee
     pub direction: PaymentDirection<S, ZS>,

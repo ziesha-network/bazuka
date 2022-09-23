@@ -150,7 +150,6 @@ impl From<&PaymentDirection> for ExplorerPaymentDirection {
 pub struct ExplorerContractPayment {
     pub address: String,
     pub zk_address: String,
-    pub zk_address_index: u32,
     pub contract_id: String,
     pub nonce: u32,
     pub amount: u64,
@@ -163,7 +162,6 @@ impl From<&ContractPayment> for ExplorerContractPayment {
         Self {
             address: obj.address.to_string(),
             zk_address: obj.zk_address.to_string(),
-            zk_address_index: obj.zk_address_index,
             contract_id: obj.contract_id.to_string(),
             nonce: obj.nonce,
             amount: obj.amount.into(),
