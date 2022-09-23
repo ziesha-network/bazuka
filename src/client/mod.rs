@@ -1,7 +1,7 @@
 use crate::core::{Address, ContractPayment, Signer, TransactionAndDelta};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
-use crate::zk::ZeroTransaction;
+use crate::zk::MpnTransaction;
 use hyper::body::HttpBody;
 use hyper::header::HeaderValue;
 use hyper::{Body, Method, Request, Response};
@@ -342,7 +342,7 @@ impl BazukaClient {
 
     pub async fn zero_transact(
         &self,
-        tx: ZeroTransaction,
+        tx: MpnTransaction,
     ) -> Result<TransactZeroResponse, NodeError> {
         self.sender
             .bincode_post::<TransactZeroRequest, TransactZeroResponse>(

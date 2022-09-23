@@ -65,8 +65,8 @@ impl Wallet {
         amount: Money,
         fee: Money,
         nonce: u64,
-    ) -> zk::ZeroTransaction {
-        let mut tx = zk::ZeroTransaction {
+    ) -> zk::MpnTransaction {
+        let mut tx = zk::MpnTransaction {
             nonce,
             src_index: from_index,
             dst_index: to_index,

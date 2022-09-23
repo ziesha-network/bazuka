@@ -384,7 +384,7 @@ pub struct ZkPaymentVerifierKey {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct ZeroTransaction {
+pub struct MpnTransaction {
     pub nonce: u64,
     pub src_index: u32,
     pub dst_index: u32,
@@ -394,21 +394,21 @@ pub struct ZeroTransaction {
     pub sig: jubjub::Signature,
 }
 
-impl Eq for ZeroTransaction {}
+impl Eq for MpnTransaction {}
 
-impl PartialEq for ZeroTransaction {
+impl PartialEq for MpnTransaction {
     fn eq(&self, other: &Self) -> bool {
         self.hash() == other.hash()
     }
 }
 
-impl std::hash::Hash for ZeroTransaction {
+impl std::hash::Hash for MpnTransaction {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.hash().0.hash(state);
     }
 }
 
-impl ZeroTransaction {
+impl MpnTransaction {
     pub fn verify(&self, addr: &jubjub::PublicKey) -> bool {
         jubjub::JubJub::<ZkMainHasher>::verify(addr, self.hash(), &self.sig)
     }

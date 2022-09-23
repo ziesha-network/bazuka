@@ -56,6 +56,12 @@ pub struct ContractPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub direction: PaymentDirection<S, ZS>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct MpnPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
+    pub zk_address_index: u32,
+    pub payment: ContractPayment<H, S, ZS>,
+}
+
 impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> PartialEq for ContractPayment<H, S, ZS> {
     fn eq(&self, other: &Self) -> bool {
         bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()

@@ -31,7 +31,7 @@ pub struct NodeContext<B: Blockchain> {
     pub miner_puzzle: Option<BlockPuzzle>,
 
     pub mempool: HashMap<TransactionAndDelta, TransactionStats>,
-    pub zero_mempool: HashMap<zk::ZeroTransaction, TransactionStats>,
+    pub zero_mempool: HashMap<zk::MpnTransaction, TransactionStats>,
     pub contract_payment_mempool: HashMap<ContractPayment, TransactionStats>,
 
     pub outdated_since: Option<Timestamp>,
