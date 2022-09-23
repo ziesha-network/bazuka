@@ -67,7 +67,7 @@ pub fn local_tree_aux(
     tree_loc: &ZkDataLocator,
     aux_id: u32,
 ) -> StringKey {
-    format!("{}-{}-aux-{}", local_prefix(contract_id), tree_loc, aux_id).into()
+    format!("{}-{}-T-{}", local_prefix(contract_id), tree_loc, aux_id).into()
 }
 
 pub fn local_rollback_to_height(contract_id: &ContractId, height: u64) -> StringKey {
