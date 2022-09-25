@@ -1249,13 +1249,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn cleanup_contract_payment_mempool(
+    fn cleanup_mpn_payment_mempool(
         &self,
-        mempool: &mut HashMap<ContractPayment, TransactionStats>,
+        mempool: &mut HashMap<MpnPayment, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             for tx in mempool.clone().into_keys() {
-                if chain.apply_contract_payment(&tx).is_err() {
+                if chain.apply_contract_payment(&tx.payment).is_err() {
                     mempool.remove(&tx);
                 }
             }
@@ -1264,7 +1264,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn cleanup_zero_mempool(
+    fn cleanup_mpn_transaction_mempool(
         &self,
         mempool: &mut HashMap<zk::MpnTransaction, TransactionStats>,
     ) -> Result<(), BlockchainError> {
@@ -1279,7 +1279,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn validate_zero_transaction(&self, tx: &zk::MpnTransaction) -> Result<(), BlockchainError> {
+    fn validate_mpn_transaction(&self, tx: &zk::MpnTransaction) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             chain.apply_zero_tx(tx)?;
             Ok(())
@@ -1287,9 +1287,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn validate_contract_payment(&self, tx: &ContractPayment) -> Result<(), BlockchainError> {
+    fn validate_mpn_payment(&self, tx: &MpnPayment) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            chain.apply_contract_payment(tx)?;
+            chain.apply_contract_payment(&tx.payment)?;
             Ok(())
         })?;
         Ok(())

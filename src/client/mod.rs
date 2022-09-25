@@ -1,4 +1,4 @@
-use crate::core::{Address, ContractPayment, Signer, TransactionAndDelta};
+use crate::core::{Address, MpnPayment, Signer, TransactionAndDelta};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::zk::MpnTransaction;
@@ -284,12 +284,12 @@ impl BazukaClient {
 
     pub async fn transact_contract_payment(
         &self,
-        tx: ContractPayment,
-    ) -> Result<TransactContractPaymentResponse, NodeError> {
+        tx: MpnPayment,
+    ) -> Result<PostMpnPaymentResponse, NodeError> {
         self.sender
-            .bincode_post::<TransactContractPaymentRequest, TransactContractPaymentResponse>(
+            .bincode_post::<PostMpnPaymentRequest, PostMpnPaymentResponse>(
                 format!("{}/bincode/transact/contract_payment", self.peer),
-                TransactContractPaymentRequest { tx },
+                PostMpnPaymentRequest { tx },
                 Limit::default(),
             )
             .await
@@ -343,11 +343,11 @@ impl BazukaClient {
     pub async fn zero_transact(
         &self,
         tx: MpnTransaction,
-    ) -> Result<TransactZeroResponse, NodeError> {
+    ) -> Result<PostMpnTransactionResponse, NodeError> {
         self.sender
-            .bincode_post::<TransactZeroRequest, TransactZeroResponse>(
+            .bincode_post::<PostMpnTransactionRequest, PostMpnTransactionResponse>(
                 format!("{}/bincode/transact/zero", self.peer),
-                TransactZeroRequest { tx },
+                PostMpnTransactionRequest { tx },
                 Limit::default(),
             )
             .await

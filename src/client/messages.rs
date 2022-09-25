@@ -1,8 +1,7 @@
 use crate::blockchain::ZkBlockchainPatch;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
-    Account, Address, Block, ContractId, ContractPayment, Header, Money, MpnPayment,
-    TransactionAndDelta,
+    Account, Address, Block, ContractId, Header, Money, MpnPayment, TransactionAndDelta,
 };
 use crate::zk;
 use std::collections::HashMap;
@@ -189,12 +188,12 @@ pub struct TransactRequest {
 pub struct TransactResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct TransactZeroRequest {
+pub struct PostMpnTransactionRequest {
     pub tx: zk::MpnTransaction,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct TransactZeroResponse {}
+pub struct PostMpnTransactionResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ShutdownRequest {}
@@ -212,12 +211,12 @@ pub struct GetZeroMempoolResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct TransactMpnPaymentRequest {
+pub struct PostMpnPaymentRequest {
     pub tx: MpnPayment,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct TransactMpnPaymentResponse {}
+pub struct PostMpnPaymentResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMempoolRequest {}

@@ -1,6 +1,6 @@
 use crate::core::{
-    Address, ContractId, ContractPayment, ContractUpdate, Money, PaymentDirection, Signature,
-    Signer, Transaction, TransactionAndDelta, TransactionData, ZkSigner,
+    Address, ContractId, ContractPayment, ContractUpdate, Money, MpnPayment, PaymentDirection,
+    Signature, Signer, Transaction, TransactionAndDelta, TransactionData, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::ZkSignatureScheme;
@@ -139,12 +139,12 @@ impl Wallet {
     pub fn pay_contract(
         &self,
         contract_id: ContractId,
-        address_index: u32,
+        zk_address_index: u32,
         nonce: u32,
         amount: Money,
         fee: Money,
         withdraw: bool,
-    ) -> (u32, ContractPayment) {
+    ) -> MpnPayment {
         let mut tx = ContractPayment {
             address: self.private_key.clone().into(),
             zk_address: self.zk_private_key.clone().into(),
@@ -170,6 +170,9 @@ impl Wallet {
                 *sig = Some(Signer::sign(&self.private_key, &bytes));
             }
         }
-        (address_index, tx)
+        MpnPayment {
+            zk_address_index,
+            payment: tx,
+        }
     }
 }
