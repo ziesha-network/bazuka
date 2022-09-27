@@ -25,7 +25,6 @@ pub struct MpnAccount {
 lazy_static! {
     pub static ref CONTRACT_PAYMENT_STATE_MODEL: ZkStateModel = ZkStateModel::Struct {
         field_types: vec![
-            ZkStateModel::Scalar, // index
             ZkStateModel::Scalar, // amount
             ZkStateModel::Scalar, // direction
             ZkStateModel::Scalar, // pub-x
