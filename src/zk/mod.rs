@@ -52,6 +52,7 @@ pub trait ZkHasher: Clone {
 
 pub fn check_proof(
     vk: &ZkVerifierKey,
+    prev_height: u64,
     prev_state: &ZkCompressedState,
     aux_data: &ZkCompressedState,
     next_state: &ZkCompressedState,
@@ -64,6 +65,7 @@ pub fn check_proof(
             if let ZkProof::Groth16(proof) = proof {
                 groth16::groth16_verify(
                     vk,
+                    prev_height,
                     prev_state.state_hash,
                     aux_data.state_hash,
                     next_state.state_hash,

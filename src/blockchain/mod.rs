@@ -508,6 +508,7 @@ impl<K: KvStore> KvStoreChain<K> {
                         let mut cont_account = chain.get_contract_account(*contract_id)?;
                         if !zk::check_proof(
                             circuit,
+                            prev_account.height,
                             &cont_account.compressed_state,
                             &aux_data,
                             next_state,

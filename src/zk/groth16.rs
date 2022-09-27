@@ -37,6 +37,7 @@ pub struct Groth16Proof {
 
 pub fn groth16_verify(
     vk: &Groth16VerifyingKey,
+    prev_height: u64,
     prev_state: ZkScalar,
     aux_data: ZkScalar,
     next_state: ZkScalar,
@@ -78,7 +79,12 @@ pub fn groth16_verify(
     bellman::groth16::verify_proof(
         &vk,
         &proof,
-        &[prev_state.into(), aux_data.into(), next_state.into()],
+        &[
+            prev_height.into(),
+            prev_state.into(),
+            aux_data.into(),
+            next_state.into(),
+        ],
     )
     .is_ok()
 }
