@@ -23,11 +23,11 @@ pub fn power(index: u64) -> StringKey {
 }
 
 pub fn rollback(index: u64) -> StringKey {
-    format!("RLBK-{:010}", index).into()
+    format!("RLK-{:010}", index).into()
 }
 
 pub fn merkle(index: u64) -> StringKey {
-    format!("MRKL-{:010}", index).into()
+    format!("MRK-{:010}", index).into()
 }
 
 pub fn compressed_state_at(contract_id: &ContractId, at: u64) -> StringKey {
@@ -39,15 +39,15 @@ pub fn account(address: &Address) -> StringKey {
 }
 
 pub fn contract_account(contract_id: &ContractId) -> StringKey {
-    format!("CONTACC-{}", contract_id).into()
+    format!("CAC-{}", contract_id).into()
 }
 
 pub fn contract(contract_id: &ContractId) -> StringKey {
-    format!("CONT-{}", contract_id).into()
+    format!("CON-{}", contract_id).into()
 }
 
 pub fn contract_updates() -> StringKey {
-    "CONTUP".into()
+    "CUP".into()
 }
 
 pub fn local_prefix(contract_id: &ContractId) -> String {
@@ -67,11 +67,11 @@ pub fn local_tree_aux(
     tree_loc: &ZkDataLocator,
     aux_id: u32,
 ) -> StringKey {
-    format!("{}-{}-aux-{}", local_prefix(contract_id), tree_loc, aux_id).into()
+    format!("{}-{}-T-{}", local_prefix(contract_id), tree_loc, aux_id).into()
 }
 
 pub fn local_rollback_to_height(contract_id: &ContractId, height: u64) -> StringKey {
-    format!("{}-RLBK-{}", local_prefix(contract_id), height).into()
+    format!("{}-RLK-{}", local_prefix(contract_id), height).into()
 }
 
 pub fn local_scalar_value_prefix(contract_id: &ContractId) -> String {

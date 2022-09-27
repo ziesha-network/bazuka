@@ -3,7 +3,7 @@ use super::{
 };
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, TransactionStats};
 use crate::client::messages::SocialProfiles;
-use crate::core::{ContractPayment, Header, Signer, TransactionAndDelta};
+use crate::core::{Header, MpnPayment, Signer, TransactionAndDelta};
 use crate::crypto::SignatureScheme;
 use crate::utils;
 use crate::wallet::Wallet;
@@ -31,8 +31,8 @@ pub struct NodeContext<B: Blockchain> {
     pub miner_puzzle: Option<BlockPuzzle>,
 
     pub mempool: HashMap<TransactionAndDelta, TransactionStats>,
-    pub zero_mempool: HashMap<zk::ZeroTransaction, TransactionStats>,
-    pub contract_payment_mempool: HashMap<ContractPayment, TransactionStats>,
+    pub mpn_tx_mempool: HashMap<zk::MpnTransaction, TransactionStats>,
+    pub mpn_pay_mempool: HashMap<MpnPayment, TransactionStats>,
 
     pub outdated_since: Option<Timestamp>,
     pub banned_headers: HashMap<Header, Timestamp>,
@@ -82,11 +82,11 @@ impl<B: Blockchain> NodeContext<B> {
             firewall.refresh(local_ts);
         }
 
-        self.blockchain
-            .cleanup_contract_payment_mempool(&mut self.contract_payment_mempool)?;
         self.blockchain.cleanup_mempool(&mut self.mempool)?;
         self.blockchain
-            .cleanup_zero_mempool(&mut self.zero_mempool)?;
+            .cleanup_mpn_transaction_mempool(&mut self.mpn_tx_mempool)?;
+        self.blockchain
+            .cleanup_mpn_payment_mempool(&mut self.mpn_pay_mempool)?;
 
         if let Some(max) = self.opts.tx_max_time_alive {
             for (tx, stats) in self.mempool.clone().into_iter() {
@@ -94,14 +94,14 @@ impl<B: Blockchain> NodeContext<B> {
                     self.mempool.remove(&tx);
                 }
             }
-            for (tx, stats) in self.contract_payment_mempool.clone().into_iter() {
+            for (tx, stats) in self.mpn_pay_mempool.clone().into_iter() {
                 if local_ts - stats.first_seen > max {
-                    self.contract_payment_mempool.remove(&tx);
+                    self.mpn_pay_mempool.remove(&tx);
                 }
             }
-            for (tx, stats) in self.zero_mempool.clone().into_iter() {
+            for (tx, stats) in self.mpn_tx_mempool.clone().into_iter() {
                 if local_ts - stats.first_seen > max {
-                    self.zero_mempool.remove(&tx);
+                    self.mpn_tx_mempool.remove(&tx);
                 }
             }
         }

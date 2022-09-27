@@ -45,31 +45,34 @@ pub enum PaymentDirection<S: SignatureScheme, ZS: ZkSignatureScheme> {
     Withdraw(Option<ZS::Sig>),
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
 pub struct ContractPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub address: S::Pub,
     pub zk_address: ZS::Pub,
-    pub zk_address_index: u32, // Help locating the zk_address in a a huge database
     pub contract_id: ContractId<H>, // Makes sure the payment can only run on this contract.
-    pub nonce: u32,            // Makes sure a contract payment cannot be replayed on this contract.
+    pub nonce: u32, // Makes sure a contract payment cannot be replayed on this contract.
     pub amount: Money,
     pub fee: Money, // Executor fee
     pub direction: PaymentDirection<S, ZS>,
 }
 
-impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> PartialEq for ContractPayment<H, S, ZS> {
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct MpnPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
+    pub zk_address_index: u32,
+    pub payment: ContractPayment<H, S, ZS>,
+}
+
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> PartialEq for MpnPayment<H, S, ZS> {
     fn eq(&self, other: &Self) -> bool {
         bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
     }
 }
 
 impl<H: Hash + PartialEq, S: SignatureScheme + PartialEq, ZS: ZkSignatureScheme + PartialEq> Eq
-    for ContractPayment<H, S, ZS>
+    for MpnPayment<H, S, ZS>
 {
 }
-impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> std::hash::Hash
-    for ContractPayment<H, S, ZS>
-{
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> std::hash::Hash for MpnPayment<H, S, ZS> {
     fn hash<Hasher>(&self, state: &mut Hasher)
     where
         Hasher: std::hash::Hasher,

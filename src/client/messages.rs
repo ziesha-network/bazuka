@@ -1,7 +1,7 @@
 use crate::blockchain::ZkBlockchainPatch;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
-    Account, Address, Block, ContractId, ContractPayment, Header, Money, TransactionAndDelta,
+    Account, Address, Block, ContractId, Header, Money, MpnPayment, TransactionAndDelta,
 };
 use crate::zk;
 use std::collections::HashMap;
@@ -188,12 +188,12 @@ pub struct TransactRequest {
 pub struct TransactResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct TransactZeroRequest {
-    pub tx: zk::ZeroTransaction,
+pub struct PostMpnTransactionRequest {
+    pub tx: zk::MpnTransaction,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct TransactZeroResponse {}
+pub struct PostMpnTransactionResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ShutdownRequest {}
@@ -206,17 +206,17 @@ pub struct GetZeroMempoolRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetZeroMempoolResponse {
-    pub updates: Vec<zk::ZeroTransaction>,
-    pub payments: Vec<ContractPayment>,
+    pub updates: Vec<zk::MpnTransaction>,
+    pub payments: Vec<MpnPayment>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct TransactContractPaymentRequest {
-    pub tx: ContractPayment,
+pub struct PostMpnPaymentRequest {
+    pub tx: MpnPayment,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct TransactContractPaymentResponse {}
+pub struct PostMpnPaymentResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMempoolRequest {}
@@ -224,6 +224,6 @@ pub struct GetMempoolRequest {}
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMempoolResponse {
     pub tx: Vec<TransactionAndDelta>,
-    pub tx_zk: Vec<ContractPayment>,
-    pub zk: Vec<zk::ZeroTransaction>,
+    pub tx_zk: Vec<MpnPayment>,
+    pub zk: Vec<zk::MpnTransaction>,
 }

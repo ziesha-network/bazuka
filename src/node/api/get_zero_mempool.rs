@@ -14,12 +14,8 @@ pub async fn get_zero_mempool<B: Blockchain>(
     } else {
         context.refresh()?;
         Ok(GetZeroMempoolResponse {
-            updates: context.zero_mempool.clone().into_keys().collect(),
-            payments: context
-                .contract_payment_mempool
-                .clone()
-                .into_keys()
-                .collect(),
+            updates: context.mpn_tx_mempool.clone().into_keys().collect(),
+            payments: context.mpn_pay_mempool.clone().into_keys().collect(),
         })
     }
 }

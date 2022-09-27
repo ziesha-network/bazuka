@@ -214,13 +214,16 @@ async fn node_service<B: Blockchain>(
             }
             (Method::POST, "/bincode/transact/zero") => {
                 *response.body_mut() = Body::from(bincode::serialize(
-                    &api::transact_zero(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
-                        .await?,
+                    &api::post_mpn_transaction(
+                        Arc::clone(&context),
+                        bincode::deserialize(&body_bytes)?,
+                    )
+                    .await?,
                 )?);
             }
             (Method::POST, "/bincode/transact/contract_payment") => {
                 *response.body_mut() = Body::from(bincode::serialize(
-                    &api::transact_contract_payment(
+                    &api::post_mpn_payment(
                         Arc::clone(&context),
                         bincode::deserialize(&body_bytes)?,
                     )
@@ -362,8 +365,8 @@ pub async fn node_create<B: Blockchain>(
         blockchain,
         wallet,
         mempool: HashMap::new(),
-        zero_mempool: HashMap::new(),
-        contract_payment_mempool: HashMap::new(),
+        mpn_tx_mempool: HashMap::new(),
+        mpn_pay_mempool: HashMap::new(),
         peer_manager: PeerManager::new(
             address,
             bootstrap,

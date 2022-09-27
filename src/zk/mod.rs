@@ -25,7 +25,6 @@ pub struct MpnAccount {
 lazy_static! {
     pub static ref CONTRACT_PAYMENT_STATE_MODEL: ZkStateModel = ZkStateModel::Struct {
         field_types: vec![
-            ZkStateModel::Scalar, // index
             ZkStateModel::Scalar, // amount
             ZkStateModel::Scalar, // direction
             ZkStateModel::Scalar, // pub-x
@@ -52,6 +51,7 @@ pub trait ZkHasher: Clone {
 
 pub fn check_proof(
     vk: &ZkVerifierKey,
+    prev_height: u64,
     prev_state: &ZkCompressedState,
     aux_data: &ZkCompressedState,
     next_state: &ZkCompressedState,
@@ -64,6 +64,7 @@ pub fn check_proof(
             if let ZkProof::Groth16(proof) = proof {
                 groth16::groth16_verify(
                     vk,
+                    prev_height,
                     prev_state.state_hash,
                     aux_data.state_hash,
                     next_state.state_hash,
@@ -384,7 +385,7 @@ pub struct ZkPaymentVerifierKey {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct ZeroTransaction {
+pub struct MpnTransaction {
     pub nonce: u64,
     pub src_index: u32,
     pub dst_index: u32,
@@ -394,21 +395,21 @@ pub struct ZeroTransaction {
     pub sig: jubjub::Signature,
 }
 
-impl Eq for ZeroTransaction {}
+impl Eq for MpnTransaction {}
 
-impl PartialEq for ZeroTransaction {
+impl PartialEq for MpnTransaction {
     fn eq(&self, other: &Self) -> bool {
         self.hash() == other.hash()
     }
 }
 
-impl std::hash::Hash for ZeroTransaction {
+impl std::hash::Hash for MpnTransaction {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.hash().0.hash(state);
     }
 }
 
-impl ZeroTransaction {
+impl MpnTransaction {
     pub fn verify(&self, addr: &jubjub::PublicKey) -> bool {
         jubjub::JubJub::<ZkMainHasher>::verify(addr, self.hash(), &self.sig)
     }

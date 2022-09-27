@@ -3,8 +3,8 @@ pub use error::*;
 
 use crate::core::{
     hash::Hash, Account, Address, Block, ContractAccount, ContractId, ContractPayment,
-    ContractUpdate, Hasher, Header, Money, PaymentDirection, ProofOfWork, Signature, Transaction,
-    TransactionAndDelta, TransactionData, ZkHasher,
+    ContractUpdate, Hasher, Header, Money, MpnPayment, PaymentDirection, ProofOfWork, Signature,
+    Transaction, TransactionAndDelta, TransactionData, ZkHasher,
 };
 use crate::crypto::jubjub;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
@@ -76,17 +76,17 @@ pub trait Blockchain {
         &self,
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
     ) -> Result<(), BlockchainError>;
-    fn cleanup_contract_payment_mempool(
+    fn cleanup_mpn_payment_mempool(
         &self,
-        mempool: &mut HashMap<ContractPayment, TransactionStats>,
+        mempool: &mut HashMap<MpnPayment, TransactionStats>,
     ) -> Result<(), BlockchainError>;
-    fn cleanup_zero_mempool(
+    fn cleanup_mpn_transaction_mempool(
         &self,
-        mempool: &mut HashMap<zk::ZeroTransaction, TransactionStats>,
+        mempool: &mut HashMap<zk::MpnTransaction, TransactionStats>,
     ) -> Result<(), BlockchainError>;
 
-    fn validate_zero_transaction(&self, tx: &zk::ZeroTransaction) -> Result<(), BlockchainError>;
-    fn validate_contract_payment(&self, tx: &ContractPayment) -> Result<(), BlockchainError>;
+    fn validate_mpn_transaction(&self, tx: &zk::MpnTransaction) -> Result<(), BlockchainError>;
+    fn validate_mpn_payment(&self, tx: &MpnPayment) -> Result<(), BlockchainError>;
     fn validate_transaction(&self, tx_delta: &TransactionAndDelta) -> Result<(), BlockchainError>;
 
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
@@ -282,18 +282,18 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(())
     }
 
-    fn apply_zero_tx(&mut self, tx: &zk::ZeroTransaction) -> Result<(), BlockchainError> {
+    fn apply_zero_tx(&mut self, tx: &zk::MpnTransaction) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
             let src = self.get_mpn_account(tx.src_index)?;
             let dst = self.get_mpn_account(tx.dst_index)?;
             if tx.nonce != src.nonce {
-                return Err(BlockchainError::InvalidZeroTransaction);
+                return Err(BlockchainError::InvalidMpnTransaction);
             }
             if !tx.verify(&jubjub::PublicKey(src.address.compress())) {
-                return Err(BlockchainError::InvalidZeroTransaction);
+                return Err(BlockchainError::InvalidMpnTransaction);
             }
             if src.balance < tx.fee + tx.amount {
-                return Err(BlockchainError::InvalidZeroTransaction);
+                return Err(BlockchainError::InvalidMpnTransaction);
             }
             let mut size_diff = 0;
             zk::KvStoreStateManager::<ZkHasher>::set_mpn_account(
@@ -447,16 +447,10 @@ impl<K: KvStore> KvStoreChain<K> {
                                         [
                                             (
                                                 zk::ZkDataLocator(vec![i as u32, 0]),
-                                                Some(zk::ZkScalar::from(
-                                                    contract_payment.zk_address_index as u64,
-                                                )),
-                                            ),
-                                            (
-                                                zk::ZkDataLocator(vec![i as u32, 1]),
                                                 Some(zk::ZkScalar::from(contract_payment.amount)),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 2]),
+                                                zk::ZkDataLocator(vec![i as u32, 1]),
                                                 Some(zk::ZkScalar::from(
                                                     match contract_payment.direction {
                                                         PaymentDirection::Deposit(_) => 0,
@@ -465,11 +459,11 @@ impl<K: KvStore> KvStoreChain<K> {
                                                 )),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 3]),
+                                                zk::ZkDataLocator(vec![i as u32, 2]),
                                                 Some(zk::ZkScalar::from(pk.0)),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 4]),
+                                                zk::ZkDataLocator(vec![i as u32, 3]),
                                                 Some(zk::ZkScalar::from(pk.1)),
                                             ),
                                         ]
@@ -514,6 +508,7 @@ impl<K: KvStore> KvStoreChain<K> {
                         let mut cont_account = chain.get_contract_account(*contract_id)?;
                         if !zk::check_proof(
                             circuit,
+                            prev_account.height,
                             &cont_account.compressed_state,
                             &aux_data,
                             next_state,
@@ -1255,13 +1250,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn cleanup_contract_payment_mempool(
+    fn cleanup_mpn_payment_mempool(
         &self,
-        mempool: &mut HashMap<ContractPayment, TransactionStats>,
+        mempool: &mut HashMap<MpnPayment, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             for tx in mempool.clone().into_keys() {
-                if chain.apply_contract_payment(&tx).is_err() {
+                if chain.apply_contract_payment(&tx.payment).is_err() {
                     mempool.remove(&tx);
                 }
             }
@@ -1270,9 +1265,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn cleanup_zero_mempool(
+    fn cleanup_mpn_transaction_mempool(
         &self,
-        mempool: &mut HashMap<zk::ZeroTransaction, TransactionStats>,
+        mempool: &mut HashMap<zk::MpnTransaction, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             for tx in mempool.clone().into_keys() {
@@ -1285,7 +1280,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn validate_zero_transaction(&self, tx: &zk::ZeroTransaction) -> Result<(), BlockchainError> {
+    fn validate_mpn_transaction(&self, tx: &zk::MpnTransaction) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             chain.apply_zero_tx(tx)?;
             Ok(())
@@ -1293,9 +1288,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn validate_contract_payment(&self, tx: &ContractPayment) -> Result<(), BlockchainError> {
+    fn validate_mpn_payment(&self, tx: &MpnPayment) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            chain.apply_contract_payment(tx)?;
+            chain.apply_contract_payment(&tx.payment)?;
             Ok(())
         })?;
         Ok(())
