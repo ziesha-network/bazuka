@@ -13,7 +13,7 @@ decentralized protocol compared to similar projects.
 
 ### Links
 
- - Website: https://zeeka.io
+ - Website: https://zeeka-network.github.io
  - Whitepaper: https://hackmd.io/@keyvank/zeeka
  - Discord: https://discord.gg/4gbf9gZh8H
 
