@@ -154,7 +154,6 @@ pub fn get_blockchain_config() -> BlockchainConfig {
 pub fn get_test_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
-    println!("{}", mpn_contract_id);
 
     let min_diff = Difficulty(0x007fffff);
 
