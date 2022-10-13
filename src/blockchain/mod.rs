@@ -195,7 +195,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn next_difficulty(&self) -> Result<Difficulty, BlockchainError> {
         let height = self.get_height()?;
-        let last_block = self.get_header(height - 1)?;
+        let last_block = self.get_tip()?;
         if height % self.config.difficulty_calc_interval == 0 {
             let prev_block = self.get_header(height - self.config.difficulty_calc_interval)?;
             Ok(utils::calc_pow_difficulty(
@@ -986,6 +986,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
             let pow_key = self.pow_key(h.number)?;
 
+            // BUG: self.median_timestamp is not updated?!
             if h.proof_of_work.timestamp < self.median_timestamp(from - 1)? {
                 return Err(BlockchainError::InvalidTimestamp);
             }
