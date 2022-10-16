@@ -1,7 +1,7 @@
 [package]
 name = "bazuka"
 version = "0.1.1"
-authors = ["Keyvan Kambakhsh <keyvankambakhsh@gmail.com>"]
+authors = ["El Geuse <geusebetel@proton.me>"]
 edition = "2021"
 
 [dependencies]
