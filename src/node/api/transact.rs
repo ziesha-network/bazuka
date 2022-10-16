@@ -15,6 +15,7 @@ pub async fn transact<B: Blockchain>(
         Ok(_) => {
             context
                 .mempool
+                .tx
                 .insert(req.tx_delta, TransactionStats { first_seen: now });
         }
         Err(e) => {

@@ -15,6 +15,7 @@ pub async fn get_mempool<B: Blockchain>(
     Ok(GetMempoolResponse {
         tx: context
             .mempool
+            .tx
             .clone()
             .into_keys()
             .filter(|tx| {
@@ -26,7 +27,7 @@ pub async fn get_mempool<B: Blockchain>(
                 }
             })
             .collect(),
-        tx_zk: context.mpn_pay_mempool.clone().into_keys().collect(),
-        zk: context.mpn_tx_mempool.clone().into_keys().collect(),
+        tx_zk: context.mempool.tx_zk.clone().into_keys().collect(),
+        zk: context.mempool.zk.clone().into_keys().collect(),
     })
 }

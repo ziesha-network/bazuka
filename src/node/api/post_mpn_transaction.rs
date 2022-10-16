@@ -14,7 +14,8 @@ pub async fn post_mpn_transaction<B: Blockchain>(
     match context.blockchain.validate_mpn_transaction(&req.tx) {
         Ok(_) => {
             context
-                .mpn_tx_mempool
+                .mempool
+                .zk
                 .insert(req.tx, TransactionStats { first_seen: now });
         }
         Err(e) => {

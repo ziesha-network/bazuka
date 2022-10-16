@@ -20,9 +20,9 @@ pub async fn log_info<B: Blockchain>(
         ),
     ]);
 
-    inf.push(("Tx Pool", ctx.mempool.len().to_string()));
-    inf.push(("Tx/Zk Pool", ctx.mpn_pay_mempool.len().to_string()));
-    inf.push(("Zk Pool", ctx.mpn_tx_mempool.len().to_string()));
+    inf.push(("Tx Pool", ctx.mempool.tx.len().to_string()));
+    inf.push(("Tx/Zk Pool", ctx.mempool.tx_zk.len().to_string()));
+    inf.push(("Zk Pool", ctx.mempool.zk.len().to_string()));
 
     if let Some(wallet) = ctx.wallet.clone() {
         let acc = ctx.blockchain.get_account(wallet.get_address())?;

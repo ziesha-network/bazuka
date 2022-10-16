@@ -14,7 +14,8 @@ pub async fn post_mpn_payment<B: Blockchain>(
     match context.blockchain.validate_mpn_payment(&req.tx) {
         Ok(_) => {
             context
-                .mpn_pay_mempool
+                .mempool
+                .tx_zk
                 .insert(req.tx, TransactionStats { first_seen: now });
         }
         Err(e) => {

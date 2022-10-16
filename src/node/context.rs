@@ -1,13 +1,13 @@
 use super::{
-    Firewall, NodeError, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerManager, Timestamp,
+    Firewall, Mempool, NodeError, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerManager,
+    Timestamp,
 };
-use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, TransactionStats};
+use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError};
 use crate::client::messages::SocialProfiles;
-use crate::core::{Header, MpnPayment, Signer, TransactionAndDelta};
+use crate::core::{Header, Signer};
 use crate::crypto::SignatureScheme;
 use crate::utils;
 use crate::wallet::Wallet;
-use crate::zk;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -30,9 +30,7 @@ pub struct NodeContext<B: Blockchain> {
     pub timestamp_offset: i32,
     pub miner_puzzle: Option<BlockPuzzle>,
 
-    pub mempool: HashMap<TransactionAndDelta, TransactionStats>,
-    pub mpn_tx_mempool: HashMap<zk::MpnTransaction, TransactionStats>,
-    pub mpn_pay_mempool: HashMap<MpnPayment, TransactionStats>,
+    pub mempool: Mempool,
 
     pub outdated_since: Option<Timestamp>,
     pub banned_headers: HashMap<Header, Timestamp>,
@@ -82,26 +80,26 @@ impl<B: Blockchain> NodeContext<B> {
             firewall.refresh(local_ts);
         }
 
-        self.blockchain.cleanup_mempool(&mut self.mempool)?;
+        self.blockchain.cleanup_mempool(&mut self.mempool.tx)?;
         self.blockchain
-            .cleanup_mpn_transaction_mempool(&mut self.mpn_tx_mempool)?;
+            .cleanup_mpn_transaction_mempool(&mut self.mempool.zk)?;
         self.blockchain
-            .cleanup_mpn_payment_mempool(&mut self.mpn_pay_mempool)?;
+            .cleanup_mpn_payment_mempool(&mut self.mempool.tx_zk)?;
 
         if let Some(max) = self.opts.tx_max_time_alive {
-            for (tx, stats) in self.mempool.clone().into_iter() {
+            for (tx, stats) in self.mempool.tx.clone().into_iter() {
                 if local_ts - stats.first_seen > max {
-                    self.mempool.remove(&tx);
+                    self.mempool.tx.remove(&tx);
                 }
             }
-            for (tx, stats) in self.mpn_pay_mempool.clone().into_iter() {
+            for (tx, stats) in self.mempool.tx_zk.clone().into_iter() {
                 if local_ts - stats.first_seen > max {
-                    self.mpn_pay_mempool.remove(&tx);
+                    self.mempool.tx_zk.remove(&tx);
                 }
             }
-            for (tx, stats) in self.mpn_tx_mempool.clone().into_iter() {
+            for (tx, stats) in self.mempool.zk.clone().into_iter() {
                 if local_ts - stats.first_seen > max {
-                    self.mpn_tx_mempool.remove(&tx);
+                    self.mempool.zk.remove(&tx);
                 }
             }
         }
@@ -119,7 +117,7 @@ impl<B: Blockchain> NodeContext<B> {
         let ts = self.network_timestamp();
         let draft = self
             .blockchain
-            .draft_block(ts, &self.mempool, &wallet, true)?;
+            .draft_block(ts, &self.mempool.tx, &wallet, true)?;
         if let Some(draft) = draft {
             let puzzle = Puzzle {
                 key: hex::encode(self.blockchain.pow_key(draft.block.header.number)?),

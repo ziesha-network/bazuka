@@ -6,6 +6,7 @@ mod context;
 mod firewall;
 mod heartbeat;
 mod http;
+mod mempool;
 mod peer_manager;
 pub mod seeds;
 pub mod upnp;
@@ -22,6 +23,7 @@ use context::NodeContext;
 pub use firewall::Firewall;
 use hyper::body::HttpBody;
 use hyper::{Body, Method, Request, Response, StatusCode};
+use mempool::Mempool;
 use peer_manager::PeerManager;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
@@ -364,9 +366,7 @@ pub async fn node_create<B: Blockchain>(
         }),
         blockchain,
         wallet,
-        mempool: HashMap::new(),
-        mpn_tx_mempool: HashMap::new(),
-        mpn_pay_mempool: HashMap::new(),
+        mempool: Mempool::default(),
         peer_manager: PeerManager::new(
             address,
             bootstrap,

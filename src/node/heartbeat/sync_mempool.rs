@@ -33,16 +33,19 @@ pub async fn sync_mempool<B: Blockchain>(
         for (tx_s, tx_zk_s, zk_s) in resps {
             for tx in tx_s {
                 ctx.mempool
+                    .tx
                     .entry(tx)
                     .or_insert(TransactionStats { first_seen: now });
             }
             for tx in tx_zk_s {
-                ctx.mpn_pay_mempool
+                ctx.mempool
+                    .tx_zk
                     .entry(tx)
                     .or_insert(TransactionStats { first_seen: now });
             }
             for tx in zk_s {
-                ctx.mpn_tx_mempool
+                ctx.mempool
+                    .zk
                     .entry(tx)
                     .or_insert(TransactionStats { first_seen: now });
             }
