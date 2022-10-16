@@ -182,17 +182,6 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok((mirror.database.to_ops(), result))
     }
 
-    fn median_timestamp(&self, index: u64) -> Result<u32, BlockchainError> {
-        Ok(utils::median(
-            &(0..std::cmp::min(index + 1, self.config.median_timestamp_count))
-                .map(|i| {
-                    self.get_header(index - i)
-                        .map(|b| b.proof_of_work.timestamp)
-                })
-                .collect::<Result<Vec<u32>, BlockchainError>>()?,
-        ))
-    }
-
     fn next_difficulty(&self) -> Result<Difficulty, BlockchainError> {
         let height = self.get_height()?;
         let last_block = self.get_tip()?;
@@ -968,6 +957,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             )?
             .proof_of_work;
 
+        let mut timestamps = (0..std::cmp::min(from, self.config.median_timestamp_count))
+            .map(|i| {
+                self.get_header(from - 1 - i)
+                    .map(|b| b.proof_of_work.timestamp)
+            })
+            .collect::<Result<Vec<u32>, BlockchainError>>()?;
+
         for h in headers.iter() {
             if h.number % self.config.difficulty_calc_interval == 0 {
                 if h.proof_of_work.target
@@ -986,8 +982,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
             let pow_key = self.pow_key(h.number)?;
 
-            // BUG: self.median_timestamp is not updated?!
-            if h.proof_of_work.timestamp < self.median_timestamp(from - 1)? {
+            if h.proof_of_work.timestamp < utils::median(&timestamps) {
                 return Err(BlockchainError::InvalidTimestamp);
             }
 
@@ -1005,6 +1000,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
             if h.parent_hash != last_header.hash() {
                 return Err(BlockchainError::InvalidParentHash);
+            }
+
+            timestamps.push(h.proof_of_work.timestamp);
+            while timestamps.len() > self.config.median_timestamp_count as usize {
+                timestamps.remove(0);
             }
 
             last_header = h.clone();
