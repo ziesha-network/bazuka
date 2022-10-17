@@ -36,6 +36,7 @@ pub struct BlockchainConfig {
     pub mpn_num_function_calls: usize,
     pub mpn_num_contract_payments: usize,
     pub minimum_pow_difficulty: Difficulty,
+    pub testnet_height_limit: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -615,6 +616,13 @@ impl<K: KvStore> KvStoreChain<K> {
     fn apply_block(&mut self, block: &Block, check_pow: bool) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
             let curr_height = chain.get_height()?;
+
+            if let Some(height_limit) = self.config.testnet_height_limit {
+                if block.header.number >= height_limit {
+                    return Err(BlockchainError::TestnetHeightLimitReached);
+                }
+            }
+
             let is_genesis = block.header.number == 0;
             let next_reward = chain.next_reward()?;
 

@@ -82,4 +82,6 @@ pub enum BlockchainError {
     CannotExecuteOwnPayments,
     #[error("contract contains invalid state-model")]
     InvalidStateModel,
+    #[error("height limit reached! if you are on a testnet, make sure you update your software")]
+    TestnetHeightLimitReached,
 }
