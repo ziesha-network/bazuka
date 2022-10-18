@@ -4,7 +4,7 @@ use std::time::Duration;
 pub fn get_node_options() -> NodeOptions {
     NodeOptions {
         tx_max_time_alive: Some(600),
-        heartbeat_interval: Duration::from_secs(5),
+        heartbeat_interval: Duration::from_secs(10),
         num_peers: 8,
         max_blocks_fetch: 16,
         default_punish: 60,
