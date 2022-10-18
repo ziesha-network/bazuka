@@ -142,7 +142,7 @@ async fn run_node(
     bootstrap: Vec<String>,
     network: String,
 ) -> Result<(), NodeError> {
-    let (pub_key, priv_key) = Signer::generate_keys(&bazuka_config.seed.as_bytes());
+    let (_pub_key, priv_key) = Signer::generate_keys(&bazuka_config.seed.as_bytes());
 
     const DEFAULT_PORT: u16 = 8765;
 
