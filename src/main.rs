@@ -168,7 +168,6 @@ async fn run_node(
     if let Some(addr) = &address {
         println!("{} {}", "Internet endpoint:".bright_yellow(), addr);
     }
-    println!("{} {}", "Peer public-key:".bright_yellow(), pub_key);
 
     println!(
         "{} {}",
