@@ -24,12 +24,12 @@ pub struct GetStatsRequest {}
 pub struct GetStatsResponse {
     pub social_profiles: SocialProfiles,
     pub height: u64,
-    pub active_peers: usize,
+    pub nodes: usize,
     pub power: u128,
     pub next_reward: Money,
     pub timestamp: u32,
     pub version: String,
-    pub network: String
+    pub network: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
