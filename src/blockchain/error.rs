@@ -84,4 +84,6 @@ pub enum BlockchainError {
     InvalidStateModel,
     #[error("height limit reached! if you are on a testnet, make sure you update your software")]
     TestnetHeightLimitReached,
+    #[error("address not allowed to mine")]
+    AddressNotAllowedToMine,
 }

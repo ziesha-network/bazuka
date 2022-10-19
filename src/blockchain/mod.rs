@@ -11,6 +11,15 @@ use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
 use crate::utils;
 use crate::wallet::Wallet;
 use crate::zk;
+use std::collections::HashSet;
+
+lazy_static! {
+    pub static ref CHAOS_MINERS: HashSet<Address> =
+        ["0x4c5fb6058ab438ff4c7182fd2802ac39d2d114e8515d9e49047a364836e39322"]
+            .into_iter()
+            .map(|a| a.parse().unwrap())
+            .collect();
+}
 
 use rayon::prelude::*;
 
@@ -654,9 +663,12 @@ impl<K: KvStore> KvStoreChain<K> {
                 {
                     return Err(BlockchainError::InvalidMinerReward);
                 }
-                match reward_tx.data {
-                    TransactionData::RegularSend { dst: _, amount } => {
-                        if amount != next_reward + fee_sum {
+                match &reward_tx.data {
+                    TransactionData::RegularSend { dst, amount } => {
+                        if !CHAOS_MINERS.contains(dst) {
+                            return Err(BlockchainError::AddressNotAllowedToMine);
+                        }
+                        if *amount != next_reward + fee_sum {
                             return Err(BlockchainError::InvalidMinerReward);
                         }
                     }
