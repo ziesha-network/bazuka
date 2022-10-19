@@ -12,6 +12,7 @@ pub async fn get_stats<B: Blockchain>(
     Ok(GetStatsResponse {
         social_profiles: context.social_profiles.clone(),
         height: context.blockchain.get_height()?,
+        active_peers: context.peer_manager.get_peers().len(),
         power: context.blockchain.get_power()?,
         next_reward: context.blockchain.next_reward()?,
         timestamp: context.network_timestamp(),

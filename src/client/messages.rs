@@ -24,6 +24,7 @@ pub struct GetStatsRequest {}
 pub struct GetStatsResponse {
     pub social_profiles: SocialProfiles,
     pub height: u64,
+    pub active_peers: usize,
     pub power: u128,
     pub next_reward: Money,
     pub timestamp: u32,
