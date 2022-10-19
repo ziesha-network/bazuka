@@ -31,7 +31,7 @@ want to mine Zeeka, you will need to install ![zoro](https://github.com/zeeka-ne
  * Prepare a Linux machine.
  * Make sure you have installed `libssl-dev` and `cmake` packages.
     ```
-    sudo apt install -y libssl-dev cmake
+    sudo apt install -y build-essential libssl-dev cmake
     ```
  * Install the Rust toolchain (https://rustup.rs/)
     ```
