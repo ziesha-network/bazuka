@@ -13,6 +13,7 @@ pub async fn sync_mempool<B: Blockchain>(
     let peer_addresses = ctx.peer_manager.random_peers(opts.num_peers);
     drop(ctx);
 
+    log::info!("Syncing mempools...");
     let peer_responses: Vec<(Peer, Result<GetMempoolResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
             net.bincode_get::<GetMempoolRequest, GetMempoolResponse>(

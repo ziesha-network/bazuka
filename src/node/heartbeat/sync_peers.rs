@@ -15,7 +15,7 @@ pub async fn sync_peers<B: Blockchain>(
     let peer_addresses = ctx.peer_manager.random_peers(opts.num_peers);
     drop(ctx);
 
-    log::info!("Syncing peers with: {:?}", peer_addresses);
+    log::info!("Syncing peers...");
     let peer_responses: Vec<(Peer, Result<GetPeersResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
             net.json_get::<GetPeersRequest, GetPeersResponse>(

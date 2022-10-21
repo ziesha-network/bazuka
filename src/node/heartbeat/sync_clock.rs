@@ -18,7 +18,7 @@ pub async fn sync_clock<B: Blockchain>(
     let peer_addresses = ctx.peer_manager.random_peers(opts.num_peers);
     drop(ctx);
 
-    log::info!("Syncing clocks with: {:?}", peer_addresses);
+    log::info!("Syncing clocks...");
     let peer_responses: Vec<(Peer, Result<HandshakeResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
             net.json_post::<HandshakeRequest, HandshakeResponse>(

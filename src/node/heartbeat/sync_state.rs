@@ -17,6 +17,7 @@ pub async fn sync_state<B: Blockchain>(
         ctx.outdated_since = None;
     }
 
+    log::info!("Syncing states...");
     if !outdated_heights.is_empty() {
         if let Some(outdated_since) = ctx.outdated_since {
             if (ts as i64 - outdated_since as i64) > ctx.opts.outdated_heights_threshold as i64 {
@@ -40,6 +41,7 @@ pub async fn sync_state<B: Blockchain>(
         drop(ctx);
 
         for peer in same_height_peers {
+            log::info!("Syncing state with {}...", peer.address);
             let patch = net
                 .bincode_get::<GetStatesRequest, GetStatesResponse>(
                     format!("{}/bincode/states", peer.address),
