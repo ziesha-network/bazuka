@@ -115,20 +115,28 @@ impl<B: Blockchain> NodeContext<B> {
 
     pub fn get_puzzle(&mut self, wallet: Wallet) -> Result<Option<BlockPuzzle>, BlockchainError> {
         let ts = self.network_timestamp();
-        let draft = self
+        match self
             .blockchain
-            .draft_block(ts, &self.mempool.tx, &wallet, true)?;
-        if let Some(draft) = draft {
-            let puzzle = Puzzle {
-                key: hex::encode(self.blockchain.pow_key(draft.block.header.number)?),
-                blob: hex::encode(bincode::serialize(&draft.block.header).unwrap()),
-                offset: 80,
-                size: 8,
-                target: draft.block.header.proof_of_work.target,
-            };
-            Ok(Some((draft, puzzle)))
-        } else {
-            Ok(None)
+            .draft_block(ts, &self.mempool.tx, &wallet, true)
+        {
+            Ok(draft) => {
+                if let Some(draft) = draft {
+                    let puzzle = Puzzle {
+                        key: hex::encode(self.blockchain.pow_key(draft.block.header.number)?),
+                        blob: hex::encode(bincode::serialize(&draft.block.header).unwrap()),
+                        offset: 80,
+                        size: 8,
+                        target: draft.block.header.proof_of_work.target,
+                    };
+                    Ok(Some((draft, puzzle)))
+                } else {
+                    Ok(None)
+                }
+            }
+            Err(e) => {
+                log::warn!("Cannot draft a block! Error: {}", e);
+                Ok(None)
+            }
         }
     }
 }
