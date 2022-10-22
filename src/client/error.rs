@@ -52,4 +52,6 @@ pub enum NodeError {
     StatesOutdated,
     #[error("requester ip is different with proposed peer")]
     HandshakeClientMismatch,
+    #[error("remote server error: {0}")]
+    RemoteServerError(String),
 }

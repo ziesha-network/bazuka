@@ -2,9 +2,9 @@ use crate::core::{Address, MpnPayment, Signer, TransactionAndDelta};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::zk::MpnTransaction;
-use hyper::body::HttpBody;
+use hyper::body::{Bytes, HttpBody};
 use hyper::header::HeaderValue;
-use hyper::{Body, Method, Request, Response};
+use hyper::{Body, Method, Request, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -77,7 +77,7 @@ impl Limit {
 }
 
 impl OutgoingSender {
-    pub async fn raw(&self, mut body: Request<Body>, limit: Limit) -> Result<Body, NodeError> {
+    pub async fn raw(&self, mut body: Request<Body>, limit: Limit) -> Result<Bytes, NodeError> {
         let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
         body.headers_mut()
             .insert(NETWORK_HEADER, HeaderValue::from_str(&self.network)?);
@@ -91,13 +91,15 @@ impl OutgoingSender {
             .send(req)
             .map_err(|_| NodeError::NotListeningError)?;
 
-        let body = if let Some(time_limit) = limit.time {
+        let resp = if let Some(time_limit) = limit.time {
             timeout(time_limit, resp_rcv.recv()).await?
         } else {
             resp_rcv.recv().await
         }
-        .ok_or(NodeError::NotAnsweringError)??
-        .into_body();
+        .ok_or(NodeError::NotAnsweringError)??;
+
+        let status = resp.status();
+        let body = resp.into_body();
 
         if let Some(size_limit) = limit.size {
             if body
@@ -110,7 +112,15 @@ impl OutgoingSender {
             }
         }
 
-        Ok(body)
+        let body_bytes = hyper::body::to_bytes(body).await?;
+
+        if status != StatusCode::OK {
+            return Err(NodeError::RemoteServerError(
+                String::from_utf8_lossy(&body_bytes).to_string(),
+            ));
+        }
+
+        Ok(body_bytes)
     }
 
     fn sign(
@@ -139,7 +149,7 @@ impl OutgoingSender {
         let bytes = bincode::serialize(&req)?;
         let req = self.sign(Request::builder().method(Method::GET).uri(&addr), bytes)?;
         let body = self.raw(req, limit).await?;
-        let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
+        let resp: Resp = bincode::deserialize(&body)?;
         Ok(resp)
     }
 
@@ -159,7 +169,7 @@ impl OutgoingSender {
             bytes,
         )?;
         let body = self.raw(req, limit).await?;
-        let resp: Resp = bincode::deserialize(&hyper::body::to_bytes(body).await?)?;
+        let resp: Resp = bincode::deserialize(&body)?;
         Ok(resp)
     }
 
@@ -180,7 +190,7 @@ impl OutgoingSender {
         )?;
 
         let body = self.raw(req, limit).await?;
-        let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
+        let resp: Resp = serde_json::from_slice(&body)?;
         Ok(resp)
     }
 
@@ -199,7 +209,7 @@ impl OutgoingSender {
             vec![],
         )?;
         let body = self.raw(req, limit).await?;
-        let resp: Resp = serde_json::from_slice(&hyper::body::to_bytes(body).await?)?;
+        let resp: Resp = serde_json::from_slice(&body)?;
         Ok(resp)
     }
 }
