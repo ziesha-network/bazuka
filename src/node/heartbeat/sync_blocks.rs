@@ -14,6 +14,10 @@ pub async fn sync_blocks<B: Blockchain>(
     sorted_peers.sort_by_key(|p| p.power);
 
     for peer in sorted_peers.iter().rev() {
+        if peer.outdated_states > 0 {
+            log::info!("Skipped syncing with {} (Outdated)", peer.address);
+            continue;
+        }
         let mut net_fail = false;
         let mut chain_fail = false;
         loop {

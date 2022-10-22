@@ -44,6 +44,7 @@ pub struct Peer {
     pub pub_key: ed25519::PublicKey,
     pub height: u64,
     pub power: u128,
+    pub outdated_states: usize,
 }
 
 pub struct NodeRequest {

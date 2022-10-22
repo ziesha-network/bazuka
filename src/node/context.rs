@@ -58,11 +58,13 @@ impl<B: Blockchain> NodeContext<B> {
     pub fn get_info(&self) -> Result<Option<Peer>, NodeError> {
         let height = self.blockchain.get_height()?;
         let power = self.blockchain.get_power()?;
+        let outdated_states = self.blockchain.get_outdated_contracts()?.len();
         Ok(self.address.map(|address| Peer {
             address,
             height,
             power,
             pub_key: self.pub_key.clone(),
+            outdated_states,
         }))
     }
 
