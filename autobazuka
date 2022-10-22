@@ -4,5 +4,5 @@ while :
 do
 	git checkout master
 	git pull origin master
-	timeout --foreground 3600 bash -c "cargo install --path . && bazuka $@"
+	timeout --foreground 3600 cargo run --release -- $@
 done
