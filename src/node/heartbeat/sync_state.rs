@@ -42,7 +42,7 @@ pub async fn sync_state<B: Blockchain>(
 
         for peer in same_height_peers {
             log::info!("Syncing state with {}...", peer.address);
-            let patch = net
+            match net
                 .bincode_get::<GetStatesRequest, GetStatesResponse>(
                     format!("{}/bincode/states", peer.address),
                     GetStatesRequest {
@@ -51,12 +51,16 @@ pub async fn sync_state<B: Blockchain>(
                     },
                     Limit::default().time(30 * MINUTE),
                 )
-                .await? // TODO: Do not throw error, punish if needed
-                .patch;
-            match context.write().await.blockchain.update_states(&patch) {
-                Ok(_) => {}
+                .await
+            {
+                Ok(resp) => match context.write().await.blockchain.update_states(&resp.patch) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::warn!("Wrong state-patch given! Error: {}", e);
+                    }
+                },
                 Err(e) => {
-                    log::warn!("Wrong state-patch given! Error: {}", e);
+                    log::warn!("Could not get state-patch! Error: {}", e);
                 }
             }
         }
