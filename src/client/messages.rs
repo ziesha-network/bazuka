@@ -229,3 +229,12 @@ pub struct GetMempoolResponse {
     pub tx_zk: Vec<MpnPayment>,
     pub zk: Vec<zk::MpnTransaction>,
 }
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetDebugDataRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetDebugDataResponse {
+    pub logs: String,
+    pub db_checksum: String,
+}

@@ -42,3 +42,5 @@ mod get_explorer_mpn_accounts;
 pub use get_explorer_mpn_accounts::*;
 mod get_mempool;
 pub use get_mempool::*;
+mod get_debug_data;
+pub use get_debug_data::*;

@@ -138,6 +138,8 @@ pub trait Blockchain {
     fn validate_mpn_payment(&self, tx: &MpnPayment) -> Result<(), BlockchainError>;
     fn validate_transaction(&self, tx_delta: &TransactionAndDelta) -> Result<(), BlockchainError>;
 
+    fn db_checksum(&self) -> Result<String, BlockchainError>;
+
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn get_mpn_account(&self, index: u32) -> Result<zk::MpnAccount, BlockchainError>;
     fn get_mpn_accounts(
@@ -825,6 +827,9 @@ impl<K: KvStore> KvStoreChain<K> {
 }
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
+    fn db_checksum(&self) -> Result<String, BlockchainError> {
+        Ok(hex::encode(self.database.checksum::<Hasher>()?))
+    }
     fn get_header(&self, index: u64) -> Result<Header, BlockchainError> {
         if index >= self.get_height()? {
             return Err(BlockchainError::BlockNotFound);
