@@ -887,7 +887,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         )?)
                     })?;
 
-                    if result != Some(comp.prev_state) && comp.prev_height > 0 {
+                    if result != Some(comp.prev_state) {
                         outdated.push(cid);
                     } else {
                         chain.database.update(&ops)?;
@@ -895,7 +895,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 } else {
                     let local_compressed_state =
                         zk::KvStoreStateManager::<ZkHasher>::root(&chain.database, cid)?;
-                    if local_compressed_state == comp.prev_state {
+                    let local_height =
+                        zk::KvStoreStateManager::<ZkHasher>::height_of(&chain.database, cid)?;
+                    if local_compressed_state == comp.prev_state && local_height == comp.prev_height
+                    {
                         outdated.retain(|&x| x != cid);
                     }
                 }
