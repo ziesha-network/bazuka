@@ -1,6 +1,9 @@
 use super::*;
+use std::collections::HashSet;
 
 pub struct Firewall {
+    whitelist: HashSet<IpAddr>,
+
     request_count_limit_per_minute: usize,
     request_count_last_reset: Timestamp,
     request_count: HashMap<IpAddr, usize>,
@@ -11,8 +14,13 @@ pub struct Firewall {
 }
 
 impl Firewall {
-    pub fn new(request_count_limit_per_minute: usize, traffic_limit_per_15m: u64) -> Self {
+    pub fn new(
+        whitelist: HashSet<IpAddr>,
+        request_count_limit_per_minute: usize,
+        traffic_limit_per_15m: u64,
+    ) -> Self {
         Self {
+            whitelist,
             request_count_limit_per_minute,
             traffic_limit_per_15m,
             request_count_last_reset: 0,
@@ -37,7 +45,7 @@ impl Firewall {
     }
     pub fn incoming_permitted(&mut self, client: SocketAddr) -> bool {
         // Incoming from loopback is always permitted
-        if client.ip().is_loopback() {
+        if client.ip().is_loopback() || self.whitelist.contains(&client.ip()) {
             return true;
         }
 

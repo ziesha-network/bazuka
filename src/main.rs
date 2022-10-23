@@ -33,7 +33,7 @@ use {
     bazuka::core::{ContractId, Money, Signer, ZkSigner},
     bazuka::crypto::{SignatureScheme, ZkSignatureScheme},
     serde::{Deserialize, Serialize},
-    std::net::SocketAddr,
+    std::net::{IpAddr, SocketAddr},
     structopt::StructOpt,
 };
 
@@ -80,6 +80,8 @@ enum CliOptions {
         network: String,
         #[structopt(long)]
         discord_handle: Option<String>,
+        #[structopt(long)]
+        whitelist: Vec<IpAddr>,
     },
     /// Get status of a node
     Status {},
@@ -141,6 +143,7 @@ async fn run_node(
     db: Option<PathBuf>,
     bootstrap: Vec<String>,
     network: String,
+    whitelist: Vec<IpAddr>,
 ) -> Result<(), NodeError> {
     let (_pub_key, priv_key) = Signer::generate_keys(&bazuka_config.seed.as_bytes());
 
@@ -198,7 +201,7 @@ async fn run_node(
     let bazuka_dir = db.unwrap_or_else(|| home::home_dir().unwrap().join(Path::new(".bazuka")));
 
     // 60 request per minute / 4GB per 15min
-    let firewall = Firewall::new(60, 4 * GB);
+    let firewall = Firewall::new(whitelist.into_iter().collect(), 60, 4 * GB);
 
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
@@ -355,6 +358,7 @@ async fn main() -> Result<(), NodeError> {
             network,
             discord_handle,
             client_only,
+            whitelist,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
             run_node(
@@ -368,6 +372,7 @@ async fn main() -> Result<(), NodeError> {
                 db,
                 bootstrap,
                 network,
+                whitelist,
             )
             .await?;
         }
