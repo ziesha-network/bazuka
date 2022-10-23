@@ -1,4 +1,5 @@
 pub mod blockchain;
+mod chaos;
 
 #[cfg(feature = "node")]
 pub mod node;

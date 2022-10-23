@@ -111,6 +111,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     };
 
     BlockchainConfig {
+        limited_miners: Some(super::chaos::CHAOS_MINERS.clone()),
         mpn_contract_id,
         genesis: BlockAndPatch {
             block: blk,
@@ -162,6 +163,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     let min_diff = Difficulty(0x007fffff);
 
     let mut conf = get_blockchain_config();
+    conf.limited_miners = None;
     conf.mpn_num_contract_payments = 0;
     conf.mpn_num_function_calls = 0;
     conf.mpn_contract_id = mpn_contract_id;
