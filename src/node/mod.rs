@@ -95,18 +95,20 @@ async fn node_service<B: Blockchain>(
         let mut response = Response::new(Body::empty());
 
         if let Some(client) = client {
-            let mut ctx = context.write().await;
-            let now = ctx.local_timestamp();
-            if ctx.peer_manager.is_ip_punished(now, client.ip()) {
-                log::warn!("{} -> PeerManager dropped request!", client);
-                *response.status_mut() = StatusCode::FORBIDDEN;
-                return Ok(response);
-            }
-            if let Some(firewall) = &mut ctx.firewall {
-                if !firewall.incoming_permitted(client) {
-                    log::warn!("{} -> Firewall dropped request!", client);
-                    *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+            if !is_miner {
+                let mut ctx = context.write().await;
+                let now = ctx.local_timestamp();
+                if ctx.peer_manager.is_ip_punished(now, client.ip()) {
+                    log::warn!("{} -> PeerManager dropped request!", client);
+                    *response.status_mut() = StatusCode::FORBIDDEN;
                     return Ok(response);
+                }
+                if let Some(firewall) = &mut ctx.firewall {
+                    if !firewall.incoming_permitted(client) {
+                        log::warn!("{} -> Firewall dropped request!", client);
+                        *response.status_mut() = StatusCode::TOO_MANY_REQUESTS;
+                        return Ok(response);
+                    }
                 }
             }
         }
