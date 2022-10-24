@@ -111,7 +111,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     };
 
     BlockchainConfig {
-        limited_miners: Some(super::chaos::CHAOS_MINERS.clone()),
+        limited_miners: None,
         mpn_contract_id,
         genesis: BlockAndPatch {
             block: blk,

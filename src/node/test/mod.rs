@@ -3,7 +3,6 @@ use super::*;
 mod simulation;
 use simulation::*;
 
-use crate::blockchain::BlockchainError;
 use crate::config::blockchain;
 use crate::core::{ContractId, Money, Signer, TransactionAndDelta, ZkHasher};
 use crate::crypto::SignatureScheme;
