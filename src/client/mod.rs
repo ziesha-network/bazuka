@@ -22,6 +22,7 @@ pub type Timestamp = u32;
 
 pub const SIGNATURE_HEADER: &str = "X-ZEEKA-SIGNATURE";
 pub const NETWORK_HEADER: &str = "X-ZEEKA-NETWORK-NAME";
+pub const MINER_TOKEN_HEADER: &str = "X-ZEEKA-MINER-TOKEN";
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerAddress(pub SocketAddr); // ip, port
@@ -58,6 +59,7 @@ pub struct OutgoingSender {
     pub priv_key: ed25519::PrivateKey,
     pub network: String,
     pub chan: mpsc::UnboundedSender<NodeRequest>,
+    pub miner_token: Option<String>,
 }
 
 #[derive(Default, Clone)]
@@ -226,6 +228,7 @@ impl BazukaClient {
         priv_key: ed25519::PrivateKey,
         peer: PeerAddress,
         network: String,
+        miner_token: Option<String>,
     ) -> (impl futures::Future<Output = Result<(), NodeError>>, Self) {
         let (sender_send, mut sender_recv) = mpsc::unbounded_channel::<NodeRequest>();
         let client_loop = async move {
@@ -249,6 +252,7 @@ impl BazukaClient {
                 sender: Arc::new(OutgoingSender {
                     priv_key,
                     network,
+                    miner_token,
                     chan: sender_send,
                 }),
             },

@@ -51,6 +51,7 @@ fn create_test_node(
         inc_recv,
         out_send,
         None,
+        None,
     );
     (
         node,
@@ -62,6 +63,7 @@ fn create_test_node(
                     chan: inc_send,
                     network: "simulator".into(),
                     priv_key: opts.priv_key,
+                    miner_token: None,
                 }),
             },
             outgoing: out_recv,

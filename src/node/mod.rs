@@ -13,7 +13,7 @@ pub mod upnp;
 use crate::blockchain::Blockchain;
 use crate::client::{
     messages::SocialProfiles, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress,
-    Timestamp, NETWORK_HEADER, SIGNATURE_HEADER,
+    Timestamp, MINER_TOKEN_HEADER, NETWORK_HEADER, SIGNATURE_HEADER,
 };
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
@@ -49,6 +49,17 @@ pub struct NodeOptions {
     pub candidate_remove_threshold: u32,
 }
 
+fn fetch_miner_token(req: &Request<Body>) -> Result<Option<String>, NodeError> {
+    if let Some(v) = req.headers().get(MINER_TOKEN_HEADER) {
+        return Ok(Some(
+            v.to_str()
+                .map_err(|_| NodeError::InvalidMinerTokenHeader)?
+                .into(),
+        ));
+    }
+    Ok(None)
+}
+
 fn fetch_signature(
     req: &Request<Body>,
 ) -> Result<Option<(ed25519::PublicKey, ed25519::Signature)>, NodeError> {
@@ -79,6 +90,8 @@ async fn node_service<B: Blockchain>(
 ) -> Result<Response<Body>, NodeError> {
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
     match async {
+        let is_miner = fetch_miner_token(&req)? == context.read().await.miner_token;
+
         let mut response = Response::new(Body::empty());
 
         if let Some(client) = client {
@@ -119,7 +132,7 @@ async fn node_service<B: Blockchain>(
 
         let body = req.into_body();
 
-        if !is_local && network != context.read().await.network {
+        if !is_local && !is_miner && network != context.read().await.network {
             return Err(NodeError::WrongNetwork);
         }
 
@@ -351,8 +364,10 @@ pub async fn node_create<B: Blockchain>(
     mut incoming: mpsc::UnboundedReceiver<NodeRequest>,
     outgoing: mpsc::UnboundedSender<NodeRequest>,
     firewall: Option<Firewall>,
+    miner_token: Option<String>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
+        miner_token: miner_token,
         firewall,
         opts: opts.clone(),
         network: network.into(),
@@ -363,6 +378,7 @@ pub async fn node_create<B: Blockchain>(
         outgoing: Arc::new(OutgoingSender {
             network: network.into(),
             chan: outgoing,
+            miner_token: None,
             priv_key,
         }),
         blockchain,

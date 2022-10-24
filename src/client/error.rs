@@ -42,6 +42,8 @@ pub enum NodeError {
     InputError,
     #[error("signature (authorization) header is invalid")]
     InvalidSignatureHeader,
+    #[error("miner-token header is invalid")]
+    InvalidMinerTokenHeader,
     #[error("signature required on this message")]
     SignatureRequired,
     #[error("zk error: {0}")]

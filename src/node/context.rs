@@ -16,6 +16,8 @@ use crate::client::messages::Puzzle;
 pub type BlockPuzzle = (BlockAndPatch, Puzzle);
 
 pub struct NodeContext<B: Blockchain> {
+    pub miner_token: Option<String>,
+
     pub firewall: Option<Firewall>,
     pub social_profiles: SocialProfiles,
     pub opts: NodeOptions,
