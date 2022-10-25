@@ -1,5 +1,4 @@
 use super::*;
-use std::collections::HashSet;
 
 pub struct Firewall {
     request_count_limit_per_minute: usize,

@@ -1234,6 +1234,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                             &mut chain.database,
                             cid,
                             delta,
+                            contract_account.height,
                         )?;
                     }
                 };

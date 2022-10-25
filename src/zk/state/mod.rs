@@ -62,7 +62,13 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
         }
     }
     pub fn batch_set(&mut self, delta: &ZkDeltaPairs) -> Result<(), StateManagerError> {
-        KvStoreStateManager::<H>::update_contract(&mut self.db, self.contract_id, delta)?;
+        let height = KvStoreStateManager::<H>::height_of(&mut self.db, self.contract_id)?;
+        KvStoreStateManager::<H>::update_contract(
+            &mut self.db,
+            self.contract_id,
+            delta,
+            height + 1,
+        )?;
         Ok(())
     }
     pub fn get(&mut self, loc: ZkDataLocator) -> Result<ZkScalar, StateManagerError> {
@@ -377,12 +383,12 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         db: &mut K,
         id: ContractId,
         patch: &ZkDeltaPairs,
+        target_height: u64,
     ) -> Result<(), StateManagerError> {
         const MAX_ROLLBACKS: u64 = 5;
         let mut rollback_patch = ZkDeltaPairs(HashMap::new());
         let mut fork = db.mirror();
         let mut root = Self::root(&fork, id)?;
-        let height = Self::height_of(&fork, id)?;
         for (k, v) in &patch.0 {
             let prev_val = Self::get_data(&fork, id, k)?;
             rollback_patch.0.insert(k.clone(), Some(prev_val)); // Or None if default
@@ -397,14 +403,14 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         let mut ops = fork.to_ops();
         ops.push(WriteOp::Put(keys::local_root(&id), root.into()));
         ops.push(WriteOp::Put(
-            keys::local_rollback_to_height(&id, height),
+            keys::local_rollback_to_height(&id, target_height - 1),
             (&rollback_patch).into(),
         ));
-        ops.push(WriteOp::Put(keys::local_height(&id), (height + 1).into()));
-        if height >= MAX_ROLLBACKS {
+        ops.push(WriteOp::Put(keys::local_height(&id), target_height.into()));
+        if target_height - 1 >= MAX_ROLLBACKS {
             ops.push(WriteOp::Remove(keys::local_rollback_to_height(
                 &id,
-                height - MAX_ROLLBACKS,
+                target_height - 1 - MAX_ROLLBACKS,
             )));
         }
         db.update(&ops)?;

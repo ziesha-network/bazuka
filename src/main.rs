@@ -33,7 +33,7 @@ use {
     bazuka::core::{ContractId, Money, Signer, ZkSigner},
     bazuka::crypto::{SignatureScheme, ZkSignatureScheme},
     serde::{Deserialize, Serialize},
-    std::net::{IpAddr, SocketAddr},
+    std::net::SocketAddr,
     structopt::StructOpt,
 };
 

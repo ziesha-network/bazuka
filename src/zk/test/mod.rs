@@ -89,6 +89,7 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
                 .into_iter()
                 .collect(),
         ),
+        1,
     )?;
 
     Ok(())
@@ -118,6 +119,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
                 .into_iter()
                 .collect(),
         ),
+        1,
     )?;
 
     KvStoreStateManager::<SumHasher>::update_contract(
@@ -128,6 +130,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
                 .into_iter()
                 .collect(),
         ),
+        1,
     )?;
 
     KvStoreStateManager::<SumHasher>::update_contract(
@@ -138,6 +141,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
                 .into_iter()
                 .collect(),
         ),
+        1,
     )?;
 
     KvStoreStateManager::<SumHasher>::update_contract(
@@ -148,6 +152,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
                 .into_iter()
                 .collect(),
         ),
+        1,
     )?;
 
     KvStoreStateManager::<SumHasher>::update_contract(
@@ -161,6 +166,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
             .into_iter()
             .collect(),
         ),
+        1,
     )?;
 
     Ok(())
@@ -197,6 +203,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .into_iter()
                 .collect(),
         ),
+        1,
     )?;
     roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
 
@@ -208,6 +215,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .into_iter()
                 .collect(),
         ),
+        1,
     )?;
     roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
 
@@ -219,6 +227,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .into_iter()
                 .collect(),
         ),
+        1,
     )?;
     roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
 
@@ -230,6 +239,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .into_iter()
                 .collect(),
         ),
+        1,
     )?;
     roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
 
@@ -241,6 +251,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .into_iter()
                 .collect(),
         ),
+        1,
     )?;
     roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
 
@@ -255,6 +266,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
             .into_iter()
             .collect(),
         ),
+        1,
     )?;
     roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
 
@@ -266,6 +278,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
                 .into_iter()
                 .collect(),
         ),
+        1,
     )?;
 
     // KvStoreStateManager::<PoseidonHasher>::reset_contract(c0, ZkDeltaPairs(Default::default()), Default::default())?;
