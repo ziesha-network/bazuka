@@ -183,6 +183,7 @@ impl From<&ZkProof> for ExplorerZkProof {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(tag = "type")]
 pub enum ExplorerContractUpdate {
     Payment {
         circuit_id: u32,
@@ -228,6 +229,7 @@ impl From<&ContractUpdate> for ExplorerContractUpdate {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(tag = "type")]
 pub enum ExplorerTransactionData {
     RegularSend {
         dst: String,
