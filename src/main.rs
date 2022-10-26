@@ -117,6 +117,8 @@ enum CliOptions {
         amount: Money,
         #[structopt(long, default_value = "0")]
         fee: Money,
+        #[structopt(long)]
+        nonce_shift: Option<u32>,
     },
     /// Send funds through a zero-transaction
     Zsend {
@@ -130,6 +132,8 @@ enum CliOptions {
         amount: Money,
         #[structopt(long, default_value = "0")]
         fee: Money,
+        #[structopt(long)]
+        nonce_shift: Option<u64>,
     },
 }
 
@@ -459,7 +463,12 @@ async fn main() -> Result<(), NodeError> {
             let conf = conf.expect("Bazuka is not initialized!");
             deposit_withdraw(conf, mpn_contract_id, contract, index, amount, fee, true).await?;
         }
-        CliOptions::Rsend { to, amount, fee } => {
+        CliOptions::Rsend {
+            to,
+            amount,
+            fee,
+            nonce_shift,
+        } => {
             let conf = conf.expect("Bazuka is not initialized!");
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
@@ -468,8 +477,12 @@ async fn main() -> Result<(), NodeError> {
             try_join!(
                 async move {
                     let acc = client.get_account(wallet.get_address()).await?.account;
-                    let tx =
-                        wallet.create_transaction(to.parse().unwrap(), amount, fee, acc.nonce + 1);
+                    let tx = wallet.create_transaction(
+                        to.parse().unwrap(),
+                        amount,
+                        fee,
+                        acc.nonce + 1 + nonce_shift.unwrap_or(0),
+                    );
                     println!("{:#?}", client.transact(tx).await?);
                     Ok::<(), NodeError>(())
                 },
@@ -483,6 +496,7 @@ async fn main() -> Result<(), NodeError> {
             to,
             amount,
             fee,
+            nonce_shift,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
@@ -493,8 +507,14 @@ async fn main() -> Result<(), NodeError> {
                 async move {
                     let to: <ZkSigner as ZkSignatureScheme>::Pub = to.parse().unwrap();
                     let acc = client.get_mpn_account(from_index).await?.account;
-                    let tx = wallet
-                        .create_mpn_transaction(from_index, to_index, to, amount, fee, acc.nonce);
+                    let tx = wallet.create_mpn_transaction(
+                        from_index,
+                        to_index,
+                        to,
+                        amount,
+                        fee,
+                        acc.nonce + nonce_shift.unwrap_or(0),
+                    );
                     println!("{:#?}", client.zero_transact(tx).await?);
                     Ok::<(), NodeError>(())
                 },

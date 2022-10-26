@@ -10,17 +10,9 @@ pub async fn post_mpn_transaction<B: Blockchain>(
 ) -> Result<PostMpnTransactionResponse, NodeError> {
     let mut context = context.write().await;
     let now = context.local_timestamp();
-    // Prevent spamming mempool
-    match context.blockchain.validate_mpn_transaction(&req.tx) {
-        Ok(_) => {
-            context
-                .mempool
-                .zk
-                .insert(req.tx, TransactionStats { first_seen: now });
-        }
-        Err(e) => {
-            log::warn!("Rejected zero-transaction. Error: {}", e);
-        }
-    }
+    context
+        .mempool
+        .zk
+        .insert(req.tx, TransactionStats { first_seen: now });
     Ok(PostMpnTransactionResponse {})
 }

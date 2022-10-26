@@ -10,17 +10,9 @@ pub async fn transact<B: Blockchain>(
 ) -> Result<TransactResponse, NodeError> {
     let mut context = context.write().await;
     let now = context.local_timestamp();
-    // Prevent spamming mempool
-    match context.blockchain.validate_transaction(&req.tx_delta) {
-        Ok(_) => {
-            context
-                .mempool
-                .tx
-                .insert(req.tx_delta, TransactionStats { first_seen: now });
-        }
-        Err(e) => {
-            log::warn!("Rejected transaction. Error: {}", e);
-        }
-    }
+    context
+        .mempool
+        .tx
+        .insert(req.tx_delta, TransactionStats { first_seen: now });
     Ok(TransactResponse {})
 }

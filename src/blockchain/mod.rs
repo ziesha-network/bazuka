@@ -87,10 +87,6 @@ pub trait Blockchain {
         mempool: &mut HashMap<zk::MpnTransaction, TransactionStats>,
     ) -> Result<(), BlockchainError>;
 
-    fn validate_mpn_transaction(&self, tx: &zk::MpnTransaction) -> Result<(), BlockchainError>;
-    fn validate_mpn_payment(&self, tx: &MpnPayment) -> Result<(), BlockchainError>;
-    fn validate_transaction(&self, tx_delta: &TransactionAndDelta) -> Result<(), BlockchainError>;
-
     fn db_checksum(&self) -> Result<String, BlockchainError>;
 
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
@@ -1264,7 +1260,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            for tx in mempool.clone().into_keys() {
+            let mut txs: Vec<TransactionAndDelta> = mempool.clone().into_keys().collect();
+            txs.sort_by(|a, b| a.tx.nonce.partial_cmp(&b.tx.nonce).unwrap());
+            for tx in txs {
                 if chain.apply_tx(&tx.tx, false).is_err() {
                     mempool.remove(&tx);
                 }
@@ -1300,30 +1298,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 }
             }
             Ok(())
-        })?;
-        Ok(())
-    }
-
-    fn validate_mpn_transaction(&self, tx: &zk::MpnTransaction) -> Result<(), BlockchainError> {
-        self.isolated(|chain| {
-            chain.apply_zero_tx(tx)?;
-            Ok(())
-        })?;
-        Ok(())
-    }
-
-    fn validate_mpn_payment(&self, tx: &MpnPayment) -> Result<(), BlockchainError> {
-        self.isolated(|chain| {
-            chain.apply_contract_payment(&tx.payment)?;
-            Ok(())
-        })?;
-        Ok(())
-    }
-
-    fn validate_transaction(&self, tx_delta: &TransactionAndDelta) -> Result<(), BlockchainError> {
-        self.isolated(|chain| {
-            // TODO: Also check for delta validity
-            chain.apply_tx(&tx_delta.tx, false)
         })?;
         Ok(())
     }
