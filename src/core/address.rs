@@ -68,3 +68,8 @@ pub struct Account {
     pub balance: Money,
     pub nonce: u32,
 }
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct ZkAccount {
+    pub nonce: u32,
+}
