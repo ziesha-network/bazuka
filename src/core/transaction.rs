@@ -39,21 +39,26 @@ impl<H: Hash> FromStr for ContractId<H> {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub enum PaymentDirection<S: SignatureScheme, ZS: ZkSignatureScheme> {
-    Deposit(Option<S::Sig>),
-    Withdraw(Option<ZS::Sig>),
-}
-
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
-pub struct ContractPayment<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
-    pub address: S::Pub,
-    pub zk_address: ZS::Pub,
+pub struct ContractDeposit<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
+    pub src: S::Pub,
+    pub dst: ZS::Pub,
     pub contract_id: ContractId<H>, // Makes sure the payment can only run on this contract.
     pub nonce: u32, // Makes sure a contract payment cannot be replayed on this contract.
     pub amount: Money,
     pub fee: Money, // Executor fee
-    pub direction: PaymentDirection<S, ZS>,
+    pub sig: Option<S::Sig>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
+pub struct ContractWithdraw<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
+    pub src: ZS::Pub,
+    pub dst: S::Pub,
+    pub contract_id: ContractId<H>, // Makes sure the payment can only run on this contract.
+    pub nonce: u32, // Makes sure a contract payment cannot be replayed on this contract.
+    pub amount: Money,
+    pub fee: Money, // Executor fee
+    pub sig: Option<ZS::Sig>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
