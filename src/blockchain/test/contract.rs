@@ -3,8 +3,8 @@ use std::str::FromStr;
 
 #[test]
 fn test_contract_create_patch() -> Result<(), BlockchainError> {
-    let miner = Wallet::new(Vec::from("MINER"));
-    let alice = Wallet::new(Vec::from("ABC"));
+    let miner = TxBuilder::new(Vec::from("MINER"));
+    let alice = TxBuilder::new(Vec::from("ABC"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     let state_model = zk::ZkStateModel::List {
@@ -48,8 +48,8 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_contract_update() -> Result<(), BlockchainError> {
-    let miner = Wallet::new(Vec::from("MINER"));
-    let alice = Wallet::new(Vec::from("ABC"));
+    let miner = TxBuilder::new(Vec::from("MINER"));
+    let alice = TxBuilder::new(Vec::from("ABC"));
     let cid =
         ContractId::from_str("94f768758eebc1e0a1fc806726db01aaff5331763ce7c93b253770abfa7a53ee")
             .unwrap();

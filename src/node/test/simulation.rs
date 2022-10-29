@@ -6,7 +6,7 @@ use crate::config;
 use crate::core::Signer;
 use crate::crypto::SignatureScheme;
 use crate::db::RamKvStore;
-use crate::wallet::Wallet;
+use crate::wallet::TxBuilder;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -21,7 +21,7 @@ struct Node {
 pub struct NodeOpts {
     pub config: BlockchainConfig,
     pub priv_key: <Signer as SignatureScheme>::Priv,
-    pub wallet: Option<Wallet>,
+    pub wallet: Option<TxBuilder>,
     pub addr: u16,
     pub bootstrap: Vec<u16>,
     pub timestamp_offset: i32,

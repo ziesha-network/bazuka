@@ -18,7 +18,7 @@ use crate::client::{
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::utils::local_timestamp;
-use crate::wallet::Wallet;
+use crate::wallet::TxBuilder;
 use context::NodeContext;
 pub use firewall::Firewall;
 use hyper::body::HttpBody;
@@ -361,7 +361,7 @@ pub async fn node_create<B: Blockchain>(
     bootstrap: Vec<PeerAddress>,
     blockchain: B,
     timestamp_offset: i32,
-    wallet: Option<Wallet>,
+    wallet: Option<TxBuilder>,
     social_profiles: SocialProfiles,
     mut incoming: mpsc::UnboundedReceiver<NodeRequest>,
     outgoing: mpsc::UnboundedSender<NodeRequest>,

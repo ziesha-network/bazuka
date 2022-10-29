@@ -1,4 +1,4 @@
-use bazuka::wallet::Wallet;
+use bazuka::wallet::TxBuilder;
 
 #[cfg(not(any(feature = "node", feature = "client")))]
 use {
@@ -162,7 +162,7 @@ async fn run_node(
         })))
     };
 
-    let wallet = Wallet::new(bazuka_config.seed.as_bytes().to_vec());
+    let wallet = TxBuilder::new(bazuka_config.seed.as_bytes().to_vec());
 
     println!(
         "{} v{}",
@@ -315,7 +315,7 @@ async fn deposit_withdraw(
     withdraw: bool,
 ) -> Result<(), NodeError> {
     let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
-    let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
+    let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
     let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
     try_join!(
         async move {
@@ -471,7 +471,7 @@ async fn main() -> Result<(), NodeError> {
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
-            let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
+            let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
             let (req_loop, client) =
                 BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
             try_join!(
@@ -500,7 +500,7 @@ async fn main() -> Result<(), NodeError> {
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
-            let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
+            let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
             let (req_loop, client) =
                 BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
             try_join!(
@@ -524,7 +524,7 @@ async fn main() -> Result<(), NodeError> {
         }
         CliOptions::Wallet {} => {
             let conf = conf.expect("Bazuka is not initialized!");
-            let wallet = Wallet::new(conf.seed.as_bytes().to_vec());
+            let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
 
             println!(
@@ -573,7 +573,7 @@ fn main() {
 
     let mut nonce = 1;
 
-    let abc = Wallet::new(Vec::from("ABC"));
+    let abc = TxBuilder::new(Vec::from("ABC"));
 
     loop {
         log::info!("Creating txs...");

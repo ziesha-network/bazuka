@@ -9,7 +9,7 @@ use crate::core::{
 use crate::crypto::jubjub;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
 use crate::utils;
-use crate::wallet::Wallet;
+use crate::wallet::TxBuilder;
 use crate::zk;
 
 use rayon::prelude::*;
@@ -119,7 +119,7 @@ pub trait Blockchain {
         &self,
         timestamp: u32,
         mempool: &HashMap<TransactionAndDelta, TransactionStats>,
-        wallet: &Wallet,
+        wallet: &TxBuilder,
         check: bool,
     ) -> Result<Option<BlockAndPatch>, BlockchainError>;
     fn get_height(&self) -> Result<u64, BlockchainError>;
@@ -1085,7 +1085,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self,
         timestamp: u32,
         mempool: &HashMap<TransactionAndDelta, TransactionStats>,
-        wallet: &Wallet,
+        wallet: &TxBuilder,
         check: bool,
     ) -> Result<Option<BlockAndPatch>, BlockchainError> {
         let height = self.get_height()?;

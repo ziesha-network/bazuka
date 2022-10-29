@@ -7,7 +7,7 @@ use crate::client::messages::SocialProfiles;
 use crate::core::{Header, Signer};
 use crate::crypto::SignatureScheme;
 use crate::utils;
-use crate::wallet::Wallet;
+use crate::wallet::TxBuilder;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -27,7 +27,7 @@ pub struct NodeContext<B: Blockchain> {
     pub shutdown: bool,
     pub outgoing: Arc<OutgoingSender>,
     pub blockchain: B,
-    pub wallet: Option<Wallet>,
+    pub wallet: Option<TxBuilder>,
     pub peer_manager: PeerManager,
     pub timestamp_offset: i32,
     pub miner_puzzle: Option<BlockPuzzle>,
@@ -117,7 +117,10 @@ impl<B: Blockchain> NodeContext<B> {
         Ok(())
     }
 
-    pub fn get_puzzle(&mut self, wallet: Wallet) -> Result<Option<BlockPuzzle>, BlockchainError> {
+    pub fn get_puzzle(
+        &mut self,
+        wallet: TxBuilder,
+    ) -> Result<Option<BlockPuzzle>, BlockchainError> {
         let ts = self.network_timestamp();
         match self
             .blockchain

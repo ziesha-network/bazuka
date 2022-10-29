@@ -10,7 +10,7 @@ use crate::core::{
 use crate::zk;
 
 #[cfg(test)]
-use crate::wallet::Wallet;
+use crate::wallet::TxBuilder;
 
 const MPN_LOG4_ACCOUNT_CAPACITY: u8 = 15;
 const MPN_LOG4_PAYMENT_CAPACITY: u8 = 3;
@@ -172,7 +172,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.testnet_height_limit = None;
 
     conf.genesis.block.body[0] = get_test_mpn_contract().tx;
-    let abc = Wallet::new(Vec::from("ABC"));
+    let abc = TxBuilder::new(Vec::from("ABC"));
     conf.genesis.block.body.push(Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {

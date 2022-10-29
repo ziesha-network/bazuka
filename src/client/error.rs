@@ -31,7 +31,7 @@ pub enum NodeError {
     #[error("cannot parse account address: {0}")]
     AccountParseAddressError(#[from] crate::core::ParseAddressError),
     #[error("no wallet available")]
-    NoWalletError,
+    NoTxBuilderError,
     #[error("no block is currently being mined")]
     NoCurrentlyMiningBlockError,
     #[error("timeout reached: {0}")]
