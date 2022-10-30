@@ -455,7 +455,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                     state_builder.batch_set(&zk::ZkDeltaPairs(
                                         [
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 1]),
+                                                zk::ZkDataLocator(vec![i as u32, 0]),
                                                 Some(zk::ZkScalar::from(1)),
                                             ),
                                             (
@@ -500,6 +500,13 @@ impl<K: KvStore> KvStoreChain<K> {
                                     zk::ZkStateBuilder::<ZkHasher>::new(state_model);
                                 for (i, withdraw) in withdraws.iter().enumerate() {
                                     // TODO: Check contract-id and circuit-id are correct
+                                    let fingerprint = {
+                                        let mut nocalldata = withdraw.clone();
+                                        nocalldata.calldata = zk::ZkScalar::default();
+                                        crate::zk::hash_to_scalar(
+                                            &bincode::serialize(&withdraw).unwrap(),
+                                        )
+                                    };
                                     if Address::PublicKey(withdraw.dst.clone()) == tx.src {
                                         return Err(BlockchainError::CannotExecuteOwnPayments);
                                     }
@@ -507,7 +514,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                     state_builder.batch_set(&zk::ZkDeltaPairs(
                                         [
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 1]),
+                                                zk::ZkDataLocator(vec![i as u32, 0]),
                                                 Some(zk::ZkScalar::from(1)),
                                             ),
                                             (
@@ -518,6 +525,10 @@ impl<K: KvStore> KvStoreChain<K> {
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u32, 2]),
+                                                Some(fingerprint),
+                                            ),
+                                            (
+                                                zk::ZkDataLocator(vec![i as u32, 3]),
                                                 Some(withdraw.calldata),
                                             ),
                                         ]

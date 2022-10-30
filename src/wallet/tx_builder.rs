@@ -1,11 +1,11 @@
 use crate::core::{
     Address, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Money, MpnDeposit,
-    MpnWithdraw, Signature, Signer, Transaction, TransactionAndDelta, TransactionData, ZkHasher,
-    ZkSigner,
+    MpnWithdraw, Signature, Signer, Transaction, TransactionAndDelta, TransactionData, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::ZkSignatureScheme;
 use crate::zk;
+use crate::zk::ZkHasher;
 
 #[derive(Clone)]
 pub struct TxBuilder {
@@ -146,7 +146,17 @@ impl TxBuilder {
         fee: Money,
     ) -> MpnDeposit {
         let mut calldata_builder =
-            zk::ZkStateBuilder::<ZkHasher>::new(zk::MPN_DEPOSIT_STATE_MODEL.clone());
+            zk::ZkStateBuilder::<crate::core::ZkHasher>::new(zk::MPN_DEPOSIT_STATE_MODEL.clone());
+        let pk = self.get_zk_address().0.decompress();
+        calldata_builder
+            .batch_set(&zk::ZkDeltaPairs(
+                [
+                    (zk::ZkDataLocator(vec![0]), Some(zk::ZkScalar::from(pk.0))),
+                    (zk::ZkDataLocator(vec![1]), Some(zk::ZkScalar::from(pk.1))),
+                ]
+                .into(),
+            ))
+            .unwrap();
         let mut tx = ContractDeposit {
             src: self.private_key.clone().into(),
             contract_id,
@@ -174,16 +184,46 @@ impl TxBuilder {
         amount: Money,
         fee: Money,
     ) -> MpnWithdraw {
-        let mut calldata_builder =
-            zk::ZkStateBuilder::<ZkHasher>::new(zk::MPN_DEPOSIT_STATE_MODEL.clone());
         let mut tx = ContractWithdraw {
             dst: self.private_key.clone().into(),
             contract_id,
             withdraw_circuit_id: 0,
-            calldata: calldata_builder.compress().unwrap().state_hash,
+            calldata: zk::ZkScalar::default(),
             amount,
             fee,
         };
+        let fingerprint: zk::ZkScalar =
+            crate::zk::hash_to_scalar(&bincode::serialize(&tx).unwrap());
+        let sig = ZkSigner::sign(
+            &self.zk_private_key,
+            crate::core::ZkHasher::hash(&[fingerprint, zk::ZkScalar::from(nonce as u64)]),
+        );
+        let mut calldata_builder =
+            zk::ZkStateBuilder::<crate::core::ZkHasher>::new(zk::MPN_DEPOSIT_STATE_MODEL.clone());
+        let pk = self.get_zk_address().0.decompress();
+        calldata_builder
+            .batch_set(&zk::ZkDeltaPairs(
+                [
+                    (zk::ZkDataLocator(vec![0]), Some(zk::ZkScalar::from(pk.0))),
+                    (zk::ZkDataLocator(vec![1]), Some(zk::ZkScalar::from(pk.1))),
+                    (
+                        zk::ZkDataLocator(vec![2]),
+                        Some(zk::ZkScalar::from(nonce as u64)),
+                    ),
+                    (
+                        zk::ZkDataLocator(vec![3]),
+                        Some(zk::ZkScalar::from(sig.r.0)),
+                    ),
+                    (
+                        zk::ZkDataLocator(vec![4]),
+                        Some(zk::ZkScalar::from(sig.r.1)),
+                    ),
+                    (zk::ZkDataLocator(vec![5]), Some(sig.s)),
+                ]
+                .into(),
+            ))
+            .unwrap();
+        tx.calldata = calldata_builder.compress().unwrap().state_hash;
         MpnWithdraw {
             zk_address_index,
             payment: tx,
