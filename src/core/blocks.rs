@@ -1,19 +1,19 @@
 use serde::{Deserialize, Serialize};
 
 use crate::crypto::merkle::MerkleTree;
-use crate::crypto::{SignatureScheme, ZkSignatureScheme};
+use crate::crypto::SignatureScheme;
 
 use super::hash::Hash;
 use super::header::Header;
 use super::transaction::Transaction;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct Block<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
+pub struct Block<H: Hash, S: SignatureScheme> {
     pub header: Header<H>,
-    pub body: Vec<Transaction<H, S, ZS>>,
+    pub body: Vec<Transaction<H, S>>,
 }
 
-impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> Block<H, S, ZS> {
+impl<H: Hash, S: SignatureScheme> Block<H, S> {
     pub fn merkle_tree(&self) -> MerkleTree<H> {
         MerkleTree::<H>::new(self.body.iter().map(|tx| tx.hash()).collect())
     }

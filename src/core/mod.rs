@@ -19,17 +19,18 @@ pub type Address = address::Address<Signer>;
 pub type ParseAddressError = address::ParseAddressError;
 pub type Account = address::Account;
 pub type Signature = address::Signature<Signer>;
-pub type Transaction = transaction::Transaction<Hasher, Signer, ZkSigner>;
-pub type TransactionData = transaction::TransactionData<Hasher, Signer, ZkSigner>;
+pub type Transaction = transaction::Transaction<Hasher, Signer>;
+pub type TransactionData = transaction::TransactionData<Hasher, Signer>;
 pub type ContractAccount = transaction::ContractAccount;
-pub type ContractUpdate = transaction::ContractUpdate<Hasher, Signer, ZkSigner>;
-pub type ContractPayment = transaction::ContractPayment<Hasher, Signer, ZkSigner>;
-pub type MpnPayment = transaction::MpnPayment<Hasher, Signer, ZkSigner>;
-pub type PaymentDirection = transaction::PaymentDirection<Signer, ZkSigner>;
+pub type ContractUpdate = transaction::ContractUpdate<Hasher, Signer>;
+pub type ContractDeposit = transaction::ContractDeposit<Hasher, Signer>;
+pub type ContractWithdraw = transaction::ContractWithdraw<Hasher, Signer>;
+pub type MpnDeposit = transaction::MpnDeposit<Hasher, Signer>;
+pub type MpnWithdraw = transaction::MpnWithdraw<Hasher, Signer>;
 pub type Header = header::Header<Hasher>;
-pub type Block = blocks::Block<Hasher, Signer, ZkSigner>;
+pub type Block = blocks::Block<Hasher, Signer>;
 
 pub type ProofOfWork = header::ProofOfWork;
 pub type ContractId = transaction::ContractId<Hasher>;
 
-pub type TransactionAndDelta = transaction::TransactionAndDelta<Hasher, Signer, ZkSigner>;
+pub type TransactionAndDelta = transaction::TransactionAndDelta<Hasher, Signer>;

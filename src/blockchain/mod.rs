@@ -698,7 +698,10 @@ impl<K: KvStore> KvStoreChain<K> {
                     if *contract_id == self.config.mpn_contract_id {
                         for update in updates.iter() {
                             match update {
-                                ContractUpdate::Payment { .. } => {
+                                ContractUpdate::Deposit { .. } => {
+                                    num_mpn_contract_payments += 1;
+                                }
+                                ContractUpdate::Withdraw { .. } => {
                                     num_mpn_contract_payments += 1;
                                 }
                                 ContractUpdate::FunctionCall { .. } => {
