@@ -28,6 +28,7 @@ pub async fn get_mempool<B: Blockchain>(
             })
             .collect(),
         tx_zk: context.mempool.tx_zk.clone().into_keys().collect(),
+        zk_tx: context.mempool.zk_tx.clone().into_keys().collect(),
         zk: context.mempool.zk.clone().into_keys().collect(),
     })
 }

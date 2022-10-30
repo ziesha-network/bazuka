@@ -2,9 +2,9 @@ mod error;
 pub use error::*;
 
 use crate::core::{
-    hash::Hash, Account, Address, Block, ContractAccount, ContractId, ContractPayment,
-    ContractUpdate, Hasher, Header, Money, MpnPayment, PaymentDirection, ProofOfWork, Signature,
-    Transaction, TransactionAndDelta, TransactionData, ZkHasher,
+    hash::Hash, Account, Address, Block, ContractAccount, ContractDeposit, ContractId,
+    ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnDeposit, MpnWithdraw, ProofOfWork,
+    Signature, Transaction, TransactionAndDelta, TransactionData, ZkHasher,
 };
 use crate::crypto::jubjub;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
@@ -78,9 +78,13 @@ pub trait Blockchain {
         &self,
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
     ) -> Result<(), BlockchainError>;
-    fn cleanup_mpn_payment_mempool(
+    fn cleanup_mpn_deposit_mempool(
         &self,
-        mempool: &mut HashMap<MpnPayment, TransactionStats>,
+        mempool: &mut HashMap<MpnDeposit, TransactionStats>,
+    ) -> Result<(), BlockchainError>;
+    fn cleanup_mpn_withdraw_mempool(
+        &self,
+        mempool: &mut HashMap<MpnWithdraw, TransactionStats>,
     ) -> Result<(), BlockchainError>;
     fn cleanup_mpn_transaction_mempool(
         &self,
@@ -224,45 +228,57 @@ impl<K: KvStore> KvStoreChain<K> {
         )
     }
 
-    fn apply_contract_payment(
-        &mut self,
-        contract_payment: &ContractPayment,
-    ) -> Result<(), BlockchainError> {
+    fn apply_deposit(&mut self, deposit: &ContractDeposit) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
-            if !contract_payment.verify_signature() {
+            if !deposit.verify_signature() {
                 return Err(BlockchainError::InvalidContractPaymentSignature);
             }
 
-            let mut contract_account = chain.get_contract_account(contract_payment.contract_id)?;
+            let mut contract_account = chain.get_contract_account(deposit.contract_id)?;
 
-            let mut addr_account =
-                chain.get_account(Address::PublicKey(contract_payment.address.clone()))?;
-            if contract_payment.nonce != addr_account.nonce + 1 {
+            let mut addr_account = chain.get_account(Address::PublicKey(deposit.src.clone()))?;
+            if deposit.nonce != addr_account.nonce + 1 {
                 return Err(BlockchainError::InvalidTransactionNonce);
             }
             addr_account.nonce += 1;
-            match &contract_payment.direction {
-                PaymentDirection::Deposit(_) => {
-                    if addr_account.balance < contract_payment.amount + contract_payment.fee {
-                        return Err(BlockchainError::BalanceInsufficient);
-                    }
-                    addr_account.balance -= contract_payment.amount + contract_payment.fee;
-                    contract_account.balance += contract_payment.amount;
-                }
-                PaymentDirection::Withdraw(_) => {
-                    if contract_account.balance < contract_payment.amount + contract_payment.fee {
-                        return Err(BlockchainError::ContractBalanceInsufficient);
-                    }
-                    contract_account.balance -= contract_payment.amount + contract_payment.fee;
-                    addr_account.balance += contract_payment.amount;
-                }
+            if addr_account.balance < deposit.amount + deposit.fee {
+                return Err(BlockchainError::BalanceInsufficient);
             }
+            addr_account.balance -= deposit.amount + deposit.fee;
+            contract_account.balance += deposit.amount;
+
             chain.database.update(&[WriteOp::Put(
-                keys::contract_account(&contract_payment.contract_id),
+                keys::contract_account(&deposit.contract_id),
                 contract_account.clone().into(),
             )])?;
             chain.database.update(&[WriteOp::Put(
-                keys::account(&Address::PublicKey(contract_payment.address.clone())),
+                keys::account(&Address::PublicKey(deposit.src.clone())),
+                addr_account.into(),
+            )])?;
+            Ok(())
+        })?;
+        self.database.update(&ops)?;
+        Ok(())
+    }
+
+    fn apply_withdraw(&mut self, withdraw: &ContractWithdraw) -> Result<(), BlockchainError> {
+        let (ops, _) = self.isolated(|chain| {
+            let mut contract_account = chain.get_contract_account(withdraw.contract_id)?;
+
+            let mut addr_account = chain.get_account(Address::PublicKey(withdraw.dst.clone()))?;
+
+            if contract_account.balance < withdraw.amount + withdraw.fee {
+                return Err(BlockchainError::ContractBalanceInsufficient);
+            }
+            contract_account.balance -= withdraw.amount + withdraw.fee;
+            addr_account.balance += withdraw.amount;
+
+            chain.database.update(&[WriteOp::Put(
+                keys::contract_account(&withdraw.contract_id),
+                contract_account.clone().into(),
+            )])?;
+            chain.database.update(&[WriteOp::Put(
+                keys::account(&Address::PublicKey(withdraw.dst.clone())),
                 addr_account.into(),
             )])?;
             Ok(())
@@ -407,59 +423,108 @@ impl<K: KvStore> KvStoreChain<K> {
 
                     for update in updates {
                         let (circuit, aux_data, next_state, proof) = match update {
-                            ContractUpdate::Payment {
-                                circuit_id,
-                                payments,
+                            ContractUpdate::Deposit {
+                                deposit_circuit_id,
+                                deposits,
                                 next_state,
                                 proof,
                             } => {
-                                let payment_func = contract
-                                    .payment_functions
-                                    .get(*circuit_id as usize)
+                                let deposit_func = contract
+                                    .deposit_functions
+                                    .get(*deposit_circuit_id as usize)
                                     .ok_or(BlockchainError::ContractFunctionNotFound)?;
-                                let circuit = &payment_func.verifier_key;
+                                let circuit = &deposit_func.verifier_key;
                                 let state_model = zk::ZkStateModel::List {
-                                    item_type: Box::new(zk::CONTRACT_PAYMENT_STATE_MODEL.clone()),
-                                    log4_size: payment_func.log4_payment_capacity,
+                                    item_type: Box::new(zk::ZkStateModel::Struct {
+                                        field_types: vec![
+                                            zk::ZkStateModel::Scalar, // Enabled
+                                            zk::ZkStateModel::Scalar, // Amount
+                                            zk::ZkStateModel::Scalar, // Calldata
+                                        ],
+                                    }),
+                                    log4_size: deposit_func.log4_payment_capacity,
                                 };
                                 let mut state_builder =
                                     zk::ZkStateBuilder::<ZkHasher>::new(state_model);
-                                for (i, contract_payment) in payments.iter().enumerate() {
-                                    if Address::PublicKey(contract_payment.address.clone())
-                                        == tx.src
-                                    {
+                                for (i, deposit) in deposits.iter().enumerate() {
+                                    // TODO: Check contract-id and circuit-id are correct
+                                    if Address::PublicKey(deposit.src.clone()) == tx.src {
                                         return Err(BlockchainError::CannotExecuteOwnPayments);
                                     }
-                                    executor_fee += contract_payment.fee;
-                                    let pk = contract_payment.zk_address.0.decompress();
+                                    executor_fee += deposit.fee;
                                     state_builder.batch_set(&zk::ZkDeltaPairs(
                                         [
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 0]),
-                                                Some(zk::ZkScalar::from(contract_payment.amount)),
+                                                zk::ZkDataLocator(vec![i as u32, 1]),
+                                                Some(zk::ZkScalar::from(1)),
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u32, 1]),
-                                                Some(zk::ZkScalar::from(
-                                                    match contract_payment.direction {
-                                                        PaymentDirection::Deposit(_) => 0,
-                                                        PaymentDirection::Withdraw(_) => 1,
-                                                    },
-                                                )),
+                                                Some(zk::ZkScalar::from(deposit.amount)),
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u32, 2]),
-                                                Some(zk::ZkScalar::from(pk.0)),
-                                            ),
-                                            (
-                                                zk::ZkDataLocator(vec![i as u32, 3]),
-                                                Some(zk::ZkScalar::from(pk.1)),
+                                                Some(deposit.calldata),
                                             ),
                                         ]
                                         .into(),
                                     ))?;
 
-                                    chain.apply_contract_payment(contract_payment)?;
+                                    chain.apply_deposit(deposit)?;
+                                }
+                                let aux_data = state_builder.compress()?;
+                                (circuit, aux_data, next_state, proof)
+                            }
+                            ContractUpdate::Withdraw {
+                                withdraw_circuit_id,
+                                withdraws,
+                                next_state,
+                                proof,
+                            } => {
+                                let withdraw_func = contract
+                                    .withdraw_functions
+                                    .get(*withdraw_circuit_id as usize)
+                                    .ok_or(BlockchainError::ContractFunctionNotFound)?;
+                                let circuit = &withdraw_func.verifier_key;
+                                let state_model = zk::ZkStateModel::List {
+                                    item_type: Box::new(zk::ZkStateModel::Struct {
+                                        field_types: vec![
+                                            zk::ZkStateModel::Scalar, // Enabled
+                                            zk::ZkStateModel::Scalar, // Amount
+                                            zk::ZkStateModel::Scalar, // Calldata
+                                        ],
+                                    }),
+                                    log4_size: withdraw_func.log4_payment_capacity,
+                                };
+                                let mut state_builder =
+                                    zk::ZkStateBuilder::<ZkHasher>::new(state_model);
+                                for (i, withdraw) in withdraws.iter().enumerate() {
+                                    // TODO: Check contract-id and circuit-id are correct
+                                    if Address::PublicKey(withdraw.dst.clone()) == tx.src {
+                                        return Err(BlockchainError::CannotExecuteOwnPayments);
+                                    }
+                                    executor_fee += withdraw.fee;
+                                    state_builder.batch_set(&zk::ZkDeltaPairs(
+                                        [
+                                            (
+                                                zk::ZkDataLocator(vec![i as u32, 1]),
+                                                Some(zk::ZkScalar::from(1)),
+                                            ),
+                                            (
+                                                zk::ZkDataLocator(vec![i as u32, 1]),
+                                                Some(zk::ZkScalar::from(
+                                                    withdraw.amount + withdraw.fee,
+                                                )),
+                                            ),
+                                            (
+                                                zk::ZkDataLocator(vec![i as u32, 2]),
+                                                Some(withdraw.calldata),
+                                            ),
+                                        ]
+                                        .into(),
+                                    ))?;
+
+                                    chain.apply_withdraw(withdraw)?;
                                 }
                                 let aux_data = state_builder.compress()?;
                                 (circuit, aux_data, next_state, proof)
@@ -479,10 +544,11 @@ impl<K: KvStore> KvStoreChain<K> {
                                     cont_account.into(),
                                 )])?;
 
-                                let circuit = contract
+                                let func = contract
                                     .functions
                                     .get(*function_id as usize)
                                     .ok_or(BlockchainError::ContractFunctionNotFound)?;
+                                let circuit = &func.verifier_key;
                                 let mut state_builder =
                                     zk::ZkStateBuilder::<ZkHasher>::new(zk::ZkStateModel::Scalar);
                                 state_builder.batch_set(&zk::ZkDeltaPairs(
@@ -1275,13 +1341,28 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn cleanup_mpn_payment_mempool(
+    fn cleanup_mpn_deposit_mempool(
         &self,
-        mempool: &mut HashMap<MpnPayment, TransactionStats>,
+        mempool: &mut HashMap<MpnDeposit, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             for tx in mempool.clone().into_keys() {
-                if chain.apply_contract_payment(&tx.payment).is_err() {
+                if chain.apply_deposit(&tx.payment).is_err() {
+                    mempool.remove(&tx);
+                }
+            }
+            Ok(())
+        })?;
+        Ok(())
+    }
+
+    fn cleanup_mpn_withdraw_mempool(
+        &self,
+        mempool: &mut HashMap<MpnWithdraw, TransactionStats>,
+    ) -> Result<(), BlockchainError> {
+        self.isolated(|chain| {
+            for tx in mempool.clone().into_keys() {
+                if chain.apply_withdraw(&tx.payment).is_err() {
                     mempool.remove(&tx);
                 }
             }

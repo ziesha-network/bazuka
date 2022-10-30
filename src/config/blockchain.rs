@@ -39,15 +39,17 @@ fn get_mpn_contract() -> TransactionAndDelta {
     let mpn_contract = zk::ZkContract {
         state_model: mpn_state_model.clone(),
         initial_state: zk::ZkCompressedState::empty::<ZkHasher>(mpn_state_model),
-        deposit_functions: vec![zk::ZkPaymentVerifierKey {
+        deposit_functions: vec![zk::ZkMultiInputVerifierKey {
             verifier_key: zk::ZkVerifierKey::Groth16(Box::new(MPN_PAYMENT_VK.clone())),
             log4_payment_capacity: MPN_LOG4_PAYMENT_CAPACITY,
         }],
-        withdraw_functions: vec![zk::ZkPaymentVerifierKey {
+        withdraw_functions: vec![zk::ZkMultiInputVerifierKey {
             verifier_key: zk::ZkVerifierKey::Groth16(Box::new(MPN_PAYMENT_VK.clone())),
             log4_payment_capacity: MPN_LOG4_PAYMENT_CAPACITY,
         }],
-        functions: vec![zk::ZkVerifierKey::Groth16(Box::new(MPN_UPDATE_VK.clone()))],
+        functions: vec![zk::ZkSingleInputVerifierKey {
+            verifier_key: zk::ZkVerifierKey::Groth16(Box::new(MPN_UPDATE_VK.clone())),
+        }],
     };
     let mpn_contract_create_tx = Transaction {
         src: Address::Treasury,

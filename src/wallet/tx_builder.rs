@@ -1,6 +1,7 @@
 use crate::core::{
-    Address, ContractId, ContractPayment, ContractUpdate, Money, MpnPayment, PaymentDirection,
-    Signature, Signer, Transaction, TransactionAndDelta, TransactionData, ZkSigner,
+    Address, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Money, MpnDeposit,
+    MpnWithdraw, Signature, Signer, Transaction, TransactionAndDelta, TransactionData, ZkHasher,
+    ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::ZkSignatureScheme;
@@ -136,41 +137,54 @@ impl TxBuilder {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn pay_contract(
+    pub fn deposit_mpn(
         &self,
         contract_id: ContractId,
         zk_address_index: u32,
         nonce: u32,
         amount: Money,
         fee: Money,
-        withdraw: bool,
-    ) -> MpnPayment {
-        let mut tx = ContractPayment {
-            address: self.private_key.clone().into(),
-            zk_address: self.zk_private_key.clone().into(),
+    ) -> MpnDeposit {
+        let mut calldata_builder =
+            zk::ZkStateBuilder::<ZkHasher>::new(zk::MPN_DEPOSIT_STATE_MODEL.clone());
+        let mut tx = ContractDeposit {
+            src: self.private_key.clone().into(),
             contract_id,
+            deposit_circuit_id: 0,
+            calldata: calldata_builder.compress().unwrap().state_hash,
             nonce,
             amount,
             fee,
-            direction: if withdraw {
-                PaymentDirection::Withdraw(None)
-            } else {
-                PaymentDirection::Deposit(None)
-            },
+            sig: None,
         };
         let bytes = bincode::serialize(&tx).unwrap();
-        match &mut tx.direction {
-            PaymentDirection::Withdraw(sig) => {
-                *sig = Some(ZkSigner::sign(
-                    &self.zk_private_key,
-                    crate::zk::hash_to_scalar(&bytes),
-                ));
-            }
-            PaymentDirection::Deposit(sig) => {
-                *sig = Some(Signer::sign(&self.private_key, &bytes));
-            }
+        tx.sig = Some(Signer::sign(&self.private_key, &bytes));
+        MpnDeposit {
+            zk_address_index,
+            payment: tx,
         }
-        MpnPayment {
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn withdraw_mpn(
+        &self,
+        contract_id: ContractId,
+        zk_address_index: u32,
+        nonce: u32,
+        amount: Money,
+        fee: Money,
+    ) -> MpnWithdraw {
+        let mut calldata_builder =
+            zk::ZkStateBuilder::<ZkHasher>::new(zk::MPN_DEPOSIT_STATE_MODEL.clone());
+        let mut tx = ContractWithdraw {
+            dst: self.private_key.clone().into(),
+            contract_id,
+            withdraw_circuit_id: 0,
+            calldata: calldata_builder.compress().unwrap().state_hash,
+            amount,
+            fee,
+        };
+        MpnWithdraw {
             zk_address_index,
             payment: tx,
         }

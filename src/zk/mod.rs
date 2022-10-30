@@ -22,13 +22,26 @@ pub struct MpnAccount {
     pub balance: Money,
 }
 
+// Amount is passed by default
 lazy_static! {
-    pub static ref CONTRACT_PAYMENT_STATE_MODEL: ZkStateModel = ZkStateModel::Struct {
+    pub static ref MPN_DEPOSIT_STATE_MODEL: ZkStateModel = ZkStateModel::Struct {
         field_types: vec![
-            ZkStateModel::Scalar, // amount
-            ZkStateModel::Scalar, // direction
             ZkStateModel::Scalar, // pub-x
             ZkStateModel::Scalar, // pub-y
+        ],
+    };
+}
+
+// Amount and fee are passed by default
+lazy_static! {
+    pub static ref MPN_WITHDRAW_STATE_MODEL: ZkStateModel = ZkStateModel::Struct {
+        field_types: vec![
+            ZkStateModel::Scalar, // pub-x
+            ZkStateModel::Scalar, // pub-y
+            ZkStateModel::Scalar, // nonce
+            ZkStateModel::Scalar, // sig_r_x
+            ZkStateModel::Scalar, // sig_r_y
+            ZkStateModel::Scalar, // sig_s
         ],
     };
 }
@@ -53,7 +66,7 @@ pub fn check_proof(
     vk: &ZkVerifierKey,
     prev_height: u64,
     prev_state: &ZkCompressedState,
-    aux_data: &ZkCompressedState,
+    calldata: &ZkCompressedState,
     next_state: &ZkCompressedState,
     proof: &ZkProof,
 ) -> bool {
@@ -66,7 +79,7 @@ pub fn check_proof(
                     vk,
                     prev_height,
                     prev_state.state_hash,
-                    aux_data.state_hash,
+                    calldata.state_hash,
                     next_state.state_hash,
                     proof,
                 )
@@ -379,9 +392,14 @@ pub enum ZkVerifierKey {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ZkPaymentVerifierKey {
+pub struct ZkMultiInputVerifierKey {
     pub verifier_key: ZkVerifierKey,
     pub log4_payment_capacity: u8,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ZkSingleInputVerifierKey {
+    pub verifier_key: ZkVerifierKey,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -431,9 +449,9 @@ impl MpnTransaction {
 pub struct ZkContract {
     pub initial_state: ZkCompressedState, // 32byte
     pub state_model: ZkStateModel,
-    pub deposit_functions: Vec<ZkPaymentVerifierKey>, // VK f(prev_state, deposit_txs (L1)) -> next_state
-    pub withdraw_functions: Vec<ZkPaymentVerifierKey>, // VK f(prev_state, withdraw_txs (L1)) -> next_state
-    pub functions: Vec<ZkVerifierKey>,                 // Vec<VK> f(prev_state) -> next_state
+    pub deposit_functions: Vec<ZkMultiInputVerifierKey>, // VK f(prev_state, deposit_txs (L1)) -> next_state
+    pub withdraw_functions: Vec<ZkMultiInputVerifierKey>, // VK f(prev_state, withdraw_txs (L1)) -> next_state
+    pub functions: Vec<ZkSingleInputVerifierKey>,         // Vec<VK> f(prev_state) -> next_state
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

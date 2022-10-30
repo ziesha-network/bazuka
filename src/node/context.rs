@@ -88,7 +88,9 @@ impl<B: Blockchain> NodeContext<B> {
         self.blockchain
             .cleanup_mpn_transaction_mempool(&mut self.mempool.zk)?;
         self.blockchain
-            .cleanup_mpn_payment_mempool(&mut self.mempool.tx_zk)?;
+            .cleanup_mpn_deposit_mempool(&mut self.mempool.tx_zk)?;
+        self.blockchain
+            .cleanup_mpn_withdraw_mempool(&mut self.mempool.zk_tx)?;
 
         if let Some(max) = self.opts.tx_max_time_alive {
             for (tx, stats) in self.mempool.tx.clone().into_iter() {

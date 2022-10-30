@@ -1,4 +1,4 @@
-use crate::core::{Address, MpnPayment, Signer, TransactionAndDelta};
+use crate::core::{Address, MpnDeposit, MpnWithdraw, Signer, TransactionAndDelta};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::zk::MpnTransaction;
@@ -297,14 +297,27 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn transact_contract_payment(
+    pub async fn transact_contract_deposit(
         &self,
-        tx: MpnPayment,
-    ) -> Result<PostMpnPaymentResponse, NodeError> {
+        tx: MpnDeposit,
+    ) -> Result<PostMpnDepositResponse, NodeError> {
         self.sender
-            .bincode_post::<PostMpnPaymentRequest, PostMpnPaymentResponse>(
-                format!("{}/bincode/transact/contract_payment", self.peer),
-                PostMpnPaymentRequest { tx },
+            .bincode_post::<PostMpnDepositRequest, PostMpnDepositResponse>(
+                format!("{}/bincode/transact/deposit", self.peer),
+                PostMpnDepositRequest { tx },
+                Limit::default(),
+            )
+            .await
+    }
+
+    pub async fn transact_contract_withdraw(
+        &self,
+        tx: MpnWithdraw,
+    ) -> Result<PostMpnWithdrawResponse, NodeError> {
+        self.sender
+            .bincode_post::<PostMpnWithdrawRequest, PostMpnWithdrawResponse>(
+                format!("{}/bincode/transact/withdraw", self.peer),
+                PostMpnWithdrawRequest { tx },
                 Limit::default(),
             )
             .await

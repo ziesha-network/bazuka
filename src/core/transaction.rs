@@ -43,7 +43,7 @@ impl<H: Hash> FromStr for ContractId<H> {
 pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
     pub contract_id: ContractId<H>,
     pub deposit_circuit_id: u32,
-    pub calldata: Vec<ZkScalar>,
+    pub calldata: ZkScalar,
     pub src: S::Pub,
     pub amount: Money, // Amount sent from src to contract
     pub fee: Money,    // Executor fee, paid by src
@@ -56,7 +56,7 @@ pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
 pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
     pub contract_id: ContractId<H>,
     pub withdraw_circuit_id: u32,
-    pub calldata: Vec<ZkScalar>,
+    pub calldata: ZkScalar,
     pub dst: S::Pub,
     pub amount: Money, // Amount sent from contract to dst
     pub fee: Money,    // Executor fee, paid by contract
