@@ -84,11 +84,17 @@ fn get_test_mpn_contract() -> TransactionAndDelta {
                 .state_model
                 .compress::<ZkHasher>(&init_state)
                 .unwrap();
-            contract.payment_functions = vec![zk::ZkPaymentVerifierKey {
+            contract.deposit_functions = vec![zk::ZkMultiInputVerifierKey {
                 verifier_key: zk::ZkVerifierKey::Dummy,
                 log4_payment_capacity: 1,
             }];
-            contract.functions = vec![zk::ZkVerifierKey::Dummy];
+            contract.withdraw_functions = vec![zk::ZkMultiInputVerifierKey {
+                verifier_key: zk::ZkVerifierKey::Dummy,
+                log4_payment_capacity: 1,
+            }];
+            contract.functions = vec![zk::ZkSingleInputVerifierKey {
+                verifier_key: zk::ZkVerifierKey::Dummy,
+            }];
         }
         _ => panic!(),
     }
