@@ -86,4 +86,8 @@ pub enum BlockchainError {
     TestnetHeightLimitReached,
     #[error("address not allowed to mine")]
     AddressNotAllowedToMine,
+    #[error(
+        "deposit/withdraw transaction was not intended to be passed to this contract/function"
+    )]
+    DepositWithdrawPassedToWrongFunction,
 }

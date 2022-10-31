@@ -448,7 +448,13 @@ impl<K: KvStore> KvStoreChain<K> {
                                 let mut state_builder =
                                     zk::ZkStateBuilder::<ZkHasher>::new(state_model);
                                 for (i, deposit) in deposits.iter().enumerate() {
-                                    // TODO: Check contract-id and circuit-id are correct
+                                    if deposit.contract_id != *contract_id
+                                        || deposit.deposit_circuit_id != *deposit_circuit_id
+                                    {
+                                        return Err(
+                                            BlockchainError::DepositWithdrawPassedToWrongFunction,
+                                        );
+                                    }
                                     if Address::PublicKey(deposit.src.clone()) == tx.src {
                                         return Err(BlockchainError::CannotExecuteOwnPayments);
                                     }
@@ -501,7 +507,13 @@ impl<K: KvStore> KvStoreChain<K> {
                                 let mut state_builder =
                                     zk::ZkStateBuilder::<ZkHasher>::new(state_model);
                                 for (i, withdraw) in withdraws.iter().enumerate() {
-                                    // TODO: Check contract-id and circuit-id are correct
+                                    if withdraw.contract_id != *contract_id
+                                        || withdraw.withdraw_circuit_id != *withdraw_circuit_id
+                                    {
+                                        return Err(
+                                            BlockchainError::DepositWithdrawPassedToWrongFunction,
+                                        );
+                                    }
                                     let fingerprint = withdraw.fingerprint();
                                     if Address::PublicKey(withdraw.dst.clone()) == tx.src {
                                         return Err(BlockchainError::CannotExecuteOwnPayments);
