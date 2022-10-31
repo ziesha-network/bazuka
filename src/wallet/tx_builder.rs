@@ -171,6 +171,7 @@ impl TxBuilder {
         tx.sig = Some(Signer::sign(&self.private_key, &bytes));
         MpnDeposit {
             zk_address_index,
+            zk_address: self.get_zk_address(),
             payment: tx,
         }
     }

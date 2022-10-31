@@ -35,7 +35,8 @@ pub struct BlockchainConfig {
     pub median_timestamp_count: u64,
     pub mpn_contract_id: ContractId,
     pub mpn_num_function_calls: usize,
-    pub mpn_num_contract_payments: usize,
+    pub mpn_num_contract_deposits: usize,
+    pub mpn_num_contract_withdraws: usize,
     pub minimum_pow_difficulty: Difficulty,
     pub testnet_height_limit: Option<u64>,
 }
@@ -763,7 +764,8 @@ impl<K: KvStore> KvStoreChain<K> {
             }
 
             let mut num_mpn_function_calls = 0;
-            let mut num_mpn_contract_payments = 0;
+            let mut num_mpn_contract_deposits = 0;
+            let mut num_mpn_contract_withdraws = 0;
 
             for tx in txs.iter() {
                 // Count MPN updates
@@ -776,10 +778,10 @@ impl<K: KvStore> KvStoreChain<K> {
                         for update in updates.iter() {
                             match update {
                                 ContractUpdate::Deposit { .. } => {
-                                    num_mpn_contract_payments += 1;
+                                    num_mpn_contract_deposits += 1;
                                 }
                                 ContractUpdate::Withdraw { .. } => {
-                                    num_mpn_contract_payments += 1;
+                                    num_mpn_contract_withdraws += 1;
                                 }
                                 ContractUpdate::FunctionCall { .. } => {
                                     num_mpn_function_calls += 1;
@@ -807,7 +809,8 @@ impl<K: KvStore> KvStoreChain<K> {
 
             if !is_genesis
                 && (num_mpn_function_calls < self.config.mpn_num_function_calls
-                    || num_mpn_contract_payments < self.config.mpn_num_contract_payments)
+                    || num_mpn_contract_deposits < self.config.mpn_num_contract_deposits
+                    || num_mpn_contract_withdraws < self.config.mpn_num_contract_withdraws)
             {
                 return Err(BlockchainError::InsufficientMpnUpdates);
             }

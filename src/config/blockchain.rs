@@ -159,7 +159,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         // We expect a minimum number of MPN contract updates
         // in a block to consider it valid
         mpn_num_function_calls: 1,
-        mpn_num_contract_payments: 1,
+        mpn_num_contract_deposits: 1,
+        mpn_num_contract_withdraws: 1,
 
         minimum_pow_difficulty: min_diff,
 
@@ -176,7 +177,8 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
 
     let mut conf = get_blockchain_config();
     conf.limited_miners = None;
-    conf.mpn_num_contract_payments = 0;
+    conf.mpn_num_contract_deposits = 0;
+    conf.mpn_num_contract_withdraws = 0;
     conf.mpn_num_function_calls = 0;
     conf.mpn_contract_id = mpn_contract_id;
     conf.minimum_pow_difficulty = min_diff;

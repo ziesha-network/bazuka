@@ -5,6 +5,7 @@ use crate::core::{MpnDeposit, MpnWithdraw, TransactionAndDelta};
 use crate::zk::MpnTransaction;
 use std::collections::HashMap;
 
+#[allow(dead_code)]
 pub struct WalletData {
     seed: Vec<u8>,
     tx: HashMap<u32, TransactionAndDelta>, // Nonce -> Tx
@@ -14,11 +15,13 @@ pub struct WalletData {
     zk: HashMap<u32, HashMap<u64, MpnTransaction>>, // Account -> Nonce -> Tx
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct Wallet {
     builder: TxBuilder,
 }
 
+#[allow(dead_code)]
 impl Wallet {
     pub fn new(seed: &[u8]) -> Self {
         Self {
