@@ -21,7 +21,8 @@ fn empty_contract<H: ZkHasher>(state_model: ZkStateModel) -> ZkContract {
     ZkContract {
         initial_state: ZkCompressedState::empty::<H>(state_model.clone()).into(),
         state_model: state_model,
-        payment_functions: vec![],
+        deposit_functions: vec![],
+        withdraw_functions: vec![],
         functions: vec![],
     }
 }

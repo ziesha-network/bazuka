@@ -30,7 +30,7 @@ use {
 #[cfg(feature = "client")]
 use {
     bazuka::client::{BazukaClient, NodeError},
-    bazuka::core::{ContractId, Money, Signer, ZkSigner},
+    bazuka::core::{Money, Signer, ZkSigner},
     bazuka::crypto::{SignatureScheme, ZkSignatureScheme},
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
@@ -303,45 +303,6 @@ async fn run_node(
     Ok(())
 }
 
-#[cfg(not(tarpaulin_include))]
-#[cfg(feature = "client")]
-async fn deposit_withdraw(
-    conf: BazukaConfig,
-    mpn_contract_id: ContractId,
-    contract: String,
-    index: u32,
-    amount: Money,
-    fee: Money,
-    withdraw: bool,
-) -> Result<(), NodeError> {
-    let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
-    let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
-    let (req_loop, client) = BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
-    try_join!(
-        async move {
-            let acc = client.get_account(wallet.get_address()).await?.account;
-            let pay = wallet.pay_contract(
-                if contract == "mpn" {
-                    mpn_contract_id
-                } else {
-                    contract.parse().unwrap()
-                },
-                index,
-                acc.nonce + 1,
-                amount,
-                fee,
-                withdraw,
-            );
-            println!("{:#?}", client.transact_contract_payment(pay).await?);
-            Ok::<(), NodeError>(())
-        },
-        req_loop
-    )
-    .unwrap();
-
-    Ok(())
-}
-
 fn generate_miner_token() -> String {
     use rand::distributions::Alphanumeric;
     use rand::{thread_rng, Rng};
@@ -452,7 +413,30 @@ async fn main() -> Result<(), NodeError> {
             fee,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            deposit_withdraw(conf, mpn_contract_id, contract, index, amount, fee, false).await?;
+            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
+            let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
+            let (req_loop, client) =
+                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
+            try_join!(
+                async move {
+                    let acc = client.get_account(wallet.get_address()).await?.account;
+                    let pay = wallet.deposit_mpn(
+                        if contract == "mpn" {
+                            mpn_contract_id
+                        } else {
+                            contract.parse().unwrap()
+                        },
+                        index,
+                        acc.nonce + 1,
+                        amount,
+                        fee,
+                    );
+                    println!("{:#?}", client.transact_contract_deposit(pay).await?);
+                    Ok::<(), NodeError>(())
+                },
+                req_loop
+            )
+            .unwrap();
         }
         CliOptions::Withdraw {
             contract,
@@ -461,7 +445,30 @@ async fn main() -> Result<(), NodeError> {
             fee,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            deposit_withdraw(conf, mpn_contract_id, contract, index, amount, fee, true).await?;
+            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
+            let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
+            let (req_loop, client) =
+                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
+            try_join!(
+                async move {
+                    let acc = client.get_mpn_account(index).await?.account;
+                    let pay = wallet.withdraw_mpn(
+                        if contract == "mpn" {
+                            mpn_contract_id
+                        } else {
+                            contract.parse().unwrap()
+                        },
+                        index,
+                        acc.nonce + 1,
+                        amount,
+                        fee,
+                    );
+                    println!("{:#?}", client.transact_contract_withdraw(pay).await?);
+                    Ok::<(), NodeError>(())
+                },
+                req_loop
+            )
+            .unwrap();
         }
         CliOptions::Rsend {
             to,

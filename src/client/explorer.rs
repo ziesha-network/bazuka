@@ -1,11 +1,11 @@
 use crate::core::{
-    Block, ContractPayment, ContractUpdate, Header, PaymentDirection, ProofOfWork, Transaction,
+    Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, ProofOfWork, Transaction,
     TransactionData,
 };
 use crate::crypto::jubjub::*;
 use crate::zk::{
-    MpnAccount, ZkCompressedState, ZkContract, ZkPaymentVerifierKey, ZkProof, ZkStateModel,
-    ZkVerifierKey,
+    MpnAccount, ZkCompressedState, ZkContract, ZkMultiInputVerifierKey, ZkProof,
+    ZkSingleInputVerifierKey, ZkStateModel, ZkVerifierKey,
 };
 use serde::{Deserialize, Serialize};
 
@@ -87,13 +87,13 @@ impl From<&ZkVerifierKey> for ExplorerVerifierKey {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct ExplorerPaymentVerifierKey {
+pub struct ExplorerMultiInputVerifierKey {
     pub verifier_key: ExplorerVerifierKey,
     pub log4_payment_capacity: u8,
 }
 
-impl From<&ZkPaymentVerifierKey> for ExplorerPaymentVerifierKey {
-    fn from(obj: &ZkPaymentVerifierKey) -> Self {
+impl From<&ZkMultiInputVerifierKey> for ExplorerMultiInputVerifierKey {
+    fn from(obj: &ZkMultiInputVerifierKey) -> Self {
         Self {
             verifier_key: (&obj.verifier_key).into(),
             log4_payment_capacity: obj.log4_payment_capacity,
@@ -102,11 +102,25 @@ impl From<&ZkPaymentVerifierKey> for ExplorerPaymentVerifierKey {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerSingleInputVerifierKey {
+    pub verifier_key: ExplorerVerifierKey,
+}
+
+impl From<&ZkSingleInputVerifierKey> for ExplorerSingleInputVerifierKey {
+    fn from(obj: &ZkSingleInputVerifierKey) -> Self {
+        Self {
+            verifier_key: (&obj.verifier_key).into(),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerContract {
     pub initial_state: ExplorerCompressedState,
     pub state_model: ExplorerStateModel,
-    pub payment_functions: Vec<ExplorerPaymentVerifierKey>,
-    pub functions: Vec<ExplorerVerifierKey>,
+    pub deposit_functions: Vec<ExplorerMultiInputVerifierKey>,
+    pub withdraw_functions: Vec<ExplorerMultiInputVerifierKey>,
+    pub functions: Vec<ExplorerSingleInputVerifierKey>,
 }
 
 impl From<&ZkContract> for ExplorerContract {
@@ -114,7 +128,8 @@ impl From<&ZkContract> for ExplorerContract {
         Self {
             initial_state: (&obj.initial_state).into(),
             state_model: (&obj.state_model).into(),
-            payment_functions: obj.payment_functions.iter().map(|f| f.into()).collect(),
+            deposit_functions: obj.deposit_functions.iter().map(|f| f.into()).collect(),
+            withdraw_functions: obj.withdraw_functions.iter().map(|f| f.into()).collect(),
             functions: obj.functions.iter().map(|f| f.into()).collect(),
         }
     }
@@ -132,41 +147,48 @@ impl From<&ZkCompressedState> for ExplorerCompressedState {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub enum ExplorerPaymentDirection {
-    Deposit,
-    Withdraw,
+pub struct ExplorerContractDeposit {
+    pub contract_id: String,
+    pub deposit_circuit_id: u32,
+    pub src: String,
+    pub amount: u64,
+    pub fee: u64,
+
+    pub nonce: u32,
+    pub sig: Option<String>,
 }
 
-impl From<&PaymentDirection> for ExplorerPaymentDirection {
-    fn from(obj: &PaymentDirection) -> Self {
-        match obj {
-            PaymentDirection::Deposit(_) => Self::Deposit,
-            PaymentDirection::Withdraw(_) => Self::Withdraw,
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerContractWithdraw {
+    pub contract_id: String,
+    pub withdraw_circuit_id: u32,
+    pub dst: String,
+    pub amount: u64,
+    pub fee: u64,
+}
+
+impl From<&ContractDeposit> for ExplorerContractDeposit {
+    fn from(obj: &ContractDeposit) -> Self {
+        Self {
+            src: obj.src.to_string(),
+            contract_id: obj.contract_id.to_string(),
+            deposit_circuit_id: obj.deposit_circuit_id.into(),
+            nonce: obj.nonce,
+            amount: obj.amount.into(),
+            fee: obj.fee.into(),
+            sig: obj.sig.as_ref().map(|_| "Signed".into()), // TODO: Convert to hex
         }
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct ExplorerContractPayment {
-    pub address: String,
-    pub zk_address: String,
-    pub contract_id: String,
-    pub nonce: u32,
-    pub amount: u64,
-    pub fee: u64,
-    pub direction: ExplorerPaymentDirection,
-}
-
-impl From<&ContractPayment> for ExplorerContractPayment {
-    fn from(obj: &ContractPayment) -> Self {
+impl From<&ContractWithdraw> for ExplorerContractWithdraw {
+    fn from(obj: &ContractWithdraw) -> Self {
         Self {
-            address: obj.address.to_string(),
-            zk_address: obj.zk_address.to_string(),
+            dst: obj.dst.to_string(),
             contract_id: obj.contract_id.to_string(),
-            nonce: obj.nonce,
+            withdraw_circuit_id: obj.withdraw_circuit_id.into(),
             amount: obj.amount.into(),
             fee: obj.fee.into(),
-            direction: (&obj.direction).into(),
         }
     }
 }
@@ -185,9 +207,15 @@ impl From<&ZkProof> for ExplorerZkProof {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ExplorerContractUpdate {
-    Payment {
-        circuit_id: u32,
-        payments: Vec<ExplorerContractPayment>,
+    Deposit {
+        deposit_circuit_id: u32,
+        deposits: Vec<ExplorerContractDeposit>,
+        next_state: ExplorerCompressedState,
+        proof: ExplorerZkProof,
+    },
+    Withdraw {
+        withdraw_circuit_id: u32,
+        withdraws: Vec<ExplorerContractWithdraw>,
         next_state: ExplorerCompressedState,
         proof: ExplorerZkProof,
     },
@@ -202,14 +230,25 @@ pub enum ExplorerContractUpdate {
 impl From<&ContractUpdate> for ExplorerContractUpdate {
     fn from(obj: &ContractUpdate) -> Self {
         match obj {
-            ContractUpdate::Payment {
-                circuit_id,
-                payments,
+            ContractUpdate::Deposit {
+                deposit_circuit_id,
+                deposits,
                 next_state,
                 proof,
-            } => Self::Payment {
-                circuit_id: *circuit_id,
-                payments: payments.iter().map(|p| p.into()).collect(),
+            } => Self::Deposit {
+                deposit_circuit_id: *deposit_circuit_id,
+                deposits: deposits.iter().map(|p| p.into()).collect(),
+                next_state: next_state.into(),
+                proof: proof.into(),
+            },
+            ContractUpdate::Withdraw {
+                withdraw_circuit_id,
+                withdraws,
+                next_state,
+                proof,
+            } => Self::Withdraw {
+                withdraw_circuit_id: *withdraw_circuit_id,
+                withdraws: withdraws.iter().map(|p| p.into()).collect(),
                 next_state: next_state.into(),
                 proof: proof.into(),
             },

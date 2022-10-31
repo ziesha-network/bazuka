@@ -49,7 +49,8 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
             ZkContract {
                 initial_state: ZkCompressedState::empty::<H>(state_model.clone()),
                 state_model,
-                payment_functions: vec![],
+                deposit_functions: vec![],
+                withdraw_functions: vec![],
                 functions: vec![],
             }
             .into(),
