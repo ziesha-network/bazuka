@@ -451,7 +451,7 @@ async fn main() -> Result<(), NodeError> {
                 BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
             try_join!(
                 async move {
-                    let acc = client.get_account(wallet.get_address()).await?.account;
+                    let acc = client.get_mpn_account(index).await?.account;
                     let pay = wallet.withdraw_mpn(
                         if contract == "mpn" {
                             mpn_contract_id

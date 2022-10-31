@@ -73,7 +73,7 @@ pub struct MpnDeposit<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
 pub struct MpnWithdraw<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub zk_address_index: u32,
     pub zk_address: ZS::Pub,
-    pub zk_nonce: u32,
+    pub zk_nonce: u64,
     pub zk_sig: ZS::Sig,
     pub payment: ContractWithdraw<H, S>,
 }

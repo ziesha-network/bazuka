@@ -492,6 +492,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                         field_types: vec![
                                             zk::ZkStateModel::Scalar, // Enabled
                                             zk::ZkStateModel::Scalar, // Amount
+                                            zk::ZkStateModel::Scalar, // Fingerprint
                                             zk::ZkStateModel::Scalar, // Calldata
                                         ],
                                     }),

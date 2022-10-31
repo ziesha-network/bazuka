@@ -181,7 +181,7 @@ impl TxBuilder {
         &self,
         contract_id: ContractId,
         zk_address_index: u32,
-        nonce: u32,
+        nonce: u64,
         amount: Money,
         fee: Money,
     ) -> MpnWithdraw {
@@ -200,7 +200,7 @@ impl TxBuilder {
             crate::core::ZkHasher::hash(&[fingerprint, zk::ZkScalar::from(nonce as u64)]),
         );
         let mut calldata_builder =
-            zk::ZkStateBuilder::<crate::core::ZkHasher>::new(zk::MPN_DEPOSIT_STATE_MODEL.clone());
+            zk::ZkStateBuilder::<crate::core::ZkHasher>::new(zk::MPN_WITHDRAW_STATE_MODEL.clone());
         let pk = self.get_zk_address().0.decompress();
         calldata_builder
             .batch_set(&zk::ZkDeltaPairs(
