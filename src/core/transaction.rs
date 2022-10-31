@@ -131,8 +131,10 @@ impl<H: Hash, S: SignatureScheme> ContractDeposit<H, S> {
 }
 
 impl<H: Hash, S: SignatureScheme> ContractWithdraw<H, S> {
-    pub fn hash_to_zk(&self) -> ZkScalar {
-        let unsigned_bin = bincode::serialize(self).unwrap();
+    pub fn fingerprint(&self) -> ZkScalar {
+        let mut unsigned = self.clone();
+        unsigned.calldata = ZkScalar::default();
+        let unsigned_bin = bincode::serialize(&unsigned).unwrap();
         ZkScalar::new(H::hash(&unsigned_bin).as_ref())
     }
 }

@@ -501,13 +501,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                     zk::ZkStateBuilder::<ZkHasher>::new(state_model);
                                 for (i, withdraw) in withdraws.iter().enumerate() {
                                     // TODO: Check contract-id and circuit-id are correct
-                                    let fingerprint = {
-                                        let mut nocalldata = withdraw.clone();
-                                        nocalldata.calldata = zk::ZkScalar::default();
-                                        crate::zk::hash_to_scalar(
-                                            &bincode::serialize(&withdraw).unwrap(),
-                                        )
-                                    };
+                                    let fingerprint = withdraw.fingerprint();
                                     if Address::PublicKey(withdraw.dst.clone()) == tx.src {
                                         return Err(BlockchainError::CannotExecuteOwnPayments);
                                     }
