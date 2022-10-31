@@ -22,7 +22,7 @@ pub async fn sync_clock<B: Blockchain>(
     let peer_responses: Vec<(Peer, Result<HandshakeResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
             net.json_post::<HandshakeRequest, HandshakeResponse>(
-                format!("{}/peers", peer.address),
+                format!("http://{}/peers", peer.address),
                 handshake_req.clone(),
                 Limit::default().size(1 * KB).time(3 * SECOND),
             )

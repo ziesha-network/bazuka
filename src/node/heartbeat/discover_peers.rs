@@ -21,7 +21,7 @@ pub async fn discover_peers<B: Blockchain>(
     let peer_responses: Vec<(PeerAddress, Result<HandshakeResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
             net.json_post::<HandshakeRequest, HandshakeResponse>(
-                format!("{}/peers", peer),
+                format!("http://{}/peers", peer),
                 handshake_req.clone(),
                 Limit::default().size(1 * KB).time(1 * SECOND),
             )

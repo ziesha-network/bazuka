@@ -17,7 +17,7 @@ pub async fn sync_mempool<B: Blockchain>(
     let peer_responses: Vec<(Peer, Result<GetMempoolResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
             net.bincode_get::<GetMempoolRequest, GetMempoolResponse>(
-                format!("{}/bincode/mempool", peer.address),
+                format!("http://{}/bincode/mempool", peer.address),
                 GetMempoolRequest {},
                 Limit::default().size(10 * MB).time(10 * SECOND),
             )

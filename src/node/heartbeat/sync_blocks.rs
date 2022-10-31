@@ -41,7 +41,7 @@ pub async fn sync_blocks<B: Blockchain>(
             // Get all headers starting from the indices that we don't have.
             let resp = if let Ok(resp) = net
                 .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
-                    format!("{}/bincode/headers", peer.address),
+                    format!("http://{}/bincode/headers", peer.address),
                     GetHeadersRequest {
                         since: start_height,
                         count: opts.max_blocks_fetch,
@@ -109,7 +109,7 @@ pub async fn sync_blocks<B: Blockchain>(
             for index in (0..start_height).rev() {
                 let peer_resp = if let Ok(resp) = net
                     .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
-                        format!("{}/bincode/headers", peer.address),
+                        format!("http://{}/bincode/headers", peer.address),
                         GetHeadersRequest {
                             since: index,
                             count: 1,
@@ -200,7 +200,7 @@ pub async fn sync_blocks<B: Blockchain>(
 
             if let Ok(resp) = net
                 .bincode_get::<GetBlocksRequest, GetBlocksResponse>(
-                    format!("{}/bincode/blocks", peer.address).to_string(),
+                    format!("http://{}/bincode/blocks", peer.address).to_string(),
                     GetBlocksRequest {
                         since: headers[0].number,
                         count: opts.max_blocks_fetch,

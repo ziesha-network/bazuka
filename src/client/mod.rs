@@ -269,7 +269,7 @@ impl BazukaClient {
     pub async fn shutdown(&self) -> Result<(), NodeError> {
         self.sender
             .json_post::<ShutdownRequest, ShutdownResponse>(
-                format!("{}/shutdown", self.peer),
+                format!("http://{}/shutdown", self.peer),
                 ShutdownRequest {},
                 Limit::default(),
             )
@@ -279,7 +279,7 @@ impl BazukaClient {
     pub async fn stats(&self) -> Result<GetStatsResponse, NodeError> {
         self.sender
             .json_get::<GetStatsRequest, GetStatsResponse>(
-                format!("{}/stats", self.peer),
+                format!("http://{}/stats", self.peer),
                 GetStatsRequest {},
                 Limit::default(),
             )
@@ -288,7 +288,7 @@ impl BazukaClient {
     pub async fn peers(&self) -> Result<GetPeersResponse, NodeError> {
         self.sender
             .json_get::<GetPeersRequest, GetPeersResponse>(
-                format!("{}/peers", self.peer),
+                format!("http://{}/peers", self.peer),
                 GetPeersRequest {},
                 Limit::default(),
             )
@@ -298,7 +298,7 @@ impl BazukaClient {
     pub async fn get_zero_mempool(&self) -> Result<GetZeroMempoolResponse, NodeError> {
         self.sender
             .bincode_get::<GetZeroMempoolRequest, GetZeroMempoolResponse>(
-                format!("{}/bincode/mempool/zero", self.peer),
+                format!("http://{}/bincode/mempool/zero", self.peer),
                 GetZeroMempoolRequest {},
                 Limit::default(),
             )
@@ -311,7 +311,7 @@ impl BazukaClient {
     ) -> Result<PostMpnDepositResponse, NodeError> {
         self.sender
             .bincode_post::<PostMpnDepositRequest, PostMpnDepositResponse>(
-                format!("{}/bincode/transact/deposit", self.peer),
+                format!("http://{}/bincode/transact/deposit", self.peer),
                 PostMpnDepositRequest { tx },
                 Limit::default(),
             )
@@ -324,7 +324,7 @@ impl BazukaClient {
     ) -> Result<PostMpnWithdrawResponse, NodeError> {
         self.sender
             .bincode_post::<PostMpnWithdrawRequest, PostMpnWithdrawResponse>(
-                format!("{}/bincode/transact/withdraw", self.peer),
+                format!("http://{}/bincode/transact/withdraw", self.peer),
                 PostMpnWithdrawRequest { tx },
                 Limit::default(),
             )
@@ -334,7 +334,7 @@ impl BazukaClient {
     pub async fn outdated_heights(&self) -> Result<GetOutdatedHeightsResponse, NodeError> {
         self.sender
             .bincode_get::<GetOutdatedHeightsRequest, GetOutdatedHeightsResponse>(
-                format!("{}/bincode/states/outdated", self.peer),
+                format!("http://{}/bincode/states/outdated", self.peer),
                 GetOutdatedHeightsRequest {},
                 Limit::default(),
             )
@@ -344,7 +344,7 @@ impl BazukaClient {
     pub async fn get_account(&self, address: Address) -> Result<GetAccountResponse, NodeError> {
         self.sender
             .json_get::<GetAccountRequest, GetAccountResponse>(
-                format!("{}/account", self.peer),
+                format!("http://{}/account", self.peer),
                 GetAccountRequest {
                     address: address.to_string(),
                 },
@@ -356,7 +356,7 @@ impl BazukaClient {
     pub async fn get_mpn_account(&self, index: u32) -> Result<GetMpnAccountResponse, NodeError> {
         self.sender
             .json_get::<GetMpnAccountRequest, GetMpnAccountResponse>(
-                format!("{}/mpn/account", self.peer),
+                format!("http://{}/mpn/account", self.peer),
                 GetMpnAccountRequest { index },
                 Limit::default(),
             )
@@ -369,7 +369,7 @@ impl BazukaClient {
     ) -> Result<TransactResponse, NodeError> {
         self.sender
             .bincode_post::<TransactRequest, TransactResponse>(
-                format!("{}/bincode/transact", self.peer),
+                format!("http://{}/bincode/transact", self.peer),
                 TransactRequest { tx_delta },
                 Limit::default(),
             )
@@ -382,7 +382,7 @@ impl BazukaClient {
     ) -> Result<PostMpnTransactionResponse, NodeError> {
         self.sender
             .bincode_post::<PostMpnTransactionRequest, PostMpnTransactionResponse>(
-                format!("{}/bincode/transact/zero", self.peer),
+                format!("http://{}/bincode/transact/zero", self.peer),
                 PostMpnTransactionRequest { tx },
                 Limit::default(),
             )
@@ -392,7 +392,7 @@ impl BazukaClient {
     pub async fn get_miner_puzzle(&self) -> Result<GetMinerPuzzleResponse, NodeError> {
         self.sender
             .json_get::<GetMinerPuzzleRequest, GetMinerPuzzleResponse>(
-                format!("{}/miner/puzzle", self.peer),
+                format!("http://{}/miner/puzzle", self.peer),
                 GetMinerPuzzleRequest {},
                 Limit::default(),
             )
@@ -405,7 +405,7 @@ impl BazukaClient {
             Ok(Some(
                 self.sender
                     .json_post::<PostMinerSolutionRequest, PostMinerSolutionResponse>(
-                        format!("{}/miner/solution", self.peer),
+                        format!("http://{}/miner/solution", self.peer),
                         sol,
                         Limit::default(),
                     )

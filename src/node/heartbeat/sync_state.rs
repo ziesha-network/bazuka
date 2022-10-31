@@ -44,7 +44,7 @@ pub async fn sync_state<B: Blockchain>(
             log::info!("Syncing state with {}...", peer.address);
             match net
                 .bincode_get::<GetStatesRequest, GetStatesResponse>(
-                    format!("{}/bincode/states", peer.address),
+                    format!("http://{}/bincode/states", peer.address),
                     GetStatesRequest {
                         outdated_heights: outdated_heights.clone(),
                         to: hex::encode(last_header.hash()),

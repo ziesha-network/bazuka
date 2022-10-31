@@ -19,7 +19,7 @@ pub async fn sync_peers<B: Blockchain>(
     let peer_responses: Vec<(Peer, Result<GetPeersResponse, NodeError>)> =
         http::group_request(&peer_addresses, |peer| {
             net.json_get::<GetPeersRequest, GetPeersResponse>(
-                format!("{}/peers", peer.address),
+                format!("http://{}/peers", peer.address),
                 GetPeersRequest {},
                 Limit::default().size(1 * MB).time(3 * SECOND),
             )
