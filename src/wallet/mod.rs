@@ -3,16 +3,28 @@ pub use tx_builder::TxBuilder;
 
 use crate::core::{MpnDeposit, MpnWithdraw, TransactionAndDelta};
 use crate::zk::MpnTransaction;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum Rtx {
+    Rsend(TransactionAndDelta),
+    Deposit(MpnDeposit),
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum Ztx {
+    Zsend(MpnTransaction),
+    Withdraw(MpnWithdraw),
+}
+
 #[allow(dead_code)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WalletData {
     seed: Vec<u8>,
-    tx: HashMap<u32, TransactionAndDelta>, // Nonce -> Tx
     mpn_indices: Vec<u32>,
-    tx_zk: HashMap<u32, HashMap<u32, MpnDeposit>>, // Account -> Nonce -> Tx
-    zk_tx: HashMap<u32, HashMap<u32, MpnWithdraw>>, // Account -> Nonce -> Tx
-    zk: HashMap<u32, HashMap<u64, MpnTransaction>>, // Account -> Nonce -> Tx
+    rtxs: HashMap<u32, Rtx>, // Nonce -> Tx
+    ztxs: HashMap<u64, Ztx>, // Nonce -> Tx
 }
 
 #[allow(dead_code)]
