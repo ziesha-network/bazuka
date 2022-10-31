@@ -32,6 +32,7 @@ use {
     bazuka::client::{BazukaClient, NodeError},
     bazuka::core::{Money, Signer, ZkSigner},
     bazuka::crypto::{SignatureScheme, ZkSignatureScheme},
+    rand::seq::SliceRandom,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
     structopt::StructOpt,
@@ -41,10 +42,19 @@ use {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 struct BazukaConfig {
     seed: String,
-    node: SocketAddr,
     network: String,
-    #[serde(default)]
     miner_token: String,
+    bootstrap: Vec<PeerAddress>,
+}
+
+#[cfg(feature = "client")]
+impl BazukaConfig {
+    fn random_node(&self) -> PeerAddress {
+        self.bootstrap
+            .choose(&mut rand::thread_rng())
+            .expect("No bootstrap nodes specified!")
+            .clone()
+    }
 }
 
 #[derive(StructOpt)]
@@ -58,10 +68,10 @@ enum CliOptions {
     Init {
         #[structopt(long)]
         seed: String,
-        #[structopt(long)]
-        node: SocketAddr,
         #[structopt(long, default_value = "mainnet")]
         network: String,
+        #[structopt(long)]
+        bootstrap: Vec<PeerAddress>,
     },
     #[cfg(not(feature = "node"))]
     Node,
@@ -76,8 +86,6 @@ enum CliOptions {
         client_only: bool,
         #[structopt(long, parse(from_os_str))]
         db: Option<PathBuf>,
-        #[structopt(long)]
-        bootstrap: Vec<String>,
         #[structopt(long, default_value = "mainnet")]
         network: String,
         #[structopt(long)]
@@ -145,7 +153,7 @@ async fn run_node(
     external: Option<SocketAddr>,
     client_only: bool,
     db: Option<PathBuf>,
-    bootstrap: Vec<String>,
+    bootstrap: Vec<PeerAddress>,
     network: String,
 ) -> Result<(), NodeError> {
     let (_pub_key, priv_key) = Signer::generate_keys(&bazuka_config.seed.as_bytes());
@@ -198,11 +206,7 @@ async fn run_node(
     let bootstrap_nodes = {
         match bootstrap.len() {
             0 => bazuka::node::seeds::seed_bootstrap_nodes(),
-            _ => bootstrap
-                .clone()
-                .into_iter()
-                .map(|b| PeerAddress(b.parse().unwrap()))
-                .collect(),
+            _ => bootstrap,
         }
     };
 
@@ -341,7 +345,6 @@ async fn main() -> Result<(), NodeError> {
             listen,
             external,
             db,
-            bootstrap,
             network,
             discord_handle,
             client_only,
@@ -356,7 +359,7 @@ async fn main() -> Result<(), NodeError> {
                 external,
                 client_only,
                 db,
-                bootstrap,
+                conf.bootstrap,
                 network,
             )
             .await?;
@@ -368,8 +371,8 @@ async fn main() -> Result<(), NodeError> {
         #[cfg(feature = "client")]
         CliOptions::Init {
             seed,
-            node,
             network,
+            bootstrap,
         } => {
             let miner_token = generate_miner_token();
             if conf.is_none() {
@@ -377,9 +380,9 @@ async fn main() -> Result<(), NodeError> {
                     conf_path,
                     serde_yaml::to_string(&BazukaConfig {
                         seed,
-                        node,
                         network,
                         miner_token,
+                        bootstrap,
                     })
                     .unwrap(),
                 )
@@ -396,7 +399,7 @@ async fn main() -> Result<(), NodeError> {
             let conf = conf.expect("Bazuka is not initialized!");
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let (req_loop, client) =
-                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
+                BazukaClient::connect(sk, conf.random_node(), conf.network, None);
             try_join!(
                 async move {
                     println!("{:#?}", client.stats().await?);
@@ -416,7 +419,7 @@ async fn main() -> Result<(), NodeError> {
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
             let (req_loop, client) =
-                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
+                BazukaClient::connect(sk, conf.random_node(), conf.network, None);
             try_join!(
                 async move {
                     let acc = client.get_account(wallet.get_address()).await?.account;
@@ -448,7 +451,7 @@ async fn main() -> Result<(), NodeError> {
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
             let (req_loop, client) =
-                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
+                BazukaClient::connect(sk, conf.random_node(), conf.network, None);
             try_join!(
                 async move {
                     let acc = client.get_mpn_account(index).await?.account;
@@ -480,7 +483,7 @@ async fn main() -> Result<(), NodeError> {
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
             let (req_loop, client) =
-                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
+                BazukaClient::connect(sk, conf.random_node(), conf.network, None);
             try_join!(
                 async move {
                     let acc = client.get_account(wallet.get_address()).await?.account;
@@ -509,7 +512,7 @@ async fn main() -> Result<(), NodeError> {
             let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
             let (req_loop, client) =
-                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
+                BazukaClient::connect(sk, conf.random_node(), conf.network, None);
             try_join!(
                 async move {
                     let to: <ZkSigner as ZkSignatureScheme>::Pub = to.parse().unwrap();
@@ -546,7 +549,7 @@ async fn main() -> Result<(), NodeError> {
             );
 
             let (req_loop, client) =
-                BazukaClient::connect(sk, PeerAddress(conf.node), conf.network, None);
+                BazukaClient::connect(sk, conf.random_node(), conf.network, None);
             try_join!(
                 async move {
                     println!(

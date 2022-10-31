@@ -7,6 +7,7 @@ use hyper::header::HeaderValue;
 use hyper::{Body, Method, Request, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
@@ -35,7 +36,14 @@ impl PeerAddress {
 
 impl std::fmt::Display for PeerAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "http://{}", self.0)
+        write!(f, "{}", self.0)
+    }
+}
+
+impl FromStr for PeerAddress {
+    type Err = std::net::AddrParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        SocketAddr::from_str(s).map(|s| Self(s))
     }
 }
 
