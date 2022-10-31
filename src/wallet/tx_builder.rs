@@ -227,6 +227,9 @@ impl TxBuilder {
         tx.calldata = calldata_builder.compress().unwrap().state_hash;
         MpnWithdraw {
             zk_address_index,
+            zk_address: self.get_zk_address(),
+            zk_nonce: nonce,
+            zk_sig: sig,
             payment: tx,
         }
     }

@@ -70,8 +70,11 @@ pub struct MpnDeposit<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-pub struct MpnWithdraw<H: Hash, S: SignatureScheme> {
+pub struct MpnWithdraw<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub zk_address_index: u32,
+    pub zk_address: ZS::Pub,
+    pub zk_nonce: u32,
+    pub zk_sig: ZS::Sig,
     pub payment: ContractWithdraw<H, S>,
 }
 
@@ -95,14 +98,17 @@ impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> std::hash::Hash for Mpn
     }
 }
 
-impl<H: Hash, S: SignatureScheme> PartialEq for MpnWithdraw<H, S> {
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> PartialEq for MpnWithdraw<H, S, ZS> {
     fn eq(&self, other: &Self) -> bool {
         bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
     }
 }
 
-impl<H: Hash + PartialEq, S: SignatureScheme + PartialEq> Eq for MpnWithdraw<H, S> {}
-impl<H: Hash, S: SignatureScheme> std::hash::Hash for MpnWithdraw<H, S> {
+impl<H: Hash + PartialEq, S: SignatureScheme + PartialEq, ZS: ZkSignatureScheme + PartialEq> Eq
+    for MpnWithdraw<H, S, ZS>
+{
+}
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> std::hash::Hash for MpnWithdraw<H, S, ZS> {
     fn hash<Hasher>(&self, state: &mut Hasher)
     where
         Hasher: std::hash::Hasher,
