@@ -3,8 +3,6 @@ use super::*;
 use crate::blockchain::{BlockchainConfig, KvStoreChain};
 use crate::client::{messages::SocialProfiles, BazukaClient};
 use crate::config;
-use crate::core::Signer;
-use crate::crypto::SignatureScheme;
 use crate::db::RamKvStore;
 use crate::wallet::TxBuilder;
 
@@ -20,8 +18,7 @@ struct Node {
 
 pub struct NodeOpts {
     pub config: BlockchainConfig,
-    pub priv_key: <Signer as SignatureScheme>::Priv,
-    pub wallet: Option<TxBuilder>,
+    pub wallet: TxBuilder,
     pub addr: u16,
     pub bootstrap: Vec<u16>,
     pub timestamp_offset: i32,
@@ -39,14 +36,13 @@ fn create_test_node(
         simulator_options.clone(),
         "simulator",
         Some(addr),
-        opts.priv_key.clone(),
         opts.bootstrap
             .iter()
             .map(|p| PeerAddress(SocketAddr::from(([123, 234, 123, *p as u8], 8765))))
             .collect(),
         chain,
         opts.timestamp_offset,
-        opts.wallet,
+        opts.wallet.clone(),
         SocialProfiles::default(),
         inc_recv,
         out_send,
@@ -62,7 +58,7 @@ fn create_test_node(
                 sender: Arc::new(OutgoingSender {
                     chan: inc_send,
                     network: "simulator".into(),
-                    priv_key: opts.priv_key,
+                    priv_key: opts.wallet.get_priv_key(),
                     miner_token: None,
                 }),
             },

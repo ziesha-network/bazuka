@@ -4,8 +4,7 @@ use super::{
 };
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError};
 use crate::client::messages::SocialProfiles;
-use crate::core::{Header, Signer};
-use crate::crypto::SignatureScheme;
+use crate::core::Header;
 use crate::utils;
 use crate::wallet::TxBuilder;
 use std::collections::HashMap;
@@ -22,12 +21,11 @@ pub struct NodeContext<B: Blockchain> {
     pub social_profiles: SocialProfiles,
     pub opts: NodeOptions,
     pub network: String,
-    pub pub_key: <Signer as SignatureScheme>::Pub,
     pub address: Option<PeerAddress>, // None means node is not exposed on the Internet
     pub shutdown: bool,
     pub outgoing: Arc<OutgoingSender>,
     pub blockchain: B,
-    pub wallet: Option<TxBuilder>,
+    pub wallet: TxBuilder,
     pub peer_manager: PeerManager,
     pub timestamp_offset: i32,
     pub miner_puzzle: Option<BlockPuzzle>,
@@ -65,7 +63,7 @@ impl<B: Blockchain> NodeContext<B> {
             address,
             height,
             power,
-            pub_key: self.pub_key.clone(),
+            pub_key: self.wallet.get_pub_key(),
             outdated_states,
         }))
     }

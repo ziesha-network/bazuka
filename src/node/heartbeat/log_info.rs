@@ -25,10 +25,9 @@ pub async fn log_info<B: Blockchain>(
     inf.push(("Withdraw Pool", ctx.mempool.zk_tx.len().to_string()));
     inf.push(("Zk Pool", ctx.mempool.zk.len().to_string()));
 
-    if let Some(wallet) = ctx.wallet.clone() {
-        let acc = ctx.blockchain.get_account(wallet.get_address())?;
-        inf.push(("Balance", acc.balance.to_string()));
-    }
+    let wallet_addr = ctx.wallet.get_address();
+    let acc = ctx.blockchain.get_account(wallet_addr)?;
+    inf.push(("Balance", acc.balance.to_string()));
 
     println!(
         "{}",

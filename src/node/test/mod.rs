@@ -4,8 +4,7 @@ mod simulation;
 use simulation::*;
 
 use crate::config::blockchain;
-use crate::core::{ContractId, Money, Signer, TransactionAndDelta, ZkHasher};
-use crate::crypto::SignatureScheme;
+use crate::core::{ContractId, Money, TransactionAndDelta, ZkHasher};
 use crate::zk;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -47,24 +46,21 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"120").1,
-                wallet: None,
+                wallet: TxBuilder::new(Vec::from("ABC")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"121").1,
-                wallet: None,
+                wallet: TxBuilder::new(Vec::from("CBA")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
             },
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"122").1,
-                wallet: None,
+                wallet: TxBuilder::new(Vec::from("BAC")),
                 addr: 122,
                 bootstrap: vec![121],
                 timestamp_offset: 15,
@@ -104,24 +100,21 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"120").1,
-                wallet: None,
+                wallet: TxBuilder::new(Vec::from("ABC")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"121").1,
-                wallet: None,
+                wallet: TxBuilder::new(Vec::from("CBA")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
             },
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"122").1,
-                wallet: None,
+                wallet: TxBuilder::new(Vec::from("BAC")),
                 addr: 122,
                 bootstrap: vec![121],
                 timestamp_offset: 15,
@@ -164,16 +157,14 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"120").1,
-                wallet: Some(TxBuilder::new(Vec::from("ABC"))),
+                wallet: TxBuilder::new(Vec::from("ABC")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"121").1,
-                wallet: Some(TxBuilder::new(Vec::from("CBA"))),
+                wallet: TxBuilder::new(Vec::from("CBA")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
@@ -271,16 +262,14 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"120").1,
-                wallet: Some(TxBuilder::new(Vec::from("ABC"))),
+                wallet: TxBuilder::new(Vec::from("ABC")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"121").1,
-                wallet: Some(TxBuilder::new(Vec::from("CBA"))),
+                wallet: TxBuilder::new(Vec::from("CBA")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
@@ -346,16 +335,14 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"120").1,
-                wallet: Some(TxBuilder::new(Vec::from("ABC"))),
+                wallet: TxBuilder::new(Vec::from("ABC")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                priv_key: Signer::generate_keys(b"121").1,
-                wallet: Some(TxBuilder::new(Vec::from("CBA"))),
+                wallet: TxBuilder::new(Vec::from("CBA")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,

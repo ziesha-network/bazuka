@@ -156,8 +156,6 @@ async fn run_node(
     bootstrap: Vec<PeerAddress>,
     network: String,
 ) -> Result<(), NodeError> {
-    let (_pub_key, priv_key) = Signer::generate_keys(&bazuka_config.seed.as_bytes());
-
     const DEFAULT_PORT: u16 = 8765;
 
     let listen = listen.unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT)));
@@ -221,7 +219,6 @@ async fn run_node(
         config::node::get_node_options(),
         &network,
         address,
-        priv_key,
         bootstrap_nodes,
         KvStoreChain::new(
             LevelDbKvStore::new(&bazuka_dir, 64).unwrap(),
@@ -229,7 +226,7 @@ async fn run_node(
         )
         .unwrap(),
         0,
-        Some(wallet),
+        wallet,
         social_profiles,
         inc_recv,
         out_send,
@@ -416,10 +413,13 @@ async fn main() -> Result<(), NodeError> {
             fee,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
-            let (req_loop, client) =
-                BazukaClient::connect(sk, conf.random_node(), conf.network, None);
+            let (req_loop, client) = BazukaClient::connect(
+                wallet.get_priv_key(),
+                conf.random_node(),
+                conf.network,
+                None,
+            );
             try_join!(
                 async move {
                     let acc = client.get_account(wallet.get_address()).await?.account;
@@ -448,10 +448,13 @@ async fn main() -> Result<(), NodeError> {
             fee,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
-            let (req_loop, client) =
-                BazukaClient::connect(sk, conf.random_node(), conf.network, None);
+            let (req_loop, client) = BazukaClient::connect(
+                wallet.get_priv_key(),
+                conf.random_node(),
+                conf.network,
+                None,
+            );
             try_join!(
                 async move {
                     let acc = client.get_mpn_account(index).await?.account;
@@ -480,10 +483,13 @@ async fn main() -> Result<(), NodeError> {
             nonce_shift,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
-            let (req_loop, client) =
-                BazukaClient::connect(sk, conf.random_node(), conf.network, None);
+            let (req_loop, client) = BazukaClient::connect(
+                wallet.get_priv_key(),
+                conf.random_node(),
+                conf.network,
+                None,
+            );
             try_join!(
                 async move {
                     let acc = client.get_account(wallet.get_address()).await?.account;
@@ -509,10 +515,13 @@ async fn main() -> Result<(), NodeError> {
             nonce_shift,
         } => {
             let conf = conf.expect("Bazuka is not initialized!");
-            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
             let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
-            let (req_loop, client) =
-                BazukaClient::connect(sk, conf.random_node(), conf.network, None);
+            let (req_loop, client) = BazukaClient::connect(
+                wallet.get_priv_key(),
+                conf.random_node(),
+                conf.network,
+                None,
+            );
             try_join!(
                 async move {
                     let to: <ZkSigner as ZkSignatureScheme>::Pub = to.parse().unwrap();
@@ -535,7 +544,6 @@ async fn main() -> Result<(), NodeError> {
         CliOptions::Wallet {} => {
             let conf = conf.expect("Bazuka is not initialized!");
             let wallet = TxBuilder::new(conf.seed.as_bytes().to_vec());
-            let sk = Signer::generate_keys(conf.seed.as_bytes()).1; // Secret-key of client, not wallet!
 
             println!(
                 "{} {}",
@@ -548,8 +556,12 @@ async fn main() -> Result<(), NodeError> {
                 wallet.get_zk_address()
             );
 
-            let (req_loop, client) =
-                BazukaClient::connect(sk, conf.random_node(), conf.network, None);
+            let (req_loop, client) = BazukaClient::connect(
+                wallet.get_priv_key(),
+                conf.random_node(),
+                conf.network,
+                None,
+            );
             try_join!(
                 async move {
                     println!(

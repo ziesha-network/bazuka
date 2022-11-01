@@ -28,13 +28,22 @@ impl TxBuilder {
             zk_private_key: zk_sk,
         }
     }
+    pub fn get_pub_key(&self) -> <Signer as SignatureScheme>::Pub {
+        self.address.clone()
+    }
+    pub fn get_priv_key(&self) -> <Signer as SignatureScheme>::Priv {
+        self.private_key.clone()
+    }
     pub fn get_address(&self) -> Address {
         Address::PublicKey(self.address.clone())
     }
     pub fn get_zk_address(&self) -> <ZkSigner as ZkSignatureScheme>::Pub {
         self.zk_address.clone()
     }
-    pub fn sign(&self, tx: &mut Transaction) {
+    pub fn sign(&self, bytes: &[u8]) -> <Signer as SignatureScheme>::Sig {
+        Signer::sign(&self.private_key, &bytes)
+    }
+    pub fn sign_tx(&self, tx: &mut Transaction) {
         let bytes = bincode::serialize(&tx).unwrap();
         tx.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
     }
@@ -52,7 +61,7 @@ impl TxBuilder {
             fee,
             sig: Signature::Unsigned,
         };
-        self.sign(&mut tx);
+        self.sign_tx(&mut tx);
         TransactionAndDelta {
             tx,
             state_delta: None,
@@ -93,7 +102,7 @@ impl TxBuilder {
             fee,
             sig: Signature::Unsigned,
         };
-        self.sign(&mut tx);
+        self.sign_tx(&mut tx);
         TransactionAndDelta {
             tx,
             state_delta: Some(initial_state.as_delta()),

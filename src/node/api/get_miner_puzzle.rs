@@ -14,7 +14,7 @@ pub async fn get_miner_puzzle<B: Blockchain>(
             puzzle: Some(puzzle.clone()),
         })
     } else {
-        let wallet = context.wallet.clone().ok_or(NodeError::NoTxBuilderError)?;
+        let wallet = context.wallet.clone();
         context.miner_puzzle = context.get_puzzle(wallet)?;
         Ok(GetMinerPuzzleResponse {
             puzzle: context.miner_puzzle.as_ref().map(|(_, pzl)| pzl.clone()),
