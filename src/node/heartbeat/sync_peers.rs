@@ -2,7 +2,6 @@ use super::*;
 use crate::common::*;
 use crate::utils::local_timestamp;
 use rand::prelude::IteratorRandom;
-use rand::rngs::OsRng;
 
 pub async fn sync_peers<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,
@@ -39,7 +38,7 @@ pub async fn sync_peers<B: Blockchain>(
         for peers in resps {
             for p in peers
                 .into_iter()
-                .choose_multiple(&mut OsRng, ctx.opts.num_peers)
+                .choose_multiple(&mut rand::thread_rng(), ctx.opts.num_peers)
                 .into_iter()
             {
                 ctx.peer_manager.add_candidate(now, p);
