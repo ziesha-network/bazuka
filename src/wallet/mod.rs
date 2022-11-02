@@ -53,16 +53,45 @@ impl Wallet {
             rtxs: Default::default(),
         }
     }
+    pub fn reset(&mut self) {
+        self.rtxs.clear();
+        self.ztxs.clear();
+    }
+    pub fn add_rsend(&mut self, tx: TransactionAndDelta) {
+        self.rtxs.insert(tx.tx.nonce, Rtx::Rsend(tx));
+    }
+    pub fn add_deposit(&mut self, tx: MpnDeposit) {
+        self.rtxs.insert(tx.payment.nonce, Rtx::Deposit(tx));
+    }
+    pub fn add_withdraw(&mut self, tx: MpnWithdraw) {
+        self.ztxs.insert(tx.zk_nonce, Ztx::Withdraw(tx));
+    }
+    pub fn add_zsend(&mut self, tx: MpnTransaction) {
+        self.ztxs.insert(tx.nonce, Ztx::Zsend(tx));
+    }
+    pub fn new_r_nonce(&self) -> Option<u32> {
+        self.rtxs.keys().max().map(|n| *n + 1)
+    }
+    pub fn new_z_nonce(&self) -> Option<u64> {
+        self.ztxs.keys().max().cloned()
+    }
+    pub fn seed(&self) -> [u8; 64] {
+        self.mnemonic.to_seed("")
+    }
     pub fn mnemonic(&self) -> &Mnemonic {
         &self.mnemonic
     }
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<Self, WalletError> {
-        let mut bytes = Vec::new();
-        File::open(path)?.read_to_end(&mut bytes)?;
-        Ok(bincode::deserialize(&bytes)?)
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<Option<Self>, WalletError> {
+        Ok(if let Ok(mut f) = File::open(path) {
+            let mut bytes = Vec::new();
+            f.read_to_end(&mut bytes)?;
+            Some(bincode::deserialize(&bytes)?)
+        } else {
+            None
+        })
     }
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), WalletError> {
-        File::open(path)?.write_all(&bincode::serialize(self)?)?;
+        File::create(path)?.write_all(&bincode::serialize(self)?)?;
         Ok(())
     }
 }

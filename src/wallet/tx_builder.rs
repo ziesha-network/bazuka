@@ -17,11 +17,11 @@ pub struct TxBuilder {
 }
 
 impl TxBuilder {
-    pub fn new(seed: Vec<u8>) -> Self {
-        let (pk, sk) = Signer::generate_keys(&seed);
-        let (zk_pk, zk_sk) = ZkSigner::generate_keys(&seed);
+    pub fn new(seed: &[u8]) -> Self {
+        let (pk, sk) = Signer::generate_keys(seed);
+        let (zk_pk, zk_sk) = ZkSigner::generate_keys(seed);
         Self {
-            seed,
+            seed: seed.to_vec(),
             address: pk,
             zk_address: zk_pk,
             private_key: sk,
