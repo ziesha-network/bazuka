@@ -378,9 +378,14 @@ async fn main() -> Result<(), NodeError> {
             if wallet.is_none() {
                 let w = Wallet::create(&mut rand_mnemonic::thread_rng(), mnemonic);
                 w.save(wallet_path).unwrap();
+                println!("Wallet generated!");
+                println!("{} {}", "Mnemonic phrase:".bright_yellow(), w.mnemonic());
                 println!(
-                    "Wallet generated! Your mnemonic phrase is: {}",
-                    w.mnemonic()
+                    "{}",
+                    "WRITE DOWN YOUR MNEMONIC PHRASE IN A SAFE PLACE!"
+                        .italic()
+                        .bold()
+                        .bright_green()
                 );
             } else {
                 println!("Wallet is already initialized!");
