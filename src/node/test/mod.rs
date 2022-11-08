@@ -46,21 +46,21 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("ABC")),
+                wallet: TxBuilder::new(&Vec::from("ABC")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("CBA")),
+                wallet: TxBuilder::new(&Vec::from("CBA")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("BAC")),
+                wallet: TxBuilder::new(&Vec::from("BAC")),
                 addr: 122,
                 bootstrap: vec![121],
                 timestamp_offset: 15,
@@ -100,21 +100,21 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("ABC")),
+                wallet: TxBuilder::new(&Vec::from("ABC")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("CBA")),
+                wallet: TxBuilder::new(&Vec::from("CBA")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("BAC")),
+                wallet: TxBuilder::new(&Vec::from("BAC")),
                 addr: 122,
                 bootstrap: vec![121],
                 timestamp_offset: 15,
@@ -157,14 +157,14 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("ABC")),
+                wallet: TxBuilder::new(&Vec::from("ABC")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("CBA")),
+                wallet: TxBuilder::new(&Vec::from("CBA")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
@@ -215,7 +215,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
 }
 
 fn sample_contract_call() -> TransactionAndDelta {
-    let updater = TxBuilder::new(Vec::from("ABC"));
+    let updater = TxBuilder::new(&Vec::from("ABC"));
 
     let cid =
         ContractId::from_str("3bec200a4154bfbe4836a6e8e27cee3771f5b4056e81683fcff2eb7897e6b67d")
@@ -262,14 +262,14 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("ABC")),
+                wallet: TxBuilder::new(&Vec::from("ABC")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("CBA")),
+                wallet: TxBuilder::new(&Vec::from("CBA")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
@@ -335,14 +335,14 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("ABC")),
+                wallet: TxBuilder::new(&Vec::from("ABC")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(Vec::from("CBA")),
+                wallet: TxBuilder::new(&Vec::from("CBA")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,

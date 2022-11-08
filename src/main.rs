@@ -620,7 +620,7 @@ fn main() {
 
     let mut nonce = 1;
 
-    let abc = TxBuilder::new(Vec::from("ABC"));
+    let abc = TxBuilder::new(&Vec::from("ABC"));
 
     loop {
         log::info!("Creating txs...");

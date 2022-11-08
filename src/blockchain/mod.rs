@@ -77,6 +77,7 @@ pub trait Blockchain {
 
     fn cleanup_mempool(
         &self,
+        miner_wallet: &TxBuilder,
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
     ) -> Result<(), BlockchainError>;
     fn cleanup_mpn_deposit_mempool(
@@ -649,6 +650,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn select_transactions(
         &self,
+        reward_tx: &Transaction,
         txs: &HashMap<TransactionAndDelta, TransactionStats>,
         check: bool,
     ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
@@ -670,6 +672,7 @@ impl<K: KvStore> KvStoreChain<K> {
             return Ok(sorted);
         }
         let (_, result) = self.isolated(|chain| {
+            chain.apply_tx(reward_tx, true)?;
             let mut result = Vec::new();
             let mut block_sz = 0usize;
             let mut delta_cnt = 0isize;
@@ -864,6 +867,19 @@ impl<K: KvStore> KvStoreChain<K> {
 
         self.database.update(&ops)?;
         Ok(())
+    }
+    fn reward_tx(&self, miner_wallet: &TxBuilder) -> Result<Transaction, BlockchainError> {
+        let treasury_nonce = self.get_account(Address::Treasury)?.nonce;
+        Ok(Transaction {
+            src: Address::Treasury,
+            data: TransactionData::RegularSend {
+                dst: miner_wallet.get_address(),
+                amount: self.next_reward()?,
+            },
+            nonce: treasury_nonce + 1,
+            fee: Money(0),
+            sig: Signature::Unsigned,
+        })
     }
 }
 
@@ -1171,6 +1187,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let supply = self.get_account(Address::Treasury)?.balance;
         Ok(supply / self.config.reward_ratio)
     }
+
     fn draft_block(
         &self,
         timestamp: u32,
@@ -1186,9 +1203,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }
 
         let last_header = self.get_header(height - 1)?;
-        let treasury_nonce = self.get_account(Address::Treasury)?.nonce;
 
-        let tx_and_deltas = self.select_transactions(mempool, check)?;
+        let mut reward_tx = self.reward_tx(wallet)?;
+
+        let tx_and_deltas = self.select_transactions(&reward_tx, mempool, check)?;
         let fee_sum = Money(
             tx_and_deltas
                 .iter()
@@ -1196,16 +1214,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 .sum(),
         );
 
-        let mut txs = vec![Transaction {
-            src: Address::Treasury,
-            data: TransactionData::RegularSend {
-                dst: wallet.get_address(),
-                amount: self.next_reward()? + fee_sum,
-            },
-            nonce: treasury_nonce + 1,
-            fee: Money(0),
-            sig: Signature::Unsigned,
-        }];
+        if let TransactionData::RegularSend { amount, .. } = &mut reward_tx.data {
+            *amount += fee_sum;
+        }
+
+        let mut txs = vec![reward_tx];
 
         let mut block_delta: HashMap<ContractId, zk::ZkStatePatch> = HashMap::new();
         for tx_delta in tx_and_deltas.iter() {
@@ -1347,9 +1360,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn cleanup_mempool(
         &self,
+        miner_wallet: &TxBuilder,
         mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
+            let reward_tx = chain.reward_tx(miner_wallet)?;
+            chain.apply_tx(&reward_tx, true)?;
             let mut txs: Vec<TransactionAndDelta> = mempool.clone().into_keys().collect();
             txs.sort_by(|a, b| a.tx.nonce.partial_cmp(&b.tx.nonce).unwrap());
             for tx in txs {

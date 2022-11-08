@@ -108,7 +108,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
-    let min_diff = Difficulty(0x010fffff);
+    let min_diff = Difficulty(0x0100ffff);
 
     let blk = Block {
         header: Header {
@@ -160,9 +160,9 @@ pub fn get_blockchain_config() -> BlockchainConfig {
 
         // We expect a minimum number of MPN contract updates
         // in a block to consider it valid
-        mpn_num_function_calls: 1,
-        mpn_num_contract_deposits: 1,
-        mpn_num_contract_withdraws: 1,
+        mpn_num_function_calls: 0,
+        mpn_num_contract_deposits: 0,
+        mpn_num_contract_withdraws: 0,
 
         minimum_pow_difficulty: min_diff,
 
@@ -188,7 +188,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.testnet_height_limit = None;
 
     conf.genesis.block.body[0] = get_test_mpn_contract().tx;
-    let abc = TxBuilder::new(Vec::from("ABC"));
+    let abc = TxBuilder::new(&Vec::from("ABC"));
     conf.genesis.block.body.push(Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {

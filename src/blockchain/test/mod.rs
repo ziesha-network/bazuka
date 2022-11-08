@@ -49,7 +49,7 @@ fn circulated_money<K: KvStore>(b: &KvStoreChain<K>) -> Result<Money, Blockchain
 
 #[test]
 fn test_get_header_and_get_block() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     let new_block = chain
@@ -96,7 +96,7 @@ fn test_get_header_and_get_block() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_correct_target_calculation() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     chain.apply_block(
@@ -123,7 +123,7 @@ fn test_correct_target_calculation() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut conf = easy_config();
     conf.difficulty_calc_interval = 3;
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf.clone())?;
@@ -262,7 +262,7 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_pow_key_correctness() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut conf = easy_config();
     conf.pow_key_change_delay = 4;
     conf.pow_key_change_interval = 8;
@@ -300,7 +300,7 @@ fn test_pow_key_correctness() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     let mut fork1 = chain.fork_on_ram();
@@ -372,7 +372,7 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let mut fork1 = chain.fork_on_ram();
     let blk1 = fork1
@@ -417,7 +417,7 @@ fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let mut fork1 = chain.fork_on_ram();
     let blk1 = fork1
@@ -462,8 +462,8 @@ fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_merkle_root_check() -> Result<(), BlockchainError> {
-    let alice = TxBuilder::new(Vec::from("ABC"));
-    let miner = TxBuilder::new(Vec::from("MINER"));
+    let alice = TxBuilder::new(&Vec::from("ABC"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let blk1 = chain
         .draft_block(
@@ -516,9 +516,9 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
-    let alice = TxBuilder::new(Vec::from("ABC"));
-    let bob = TxBuilder::new(Vec::from("CBA"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
+    let alice = TxBuilder::new(&Vec::from("ABC"));
+    let bob = TxBuilder::new(&Vec::from("CBA"));
 
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
@@ -573,9 +573,9 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
-    let alice = TxBuilder::new(Vec::from("ABC"));
-    let bob = TxBuilder::new(Vec::from("CBA"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
+    let alice = TxBuilder::new(&Vec::from("ABC"));
+    let bob = TxBuilder::new(&Vec::from("CBA"));
 
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
@@ -614,9 +614,9 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
-    let alice = TxBuilder::new(Vec::from("ABC"));
-    let bob = TxBuilder::new(Vec::from("CBA"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
+    let alice = TxBuilder::new(&Vec::from("ABC"));
+    let bob = TxBuilder::new(&Vec::from("CBA"));
 
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
@@ -659,14 +659,14 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
-    let alice = TxBuilder::new(Vec::from("ABC"));
-    let bob = TxBuilder::new(Vec::from("CBA"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
+    let alice = TxBuilder::new(&Vec::from("ABC"));
+    let bob = TxBuilder::new(&Vec::from("CBA"));
 
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     // Create unsigned tx
-    let (_, sk) = Signer::generate_keys(&Vec::from("ABC"));
+    let (_, sk) = Signer::generate_keys(&&Vec::from("ABC"));
     let mut tx = Transaction {
         src: alice.get_address(),
         data: TransactionData::RegularSend {
@@ -710,9 +710,9 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(Vec::from("MINER"));
-    let alice = TxBuilder::new(Vec::from("ABC"));
-    let bob = TxBuilder::new(Vec::from("CBA"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
+    let alice = TxBuilder::new(&Vec::from("ABC"));
+    let bob = TxBuilder::new(&Vec::from("CBA"));
 
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
@@ -878,9 +878,9 @@ fn test_genesis_is_not_replaceable() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
-    let wallet_miner = TxBuilder::new(Vec::from("MINER"));
-    let wallet1 = TxBuilder::new(Vec::from("ABC"));
-    let wallet2 = TxBuilder::new(Vec::from("CBA"));
+    let wallet_miner = TxBuilder::new(&Vec::from("MINER"));
+    let wallet1 = TxBuilder::new(&Vec::from("ABC"));
+    let wallet2 = TxBuilder::new(&Vec::from("CBA"));
 
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = Difficulty(0x0000ffff);
@@ -935,9 +935,9 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainError> {
-    let wallet_miner = TxBuilder::new(Vec::from("MINER"));
-    let wallet1 = TxBuilder::new(Vec::from("ABC"));
-    let wallet2 = TxBuilder::new(Vec::from("CBA"));
+    let wallet_miner = TxBuilder::new(&Vec::from("MINER"));
+    let wallet1 = TxBuilder::new(&Vec::from("ABC"));
+    let wallet2 = TxBuilder::new(&Vec::from("CBA"));
 
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body = vec![Transaction {
@@ -997,9 +997,9 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
 
 #[test]
 fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainError> {
-    let wallet_miner = TxBuilder::new(Vec::from("MINER"));
-    let wallet1 = TxBuilder::new(Vec::from("ABC"));
-    let wallet2 = TxBuilder::new(Vec::from("CBA"));
+    let wallet_miner = TxBuilder::new(&Vec::from("MINER"));
+    let wallet1 = TxBuilder::new(&Vec::from("ABC"));
+    let wallet2 = TxBuilder::new(&Vec::from("CBA"));
 
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body = vec![Transaction {
@@ -1041,9 +1041,9 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
 
 #[test]
 fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
-    let wallet_miner = TxBuilder::new(Vec::from("MINER"));
-    let wallet1 = TxBuilder::new(Vec::from("ABC"));
-    let wallet2 = TxBuilder::new(Vec::from("CBA"));
+    let wallet_miner = TxBuilder::new(&Vec::from("MINER"));
+    let wallet1 = TxBuilder::new(&Vec::from("ABC"));
+    let wallet2 = TxBuilder::new(&Vec::from("CBA"));
 
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body = vec![Transaction {
