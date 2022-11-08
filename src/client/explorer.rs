@@ -271,8 +271,7 @@ impl From<&ContractUpdate> for ExplorerContractUpdate {
 #[serde(tag = "type")]
 pub enum ExplorerTransactionData {
     RegularSend {
-        dst: String,
-        amount: u64,
+        entries: Vec<(String, u64)>,
     },
     CreateContract {
         contract: ExplorerContract,
@@ -286,9 +285,11 @@ pub enum ExplorerTransactionData {
 impl From<&TransactionData> for ExplorerTransactionData {
     fn from(obj: &TransactionData) -> Self {
         match obj {
-            TransactionData::RegularSend { dst, amount } => Self::RegularSend {
-                dst: dst.to_string(),
-                amount: (*amount).into(),
+            TransactionData::RegularSend { entries } => Self::RegularSend {
+                entries: entries
+                    .iter()
+                    .map(|e| (e.dst.to_string(), e.amount.clone().into()))
+                    .collect(),
             },
             TransactionData::CreateContract { contract } => Self::CreateContract {
                 contract: contract.into(),

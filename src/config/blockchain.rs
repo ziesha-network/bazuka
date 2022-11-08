@@ -172,6 +172,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
 
 #[cfg(test)]
 pub fn get_test_blockchain_config() -> BlockchainConfig {
+    use crate::core::RegularSendEntry;
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
@@ -192,8 +193,10 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.genesis.block.body.push(Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
-            dst: abc.get_address(),
-            amount: Money(10000),
+            entries: vec![RegularSendEntry {
+                dst: abc.get_address(),
+                amount: Money(10000),
+            }],
         },
         nonce: 2,
         fee: Money(0),

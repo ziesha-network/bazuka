@@ -171,13 +171,18 @@ pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
     },
 }
 
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct RegularSendEntry<S: SignatureScheme> {
+    pub dst: Address<S>,
+    pub amount: Money,
+}
+
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum TransactionData<H: Hash, S: SignatureScheme> {
     RegularSend {
-        dst: Address<S>,
-        amount: Money,
+        entries: Vec<RegularSendEntry<S>>,
     },
     // Create a Zero-Contract. The creator can consider multiple ways (Circuits) of updating
     // the state. But there should be only one circuit for entering and exiting the contract.

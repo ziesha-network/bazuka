@@ -21,6 +21,7 @@ pub type Account = address::Account;
 pub type Signature = address::Signature<Signer>;
 pub type Transaction = transaction::Transaction<Hasher, Signer>;
 pub type TransactionData = transaction::TransactionData<Hasher, Signer>;
+pub type RegularSendEntry = transaction::RegularSendEntry<Signer>;
 pub type ContractAccount = transaction::ContractAccount;
 pub type ContractUpdate = transaction::ContractUpdate<Hasher, Signer>;
 pub type ContractDeposit = transaction::ContractDeposit<Hasher, Signer>;

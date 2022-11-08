@@ -624,8 +624,10 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     let unsigned_tx = Transaction {
         src: alice.get_address(),
         data: TransactionData::RegularSend {
-            dst: bob.get_address(),
-            amount: Money(1000),
+            entries: vec![RegularSendEntry {
+                dst: bob.get_address(),
+                amount: Money(1000),
+            }],
         },
         nonce: 1,
         fee: Money(300),
@@ -670,8 +672,10 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     let mut tx = Transaction {
         src: alice.get_address(),
         data: TransactionData::RegularSend {
-            dst: bob.get_address(),
-            amount: Money(1000),
+            entries: vec![RegularSendEntry {
+                dst: bob.get_address(),
+                amount: Money(1000),
+            }],
         },
         nonce: 1,
         fee: Money(300),
@@ -887,8 +891,10 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
-            dst: wallet1.get_address(),
-            amount: Money(10_000_000),
+            entries: vec![RegularSendEntry {
+                dst: wallet1.get_address(),
+                amount: Money(10_000_000),
+            }],
         },
         nonce: 1,
         fee: Money(0),
@@ -919,8 +925,10 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     assert_eq!(
         last_block.body[1].data.clone(),
         TransactionData::RegularSend {
-            dst: w2_address,
-            amount: Money(100)
+            entries: vec![RegularSendEntry {
+                dst: w2_address,
+                amount: Money(100)
+            }]
         }
     );
 
@@ -943,8 +951,10 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
-            dst: wallet1.get_address(),
-            amount: Money(10_000_000),
+            entries: vec![RegularSendEntry {
+                dst: wallet1.get_address(),
+                amount: Money(10_000_000),
+            }],
         },
         nonce: 1,
         fee: Money(0),
@@ -958,8 +968,10 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
         tx: Transaction {
             src: wallet1.get_address(),
             data: TransactionData::RegularSend {
-                dst: wallet2.get_address(),
-                amount: Money(300),
+                entries: vec![RegularSendEntry {
+                    dst: wallet2.get_address(),
+                    amount: Money(300),
+                }],
             },
             nonce: 1,
             fee: Money(0),
@@ -971,8 +983,10 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
         tx: Transaction {
             src: Address::Treasury,
             data: TransactionData::RegularSend {
-                dst: wallet2.get_address(),
-                amount: Money(500),
+                entries: vec![RegularSendEntry {
+                    dst: wallet2.get_address(),
+                    amount: Money(500),
+                }],
             },
             nonce: 1,
             fee: Money(0),
@@ -1005,8 +1019,10 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
     conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
-            dst: wallet1.get_address(),
-            amount: Money(10_000_000),
+            entries: vec![RegularSendEntry {
+                dst: wallet1.get_address(),
+                amount: Money(10_000_000),
+            }],
         },
         nonce: 1,
         fee: Money(0),
@@ -1049,8 +1065,10 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     conf.genesis.block.body = vec![Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
-            dst: wallet1.get_address(),
-            amount: Money(10_000_000),
+            entries: vec![RegularSendEntry {
+                dst: wallet1.get_address(),
+                amount: Money(10_000_000),
+            }],
         },
         nonce: 1,
         fee: Money(0),
@@ -1089,8 +1107,10 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     assert_eq!(
         last_block.body[1].data.clone(),
         TransactionData::RegularSend {
-            dst: wallet2.get_address(),
-            amount: Money(500_000)
+            entries: vec![RegularSendEntry {
+                dst: wallet2.get_address(),
+                amount: Money(500_000)
+            }]
         }
     );
 

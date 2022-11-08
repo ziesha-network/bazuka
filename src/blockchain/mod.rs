@@ -4,7 +4,7 @@ pub use error::*;
 use crate::core::{
     hash::Hash, Account, Address, Block, ContractAccount, ContractDeposit, ContractId,
     ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnDeposit, MpnWithdraw, ProofOfWork,
-    Signature, Transaction, TransactionAndDelta, TransactionData, ZkHasher,
+    RegularSendEntry, Signature, Transaction, TransactionAndDelta, TransactionData, ZkHasher,
 };
 use crate::crypto::jubjub;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
@@ -357,21 +357,23 @@ impl<K: KvStore> KvStoreChain<K> {
             acc_src.nonce += 1;
 
             match &tx.data {
-                TransactionData::RegularSend { dst, amount } => {
-                    if *dst == tx.src {
-                        return Err(BlockchainError::SelfPaymentNotAllowed);
-                    }
-                    if acc_src.balance < *amount {
-                        return Err(BlockchainError::BalanceInsufficient);
-                    }
-                    acc_src.balance -= *amount;
+                TransactionData::RegularSend { entries } => {
+                    for entry in entries {
+                        if entry.dst == tx.src {
+                            return Err(BlockchainError::SelfPaymentNotAllowed);
+                        }
+                        if acc_src.balance < entry.amount {
+                            return Err(BlockchainError::BalanceInsufficient);
+                        }
+                        acc_src.balance -= entry.amount;
 
-                    let mut acc_dst = chain.get_account(dst.clone())?;
-                    acc_dst.balance += *amount;
+                        let mut acc_dst = chain.get_account(entry.dst.clone())?;
+                        acc_dst.balance += entry.amount;
 
-                    chain
-                        .database
-                        .update(&[WriteOp::Put(keys::account(dst), acc_dst.into())])?;
+                        chain
+                            .database
+                            .update(&[WriteOp::Put(keys::account(&entry.dst), acc_dst.into())])?;
+                    }
                 }
                 TransactionData::CreateContract { contract } => {
                     if !contract.state_model.is_valid::<ZkHasher>() {
@@ -742,13 +744,17 @@ impl<K: KvStore> KvStoreChain<K> {
                     return Err(BlockchainError::InvalidMinerReward);
                 }
                 match &reward_tx.data {
-                    TransactionData::RegularSend { dst, amount } => {
+                    TransactionData::RegularSend { entries } => {
+                        if entries.len() != 1 {
+                            return Err(BlockchainError::InvalidMinerReward);
+                        }
+                        let reward_entry = &entries[0];
                         if let Some(allowed_miners) = &self.config.limited_miners {
-                            if !allowed_miners.contains(dst) {
+                            if !allowed_miners.contains(&reward_entry.dst) {
                                 return Err(BlockchainError::AddressNotAllowedToMine);
                             }
                         }
-                        if *amount != next_reward + fee_sum {
+                        if reward_entry.amount != next_reward + fee_sum {
                             return Err(BlockchainError::InvalidMinerReward);
                         }
                     }
@@ -873,8 +879,10 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(Transaction {
             src: Address::Treasury,
             data: TransactionData::RegularSend {
-                dst: miner_wallet.get_address(),
-                amount: self.next_reward()?,
+                entries: vec![RegularSendEntry {
+                    dst: miner_wallet.get_address(),
+                    amount: self.next_reward()?,
+                }],
             },
             nonce: treasury_nonce + 1,
             fee: Money(0),
@@ -1214,8 +1222,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 .sum(),
         );
 
-        if let TransactionData::RegularSend { amount, .. } = &mut reward_tx.data {
-            *amount += fee_sum;
+        if let TransactionData::RegularSend { entries } = &mut reward_tx.data {
+            entries[0].amount += fee_sum;
         }
 
         let mut txs = vec![reward_tx];
