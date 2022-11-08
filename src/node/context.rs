@@ -82,8 +82,7 @@ impl<B: Blockchain> NodeContext<B> {
             firewall.refresh(local_ts);
         }
 
-        self.blockchain
-            .cleanup_mempool(&self.wallet, &mut self.mempool.tx)?;
+        self.blockchain.cleanup_mempool(&mut self.mempool.tx)?;
         self.blockchain
             .cleanup_mpn_transaction_mempool(&mut self.mempool.zk)?;
         self.blockchain

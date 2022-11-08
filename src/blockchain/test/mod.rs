@@ -668,7 +668,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     // Create unsigned tx
-    let (_, sk) = Signer::generate_keys(&&Vec::from("ABC"));
+    let (_, sk) = Signer::generate_keys(&Vec::from("ABC"));
     let mut tx = Transaction {
         src: alice.get_address(),
         data: TransactionData::RegularSend {
