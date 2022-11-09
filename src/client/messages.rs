@@ -87,6 +87,7 @@ pub struct Puzzle {
     pub offset: usize,      // From which byte the nonce starts?
     pub size: usize,        // How big is the nonce? (Bytes)
     pub target: Difficulty, // Difficulty target
+    pub reward: Money,      // Puzzle reward
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

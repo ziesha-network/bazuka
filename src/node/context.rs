@@ -134,6 +134,7 @@ impl<B: Blockchain> NodeContext<B> {
                         offset: 80,
                         size: 8,
                         target: draft.block.header.proof_of_work.target,
+                        reward: self.blockchain.next_reward()?,
                     };
                     Ok(Some((draft, puzzle)))
                 } else {
