@@ -108,7 +108,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
-    let min_diff = Difficulty(0x010fffff);
+    let min_diff = Difficulty(0x020fffff);
 
     let blk = Block {
         header: Header {
