@@ -62,22 +62,22 @@ rm ~/.bazuka.yaml
 Then initialize:
 
 ```sh
-bazuka init --seed [your seed phrase] --network chaos --node 127.0.0.1:8765
+bazuka init --network chaos
 ```
 
-(Example seed: `"A_RANDOM_STRING_THAT_IS_LONG_ENOUGH_783264dfhejfjcgefjkef"`)
+This will generate a 12-word mnemonic word list for you. Keep it somewhere safe!
+If you already have a 12-word mnemonic phrase, you can pass it through `--mnemonic`
+flag and restore your wallet.
 
-The seed is a random string of characters, not mnemonic phrases. **You do not need to generate it using wallets! (E.g Metamask)**
-The longer the seed is, the safer. We suggest a seed string of at least 80 random characters. Your regular and zero-knowledge private-keys are derived from the `--seed` value, so **don't forget to keep them somewhere safe and do not share it**!
+You can use the nodes introduced by the community as your `--bootstrap` nodes.
 
 Run your node:
 
 ```sh
 bazuka node --listen 0.0.0.0:8765 --external [your external ip]:8765 \
-  --network chaos --db ~/.bazuka-chaos --bootstrap [bootstrap node 1] --bootstrap [bootstrap node 2] ...
+  --network chaos --db ~/.bazuka-chaos
 ```
 
-You can use the nodes introduced by the community as your `--bootstrap` nodes.
 You either have to run your node on a machine with a static IP, or configure a NAT
 Virtual Server in order to expose your node on a public IP. Specify your public IP
 through the `--external` option.
