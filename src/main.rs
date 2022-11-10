@@ -52,7 +52,7 @@ impl BazukaConfig {
     fn random_node(&self) -> PeerAddress {
         self.bootstrap
             .choose(&mut rand::thread_rng())
-            .expect("No bootstrap nodes specified!")
+            .unwrap_or(&PeerAddress(SocketAddr::from(([0, 0, 0, 0], 8765))))
             .clone()
     }
 }
