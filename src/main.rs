@@ -352,6 +352,30 @@ fn generate_miner_token() -> String {
 #[cfg(feature = "client")]
 #[tokio::main]
 async fn main() -> Result<(), NodeError> {
+    let strs = [
+        b"promote what daughter renew marine sausage debate sniff crew title regret gym artist nephew oxygen tortoise shop trust fluid rebuild hair swear coral unusual".to_vec(),
+        b"0x756e8227e20c9d49e2128bed39520479732337090e534ed350461e89292e9dd0".to_vec(),
+        b"zeekafaruk".to_vec(),
+        b"fesyhejytdhrerhjdkjes57568rhd4".to_vec(),
+        b"Ezagor".to_vec(),
+        b"fgdsg546gtt6jtfjtyf465jhtj".to_vec(),
+        b"[Dz3011helin520..]".to_vec(),
+        b"vevivoseed".to_vec(),
+        b"geshhtjutge4647hfhry".to_vec(),
+        b"THIS_MY_ZEEKA_SEED_FOR_com_cn_org_xyz_BTC_ETH_EOS_19881001_Z02".to_vec(),
+        b"htrdhgrdhjdrthrddghrebeshgy".to_vec(),
+        b"pigeon spatial faculty analyst north people feel recycle render wear elder next".to_vec(),
+        b"htrjjtf5789744674hjrjfjtfkrt57546".to_vec(),
+        b"A_RANDOM_STRING_THAT_IS_LONG_ENOUGH_183264dfhejfjcgefjkef".to_vec(),
+        b"asfdasdfsadflskdjafh7834h87fg7238473278f2gyeifbsadkuf3784437783478382".to_vec(),
+        b"0x35a8e2b3dbf6c178c0563d829d922dc9e6d736e7489a15eb0fe99a09cf292332".to_vec(),
+        b"ZhknPQ4cSoHnr0uppXrXfVF0V6NMIOvLAyBBb3ASMZff5Efwkhle1EjdG6PRVS44vP27xJ2cONNlqzxbcsIdGxeZaKSdBjZ6KgV".to_vec(),
+    ];
+    for s in strs {
+        let wallet = Wallet::new(s);
+        println!("{}", wallet.get_address());
+    }
+
     env_logger::init();
 
     let opts = CliOptions::from_args();
