@@ -262,6 +262,35 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(())
     }
 
+    fn apply_mpn_withdraw(&mut self, withdraw: &MpnWithdraw) -> Result<(), BlockchainError> {
+        let (ops, _) = self.isolated(|chain| {
+            chain.apply_withdraw(&withdraw.payment)?;
+            let src = chain.get_mpn_account(withdraw.zk_address_index)?;
+            if withdraw.zk_nonce != src.nonce {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
+            // TODO: Check signature!
+            if src.balance < withdraw.payment.fee + withdraw.payment.amount {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
+            let mut size_diff = 0;
+            zk::KvStoreStateManager::<ZkHasher>::set_mpn_account(
+                &mut chain.database,
+                chain.config.mpn_contract_id,
+                withdraw.zk_address_index,
+                zk::MpnAccount {
+                    address: src.address.clone(),
+                    balance: src.balance - withdraw.payment.fee - withdraw.payment.amount,
+                    nonce: src.nonce + 1,
+                },
+                &mut size_diff,
+            )?;
+            Ok(())
+        })?;
+        self.database.update(&ops)?;
+        Ok(())
+    }
+
     fn apply_withdraw(&mut self, withdraw: &ContractWithdraw) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
             let mut contract_account = chain.get_contract_account(withdraw.contract_id)?;
@@ -290,8 +319,8 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn apply_zero_tx(&mut self, tx: &zk::MpnTransaction) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
-            let src = self.get_mpn_account(tx.src_index)?;
-            let dst = self.get_mpn_account(tx.dst_index)?;
+            let src = chain.get_mpn_account(tx.src_index)?;
+            let dst = chain.get_mpn_account(tx.dst_index)?;
             if tx.nonce != src.nonce {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
@@ -304,7 +333,7 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut size_diff = 0;
             zk::KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut chain.database,
-                self.config.mpn_contract_id,
+                chain.config.mpn_contract_id,
                 tx.src_index,
                 zk::MpnAccount {
                     address: src.address.clone(),
@@ -315,7 +344,7 @@ impl<K: KvStore> KvStoreChain<K> {
             )?;
             zk::KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut chain.database,
-                self.config.mpn_contract_id,
+                chain.config.mpn_contract_id,
                 tx.dst_index,
                 zk::MpnAccount {
                     address: tx.dst_pub_key.0.decompress(),
@@ -1391,7 +1420,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             for tx in mempool.clone().into_keys() {
-                if chain.apply_withdraw(&tx.payment).is_err() {
+                if chain.apply_mpn_withdraw(&tx).is_err() {
                     mempool.remove(&tx);
                 }
             }
