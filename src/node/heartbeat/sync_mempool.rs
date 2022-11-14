@@ -29,9 +29,9 @@ pub async fn sync_mempool<B: Blockchain>(
         let now = ctx.local_timestamp();
         let resps = punish_non_responding(&mut ctx, &peer_responses)
             .into_iter()
-            .map(|(_, r)| (r.tx, r.tx_zk, r.zk))
+            .map(|(_, r)| (r.tx, r.tx_zk, r.zk_tx, r.zk))
             .collect::<Vec<_>>();
-        for (tx_s, tx_zk_s, zk_s) in resps {
+        for (tx_s, tx_zk_s, zk_tx_s, zk_s) in resps {
             for tx in tx_s {
                 ctx.mempool
                     .tx
@@ -41,6 +41,12 @@ pub async fn sync_mempool<B: Blockchain>(
             for tx in tx_zk_s {
                 ctx.mempool
                     .tx_zk
+                    .entry(tx)
+                    .or_insert(TransactionStats { first_seen: now });
+            }
+            for tx in zk_tx_s {
+                ctx.mempool
+                    .zk_tx
                     .entry(tx)
                     .or_insert(TransactionStats { first_seen: now });
             }
