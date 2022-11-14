@@ -53,6 +53,12 @@ impl Wallet {
             rtxs: Default::default(),
         }
     }
+    pub fn mpn_indices(&self) -> &[u32] {
+        &self.mpn_indices
+    }
+    pub fn add_mpn_index(&mut self, index: u32) {
+        self.mpn_indices.push(index);
+    }
     pub fn reset(&mut self) {
         self.rtxs.clear();
         self.ztxs.clear();
@@ -73,7 +79,7 @@ impl Wallet {
         self.rtxs.keys().max().map(|n| *n + 1)
     }
     pub fn new_z_nonce(&self) -> Option<u64> {
-        self.ztxs.keys().max().cloned()
+        self.ztxs.keys().max().map(|n| *n + 1)
     }
     pub fn seed(&self) -> [u8; 64] {
         self.mnemonic.to_seed("")
