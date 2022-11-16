@@ -39,12 +39,17 @@ use {
     structopt::StructOpt,
 };
 
+const DEFAULT_PORT: u16 = 8765;
+
 #[cfg(feature = "client")]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 struct BazukaConfig {
+    listen: SocketAddr,
+    external: PeerAddress,
     network: String,
     miner_token: String,
     bootstrap: Vec<PeerAddress>,
+    db: PathBuf,
 }
 
 #[cfg(feature = "client")]
@@ -116,13 +121,7 @@ enum NodeCliOptions {
     /// Start the node
     Start {
         #[structopt(long)]
-        listen: Option<SocketAddr>,
-        #[structopt(long)]
-        external: Option<SocketAddr>,
-        #[structopt(long)]
         client_only: bool,
-        #[structopt(long, parse(from_os_str))]
-        db: Option<PathBuf>,
         #[structopt(long)]
         discord_handle: Option<String>,
     },
@@ -145,6 +144,12 @@ enum CliOptions {
         bootstrap: Vec<PeerAddress>,
         #[structopt(long)]
         mnemonic: Option<bip39::Mnemonic>,
+        #[structopt(long)]
+        listen: Option<SocketAddr>,
+        #[structopt(long)]
+        external: Option<PeerAddress>,
+        #[structopt(long)]
+        db: Option<PathBuf>,
     },
 
     #[cfg(feature = "node")]
@@ -160,22 +165,12 @@ async fn run_node(
     bazuka_config: BazukaConfig,
     wallet: Wallet,
     social_profiles: SocialProfiles,
-    listen: Option<SocketAddr>,
-    external: Option<SocketAddr>,
     client_only: bool,
-    db: Option<PathBuf>,
-    bootstrap: Vec<PeerAddress>,
 ) -> Result<(), NodeError> {
-    const DEFAULT_PORT: u16 = 8765;
-
-    let listen = listen.unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT)));
     let address = if client_only {
         None
     } else {
-        let public_ip = bazuka::node::upnp::get_public_ip().await;
-        Some(PeerAddress(external.unwrap_or_else(|| {
-            SocketAddr::from((public_ip.unwrap(), DEFAULT_PORT))
-        })))
+        Some(bazuka_config.external)
     };
 
     let wallet = TxBuilder::new(&wallet.seed());
@@ -186,7 +181,7 @@ async fn run_node(
         env!("CARGO_PKG_VERSION")
     );
     println!();
-    println!("{} {}", "Listening:".bright_yellow(), listen);
+    println!("{} {}", "Listening:".bright_yellow(), bazuka_config.listen);
     if let Some(addr) = &address {
         println!("{} {}", "Internet endpoint:".bright_yellow(), addr);
     }
@@ -210,15 +205,9 @@ async fn run_node(
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let (out_send, mut out_recv) = mpsc::unbounded_channel::<NodeRequest>();
 
-    // Use hardcoded seed bootstrap nodes if none provided via cli opts
-    let bootstrap_nodes = {
-        match bootstrap.len() {
-            0 => bazuka::node::seeds::seed_bootstrap_nodes(),
-            _ => bootstrap,
-        }
-    };
+    let bootstrap_nodes = bazuka_config.bootstrap.clone();
 
-    let bazuka_dir = db.unwrap_or_else(|| home::home_dir().unwrap().join(Path::new(".bazuka")));
+    let bazuka_dir = bazuka_config.db.clone();
 
     // 60 request per minute / 4GB per 15min
     let firewall = Firewall::new(60, 4 * GB);
@@ -248,7 +237,7 @@ async fn run_node(
     // socket and redirecting it to the node channels.
     let server_loop = async {
         let arc_inc_send = Arc::new(inc_send);
-        Server::bind(&listen)
+        Server::bind(&bazuka_config.listen)
             .serve(make_service_fn(|conn: &AddrStream| {
                 let client = conn.remote_addr();
                 let arc_inc_send = Arc::clone(&arc_inc_send);
@@ -357,9 +346,6 @@ async fn main() -> Result<(), NodeError> {
         #[cfg(feature = "node")]
         CliOptions::Node(node_opts) => match node_opts {
             NodeCliOptions::Start {
-                listen,
-                external,
-                db,
                 discord_handle,
                 client_only,
             } => {
@@ -371,11 +357,7 @@ async fn main() -> Result<(), NodeError> {
                     SocialProfiles {
                         discord: discord_handle,
                     },
-                    listen,
-                    external,
                     client_only,
-                    db,
-                    conf.bootstrap,
                 )
                 .await?;
             }
@@ -403,6 +385,9 @@ async fn main() -> Result<(), NodeError> {
             network,
             bootstrap,
             mnemonic,
+            external,
+            listen,
+            db,
         } => {
             if wallet.is_none() {
                 let w = Wallet::create(&mut rand_mnemonic::thread_rng(), mnemonic);
@@ -419,14 +404,24 @@ async fn main() -> Result<(), NodeError> {
             } else {
                 println!("Wallet is already initialized!");
             }
+
             if conf.is_none() {
                 let miner_token = generate_miner_token();
+                let public_ip = bazuka::node::upnp::get_public_ip().await.unwrap();
                 std::fs::write(
                     conf_path,
                     serde_yaml::to_string(&BazukaConfig {
                         network,
                         miner_token,
                         bootstrap,
+                        listen: listen
+                            .unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT))),
+                        external: external.unwrap_or_else(|| {
+                            PeerAddress(SocketAddr::from((public_ip, DEFAULT_PORT)))
+                        }),
+                        db: db.unwrap_or_else(|| {
+                            home::home_dir().unwrap().join(Path::new(".bazuka"))
+                        }),
                     })
                     .unwrap(),
                 )
