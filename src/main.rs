@@ -65,10 +65,8 @@ impl BazukaConfig {
 #[derive(StructOpt)]
 #[cfg(feature = "client")]
 enum WalletOptions {
-    /// Deposit funds to a Zero-Contract
+    /// Deposit funds to a the MPN-contract
     Deposit {
-        #[structopt(long)]
-        contract: String,
         #[structopt(long)]
         index: u32,
         #[structopt(long)]
@@ -76,10 +74,8 @@ enum WalletOptions {
         #[structopt(long, default_value = "0")]
         fee: Money,
     },
-    /// Withdraw funds from a Zero-Contract
+    /// Withdraw funds from the MPN-contract
     Withdraw {
-        #[structopt(long)]
-        contract: String,
         #[structopt(long)]
         index: u32,
         #[structopt(long)]
@@ -435,12 +431,7 @@ async fn main() -> Result<(), NodeError> {
             println!("Client feature not turned on!");
         }
         CliOptions::Wallet(wallet_opts) => match wallet_opts {
-            WalletOptions::Deposit {
-                contract,
-                index,
-                amount,
-                fee,
-            } => {
+            WalletOptions::Deposit { index, amount, fee } => {
                 let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
                 let tx_builder = TxBuilder::new(&wallet.seed());
                 let (req_loop, client) = BazukaClient::connect(
@@ -457,17 +448,8 @@ async fn main() -> Result<(), NodeError> {
                             .account
                             .nonce;
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let pay = tx_builder.deposit_mpn(
-                            if contract == "mpn" {
-                                mpn_contract_id
-                            } else {
-                                contract.parse().unwrap()
-                            },
-                            index,
-                            new_nonce,
-                            amount,
-                            fee,
-                        );
+                        let pay =
+                            tx_builder.deposit_mpn(mpn_contract_id, index, new_nonce, amount, fee);
                         wallet.add_mpn_index(index);
                         wallet.add_deposit(pay.clone());
                         wallet.save(wallet_path).unwrap();
@@ -478,12 +460,7 @@ async fn main() -> Result<(), NodeError> {
                 )
                 .unwrap();
             }
-            WalletOptions::Withdraw {
-                contract,
-                index,
-                amount,
-                fee,
-            } => {
+            WalletOptions::Withdraw { index, amount, fee } => {
                 let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
                 let tx_builder = TxBuilder::new(&wallet.seed());
                 let (req_loop, client) = BazukaClient::connect(
@@ -496,17 +473,8 @@ async fn main() -> Result<(), NodeError> {
                     async move {
                         let curr_nonce = client.get_mpn_account(index).await?.account.nonce;
                         let new_nonce = wallet.new_z_nonce(index).unwrap_or(curr_nonce);
-                        let pay = tx_builder.withdraw_mpn(
-                            if contract == "mpn" {
-                                mpn_contract_id
-                            } else {
-                                contract.parse().unwrap()
-                            },
-                            index,
-                            new_nonce,
-                            amount,
-                            fee,
-                        );
+                        let pay =
+                            tx_builder.withdraw_mpn(mpn_contract_id, index, new_nonce, amount, fee);
                         wallet.add_withdraw(pay.clone());
                         wallet.save(wallet_path).unwrap();
                         println!("{:#?}", client.transact_contract_withdraw(pay).await?);

@@ -62,25 +62,29 @@ rm ~/.bazuka.yaml
 Then initialize:
 
 ```sh
-bazuka init --network chaos
+bazuka init [flags...]
 ```
 
-This will generate a 12-word mnemonic word list for you. Keep it somewhere safe!
-If you already have a 12-word mnemonic phrase, you can pass it through `--mnemonic`
-flag and restore your wallet.
+Available flags:
 
-You can use the nodes introduced by the community as your `--bootstrap` nodes.
+ * `--bootstrap <bootstrap>...`: You can use the nodes introduced by the community as your bootstrap nodes through this flag.
+ * `--db <db>`: Path of the node's database. Default: `~/.bazuka`.
+ * `--external <external>`: Public ip/port of your node.
+ * `--listen <listen>`: Local socket. Default: `0.0.0.0:8765`.
+ * `--mnemonic <mnemonic>`: If you already have a 12-word mnemonic phrase, you can pass it through this flag. If not provided, a new wallet will be generated for you. Keep the mnemonic word list somewhere safe!
+ * `--network <network> [default: mainnet]`: The network your node will operate on.
 
-Run your node:
+Example to initialize a node with 2 bootstrap nodes `23.34.12.45:8765` and `34.56.78.23:8765` on the chaos network:
+
+```
+bazuka init --network chaos --bootstrap 23.34.12.45:8765 --bootstrap 34.56.78.23:8765
+```
+
+After initializing your node you can run it through:
 
 ```sh
-bazuka node --listen 0.0.0.0:8765 --external [your external ip]:8765 \
-  --network chaos --db ~/.bazuka-chaos
+bazuka node start --discord_handle "YOUR DISCORD HANDLE"
 ```
-
-You either have to run your node on a machine with a static IP, or configure a NAT
-Virtual Server in order to expose your node on a public IP. Specify your public IP
-through the `--external` option.
 
 Highly recommended to also provide your Discord handle through the
 `--discord-handle` flag. By providing your handle, you will leave our bots a
@@ -88,18 +92,18 @@ way to contact you regarding the problems you may have in your node and its stat
 
 ### Useful commands:
 
-`bazuka deposit`     Deposit funds to a Zero-Contract
+`bazuka wallet info` Show your wallet address/balances
 
-`bazuka help`       Prints this message or the help of the given subcommand(s)
+`bazuka wallet deposit` Deposit funds to the MPN-contract
 
-`bazuka init`        Initialize node/wallet
+`bazuka withdraw` Withdraw funds from the MPN-contract
 
-`bazuka node`        Run node
+`bazuka wallet rsend` Send funds through a regular-transaction
 
-`bazuka rsend`      Send funds through a regular-transaction
+`bazuka wallet zsend` Send funds through a zero-transaction
 
-`bazuka status`     Get status of a node
+`bazuka init` Initialize node/wallet
 
-`bazuka withdraw`    Withdraw funds from a Zero-Contract
+`bazuka node start` Start your node
 
-`bazuka zsend`       Send funds through a zero-transaction
+`bazuka node status` Get status of a node
