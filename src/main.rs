@@ -59,42 +59,7 @@ impl BazukaConfig {
 
 #[derive(StructOpt)]
 #[cfg(feature = "client")]
-#[structopt(name = "Bazuka!", about = "Node software for Zeeka Network")]
-enum CliOptions {
-    #[cfg(not(feature = "client"))]
-    Init,
-    #[cfg(feature = "client")]
-    /// Initialize node/wallet
-    Init {
-        #[structopt(long, default_value = "mainnet")]
-        network: String,
-        #[structopt(long)]
-        bootstrap: Vec<PeerAddress>,
-        #[structopt(long)]
-        mnemonic: Option<bip39::Mnemonic>,
-    },
-    #[cfg(not(feature = "node"))]
-    Node,
-    #[cfg(feature = "node")]
-    /// Run node
-    Node {
-        #[structopt(long)]
-        listen: Option<SocketAddr>,
-        #[structopt(long)]
-        external: Option<SocketAddr>,
-        #[structopt(long)]
-        client_only: bool,
-        #[structopt(long, parse(from_os_str))]
-        db: Option<PathBuf>,
-        #[structopt(long, default_value = "mainnet")]
-        network: String,
-        #[structopt(long)]
-        discord_handle: Option<String>,
-    },
-    /// Get status of a node
-    Status {},
-    /// Get wallet info
-    Wallet {},
+enum WalletOptions {
     /// Deposit funds to a Zero-Contract
     Deposit {
         #[structopt(long)]
@@ -140,7 +105,49 @@ enum CliOptions {
         fee: Money,
     },
     /// Resets wallet nonces
-    ResetWallet {},
+    Reset {},
+    /// Get info and balances of the wallet
+    Info {},
+}
+
+#[derive(StructOpt)]
+#[cfg(feature = "client")]
+#[structopt(name = "Bazuka!", about = "Node software for Zeeka Network")]
+enum CliOptions {
+    #[cfg(not(feature = "client"))]
+    Init,
+    #[cfg(feature = "client")]
+    /// Initialize node/wallet
+    Init {
+        #[structopt(long, default_value = "mainnet")]
+        network: String,
+        #[structopt(long)]
+        bootstrap: Vec<PeerAddress>,
+        #[structopt(long)]
+        mnemonic: Option<bip39::Mnemonic>,
+    },
+    #[cfg(not(feature = "node"))]
+    Node,
+    #[cfg(feature = "node")]
+    /// Run node
+    Node {
+        #[structopt(long)]
+        listen: Option<SocketAddr>,
+        #[structopt(long)]
+        external: Option<SocketAddr>,
+        #[structopt(long)]
+        client_only: bool,
+        #[structopt(long, parse(from_os_str))]
+        db: Option<PathBuf>,
+        #[structopt(long, default_value = "mainnet")]
+        network: String,
+        #[structopt(long)]
+        discord_handle: Option<String>,
+    },
+    /// Get status of a node
+    Status {},
+    /// Wallet subcommand
+    Wallet(WalletOptions),
 }
 
 #[cfg(feature = "node")]
@@ -428,200 +435,207 @@ async fn main() -> Result<(), NodeError> {
             )
             .unwrap();
         }
-        CliOptions::Deposit {
-            contract,
-            index,
-            amount,
-            fee,
-        } => {
-            let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-            let tx_builder = TxBuilder::new(&wallet.seed());
-            let (req_loop, client) = BazukaClient::connect(
-                tx_builder.get_priv_key(),
-                conf.random_node(),
-                conf.network,
-                None,
-            );
-            try_join!(
-                async move {
-                    let curr_nonce = client
-                        .get_account(tx_builder.get_address())
-                        .await?
-                        .account
-                        .nonce;
-                    let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                    let pay = tx_builder.deposit_mpn(
-                        if contract == "mpn" {
-                            mpn_contract_id
-                        } else {
-                            contract.parse().unwrap()
-                        },
-                        index,
-                        new_nonce,
-                        amount,
-                        fee,
-                    );
-                    wallet.add_mpn_index(index);
-                    wallet.add_deposit(pay.clone());
-                    wallet.save(wallet_path).unwrap();
-                    println!("{:#?}", client.transact_contract_deposit(pay).await?);
-                    Ok::<(), NodeError>(())
-                },
-                req_loop
-            )
-            .unwrap();
-        }
-        CliOptions::Withdraw {
-            contract,
-            index,
-            amount,
-            fee,
-        } => {
-            let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-            let tx_builder = TxBuilder::new(&wallet.seed());
-            let (req_loop, client) = BazukaClient::connect(
-                tx_builder.get_priv_key(),
-                conf.random_node(),
-                conf.network,
-                None,
-            );
-            try_join!(
-                async move {
-                    let curr_nonce = client.get_mpn_account(index).await?.account.nonce;
-                    let new_nonce = wallet.new_z_nonce(index).unwrap_or(curr_nonce);
-                    let pay = tx_builder.withdraw_mpn(
-                        if contract == "mpn" {
-                            mpn_contract_id
-                        } else {
-                            contract.parse().unwrap()
-                        },
-                        index,
-                        new_nonce,
-                        amount,
-                        fee,
-                    );
-                    wallet.add_withdraw(pay.clone());
-                    wallet.save(wallet_path).unwrap();
-                    println!("{:#?}", client.transact_contract_withdraw(pay).await?);
-                    Ok::<(), NodeError>(())
-                },
-                req_loop
-            )
-            .unwrap();
-        }
-        CliOptions::Rsend { to, amount, fee } => {
-            let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-            let tx_builder = TxBuilder::new(&wallet.seed());
-            let (req_loop, client) = BazukaClient::connect(
-                tx_builder.get_priv_key(),
-                conf.random_node(),
-                conf.network,
-                None,
-            );
-            try_join!(
-                async move {
-                    let curr_nonce = client
-                        .get_account(tx_builder.get_address())
-                        .await?
-                        .account
-                        .nonce;
-                    let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                    let tx =
-                        tx_builder.create_transaction(to.parse().unwrap(), amount, fee, new_nonce);
-                    wallet.add_rsend(tx.clone());
-                    wallet.save(wallet_path).unwrap();
-                    println!("{:#?}", client.transact(tx).await?);
-                    Ok::<(), NodeError>(())
-                },
-                req_loop
-            )
-            .unwrap();
-        }
-        CliOptions::Zsend {
-            from_index,
-            to_index,
-            to,
-            amount,
-            fee,
-        } => {
-            let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-            let tx_builder = TxBuilder::new(&wallet.seed());
-            let (req_loop, client) = BazukaClient::connect(
-                tx_builder.get_priv_key(),
-                conf.random_node(),
-                conf.network,
-                None,
-            );
-            try_join!(
-                async move {
-                    let to: <ZkSigner as ZkSignatureScheme>::Pub = to.parse().unwrap();
-                    let curr_nonce = client.get_mpn_account(from_index).await?.account.nonce;
-                    let new_nonce = wallet.new_z_nonce(from_index).unwrap_or(curr_nonce);
-                    let tx = tx_builder
-                        .create_mpn_transaction(from_index, to_index, to, amount, fee, new_nonce);
-                    wallet.add_zsend(tx.clone());
-                    wallet.save(wallet_path).unwrap();
-                    println!("{:#?}", client.zero_transact(tx).await?);
-                    Ok::<(), NodeError>(())
-                },
-                req_loop
-            )
-            .unwrap();
-        }
-        CliOptions::ResetWallet {} => {
-            let mut wallet = wallet.expect("Bazuka is not initialized!");
-            wallet.reset();
-            wallet.save(wallet_path).unwrap();
-        }
-        CliOptions::Wallet {} => {
-            let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-            let tx_builder = TxBuilder::new(&wallet.seed());
-
-            println!(
-                "{} {}",
-                "Wallet address:".bright_yellow(),
-                tx_builder.get_address()
-            );
-            println!(
-                "{} {}",
-                "Wallet zk-address:".bright_yellow(),
-                tx_builder.get_zk_address()
-            );
-
-            let (req_loop, client) = BazukaClient::connect(
-                tx_builder.get_priv_key(),
-                conf.random_node(),
-                conf.network,
-                None,
-            );
-            try_join!(
-                async move {
-                    println!(
-                        "{} {}",
-                        "Main chain balance:".bright_yellow(),
-                        client
+        CliOptions::Wallet(wallet_opts) => match wallet_opts {
+            WalletOptions::Deposit {
+                contract,
+                index,
+                amount,
+                fee,
+            } => {
+                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tx_builder = TxBuilder::new(&wallet.seed());
+                let (req_loop, client) = BazukaClient::connect(
+                    tx_builder.get_priv_key(),
+                    conf.random_node(),
+                    conf.network,
+                    None,
+                );
+                try_join!(
+                    async move {
+                        let curr_nonce = client
                             .get_account(tx_builder.get_address())
-                            .await
-                            .map(|resp| resp.account.balance.to_string())
-                            .unwrap_or("Node not available!".into())
-                    );
-                    for ind in wallet.mpn_indices() {
+                            .await?
+                            .account
+                            .nonce;
+                        let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
+                        let pay = tx_builder.deposit_mpn(
+                            if contract == "mpn" {
+                                mpn_contract_id
+                            } else {
+                                contract.parse().unwrap()
+                            },
+                            index,
+                            new_nonce,
+                            amount,
+                            fee,
+                        );
+                        wallet.add_mpn_index(index);
+                        wallet.add_deposit(pay.clone());
+                        wallet.save(wallet_path).unwrap();
+                        println!("{:#?}", client.transact_contract_deposit(pay).await?);
+                        Ok::<(), NodeError>(())
+                    },
+                    req_loop
+                )
+                .unwrap();
+            }
+            WalletOptions::Withdraw {
+                contract,
+                index,
+                amount,
+                fee,
+            } => {
+                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tx_builder = TxBuilder::new(&wallet.seed());
+                let (req_loop, client) = BazukaClient::connect(
+                    tx_builder.get_priv_key(),
+                    conf.random_node(),
+                    conf.network,
+                    None,
+                );
+                try_join!(
+                    async move {
+                        let curr_nonce = client.get_mpn_account(index).await?.account.nonce;
+                        let new_nonce = wallet.new_z_nonce(index).unwrap_or(curr_nonce);
+                        let pay = tx_builder.withdraw_mpn(
+                            if contract == "mpn" {
+                                mpn_contract_id
+                            } else {
+                                contract.parse().unwrap()
+                            },
+                            index,
+                            new_nonce,
+                            amount,
+                            fee,
+                        );
+                        wallet.add_withdraw(pay.clone());
+                        wallet.save(wallet_path).unwrap();
+                        println!("{:#?}", client.transact_contract_withdraw(pay).await?);
+                        Ok::<(), NodeError>(())
+                    },
+                    req_loop
+                )
+                .unwrap();
+            }
+            WalletOptions::Rsend { to, amount, fee } => {
+                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tx_builder = TxBuilder::new(&wallet.seed());
+                let (req_loop, client) = BazukaClient::connect(
+                    tx_builder.get_priv_key(),
+                    conf.random_node(),
+                    conf.network,
+                    None,
+                );
+                try_join!(
+                    async move {
+                        let curr_nonce = client
+                            .get_account(tx_builder.get_address())
+                            .await?
+                            .account
+                            .nonce;
+                        let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
+                        let tx = tx_builder.create_transaction(
+                            to.parse().unwrap(),
+                            amount,
+                            fee,
+                            new_nonce,
+                        );
+                        wallet.add_rsend(tx.clone());
+                        wallet.save(wallet_path).unwrap();
+                        println!("{:#?}", client.transact(tx).await?);
+                        Ok::<(), NodeError>(())
+                    },
+                    req_loop
+                )
+                .unwrap();
+            }
+            WalletOptions::Zsend {
+                from_index,
+                to_index,
+                to,
+                amount,
+                fee,
+            } => {
+                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tx_builder = TxBuilder::new(&wallet.seed());
+                let (req_loop, client) = BazukaClient::connect(
+                    tx_builder.get_priv_key(),
+                    conf.random_node(),
+                    conf.network,
+                    None,
+                );
+                try_join!(
+                    async move {
+                        let to: <ZkSigner as ZkSignatureScheme>::Pub = to.parse().unwrap();
+                        let curr_nonce = client.get_mpn_account(from_index).await?.account.nonce;
+                        let new_nonce = wallet.new_z_nonce(from_index).unwrap_or(curr_nonce);
+                        let tx = tx_builder.create_mpn_transaction(
+                            from_index, to_index, to, amount, fee, new_nonce,
+                        );
+                        wallet.add_zsend(tx.clone());
+                        wallet.save(wallet_path).unwrap();
+                        println!("{:#?}", client.zero_transact(tx).await?);
+                        Ok::<(), NodeError>(())
+                    },
+                    req_loop
+                )
+                .unwrap();
+            }
+            WalletOptions::Reset {} => {
+                let mut wallet = wallet.expect("Bazuka is not initialized!");
+                wallet.reset();
+                wallet.save(wallet_path).unwrap();
+            }
+            WalletOptions::Info {} => {
+                let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tx_builder = TxBuilder::new(&wallet.seed());
+
+                println!(
+                    "{} {}",
+                    "Wallet address:".bright_yellow(),
+                    tx_builder.get_address()
+                );
+                println!(
+                    "{} {}",
+                    "Wallet zk-address:".bright_yellow(),
+                    tx_builder.get_zk_address()
+                );
+
+                let (req_loop, client) = BazukaClient::connect(
+                    tx_builder.get_priv_key(),
+                    conf.random_node(),
+                    conf.network,
+                    None,
+                );
+                try_join!(
+                    async move {
                         println!(
                             "{} {}",
-                            format!("MPN Account #{} balance:", ind).bright_yellow(),
+                            "Main chain balance:".bright_yellow(),
                             client
-                                .get_mpn_account(ind)
+                                .get_account(tx_builder.get_address())
                                 .await
                                 .map(|resp| resp.account.balance.to_string())
                                 .unwrap_or("Node not available!".into())
                         );
-                    }
-                    Ok::<(), NodeError>(())
-                },
-                req_loop
-            )
-            .unwrap();
-        }
+                        for ind in wallet.mpn_indices() {
+                            println!(
+                                "{} {}",
+                                format!("MPN Account #{} balance:", ind).bright_yellow(),
+                                client
+                                    .get_mpn_account(ind)
+                                    .await
+                                    .map(|resp| resp.account.balance.to_string())
+                                    .unwrap_or("Node not available!".into())
+                            );
+                        }
+                        Ok::<(), NodeError>(())
+                    },
+                    req_loop
+                )
+                .unwrap();
+            }
+        },
     }
 
     Ok(())
