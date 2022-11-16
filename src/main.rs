@@ -139,7 +139,7 @@ enum CliOptions {
         #[structopt(long, default_value = "0")]
         fee: Money,
     },
-    /// Send funds through a regular-transaction
+    /// Resets wallet nonces
     ResetWallet {},
 }
 
