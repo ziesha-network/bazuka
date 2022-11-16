@@ -488,7 +488,7 @@ async fn main() -> Result<(), NodeError> {
             try_join!(
                 async move {
                     let curr_nonce = client.get_mpn_account(index).await?.account.nonce;
-                    let new_nonce = wallet.new_z_nonce().unwrap_or(curr_nonce);
+                    let new_nonce = wallet.new_z_nonce(index).unwrap_or(curr_nonce);
                     let pay = tx_builder.withdraw_mpn(
                         if contract == "mpn" {
                             mpn_contract_id
@@ -556,7 +556,7 @@ async fn main() -> Result<(), NodeError> {
                 async move {
                     let to: <ZkSigner as ZkSignatureScheme>::Pub = to.parse().unwrap();
                     let curr_nonce = client.get_mpn_account(from_index).await?.account.nonce;
-                    let new_nonce = wallet.new_z_nonce().unwrap_or(curr_nonce);
+                    let new_nonce = wallet.new_z_nonce(from_index).unwrap_or(curr_nonce);
                     let tx = tx_builder
                         .create_mpn_transaction(from_index, to_index, to, amount, fee, new_nonce);
                     wallet.add_zsend(tx.clone());
@@ -610,7 +610,7 @@ async fn main() -> Result<(), NodeError> {
                             "{} {}",
                             format!("MPN Account #{} balance:", ind).bright_yellow(),
                             client
-                                .get_mpn_account(*ind)
+                                .get_mpn_account(ind)
                                 .await
                                 .map(|resp| resp.account.balance.to_string())
                                 .unwrap_or("Node not available!".into())
