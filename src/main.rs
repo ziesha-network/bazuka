@@ -112,6 +112,26 @@ enum WalletOptions {
 
 #[derive(StructOpt)]
 #[cfg(feature = "client")]
+enum NodeCliOptions {
+    /// Start the node
+    Start {
+        #[structopt(long)]
+        listen: Option<SocketAddr>,
+        #[structopt(long)]
+        external: Option<SocketAddr>,
+        #[structopt(long)]
+        client_only: bool,
+        #[structopt(long, parse(from_os_str))]
+        db: Option<PathBuf>,
+        #[structopt(long)]
+        discord_handle: Option<String>,
+    },
+    /// Get status of a node
+    Status {},
+}
+
+#[derive(StructOpt)]
+#[cfg(feature = "client")]
 #[structopt(name = "Bazuka!", about = "Node software for Zeeka Network")]
 enum CliOptions {
     #[cfg(not(feature = "client"))]
@@ -126,26 +146,11 @@ enum CliOptions {
         #[structopt(long)]
         mnemonic: Option<bip39::Mnemonic>,
     },
-    #[cfg(not(feature = "node"))]
-    Node,
+
     #[cfg(feature = "node")]
-    /// Run node
-    Node {
-        #[structopt(long)]
-        listen: Option<SocketAddr>,
-        #[structopt(long)]
-        external: Option<SocketAddr>,
-        #[structopt(long)]
-        client_only: bool,
-        #[structopt(long, parse(from_os_str))]
-        db: Option<PathBuf>,
-        #[structopt(long, default_value = "mainnet")]
-        network: String,
-        #[structopt(long)]
-        discord_handle: Option<String>,
-    },
-    /// Get status of a node
-    Status {},
+    /// Node subcommand
+    Node(NodeCliOptions),
+
     /// Wallet subcommand
     Wallet(WalletOptions),
 }
@@ -160,7 +165,6 @@ async fn run_node(
     client_only: bool,
     db: Option<PathBuf>,
     bootstrap: Vec<PeerAddress>,
-    network: String,
 ) -> Result<(), NodeError> {
     const DEFAULT_PORT: u16 = 8765;
 
@@ -223,7 +227,7 @@ async fn run_node(
     // data from external world through a heartbeat loop.
     let node = node_create(
         config::node::get_node_options(),
-        &network,
+        &bazuka_config.network,
         address,
         bootstrap_nodes,
         KvStoreChain::new(
@@ -346,36 +350,54 @@ async fn main() -> Result<(), NodeError> {
     let mpn_contract_id = config::blockchain::get_blockchain_config().mpn_contract_id;
 
     match opts {
-        #[cfg(feature = "node")]
-        CliOptions::Node {
-            listen,
-            external,
-            db,
-            network,
-            discord_handle,
-            client_only,
-        } => {
-            let conf = conf.expect("Bazuka is not initialized!");
-            let wallet = wallet.expect("Wallet is not initialized!");
-            run_node(
-                conf.clone(),
-                wallet.clone(),
-                SocialProfiles {
-                    discord: discord_handle,
-                },
-                listen,
-                external,
-                client_only,
-                db,
-                conf.bootstrap,
-                network,
-            )
-            .await?;
-        }
         #[cfg(not(feature = "node"))]
         CliOptions::Node { .. } => {
             println!("Node feature not turned on!");
         }
+        #[cfg(feature = "node")]
+        CliOptions::Node(node_opts) => match node_opts {
+            NodeCliOptions::Start {
+                listen,
+                external,
+                db,
+                discord_handle,
+                client_only,
+            } => {
+                let conf = conf.expect("Bazuka is not initialized!");
+                let wallet = wallet.expect("Wallet is not initialized!");
+                run_node(
+                    conf.clone(),
+                    wallet.clone(),
+                    SocialProfiles {
+                        discord: discord_handle,
+                    },
+                    listen,
+                    external,
+                    client_only,
+                    db,
+                    conf.bootstrap,
+                )
+                .await?;
+            }
+            NodeCliOptions::Status {} => {
+                let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let wallet = TxBuilder::new(&wallet.seed());
+                let (req_loop, client) = BazukaClient::connect(
+                    wallet.get_priv_key(),
+                    conf.random_node(),
+                    conf.network,
+                    None,
+                );
+                try_join!(
+                    async move {
+                        println!("{:#?}", client.stats().await?);
+                        Ok::<(), NodeError>(())
+                    },
+                    req_loop
+                )
+                .unwrap();
+            }
+        },
         #[cfg(feature = "client")]
         CliOptions::Init {
             network,
@@ -416,24 +438,6 @@ async fn main() -> Result<(), NodeError> {
         #[cfg(not(feature = "client"))]
         CliOptions::Init { .. } => {
             println!("Client feature not turned on!");
-        }
-        CliOptions::Status {} => {
-            let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-            let wallet = TxBuilder::new(&wallet.seed());
-            let (req_loop, client) = BazukaClient::connect(
-                wallet.get_priv_key(),
-                conf.random_node(),
-                conf.network,
-                None,
-            );
-            try_join!(
-                async move {
-                    println!("{:#?}", client.stats().await?);
-                    Ok::<(), NodeError>(())
-                },
-                req_loop
-            )
-            .unwrap();
         }
         CliOptions::Wallet(wallet_opts) => match wallet_opts {
             WalletOptions::Deposit {
