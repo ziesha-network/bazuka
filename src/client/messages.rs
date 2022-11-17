@@ -24,6 +24,7 @@ pub struct GetStatsRequest {}
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetStatsResponse {
     pub social_profiles: SocialProfiles,
+    pub address: String,
     pub height: u64,
     pub nodes: usize,
     pub power: u128,
