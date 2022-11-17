@@ -16,6 +16,7 @@ use tokio::time::timeout;
 mod error;
 pub mod explorer;
 pub mod messages;
+pub mod utils;
 pub use error::NodeError;
 use messages::*;
 

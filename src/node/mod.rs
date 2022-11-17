@@ -9,7 +9,6 @@ mod http;
 mod mempool;
 mod peer_manager;
 pub mod seeds;
-pub mod upnp;
 use crate::blockchain::Blockchain;
 use crate::client::{
     messages::SocialProfiles, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress,

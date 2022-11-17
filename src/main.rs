@@ -1,44 +1,34 @@
-use bazuka::wallet::TxBuilder;
-
-#[cfg(not(any(feature = "node", feature = "client")))]
-use {
-    bazuka::blockchain::{Blockchain, KvStoreChain, TransactionStats},
-    bazuka::config,
-    bazuka::core::{Address, Money},
-    bazuka::db::RamKvStore,
-    std::collections::HashMap,
-};
-
 #[cfg(feature = "node")]
 use {
     bazuka::blockchain::KvStoreChain,
-    bazuka::client::{messages::SocialProfiles, Limit, NodeRequest, PeerAddress},
+    bazuka::client::{messages::SocialProfiles, Limit, NodeRequest},
     bazuka::common::*,
-    bazuka::config,
     bazuka::db::LevelDbKvStore,
     bazuka::node::{node_create, Firewall},
-    colored::Colorize,
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
     hyper::{Body, Client, Request, Response, Server, StatusCode},
-    std::path::{Path, PathBuf},
     std::sync::Arc,
     tokio::sync::mpsc,
-    tokio::try_join,
 };
 
 #[cfg(feature = "client")]
 use {
-    bazuka::client::{BazukaClient, NodeError},
+    bazuka::client::{BazukaClient, NodeError, PeerAddress},
+    bazuka::config,
     bazuka::core::{Money, ZkSigner},
     bazuka::crypto::ZkSignatureScheme,
-    bazuka::wallet::Wallet,
+    bazuka::wallet::{TxBuilder, Wallet},
+    colored::Colorize,
     rand::seq::SliceRandom,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
+    std::path::{Path, PathBuf},
     structopt::StructOpt,
+    tokio::try_join,
 };
 
+#[cfg(feature = "client")]
 const DEFAULT_PORT: u16 = 8765;
 
 #[cfg(feature = "client")]
@@ -57,7 +47,7 @@ impl BazukaConfig {
     fn random_node(&self) -> PeerAddress {
         self.bootstrap
             .choose(&mut rand::thread_rng())
-            .unwrap_or(&PeerAddress(SocketAddr::from(([0, 0, 0, 0], 8765))))
+            .unwrap_or(&PeerAddress(SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT))))
             .clone()
     }
 }
@@ -112,7 +102,7 @@ enum WalletOptions {
 }
 
 #[derive(StructOpt)]
-#[cfg(feature = "client")]
+#[cfg(feature = "node")]
 enum NodeCliOptions {
     /// Start the node
     Start {
@@ -299,6 +289,7 @@ async fn run_node(
     Ok(())
 }
 
+#[cfg(feature = "client")]
 fn generate_miner_token() -> String {
     use rand::distributions::Alphanumeric;
     use rand::{thread_rng, Rng};
@@ -335,10 +326,6 @@ async fn main() -> Result<(), NodeError> {
     let mpn_contract_id = config::blockchain::get_blockchain_config().mpn_contract_id;
 
     match opts {
-        #[cfg(not(feature = "node"))]
-        CliOptions::Node { .. } => {
-            println!("Node feature not turned on!");
-        }
         #[cfg(feature = "node")]
         CliOptions::Node(node_opts) => match node_opts {
             NodeCliOptions::Start {
@@ -403,7 +390,7 @@ async fn main() -> Result<(), NodeError> {
 
             if conf.is_none() {
                 let miner_token = generate_miner_token();
-                let public_ip = bazuka::node::upnp::get_public_ip().await.unwrap();
+                let public_ip = bazuka::client::utils::get_public_ip().await.unwrap();
                 std::fs::write(
                     conf_path,
                     serde_yaml::to_string(&BazukaConfig {
@@ -609,37 +596,4 @@ async fn main() -> Result<(), NodeError> {
 }
 
 #[cfg(not(feature = "client"))]
-fn main() {
-    env_logger::init();
-
-    let mut conf = config::blockchain::get_blockchain_config();
-    conf.genesis.block.header.proof_of_work.target = bazuka::consensus::pow::Difficulty(0x00ffffff);
-
-    let mut chain = KvStoreChain::new(RamKvStore::new(), conf).unwrap();
-
-    let mut nonce = 1;
-
-    let abc = TxBuilder::new(&Vec::from("ABC"));
-
-    loop {
-        log::info!("Creating txs...");
-        let mut txs = HashMap::new();
-        for _ in 0..7400 {
-            txs.insert(
-                abc.create_transaction(Address::Treasury, Money(0), Money(0), nonce),
-                TransactionStats { first_seen: 0 },
-            );
-            nonce += 1;
-        }
-
-        log::info!("Creating block...");
-        let blk = chain
-            .draft_block(0, &mut txs, &abc, true)
-            .unwrap()
-            .unwrap()
-            .block;
-
-        log::info!("Applying block ({} txs)...", blk.body.len());
-        chain.extend(chain.get_height().unwrap(), &[blk]).unwrap();
-    }
-}
+fn main() {}
