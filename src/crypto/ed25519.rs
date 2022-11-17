@@ -52,7 +52,7 @@ impl<H: Hash> SignatureScheme for Ed25519<H> {
 
 impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Rx")?;
+        write!(f, "0x")?;
         for byte in self.0.as_bytes().iter().rev() {
             write!(f, "{:02x}", byte)?;
         }
@@ -69,7 +69,7 @@ pub enum ParsePublicKeyError {
 impl FromStr for PublicKey {
     type Err = ParsePublicKeyError;
     fn from_str(mut s: &str) -> Result<Self, Self::Err> {
-        if s.len() != 66 || !s.to_lowercase().starts_with("Rx") {
+        if s.len() != 66 || !s.to_lowercase().starts_with("0x") {
             return Err(ParsePublicKeyError::Invalid);
         }
         s = &s[2..];

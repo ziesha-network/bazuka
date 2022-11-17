@@ -563,14 +563,26 @@ async fn main() -> Result<(), NodeError> {
                 );
                 try_join!(
                     async move {
+                        let acc = client.get_account(tx_builder.get_address()).await;
+                        let curr_nonce = wallet.new_r_nonce().map(|n| n - 1);
                         println!(
                             "{} {}",
                             "Main chain balance:".bright_yellow(),
-                            client
-                                .get_account(tx_builder.get_address())
-                                .await
-                                .map(|resp| resp.account.balance.to_string())
-                                .unwrap_or("Node not available!".into())
+                            acc.map(|resp| format!(
+                                "{}{}",
+                                resp.account.balance,
+                                curr_nonce
+                                    .map(|n| if n > resp.account.nonce {
+                                        format!(
+                                            "(Pending transactions: {})",
+                                            n - resp.account.nonce
+                                        )
+                                    } else {
+                                        "".into()
+                                    })
+                                    .unwrap_or_default()
+                            ))
+                            .unwrap_or("Node not available!".into()),
                         );
                         for ind in wallet.mpn_indices() {
                             println!(
