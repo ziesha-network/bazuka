@@ -3,7 +3,7 @@ use crate::crypto::SignatureScheme;
 use std::str::FromStr;
 use thiserror::Error;
 
-// All of the Zeeka's supply exists in Treasury account when the blockchain begins.
+// All of the Ziesha's supply exists in Treasury account when the blockchain begins.
 // Validator/Miner fees are collected from the Treasury account. This simplifies
 // the process of money creation.
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]

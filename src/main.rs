@@ -117,7 +117,7 @@ enum NodeCliOptions {
 
 #[derive(StructOpt)]
 #[cfg(feature = "client")]
-#[structopt(name = "Bazuka!", about = "Node software for Zeeka Network")]
+#[structopt(name = "Bazuka!", about = "Node software for Ziesha Network")]
 enum CliOptions {
     #[cfg(not(feature = "client"))]
     Init,

@@ -1,29 +1,29 @@
 # ℤ - Bazuka!
 
-[![Bazuka](https://github.com/zeeka-network/bazuka/actions/workflows/actions.yml/badge.svg)](https://github.com/zeeka-network/bazuka/actions/workflows/actions.yml)
-[![codecov](https://codecov.io/gh/zeeka-network/bazuka/branch/master/graph/badge.svg?token=8XTLET5GQN)](https://codecov.io/gh/zeeka-network/bazuka)
+[![Bazuka](https://github.com/ziesha-network/bazuka/actions/workflows/actions.yml/badge.svg)](https://github.com/ziesha-network/bazuka/actions/workflows/actions.yml)
+[![codecov](https://codecov.io/gh/ziesha-network/bazuka/branch/master/graph/badge.svg?token=8XTLET5GQN)](https://codecov.io/gh/ziesha-network/bazuka)
 
-Bazuka is a wallet and node software for the Zeeka (ℤ) Protocol. Zeeka is a novel
+Bazuka is a wallet and node software for the Ziesha (ℤ) Protocol. Ziesha is a novel
 layer-1 cryptocurrency which uses Zero-Knowledge proofs as the backend of its
 smart-contract (I.e Zero Contracts).
 
 Bazuka ensures the availability of latest contract-states, so that they remain
-public and everybody is able to update and build on them, making Zeeka a more
+public and everybody is able to update and build on them, making Ziesha a more
 decentralized protocol compared to similar projects.
 
 ### Links
 
- - Website: https://zeeka.network
- - Twitter: https://twitter.com/ZeekaNetwork
- - Whitepaper: http://hackmd.io/@geusebetel/zeeka
+ - Website: https://ziesha.network
+ - Twitter: https://twitter.com/ZieshaNetwork
+ - Whitepaper: http://hackmd.io/@geusebetel/ziesha
  - Discord: https://discord.gg/4gbf9gZh8H
 
 ### How to run a Bazuka node?
 
-If you only want to run a Zeeka node and do not want to execute Zero Contract or
-mine Zeeka, you will only need to install `bazuka` (This repo). In case you also
-want to mine Zeeka, you will need to install ![zoro](https://github.com/zeeka-network/zoro)
-(The Main Payment Network executor) and also the ![uzi-miner](https://github.com/zeeka-network/uzi-miner)
+If you only want to run a Ziesha node and do not want to execute Zero Contract or
+mine Ziesha, you will only need to install `bazuka` (This repo). In case you also
+want to mine Ziesha, you will need to install ![zoro](https://github.com/ziesha-network/zoro)
+(The Main Payment Network executor) and also the ![uzi-miner](https://github.com/ziesha-network/uzi-miner)
 (A RandomX CPU miner).
 
 **How to install `bazuka`?**
@@ -39,7 +39,7 @@ want to mine Zeeka, you will need to install ![zoro](https://github.com/zeeka-ne
     ```
  * Clone the `bazuka` repo:
     ```
-    git clone https://github.com/zeeka-network/bazuka
+    git clone https://github.com/ziesha-network/bazuka
     ```
  * ***Warning:*** Make sure Rust binaries are present in your PATH before compiling:
     ```
