@@ -22,9 +22,9 @@ use messages::*;
 
 pub type Timestamp = u32;
 
-pub const SIGNATURE_HEADER: &str = "X-ZEEKA-SIGNATURE";
-pub const NETWORK_HEADER: &str = "X-ZEEKA-NETWORK-NAME";
-pub const MINER_TOKEN_HEADER: &str = "X-ZEEKA-MINER-TOKEN";
+pub const SIGNATURE_HEADER: &str = "X-ZIESHA-SIGNATURE";
+pub const NETWORK_HEADER: &str = "X-ZIESHA-NETWORK-NAME";
+pub const MINER_TOKEN_HEADER: &str = "X-ZIESHA-MINER-TOKEN";
 
 #[derive(Deserialize, Serialize, Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerAddress(pub SocketAddr); // ip, port
