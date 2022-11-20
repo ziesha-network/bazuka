@@ -51,7 +51,7 @@ want to mine Ziesha, you will need to install ![zoro](https://github.com/ziesha-
     cargo install --path .
     ```
 
-Now if you want to join the `chaos` testnet, you first have to initialize your
+Now if you want to join the `groth` testnet, you first have to initialize your
 node. If you have already initialized bazuka for the Debug Testnet, you first need
 to remove your previous initialization by running:
 
@@ -74,10 +74,10 @@ Available flags:
  * `--mnemonic <mnemonic>`: If you already have a 12-word mnemonic phrase, you can pass it through this flag. If not provided, a new wallet will be generated for you. Keep the mnemonic word list somewhere safe!
  * `--network <network>`: The network your node will operate on. Default: `mainnet`
 
-Example to initialize a node with 2 bootstrap nodes `23.34.12.45:8765` and `34.56.78.23:8765` on the chaos network:
+Example to initialize a node with 2 bootstrap nodes `23.34.12.45:8765` and `34.56.78.23:8765` on the groth network:
 
 ```
-bazuka init --network chaos --bootstrap 23.34.12.45:8765 --bootstrap 34.56.78.23:8765
+bazuka init --network groth --bootstrap 23.34.12.45:8765 --bootstrap 34.56.78.23:8765
 ```
 
 After initializing your node you can run it through:
