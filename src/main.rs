@@ -20,7 +20,7 @@ use {
     bazuka::crypto::ZkSignatureScheme,
     bazuka::wallet::{TxBuilder, Wallet},
     colored::Colorize,
-    rand::seq::SliceRandom,
+    //rand::seq::SliceRandom,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
     std::path::{Path, PathBuf},
@@ -45,10 +45,11 @@ struct BazukaConfig {
 #[cfg(feature = "client")]
 impl BazukaConfig {
     fn random_node(&self) -> PeerAddress {
-        self.bootstrap
-            .choose(&mut rand::thread_rng())
-            .unwrap_or(&PeerAddress(SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT))))
-            .clone()
+        PeerAddress(SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT)))
+        /*self.bootstrap
+        .choose(&mut rand::thread_rng())
+        .unwrap_or(&PeerAddress(SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT))))
+        .clone()*/
     }
 }
 
