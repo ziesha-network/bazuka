@@ -107,8 +107,7 @@ fn get_test_mpn_contract() -> TransactionAndDelta {
 pub fn get_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
-
-    let min_diff = Difficulty(0x027fffff);
+    let min_diff = Difficulty(0x031fffff);
 
     let blk = Block {
         header: Header {
@@ -142,7 +141,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         reward_ratio: 100_000, // 1/100_000 -> 0.01% of Treasury Supply per block
         max_block_size: (1 * MB) as usize,
         max_delta_count: 1024, // Only allow max of 1024 ZkScalar cells to be added per block
-        block_time: 60,        // Seconds
+        block_time: 120,       // Seconds
         difficulty_calc_interval: 128, // Blocks
 
         // 0 63 -> BAZUKA BASE KEY
