@@ -161,10 +161,10 @@ pub async fn sync_blocks<B: Blockchain>(
                     if local_header.hash() != peer_header.hash() {
                         headers.insert(0, peer_header);
                     } else {
-                        chain_fail = true;
                         break;
                     }
                 } else {
+                    chain_fail = true;
                     break;
                 }
             }
