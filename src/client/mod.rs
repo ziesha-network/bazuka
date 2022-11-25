@@ -295,6 +295,20 @@ impl BazukaClient {
             .await
     }
 
+    pub async fn get_headers(
+        &self,
+        since: u64,
+        count: u64,
+    ) -> Result<GetHeadersResponse, NodeError> {
+        self.sender
+            .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
+                format!("http://{}/bincode/headers", self.peer),
+                GetHeadersRequest { since, count },
+                Limit::default(),
+            )
+            .await
+    }
+
     pub async fn get_zero_mempool(&self) -> Result<GetZeroMempoolResponse, NodeError> {
         self.sender
             .bincode_get::<GetZeroMempoolRequest, GetZeroMempoolResponse>(
