@@ -1,29 +1,29 @@
 # ℤ - Bazuka!
 
-[![Bazuka](https://github.com/zeeka-network/bazuka/actions/workflows/actions.yml/badge.svg)](https://github.com/zeeka-network/bazuka/actions/workflows/actions.yml)
-[![codecov](https://codecov.io/gh/zeeka-network/bazuka/branch/master/graph/badge.svg?token=8XTLET5GQN)](https://codecov.io/gh/zeeka-network/bazuka)
+[![Bazuka](https://github.com/ziesha-network/bazuka/actions/workflows/actions.yml/badge.svg)](https://github.com/ziesha-network/bazuka/actions/workflows/actions.yml)
+[![codecov](https://codecov.io/gh/ziesha-network/bazuka/branch/master/graph/badge.svg?token=8XTLET5GQN)](https://codecov.io/gh/ziesha-network/bazuka)
 
-Bazuka is a wallet and node software for the Zeeka (ℤ) Protocol. Zeeka is a novel
+Bazuka is a wallet and node software for the Ziesha (ℤ) Protocol. Ziesha is a novel
 layer-1 cryptocurrency which uses Zero-Knowledge proofs as the backend of its
 smart-contract (I.e Zero Contracts).
 
 Bazuka ensures the availability of latest contract-states, so that they remain
-public and everybody is able to update and build on them, making Zeeka a more
+public and everybody is able to update and build on them, making Ziesha a more
 decentralized protocol compared to similar projects.
 
 ### Links
 
- - Website: https://zeeka.network
- - Twitter: https://twitter.com/ZeekaNetwork
- - Whitepaper: http://hackmd.io/@geusebetel/zeeka
+ - Website: https://ziesha.network
+ - Twitter: https://twitter.com/ZieshaNetwork
+ - Whitepaper: http://hackmd.io/@geusebetel/ziesha
  - Discord: https://discord.gg/4gbf9gZh8H
 
 ### How to run a Bazuka node?
 
-If you only want to run a Zeeka node and do not want to execute Zero Contract or
-mine Zeeka, you will only need to install `bazuka` (This repo). In case you also
-want to mine Zeeka, you will need to install ![zoro](https://github.com/zeeka-network/zoro)
-(The Main Payment Network executor) and also the ![uzi-miner](https://github.com/zeeka-network/uzi-miner)
+If you only want to run a Ziesha node and do not want to execute Zero Contract or
+mine Ziesha, you will only need to install `bazuka` (This repo). In case you also
+want to mine Ziesha, you will need to install ![zoro](https://github.com/ziesha-network/zoro)
+(The Main Payment Network executor) and also the ![uzi-miner](https://github.com/ziesha-network/uzi-miner)
 (A RandomX CPU miner).
 
 **How to install `bazuka`?**
@@ -39,7 +39,7 @@ want to mine Zeeka, you will need to install ![zoro](https://github.com/zeeka-ne
     ```
  * Clone the `bazuka` repo:
     ```
-    git clone https://github.com/zeeka-network/bazuka
+    git clone https://github.com/ziesha-network/bazuka
     ```
  * ***Warning:*** Make sure Rust binaries are present in your PATH before compiling:
     ```
@@ -51,7 +51,7 @@ want to mine Zeeka, you will need to install ![zoro](https://github.com/zeeka-ne
     cargo install --path .
     ```
 
-Now if you want to join the `chaos` testnet, you first have to initialize your
+Now if you want to join the `groth-3` testnet, you first have to initialize your
 node. If you have already initialized bazuka for the Debug Testnet, you first need
 to remove your previous initialization by running:
 
@@ -62,25 +62,29 @@ rm ~/.bazuka.yaml
 Then initialize:
 
 ```sh
-bazuka init --network chaos
+bazuka init [flags...]
 ```
 
-This will generate a 12-word mnemonic word list for you. Keep it somewhere safe!
-If you already have a 12-word mnemonic phrase, you can pass it through `--mnemonic`
-flag and restore your wallet.
+Available flags:
 
-You can use the nodes introduced by the community as your `--bootstrap` nodes.
+ * `--bootstrap <bootstrap>...`: You can use the nodes introduced by the community as your bootstrap nodes through this flag.
+ * `--db <db>`: Path of the node's database. Default: `~/.bazuka`.
+ * `--external <external>`: Public ip/port of your node. Default: `YOUR_PUBLIC_IP:8765`.
+ * `--listen <listen>`: Local socket. Default: `0.0.0.0:8765`.
+ * `--mnemonic <mnemonic>`: If you already have a 12-word mnemonic phrase, you can pass it through this flag. If not provided, a new wallet will be generated for you. Keep the mnemonic word list somewhere safe!
+ * `--network <network>`: The network your node will operate on. Default: `mainnet`
 
-Run your node:
+Example to initialize a node with 2 bootstrap nodes `23.34.12.45:8765` and `34.56.78.23:8765` on the `groth-3` network:
+
+```
+bazuka init --network groth-3 --bootstrap 23.34.12.45:8765 --bootstrap 34.56.78.23:8765
+```
+
+After initializing your node you can run it through:
 
 ```sh
-bazuka node --listen 0.0.0.0:8765 --external [your external ip]:8765 \
-  --network chaos --db ~/.bazuka-chaos
+bazuka node start --discord_handle "YOUR DISCORD HANDLE"
 ```
-
-You either have to run your node on a machine with a static IP, or configure a NAT
-Virtual Server in order to expose your node on a public IP. Specify your public IP
-through the `--external` option.
 
 Highly recommended to also provide your Discord handle through the
 `--discord-handle` flag. By providing your handle, you will leave our bots a
@@ -88,18 +92,18 @@ way to contact you regarding the problems you may have in your node and its stat
 
 ### Useful commands:
 
-`bazuka deposit`     Deposit funds to a Zero-Contract
+`bazuka wallet info` Show your wallet address/balances
 
-`bazuka help`       Prints this message or the help of the given subcommand(s)
+`bazuka wallet deposit` Deposit funds to the MPN-contract
 
-`bazuka init`        Initialize node/wallet
+`bazuka withdraw` Withdraw funds from the MPN-contract
 
-`bazuka node`        Run node
+`bazuka wallet rsend` Send funds through a regular-transaction
 
-`bazuka rsend`      Send funds through a regular-transaction
+`bazuka wallet zsend` Send funds through a zero-transaction
 
-`bazuka status`     Get status of a node
+`bazuka init` Initialize node/wallet
 
-`bazuka withdraw`    Withdraw funds from a Zero-Contract
+`bazuka node start` Start your node
 
-`bazuka zsend`       Send funds through a zero-transaction
+`bazuka node status` Get status of a node

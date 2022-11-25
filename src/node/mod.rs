@@ -9,7 +9,6 @@ mod http;
 mod mempool;
 mod peer_manager;
 pub mod seeds;
-pub mod upnp;
 use crate::blockchain::Blockchain;
 use crate::client::{
     messages::SocialProfiles, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress,
@@ -205,7 +204,7 @@ async fn node_service<B: Blockchain>(
             }
             (Method::GET, "/peers") => {
                 *response.body_mut() = Body::from(serde_json::to_vec(
-                    &api::get_peers(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                    &api::get_peers(client, Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
                 )?);
             }
             (Method::POST, "/peers") => {

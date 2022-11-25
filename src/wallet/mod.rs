@@ -21,25 +21,12 @@ pub enum WalletError {
     BlockchainError(#[from] io::Error),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum Rtx {
-    Rsend(TransactionAndDelta),
-    Deposit(MpnDeposit),
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum Ztx {
-    Zsend(MpnTransaction),
-    Withdraw(MpnWithdraw),
-}
-
 #[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Wallet {
     mnemonic: Mnemonic,
-    mpn_indices: Vec<u32>,
-    rtxs: HashMap<u32, Rtx>, // Nonce -> Tx
-    ztxs: HashMap<u64, Ztx>, // Nonce -> Tx
+    tx_nonce: Option<u32>,
+    mpn_nonces: HashMap<u32, Option<u64>>, // Nonce for each MPN account
 }
 
 impl Wallet {
@@ -48,32 +35,44 @@ impl Wallet {
             mnemonic: mnemonic.unwrap_or_else(|| {
                 Mnemonic::generate_in_with(rng, bip39::Language::English, 12).unwrap()
             }),
-            mpn_indices: Default::default(),
-            ztxs: Default::default(),
-            rtxs: Default::default(),
+            tx_nonce: None,
+            mpn_nonces: HashMap::new(),
         }
     }
+    pub fn mpn_indices(&self) -> Vec<u32> {
+        self.mpn_nonces.keys().cloned().collect()
+    }
+    pub fn add_mpn_index(&mut self, index: u32) {
+        self.mpn_nonces.insert(index, None);
+    }
     pub fn reset(&mut self) {
-        self.rtxs.clear();
-        self.ztxs.clear();
+        self.tx_nonce = None;
+        self.mpn_nonces.iter_mut().for_each(|(_, v)| {
+            *v = None;
+        });
     }
     pub fn add_rsend(&mut self, tx: TransactionAndDelta) {
-        self.rtxs.insert(tx.tx.nonce, Rtx::Rsend(tx));
+        self.tx_nonce = Some(tx.tx.nonce);
     }
     pub fn add_deposit(&mut self, tx: MpnDeposit) {
-        self.rtxs.insert(tx.payment.nonce, Rtx::Deposit(tx));
+        self.tx_nonce = Some(tx.payment.nonce);
     }
     pub fn add_withdraw(&mut self, tx: MpnWithdraw) {
-        self.ztxs.insert(tx.zk_nonce, Ztx::Withdraw(tx));
+        self.mpn_nonces
+            .insert(tx.zk_address_index, Some(tx.zk_nonce));
     }
     pub fn add_zsend(&mut self, tx: MpnTransaction) {
-        self.ztxs.insert(tx.nonce, Ztx::Zsend(tx));
+        self.mpn_nonces.insert(tx.src_index, Some(tx.nonce));
     }
     pub fn new_r_nonce(&self) -> Option<u32> {
-        self.rtxs.keys().max().map(|n| *n + 1)
+        self.tx_nonce.map(|n| n + 1)
     }
-    pub fn new_z_nonce(&self) -> Option<u64> {
-        self.ztxs.keys().max().cloned()
+    pub fn new_z_nonce(&self, index: u32) -> Option<u64> {
+        if let Some(Some(n)) = self.mpn_nonces.get(&index).map(|n| n.map(|n| n + 1)) {
+            Some(n)
+        } else {
+            None
+        }
     }
     pub fn seed(&self) -> [u8; 64] {
         self.mnemonic.to_seed("")

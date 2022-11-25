@@ -154,12 +154,17 @@ pub async fn sync_blocks<B: Blockchain>(
                 log::info!("Got header {}...", index);
 
                 let ctx = context.read().await;
-                let local_header = ctx.blockchain.get_headers(index, 1)?[0].clone();
+                let local_header = ctx.blockchain.get_headers(index, 1)?.first().cloned();
                 drop(ctx);
 
-                if local_header.hash() != peer_header.hash() {
-                    headers.insert(0, peer_header);
+                if let Some(local_header) = local_header {
+                    if local_header.hash() != peer_header.hash() {
+                        headers.insert(0, peer_header);
+                    } else {
+                        break;
+                    }
                 } else {
+                    chain_fail = true;
                     break;
                 }
             }
