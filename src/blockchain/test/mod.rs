@@ -125,6 +125,7 @@ fn test_correct_target_calculation() -> Result<(), BlockchainError> {
 fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut conf = easy_config();
+    conf.block_time = 60;
     conf.difficulty_calc_interval = 3;
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf.clone())?;
 

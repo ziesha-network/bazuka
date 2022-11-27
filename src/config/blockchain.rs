@@ -15,7 +15,7 @@ use crate::wallet::TxBuilder;
 const MPN_LOG4_ACCOUNT_CAPACITY: u8 = 15;
 const MPN_LOG4_PAYMENT_CAPACITY: u8 = 3;
 
-const TESTNET_HEIGHT_LIMIT: u64 = 500;
+const TESTNET_HEIGHT_LIMIT: u64 = 10000;
 
 lazy_static! {
     pub static ref MPN_UPDATE_VK: zk::groth16::Groth16VerifyingKey =
@@ -107,7 +107,7 @@ fn get_test_mpn_contract() -> TransactionAndDelta {
 pub fn get_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
-    let min_diff = Difficulty(0x03ffffff);
+    let min_diff = Difficulty(0x032fffff);
 
     let blk = Block {
         header: Header {
@@ -142,7 +142,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         max_block_size: (1 * MB) as usize,
         max_delta_count: 1024, // Only allow max of 1024 ZkScalar cells to be added per block
         block_time: 120,       // Seconds
-        difficulty_calc_interval: 128, // Blocks
+        difficulty_calc_interval: 64, // Blocks
 
         // 0 63 -> BAZUKA BASE KEY
         // 64 2111 -> hash(blk#0)
