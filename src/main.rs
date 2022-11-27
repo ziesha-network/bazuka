@@ -172,6 +172,7 @@ async fn run_node(
     if let Some(addr) = &address {
         println!("{} {}", "Internet endpoint:".bright_yellow(), addr);
     }
+    println!("{} {}", "Network:".bright_yellow(), bazuka_config.network);
 
     println!(
         "{} {}",
