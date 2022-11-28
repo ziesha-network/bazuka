@@ -54,6 +54,15 @@ impl std::fmt::Display for PublicKey {
     }
 }
 
+impl PublicKey {
+    pub fn is_on_curve(&self) -> bool {
+        self.decompress().is_on_curve()
+    }
+    pub fn decompress(&self) -> PointAffine {
+        self.0.decompress()
+    }
+}
+
 impl FromStr for PublicKey {
     type Err = ParsePublicKeyError;
     fn from_str(mut s: &str) -> Result<Self, Self::Err> {

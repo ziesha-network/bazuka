@@ -321,6 +321,15 @@ impl<K: KvStore> KvStoreChain<K> {
         let (ops, _) = self.isolated(|chain| {
             let src = chain.get_mpn_account(tx.src_index)?;
             let dst = chain.get_mpn_account(tx.dst_index)?;
+            if tx.src_index == tx.dst_index {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
+            if !tx.dst_pub_key.is_on_curve() {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
+            if dst.address.is_on_curve() && dst.address != tx.dst_pub_key.decompress() {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
             if tx.nonce != src.nonce {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
