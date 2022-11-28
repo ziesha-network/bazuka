@@ -621,32 +621,25 @@ async fn main() -> Result<(), NodeError> {
                             ))
                             .unwrap_or("Node not available!".into()),
                         );
+                        println!();
+                        println!("{}", "MPN Accounts\n---------".bright_yellow());
                         for ind in wallet.mpn_indices() {
                             let resp = client.get_mpn_account(ind).await.map(|resp| resp.account);
-
-                            println!(
-                                "{}",
-                                format!("MPN Account #{}\n---------", ind).bright_yellow()
-                            );
-                            println!(
-                                "Balance: {}",
-                                resp.as_ref()
-                                    .map(|a| a.balance.to_string())
-                                    .unwrap_or("Node not available!".into())
-                            );
-                            println!(
-                                "Address: {}",
-                                resp.as_ref()
-                                    .map(|a| MpnAddress {
+                            println!("{}", format!("#{}:", ind).bright_yellow());
+                            if let Ok(resp) = resp {
+                                println!("\tBalance: {}", resp.balance);
+                                println!(
+                                    "\tAddress: {}",
+                                    MpnAddress {
                                         pub_key: bazuka::crypto::jubjub::PublicKey(
-                                            a.address.compress()
+                                            resp.address.compress()
                                         ),
                                         index: ind
                                     }
-                                    .to_string())
-                                    .unwrap_or("Node not available!".into())
-                            );
-                            println!();
+                                );
+                            } else {
+                                println!("\tNode not available!");
+                            }
                         }
                         Ok::<(), NodeError>(())
                     },
