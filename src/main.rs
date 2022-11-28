@@ -627,16 +627,20 @@ async fn main() -> Result<(), NodeError> {
                             let resp = client.get_mpn_account(ind).await.map(|resp| resp.account);
                             println!("{}", format!("#{}:", ind).bright_yellow());
                             if let Ok(resp) = resp {
-                                println!("\tBalance: {}", resp.balance);
-                                println!(
-                                    "\tAddress: {}",
-                                    MpnAddress {
-                                        pub_key: bazuka::crypto::jubjub::PublicKey(
-                                            resp.address.compress()
-                                        ),
-                                        index: ind
-                                    }
-                                );
+                                if !resp.address.is_on_curve() {
+                                    println!("\tWaiting to be created...")
+                                } else {
+                                    println!("\tBalance: {}", resp.balance);
+                                    println!(
+                                        "\tAddress: {}",
+                                        MpnAddress {
+                                            pub_key: bazuka::crypto::jubjub::PublicKey(
+                                                resp.address.compress()
+                                            ),
+                                            index: ind
+                                        }
+                                    );
+                                }
                             } else {
                                 println!("\tNode not available!");
                             }
