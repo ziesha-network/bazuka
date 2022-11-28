@@ -434,7 +434,7 @@ async fn main() -> Result<(), NodeError> {
                 let mut rng = rand::thread_rng();
                 let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
                 let tx_builder = TxBuilder::new(&wallet.seed());
-                let index = index.unwrap_or_else(|| rng.gen());
+                let index = index.unwrap_or_else(|| rng.gen()) & 0x3FFFFFFF;
                 let (req_loop, client) = BazukaClient::connect(
                     tx_builder.get_priv_key(),
                     conf.random_node(),

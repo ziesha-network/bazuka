@@ -29,6 +29,9 @@ impl<ZS: ZkSignatureScheme> FromStr for MpnAddress<ZS> {
             return Err(ParseMpnAddressError::Invalid);
         }
         let index = u32::from_str_radix(&s[..8], 16).map_err(|_| ParseMpnAddressError::Invalid)?;
+        if index > 0x3FFFFFFF {
+            return Err(ParseMpnAddressError::Invalid);
+        }
         let pub_key: ZS::Pub = s[8..].parse().map_err(|_| ParseMpnAddressError::Invalid)?;
         Ok(Self { index, pub_key })
     }
