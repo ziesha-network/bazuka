@@ -266,6 +266,9 @@ impl<K: KvStore> KvStoreChain<K> {
         let (ops, _) = self.isolated(|chain| {
             chain.apply_withdraw(&withdraw.payment)?;
             let src = chain.get_mpn_account(withdraw.zk_address_index)?;
+            if withdraw.zk_address_index > 0x3FFFFFFF {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
             if withdraw.zk_nonce != src.nonce {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
@@ -321,6 +324,9 @@ impl<K: KvStore> KvStoreChain<K> {
         let (ops, _) = self.isolated(|chain| {
             let src = chain.get_mpn_account(tx.src_index)?;
             let dst = chain.get_mpn_account(tx.dst_index)?;
+            if tx.src_index > 0x3FFFFFFF || tx.dst_index > 0x3FFFFFFF {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
             if tx.src_index == tx.dst_index {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
