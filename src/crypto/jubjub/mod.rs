@@ -46,7 +46,7 @@ pub struct Signature {
 
 impl std::fmt::Display for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "0z{}", if self.0 .1 { 3 } else { 2 })?;
+        write!(f, "z{}", if self.0 .1 { 3 } else { 2 })?;
         for byte in self.0 .0.to_repr().as_ref().iter().rev() {
             write!(f, "{:02x}", byte)?;
         }
@@ -66,17 +66,17 @@ impl PublicKey {
 impl FromStr for PublicKey {
     type Err = ParsePublicKeyError;
     fn from_str(mut s: &str) -> Result<Self, Self::Err> {
-        if s.len() != 67 {
+        if s.len() != 66 {
             return Err(ParsePublicKeyError::Invalid);
         }
-        let oddity = if s.starts_with("0z3") {
+        let oddity = if s.starts_with("z3") {
             true
-        } else if s.starts_with("0z2") {
+        } else if s.starts_with("z2") {
             false
         } else {
             return Err(ParsePublicKeyError::Invalid);
         };
-        s = &s[3..];
+        s = &s[2..];
         let bytes = (0..32)
             .map(|i| u8::from_str_radix(&s[2 * i..2 * i + 2], 16))
             .rev()

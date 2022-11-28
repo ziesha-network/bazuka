@@ -26,6 +26,7 @@ pub type ContractAccount = transaction::ContractAccount;
 pub type ContractUpdate = transaction::ContractUpdate<Hasher, Signer>;
 pub type ContractDeposit = transaction::ContractDeposit<Hasher, Signer>;
 pub type ContractWithdraw = transaction::ContractWithdraw<Hasher, Signer>;
+pub type MpnAddress = address::MpnAddress<ZkSigner>;
 pub type MpnDeposit = transaction::MpnDeposit<Hasher, Signer, ZkSigner>;
 pub type MpnWithdraw = transaction::MpnWithdraw<Hasher, Signer, ZkSigner>;
 pub type Header = header::Header<Hasher>;

@@ -1,6 +1,6 @@
 use crate::core::{
-    Address, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Money, MpnDeposit,
-    MpnWithdraw, RegularSendEntry, Signature, Signer, Transaction, TransactionAndDelta,
+    Address, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Money, MpnAddress,
+    MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Transaction, TransactionAndDelta,
     TransactionData, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
@@ -79,8 +79,7 @@ impl TxBuilder {
     pub fn create_mpn_transaction(
         &self,
         from_index: u32,
-        to_index: u32,
-        to: <ZkSigner as ZkSignatureScheme>::Pub,
+        to: MpnAddress,
         amount: Money,
         fee: Money,
         nonce: u64,
@@ -88,8 +87,8 @@ impl TxBuilder {
         let mut tx = zk::MpnTransaction {
             nonce,
             src_index: from_index,
-            dst_index: to_index,
-            dst_pub_key: to,
+            dst_index: to.index,
+            dst_pub_key: to.pub_key,
             amount,
             fee,
             sig: Default::default(),
@@ -158,7 +157,7 @@ impl TxBuilder {
     pub fn deposit_mpn(
         &self,
         contract_id: ContractId,
-        zk_address_index: u32,
+        to: MpnAddress,
         nonce: u32,
         amount: Money,
         fee: Money,
@@ -188,8 +187,8 @@ impl TxBuilder {
         let bytes = bincode::serialize(&tx).unwrap();
         tx.sig = Some(Signer::sign(&self.private_key, &bytes));
         MpnDeposit {
-            zk_address_index,
-            zk_address: self.get_zk_address(),
+            zk_address_index: to.index,
+            zk_address: to.pub_key,
             payment: tx,
         }
     }

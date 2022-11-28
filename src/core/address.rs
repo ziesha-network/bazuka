@@ -1,7 +1,38 @@
 use super::Money;
-use crate::crypto::SignatureScheme;
+use crate::crypto::{SignatureScheme, ZkSignatureScheme};
 use std::str::FromStr;
 use thiserror::Error;
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct MpnAddress<ZS: ZkSignatureScheme> {
+    pub index: u32,
+    pub pub_key: ZS::Pub,
+}
+
+#[derive(Error, Debug)]
+pub enum ParseMpnAddressError {
+    #[error("mpn address invalid")]
+    Invalid,
+}
+
+impl<ZS: ZkSignatureScheme> std::fmt::Display for MpnAddress<ZS> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:08x}{}", self.index, self.pub_key)?;
+        Ok(())
+    }
+}
+
+impl<ZS: ZkSignatureScheme> FromStr for MpnAddress<ZS> {
+    type Err = ParseMpnAddressError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() != 74 {
+            return Err(ParseMpnAddressError::Invalid);
+        }
+        let index = u32::from_str_radix(&s[..8], 16).map_err(|_| ParseMpnAddressError::Invalid)?;
+        let pub_key: ZS::Pub = s[8..].parse().map_err(|_| ParseMpnAddressError::Invalid)?;
+        Ok(Self { index, pub_key })
+    }
+}
 
 // All of the Ziesha's supply exists in Treasury account when the blockchain begins.
 // Validator/Miner fees are collected from the Treasury account. This simplifies
