@@ -4,13 +4,15 @@ pub use error::*;
 use crate::core::{
     hash::Hash, Account, Address, Block, ContractAccount, ContractDeposit, ContractId,
     ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnDeposit, MpnWithdraw, ProofOfWork,
-    RegularSendEntry, Signature, Transaction, TransactionAndDelta, TransactionData, ZkHasher,
+    RegularSendEntry, Signature, Transaction, TransactionAndDelta, TransactionData,
+    ZkHasher as CoreZkHasher,
 };
 use crate::crypto::jubjub;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
 use crate::utils;
 use crate::wallet::TxBuilder;
 use crate::zk;
+use crate::zk::ZkHasher;
 
 use rayon::prelude::*;
 
@@ -214,7 +216,7 @@ impl<K: KvStore> KvStoreChain<K> {
             return Err(BlockchainError::CompressedStateNotFound);
         }
         if index == 0 {
-            return Ok(zk::ZkCompressedState::empty::<ZkHasher>(state_model));
+            return Ok(zk::ZkCompressedState::empty::<CoreZkHasher>(state_model));
         }
         Ok(
             match self
@@ -266,6 +268,14 @@ impl<K: KvStore> KvStoreChain<K> {
         let (ops, _) = self.isolated(|chain| {
             chain.apply_deposit(&deposit.payment)?;
             let dst = chain.get_mpn_account(deposit.zk_address_index)?;
+
+            let calldata = CoreZkHasher::hash(&[
+                zk::ZkScalar::from(deposit.zk_address.decompress().0),
+                zk::ZkScalar::from(deposit.zk_address.decompress().1),
+            ]);
+            if deposit.payment.calldata != calldata {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
             if deposit.zk_address_index > 0x3FFFFFFF {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
@@ -276,7 +286,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
             let mut size_diff = 0;
-            zk::KvStoreStateManager::<ZkHasher>::set_mpn_account(
+            zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
                 &mut chain.database,
                 chain.config.mpn_contract_id,
                 deposit.zk_address_index,
@@ -308,7 +318,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
             let mut size_diff = 0;
-            zk::KvStoreStateManager::<ZkHasher>::set_mpn_account(
+            zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
                 &mut chain.database,
                 chain.config.mpn_contract_id,
                 withdraw.zk_address_index,
@@ -377,7 +387,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
             let mut size_diff = 0;
-            zk::KvStoreStateManager::<ZkHasher>::set_mpn_account(
+            zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
                 &mut chain.database,
                 chain.config.mpn_contract_id,
                 tx.src_index,
@@ -388,7 +398,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 },
                 &mut size_diff,
             )?;
-            zk::KvStoreStateManager::<ZkHasher>::set_mpn_account(
+            zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
                 &mut chain.database,
                 chain.config.mpn_contract_id,
                 tx.dst_index,
@@ -450,7 +460,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     }
                 }
                 TransactionData::CreateContract { contract } => {
-                    if !contract.state_model.is_valid::<ZkHasher>() {
+                    if !contract.state_model.is_valid::<CoreZkHasher>() {
                         return Err(BlockchainError::InvalidStateModel);
                     }
                     let contract_id = ContractId::new(tx);
@@ -459,7 +469,7 @@ impl<K: KvStore> KvStoreChain<K> {
                         contract.clone().into(),
                     )])?;
                     let compressed_empty =
-                        zk::ZkCompressedState::empty::<ZkHasher>(contract.state_model.clone());
+                        zk::ZkCompressedState::empty::<CoreZkHasher>(contract.state_model.clone());
                     chain.database.update(&[WriteOp::Put(
                         keys::contract_account(&contract_id),
                         ContractAccount {
@@ -523,7 +533,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                     log4_size: deposit_func.log4_payment_capacity,
                                 };
                                 let mut state_builder =
-                                    zk::ZkStateBuilder::<ZkHasher>::new(state_model);
+                                    zk::ZkStateBuilder::<CoreZkHasher>::new(state_model);
                                 for (i, deposit) in deposits.iter().enumerate() {
                                     if deposit.contract_id != *contract_id
                                         || deposit.deposit_circuit_id != *deposit_circuit_id
@@ -582,7 +592,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                     log4_size: withdraw_func.log4_payment_capacity,
                                 };
                                 let mut state_builder =
-                                    zk::ZkStateBuilder::<ZkHasher>::new(state_model);
+                                    zk::ZkStateBuilder::<CoreZkHasher>::new(state_model);
                                 for (i, withdraw) in withdraws.iter().enumerate() {
                                     if withdraw.contract_id != *contract_id
                                         || withdraw.withdraw_circuit_id != *withdraw_circuit_id
@@ -645,8 +655,9 @@ impl<K: KvStore> KvStoreChain<K> {
                                     .get(*function_id as usize)
                                     .ok_or(BlockchainError::ContractFunctionNotFound)?;
                                 let circuit = &func.verifier_key;
-                                let mut state_builder =
-                                    zk::ZkStateBuilder::<ZkHasher>::new(zk::ZkStateModel::Scalar);
+                                let mut state_builder = zk::ZkStateBuilder::<CoreZkHasher>::new(
+                                    zk::ZkStateModel::Scalar,
+                                );
                                 state_builder.batch_set(&zk::ZkDeltaPairs(
                                     [(zk::ZkDataLocator(vec![]), Some(zk::ZkScalar::from(*fee)))]
                                         .into(),
@@ -996,14 +1007,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
             for (cid, comp) in changed_states {
                 if comp.prev_height == 0 {
-                    zk::KvStoreStateManager::<ZkHasher>::delete_contract(&mut chain.database, cid)?;
+                    zk::KvStoreStateManager::<CoreZkHasher>::delete_contract(
+                        &mut chain.database,
+                        cid,
+                    )?;
                     outdated.retain(|&x| x != cid);
                     continue;
                 }
 
                 if !outdated.contains(&cid) {
                     let (ops, result) = chain.isolated(|fork| {
-                        Ok(zk::KvStoreStateManager::<ZkHasher>::rollback_contract(
+                        Ok(zk::KvStoreStateManager::<CoreZkHasher>::rollback_contract(
                             &mut fork.database,
                             cid,
                         )?)
@@ -1016,9 +1030,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     }
                 } else {
                     let local_compressed_state =
-                        zk::KvStoreStateManager::<ZkHasher>::root(&chain.database, cid)?;
+                        zk::KvStoreStateManager::<CoreZkHasher>::root(&chain.database, cid)?;
                     let local_height =
-                        zk::KvStoreStateManager::<ZkHasher>::height_of(&chain.database, cid)?;
+                        zk::KvStoreStateManager::<CoreZkHasher>::height_of(&chain.database, cid)?;
                     if local_compressed_state == comp.prev_state && local_height == comp.prev_height
                     {
                         outdated.retain(|&x| x != cid);
@@ -1046,7 +1060,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let outdated = self.get_outdated_contracts()?;
         let mut ret = HashMap::new();
         for cid in outdated {
-            let state_height = zk::KvStoreStateManager::<ZkHasher>::height_of(&self.database, cid)?;
+            let state_height =
+                zk::KvStoreStateManager::<CoreZkHasher>::height_of(&self.database, cid)?;
             ret.insert(cid, state_height);
         }
         Ok(ret)
@@ -1099,7 +1114,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     fn get_mpn_account(&self, index: u32) -> Result<zk::MpnAccount, BlockchainError> {
-        Ok(zk::KvStoreStateManager::<ZkHasher>::get_mpn_account(
+        Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_account(
             &self.database,
             self.config.mpn_contract_id,
             index,
@@ -1111,7 +1126,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         page: usize,
         page_size: usize,
     ) -> Result<Vec<(u32, zk::MpnAccount)>, BlockchainError> {
-        Ok(zk::KvStoreStateManager::<ZkHasher>::get_mpn_accounts(
+        Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_accounts(
             &self.database,
             self.config.mpn_contract_id,
             page,
@@ -1381,7 +1396,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 match &patch {
                     zk::ZkStatePatch::Full(full) => {
                         let (_, rollback_results) =
-                            zk::KvStoreStateManager::<ZkHasher>::reset_contract(
+                            zk::KvStoreStateManager::<CoreZkHasher>::reset_contract(
                                 &mut chain.database,
                                 cid,
                                 contract_account.height,
@@ -1399,7 +1414,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         }
                     }
                     zk::ZkStatePatch::Delta(delta) => {
-                        zk::KvStoreStateManager::<ZkHasher>::update_contract(
+                        zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
                             &mut chain.database,
                             cid,
                             delta,
@@ -1408,7 +1423,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     }
                 };
 
-                if zk::KvStoreStateManager::<ZkHasher>::root(&chain.database, cid)?
+                if zk::KvStoreStateManager::<CoreZkHasher>::root(&chain.database, cid)?
                     != contract_account.compressed_state
                 {
                     return Err(BlockchainError::FullStateNotValid);
@@ -1510,7 +1525,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         contract_id: ContractId,
         locator: zk::ZkDataLocator,
     ) -> Result<zk::ZkScalar, BlockchainError> {
-        Ok(zk::KvStoreStateManager::<ZkHasher>::get_data(
+        Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_data(
             &self.database,
             contract_id,
             &locator,
@@ -1537,22 +1552,26 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         for (cid, height) in heights {
             if !outdated_contracts.contains(&cid) {
                 let local_height =
-                    zk::KvStoreStateManager::<ZkHasher>::height_of(&self.database, cid)?;
+                    zk::KvStoreStateManager::<CoreZkHasher>::height_of(&self.database, cid)?;
                 if height > local_height {
                     return Err(BlockchainError::StatesUnavailable);
                 }
                 let away = local_height - height;
                 blockchain_patch.patches.insert(
                     cid,
-                    if let Some(delta) =
-                        zk::KvStoreStateManager::<ZkHasher>::delta_of(&self.database, cid, away)?
-                    {
+                    if let Some(delta) = zk::KvStoreStateManager::<CoreZkHasher>::delta_of(
+                        &self.database,
+                        cid,
+                        away,
+                    )? {
                         zk::ZkStatePatch::Delta(delta)
                     } else {
-                        zk::ZkStatePatch::Full(zk::KvStoreStateManager::<ZkHasher>::get_full_state(
-                            &self.database,
-                            cid,
-                        )?)
+                        zk::ZkStatePatch::Full(
+                            zk::KvStoreStateManager::<CoreZkHasher>::get_full_state(
+                                &self.database,
+                                cid,
+                            )?,
+                        )
                     },
                 );
             }
