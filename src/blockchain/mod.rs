@@ -1435,13 +1435,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         self.isolated(|chain| {
             let mut txs: Vec<TransactionAndDelta> = mempool.clone().into_keys().collect();
             txs.sort_unstable_by_key(|tx| {
-                let is_mpn =
+                let not_mpn =
                     if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
-                        *contract_id == self.config.mpn_contract_id
+                        *contract_id != self.config.mpn_contract_id
                     } else {
-                        false
+                        true
                     };
-                (is_mpn, tx.tx.nonce)
+                (not_mpn, tx.tx.nonce)
             });
             for tx in txs {
                 if let Err(e) = chain.apply_tx(&tx.tx, false) {
