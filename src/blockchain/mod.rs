@@ -1459,7 +1459,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         mempool: &mut HashMap<MpnDeposit, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            for tx in mempool.clone().into_keys() {
+            let mut txs: Vec<MpnDeposit> = mempool.clone().into_keys().collect();
+            txs.sort_unstable_by_key(|t| t.payment.nonce);
+            for tx in txs {
                 if chain.apply_mpn_deposit(&tx).is_err() {
                     mempool.remove(&tx);
                 }
@@ -1474,7 +1476,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         mempool: &mut HashMap<MpnWithdraw, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            for tx in mempool.clone().into_keys() {
+            let mut txs: Vec<MpnWithdraw> = mempool.clone().into_keys().collect();
+            txs.sort_unstable_by_key(|t| t.zk_nonce);
+            for tx in txs {
                 if chain.apply_mpn_withdraw(&tx).is_err() {
                     mempool.remove(&tx);
                 }
@@ -1489,7 +1493,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         mempool: &mut HashMap<zk::MpnTransaction, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            for tx in mempool.clone().into_keys() {
+            let mut txs: Vec<zk::MpnTransaction> = mempool.clone().into_keys().collect();
+            txs.sort_unstable_by_key(|t| t.nonce);
+            for tx in txs {
                 if chain.apply_zero_tx(&tx).is_err() {
                     mempool.remove(&tx);
                 }
