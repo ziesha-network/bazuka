@@ -1403,9 +1403,18 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             let mut txs: Vec<TransactionAndDelta> = mempool.clone().into_keys().collect();
-            txs.sort_by(|a, b| a.tx.nonce.partial_cmp(&b.tx.nonce).unwrap());
+            txs.sort_unstable_by_key(|tx| {
+                let is_mpn =
+                    if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
+                        *contract_id == self.config.mpn_contract_id
+                    } else {
+                        false
+                    };
+                (is_mpn, tx.tx.nonce)
+            });
             for tx in txs {
-                if chain.apply_tx(&tx.tx, false).is_err() {
+                if let Err(e) = chain.apply_tx(&tx.tx, false) {
+                    log::info!("Rejecting transaction: {}", e);
                     mempool.remove(&tx);
                 }
             }
