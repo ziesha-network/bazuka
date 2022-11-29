@@ -262,6 +262,37 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(())
     }
 
+    fn apply_mpn_deposit(&mut self, deposit: &MpnDeposit) -> Result<(), BlockchainError> {
+        let (ops, _) = self.isolated(|chain| {
+            chain.apply_deposit(&deposit.payment)?;
+            let dst = chain.get_mpn_account(deposit.zk_address_index)?;
+            if deposit.zk_address_index > 0x3FFFFFFF {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
+            if !deposit.zk_address.is_on_curve() {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
+            if dst.address.is_on_curve() && dst.address != deposit.zk_address.decompress() {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
+            let mut size_diff = 0;
+            zk::KvStoreStateManager::<ZkHasher>::set_mpn_account(
+                &mut chain.database,
+                chain.config.mpn_contract_id,
+                deposit.zk_address_index,
+                zk::MpnAccount {
+                    address: deposit.zk_address.0.decompress(),
+                    balance: dst.balance + deposit.payment.amount,
+                    nonce: dst.nonce,
+                },
+                &mut size_diff,
+            )?;
+            Ok(())
+        })?;
+        self.database.update(&ops)?;
+        Ok(())
+    }
+
     fn apply_mpn_withdraw(&mut self, withdraw: &MpnWithdraw) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
             chain.apply_withdraw(&withdraw.payment)?;
@@ -1414,7 +1445,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             });
             for tx in txs {
                 if let Err(e) = chain.apply_tx(&tx.tx, false) {
-                    log::info!("Rejecting transaction: {}", e);
+                    log::info!("Rejecting transaction: {:?} {}", tx, e);
                     mempool.remove(&tx);
                 }
             }
@@ -1429,7 +1460,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             for tx in mempool.clone().into_keys() {
-                if chain.apply_deposit(&tx.payment).is_err() {
+                if chain.apply_mpn_deposit(&tx).is_err() {
                     mempool.remove(&tx);
                 }
             }
