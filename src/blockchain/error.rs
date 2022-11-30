@@ -88,4 +88,6 @@ pub enum BlockchainError {
         "deposit/withdraw transaction was not intended to be passed to this contract/function"
     )]
     DepositWithdrawPassedToWrongFunction,
+    #[error("block not on the testnet forced fork")]
+    TestnetForcedFork,
 }

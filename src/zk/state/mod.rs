@@ -395,7 +395,9 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                     rollback.into(),
                 ));
                 rollback_results.push(rollback_root);
+                log::debug!("Delta accepted!");
             } else {
+                log::debug!("Delta rejected!");
                 break;
             }
         }
