@@ -53,12 +53,15 @@ pub async fn sync_state<B: Blockchain>(
                 )
                 .await
             {
-                Ok(resp) => match context.write().await.blockchain.update_states(&resp.patch) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        log::warn!("Wrong state-patch given! Error: {}", e);
+                Ok(resp) => {
+                    log::info!("States downloaded! Applying...");
+                    match context.write().await.blockchain.update_states(&resp.patch) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            log::warn!("Wrong state-patch given! Error: {}", e);
+                        }
                     }
-                },
+                }
                 Err(e) => {
                     log::warn!("Could not get state-patch! Error: {}", e);
                 }

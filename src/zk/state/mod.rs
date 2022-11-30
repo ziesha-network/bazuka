@@ -366,25 +366,30 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             WriteOp::Put(keys::local_height(&id), height.into()),
         ])?;
 
-        let mut rollback_results = Vec::new();
         let mut root = Self::root(&fork, id)?;
+
+        let mut rollback_results = Vec::new();
+        let mut rollback_ops = Vec::new();
+        let mut rollback_fork = fork.mirror();
+        let mut rollback_root = root.clone();
 
         for (i, rollback) in state.rollbacks.iter().enumerate() {
             for (k, v) in &rollback.0 {
-                root.state_hash = Self::set_data(
-                    &mut fork,
+                rollback_root.state_hash = Self::set_data(
+                    &mut rollback_fork,
                     id,
                     k.clone(),
                     v.unwrap_or_default(),
                     &mut root.state_size,
                 )?;
             }
-            fork.update(&[WriteOp::Put(
+            rollback_ops.push(WriteOp::Put(
                 keys::local_rollback_to_height(&id, height - 1 - i as u64),
                 rollback.into(),
-            )])?;
-            rollback_results.push(root);
+            ));
+            rollback_results.push(rollback_root);
         }
+        fork.update(&rollback_ops)?;
 
         db.update(&fork.to_ops())?;
 
