@@ -246,23 +246,31 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         db: &mut K,
         id: ContractId,
     ) -> Result<Option<ZkCompressedState>, StateManagerError> {
-        let mut root = Self::root(db, id)?;
-        let height = Self::height_of(db, id)?;
+        let mut fork = db.mirror();
+        let mut root = Self::root(&fork, id)?;
+        let height = Self::height_of(&fork, id)?;
         let rollback_key = keys::local_rollback_to_height(&id, height);
-        let rollback_patch = if let Some(patch) = Self::rollback_of(db, id, 1)? {
+        let rollback_patch = if let Some(patch) = Self::rollback_of(&fork, id, 1)? {
             patch
         } else {
             return Ok(None);
         };
         for (k, v) in rollback_patch.0 {
-            root.state_hash =
-                Self::set_data(db, id, k, v.unwrap_or_default(), &mut root.state_size)?;
+            root.state_hash = Self::set_data(
+                &mut fork,
+                id,
+                k,
+                v.unwrap_or_default(),
+                &mut root.state_size,
+            )?;
         }
-        db.update(&[
+        fork.update(&[
             WriteOp::Remove(rollback_key),
             WriteOp::Put(keys::local_root(&id), root.into()),
             WriteOp::Put(keys::local_height(&id), (height - 1).into()),
         ])?;
+
+        db.update(&fork.to_ops())?;
 
         Ok(Some(root))
     }
@@ -334,18 +342,19 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         height: u64,
         state: &ZkState,
     ) -> Result<(ZkCompressedState, Vec<ZkCompressedState>), StateManagerError> {
-        let contract_type = Self::type_of(db, id)?;
-        for (k, _) in db.pairs(keys::local_prefix(&id).into())? {
-            db.update(&[WriteOp::Remove(k)])?;
+        let mut fork = db.mirror();
+        let contract_type = Self::type_of(&fork, id)?;
+        for (k, _) in fork.pairs(keys::local_prefix(&id).into())? {
+            fork.update(&[WriteOp::Remove(k)])?;
         }
 
         let mut state_hash = contract_type.compress_default::<H>();
         let mut state_size = 0;
         for (k, v) in state.data.0.iter() {
-            state_hash = Self::set_data(db, id, k.clone(), *v, &mut state_size)?;
+            state_hash = Self::set_data(&mut fork, id, k.clone(), *v, &mut state_size)?;
         }
 
-        db.update(&[
+        fork.update(&[
             WriteOp::Put(
                 keys::local_root(&id),
                 ZkCompressedState {
@@ -358,24 +367,26 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         ])?;
 
         let mut rollback_results = Vec::new();
-        let mut root = Self::root(db, id)?;
+        let mut root = Self::root(&fork, id)?;
 
         for (i, rollback) in state.rollbacks.iter().enumerate() {
             for (k, v) in &rollback.0 {
                 root.state_hash = Self::set_data(
-                    db,
+                    &mut fork,
                     id,
                     k.clone(),
                     v.unwrap_or_default(),
                     &mut root.state_size,
                 )?;
             }
-            db.update(&[WriteOp::Put(
+            fork.update(&[WriteOp::Put(
                 keys::local_rollback_to_height(&id, height - 1 - i as u64),
                 rollback.into(),
             )])?;
             rollback_results.push(root);
         }
+
+        db.update(&fork.to_ops())?;
 
         Ok((root, rollback_results))
     }
@@ -401,20 +412,21 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                 &mut root.state_size,
             )?;
         }
-        let mut ops = fork.to_ops();
-        ops.push(WriteOp::Put(keys::local_root(&id), root.into()));
-        ops.push(WriteOp::Put(
-            keys::local_rollback_to_height(&id, target_height - 1),
-            (&rollback_patch).into(),
-        ));
-        ops.push(WriteOp::Put(keys::local_height(&id), target_height.into()));
+        fork.update(&[
+            WriteOp::Put(keys::local_root(&id), root.into()),
+            WriteOp::Put(
+                keys::local_rollback_to_height(&id, target_height - 1),
+                (&rollback_patch).into(),
+            ),
+            WriteOp::Put(keys::local_height(&id), target_height.into()),
+        ])?;
         if target_height - 1 >= MAX_ROLLBACKS {
-            ops.push(WriteOp::Remove(keys::local_rollback_to_height(
+            fork.update(&[WriteOp::Remove(keys::local_rollback_to_height(
                 &id,
                 target_height - 1 - MAX_ROLLBACKS,
-            )));
+            ))])?;
         }
-        db.update(&ops)?;
+        db.update(&fork.to_ops())?;
         Ok(())
     }
 
