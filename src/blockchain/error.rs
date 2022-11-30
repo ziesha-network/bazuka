@@ -62,8 +62,6 @@ pub enum BlockchainError {
     StateDeltaTooBig,
     #[error("compressed-state at specified height not found")]
     CompressedStateNotFound,
-    #[error("full-state has invalid deltas")]
-    DeltasInvalid,
     #[error("no blocks to roll back")]
     NoBlocksToRollback,
     #[error("zk error happened: {0}")]

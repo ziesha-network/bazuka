@@ -1398,23 +1398,20 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     .ok_or(BlockchainError::FullStateNotFound)?;
                 match &patch {
                     zk::ZkStatePatch::Full(full) => {
-                        let (_, rollback_results) =
-                            zk::KvStoreStateManager::<CoreZkHasher>::reset_contract(
-                                &mut chain.database,
+                        let mut expected_delta_targets = Vec::new();
+                        for i in 0..full.rollbacks.len() {
+                            expected_delta_targets.push(self.get_compressed_state_at(
                                 cid,
-                                contract_account.height,
-                                full,
-                            )?;
-                        for (i, rollback_result) in rollback_results.into_iter().enumerate() {
-                            if rollback_result
-                                != self.get_compressed_state_at(
-                                    cid,
-                                    contract_account.height - 1 - i as u64,
-                                )?
-                            {
-                                return Err(BlockchainError::DeltasInvalid);
-                            }
+                                contract_account.height - 1 - i as u64,
+                            )?);
                         }
+                        zk::KvStoreStateManager::<CoreZkHasher>::reset_contract(
+                            &mut chain.database,
+                            cid,
+                            contract_account.height,
+                            full,
+                            &expected_delta_targets,
+                        )?;
                     }
                     zk::ZkStatePatch::Delta(delta) => {
                         zk::KvStoreStateManager::<CoreZkHasher>::update_contract(

@@ -341,6 +341,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         id: ContractId,
         height: u64,
         state: &ZkState,
+        expected_delta_targets: &[ZkCompressedState],
     ) -> Result<(ZkCompressedState, Vec<ZkCompressedState>), StateManagerError> {
         let mut fork = db.mirror();
         let contract_type = Self::type_of(&fork, id)?;
@@ -366,28 +367,37 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             WriteOp::Put(keys::local_height(&id), height.into()),
         ])?;
 
-        let mut root = Self::root(&fork, id)?;
+        let root = Self::root(&fork, id)?;
 
         let mut rollback_results = Vec::new();
         let mut rollback_ops = Vec::new();
         let mut rollback_fork = fork.mirror();
         let mut rollback_root = root.clone();
 
-        for (i, rollback) in state.rollbacks.iter().enumerate() {
+        for (i, (rollback, expected)) in state
+            .rollbacks
+            .iter()
+            .zip(expected_delta_targets.iter())
+            .enumerate()
+        {
             for (k, v) in &rollback.0 {
                 rollback_root.state_hash = Self::set_data(
                     &mut rollback_fork,
                     id,
                     k.clone(),
                     v.unwrap_or_default(),
-                    &mut root.state_size,
+                    &mut rollback_root.state_size,
                 )?;
             }
-            rollback_ops.push(WriteOp::Put(
-                keys::local_rollback_to_height(&id, height - 1 - i as u64),
-                rollback.into(),
-            ));
-            rollback_results.push(rollback_root);
+            if rollback_root == *expected {
+                rollback_ops.push(WriteOp::Put(
+                    keys::local_rollback_to_height(&id, height - 1 - i as u64),
+                    rollback.into(),
+                ));
+                rollback_results.push(rollback_root);
+            } else {
+                break;
+            }
         }
         fork.update(&rollback_ops)?;
 
