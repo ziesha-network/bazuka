@@ -27,6 +27,12 @@ pub enum KvStoreError {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, std::hash::Hash)]
 pub struct StringKey(pub String);
 
+impl std::fmt::Display for StringKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl PartialOrd for StringKey {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
@@ -47,6 +53,12 @@ impl StringKey {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Blob(Vec<u8>);
+
+impl std::fmt::Display for Blob {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", hex::encode(&self.0))
+    }
+}
 
 macro_rules! gen_try_into {
     ( $( $x:ty ),* ) => {

@@ -157,6 +157,9 @@ pub struct KvStoreChain<K: KvStore> {
 }
 
 impl<K: KvStore> KvStoreChain<K> {
+    pub fn db(&self) -> &K {
+        &self.database
+    }
     pub fn new(database: K, config: BlockchainConfig) -> Result<KvStoreChain<K>, BlockchainError> {
         let mut chain = KvStoreChain::<K> {
             database,
@@ -173,7 +176,7 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(chain)
     }
 
-    fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
+    pub fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
         KvStoreChain {
             database: self.database.mirror(),
             config: self.config.clone(),

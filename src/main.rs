@@ -1,9 +1,9 @@
 #[cfg(feature = "node")]
 use {
-    bazuka::blockchain::KvStoreChain,
+    bazuka::blockchain::{Blockchain, KvStoreChain},
     bazuka::client::{messages::SocialProfiles, Limit, NodeRequest},
     bazuka::common::*,
-    bazuka::db::LevelDbKvStore,
+    bazuka::db::{KvStore, LevelDbKvStore, ReadOnlyLevelDbKvStore},
     bazuka::node::{node_create, Firewall},
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
@@ -124,6 +124,17 @@ enum NodeCliOptions {
 }
 
 #[derive(StructOpt)]
+#[cfg(feature = "node")]
+enum ChainCliOptions {
+    /// Rollback the blockchain
+    Rollback {},
+    /// Query the underlying database
+    DbQuery { prefix: String },
+    /// Check health of the blockchain
+    HealthCheck {},
+}
+
+#[derive(StructOpt)]
 #[cfg(feature = "client")]
 #[structopt(name = "Bazuka!", about = "Node software for Ziesha Network")]
 enum CliOptions {
@@ -152,6 +163,9 @@ enum CliOptions {
 
     /// Wallet subcommand
     Wallet(WalletOptions),
+
+    /// Chain subcommand
+    Chain(ChainCliOptions),
 }
 
 #[cfg(feature = "node")]
@@ -334,6 +348,44 @@ async fn main() -> Result<(), NodeError> {
     let mpn_contract_id = config::blockchain::get_blockchain_config().mpn_contract_id;
 
     match opts {
+        #[cfg(feature = "node")]
+        CliOptions::Chain(chain_opts) => {
+            let conf = conf.expect("Bazuka is not initialized!");
+            match chain_opts {
+                ChainCliOptions::Rollback {} => {
+                    let mut chain = KvStoreChain::new(
+                        LevelDbKvStore::new(&conf.db, 64).unwrap(),
+                        config::blockchain::get_blockchain_config(),
+                    )
+                    .unwrap();
+                    chain.rollback().unwrap();
+                }
+                ChainCliOptions::DbQuery { prefix } => {
+                    let rdb = ReadOnlyLevelDbKvStore::read_only(&conf.db, 64).unwrap();
+                    let db = rdb.snapshot();
+                    for (k, v) in db.pairs(prefix.into()).unwrap() {
+                        println!("{} -> {}", k, v);
+                    }
+                }
+                ChainCliOptions::HealthCheck {} => {
+                    let rdb = ReadOnlyLevelDbKvStore::read_only(&conf.db, 64).unwrap();
+                    let db = rdb.snapshot();
+                    let chain =
+                        KvStoreChain::new(db, config::blockchain::get_blockchain_config()).unwrap();
+                    let mut fork = chain.fork_on_ram();
+                    while fork.get_height().unwrap() != 0 {
+                        fork.rollback().unwrap();
+                    }
+                    if !fork.db().pairs("".into()).unwrap().is_empty() {
+                        println!(
+                            "{} {}",
+                            "Error:".bright_red(),
+                            "Rollback data are corrupted!"
+                        );
+                    }
+                }
+            }
+        }
         #[cfg(feature = "node")]
         CliOptions::Node(node_opts) => match node_opts {
             NodeCliOptions::Start {
