@@ -14,7 +14,7 @@ impl From<BellmanFr> for ZkScalar {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Fp([u64; 6]);
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -28,7 +28,7 @@ pub struct Groth16VerifyingKey {
     ic: Vec<(Fp, Fp, bool)>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Groth16Proof {
     a: (Fp, Fp, bool),
     b: ((Fp, Fp), (Fp, Fp), bool),
