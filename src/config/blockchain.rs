@@ -15,7 +15,7 @@ use crate::wallet::TxBuilder;
 const MPN_LOG4_ACCOUNT_CAPACITY: u8 = 15;
 const MPN_LOG4_PAYMENT_CAPACITY: u8 = 3;
 
-const TESTNET_HEIGHT_LIMIT: u64 = 5000;
+const TESTNET_HEIGHT_LIMIT: u64 = 10000;
 
 lazy_static! {
     pub static ref MPN_UPDATE_VK: zk::groth16::Groth16VerifyingKey =
