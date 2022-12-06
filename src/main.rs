@@ -429,6 +429,13 @@ async fn main() -> Result<(), NodeError> {
                         "Currency in Circulation: {}",
                         chain.currency_in_circulation().unwrap()
                     );
+                    let mut sum_mpn: Money = 0.into();
+                    for mpn_acc in chain.get_mpn_accounts(0, 10000).unwrap() {
+                        sum_mpn += mpn_acc.1.balance;
+                    }
+                    println!("MPN accounts balance: {}", sum_mpn);
+                    let mpn_acc = chain.get_contract_account(mpn_contract_id).unwrap();
+                    println!("MPN contract balance: {}", mpn_acc.balance);
                 }
             }
         }
