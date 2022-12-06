@@ -2,10 +2,10 @@ mod error;
 pub use error::*;
 
 use crate::core::{
-    hash::Hash, Account, Address, Block, ContractAccount, ContractDeposit, ContractId,
-    ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnDeposit, MpnWithdraw, ProofOfWork,
-    RegularSendEntry, Signature, Transaction, TransactionAndDelta, TransactionData,
-    ZkHasher as CoreZkHasher,
+    hash::Hash, Account, Address, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
+    ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnDeposit, MpnSourcedTx,
+    MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Transaction, TransactionAndDelta,
+    TransactionData, ZkHasher as CoreZkHasher,
 };
 use crate::crypto::jubjub;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
@@ -77,21 +77,13 @@ pub enum TxSideEffect {
 pub trait Blockchain {
     fn config(&self) -> &BlockchainConfig;
 
-    fn cleanup_mempool(
+    fn cleanup_chain_mempool(
         &self,
-        mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
+        mempool: &mut HashMap<ChainSourcedTx, TransactionStats>,
     ) -> Result<(), BlockchainError>;
-    fn cleanup_mpn_deposit_mempool(
+    fn cleanup_mpn_mempool(
         &self,
-        mempool: &mut HashMap<MpnDeposit, TransactionStats>,
-    ) -> Result<(), BlockchainError>;
-    fn cleanup_mpn_withdraw_mempool(
-        &self,
-        mempool: &mut HashMap<MpnWithdraw, TransactionStats>,
-    ) -> Result<(), BlockchainError>;
-    fn cleanup_mpn_transaction_mempool(
-        &self,
-        mempool: &mut HashMap<zk::MpnTransaction, TransactionStats>,
+        mempool: &mut HashMap<MpnSourcedTx, TransactionStats>,
     ) -> Result<(), BlockchainError>;
 
     fn db_checksum(&self) -> Result<String, BlockchainError>;
@@ -125,7 +117,7 @@ pub trait Blockchain {
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &HashMap<TransactionAndDelta, TransactionStats>,
+        mempool: &[TransactionAndDelta],
         wallet: &TxBuilder,
         check: bool,
     ) -> Result<Option<BlockAndPatch>, BlockchainError>;
@@ -740,10 +732,10 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn select_transactions(
         &self,
-        txs: &HashMap<TransactionAndDelta, TransactionStats>,
+        txs: &[TransactionAndDelta],
         check: bool,
     ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
-        let mut sorted = txs.keys().cloned().collect::<Vec<_>>();
+        let mut sorted = txs.iter().cloned().collect::<Vec<_>>();
         sorted.sort_unstable_by_key(|tx| {
             let cost = tx.tx.size();
             let is_mpn = if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
@@ -1279,7 +1271,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn draft_block(
         &self,
         timestamp: u32,
-        mempool: &HashMap<TransactionAndDelta, TransactionStats>,
+        mempool: &[TransactionAndDelta],
         wallet: &TxBuilder,
         check: bool,
     ) -> Result<Option<BlockAndPatch>, BlockchainError> {
@@ -1449,25 +1441,38 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn cleanup_mempool(
+    fn cleanup_chain_mempool(
         &self,
-        mempool: &mut HashMap<TransactionAndDelta, TransactionStats>,
+        mempool: &mut HashMap<ChainSourcedTx, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            let mut txs: Vec<TransactionAndDelta> = mempool.clone().into_keys().collect();
+            let mut txs: Vec<ChainSourcedTx> = mempool.clone().into_keys().collect();
             txs.sort_unstable_by_key(|tx| {
-                let not_mpn =
+                let not_mpn = if let ChainSourcedTx::TransactionAndDelta(tx) = tx {
                     if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
                         *contract_id != self.config.mpn_contract_id
                     } else {
                         true
-                    };
-                (not_mpn, tx.tx.nonce)
+                    }
+                } else {
+                    true
+                };
+                (not_mpn, tx.nonce())
             });
             for tx in txs {
-                if let Err(e) = chain.apply_tx(&tx.tx, false) {
-                    log::info!("Rejecting transaction: {:?} {}", tx, e);
-                    mempool.remove(&tx);
+                match &tx {
+                    ChainSourcedTx::TransactionAndDelta(tx_delta) => {
+                        if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
+                            log::info!("Rejecting transaction: {:?} {}", tx, e);
+                            mempool.remove(&tx);
+                        }
+                    }
+                    ChainSourcedTx::MpnDeposit(mpn_deposit) => {
+                        if let Err(e) = chain.apply_mpn_deposit(&mpn_deposit) {
+                            log::info!("Rejecting transaction: {:?} {}", tx, e);
+                            mempool.remove(&tx);
+                        }
+                    }
                 }
             }
             Ok(())
@@ -1475,57 +1480,31 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn cleanup_mpn_deposit_mempool(
+    fn cleanup_mpn_mempool(
         &self,
-        mempool: &mut HashMap<MpnDeposit, TransactionStats>,
+        mempool: &mut HashMap<MpnSourcedTx, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            let mut txs: Vec<MpnDeposit> = mempool.clone().into_keys().collect();
-            txs.sort_unstable_by_key(|t| t.payment.nonce);
+            let mut txs: Vec<MpnSourcedTx> = mempool.clone().into_keys().collect();
+            txs.sort_unstable_by_key(|t| t.nonce());
             for tx in txs {
-                if chain.apply_mpn_deposit(&tx).is_err() {
-                    mempool.remove(&tx);
+                match &tx {
+                    MpnSourcedTx::MpnTransaction(mpn_tx) => {
+                        if chain.apply_zero_tx(&mpn_tx).is_err() {
+                            mempool.remove(&tx);
+                        }
+                    }
+                    MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
+                        if chain.apply_mpn_withdraw(&mpn_withdraw).is_err() {
+                            mempool.remove(&tx);
+                        }
+                    }
                 }
             }
             Ok(())
         })?;
         Ok(())
     }
-
-    fn cleanup_mpn_withdraw_mempool(
-        &self,
-        mempool: &mut HashMap<MpnWithdraw, TransactionStats>,
-    ) -> Result<(), BlockchainError> {
-        self.isolated(|chain| {
-            let mut txs: Vec<MpnWithdraw> = mempool.clone().into_keys().collect();
-            txs.sort_unstable_by_key(|t| t.zk_nonce);
-            for tx in txs {
-                if chain.apply_mpn_withdraw(&tx).is_err() {
-                    mempool.remove(&tx);
-                }
-            }
-            Ok(())
-        })?;
-        Ok(())
-    }
-
-    fn cleanup_mpn_transaction_mempool(
-        &self,
-        mempool: &mut HashMap<zk::MpnTransaction, TransactionStats>,
-    ) -> Result<(), BlockchainError> {
-        self.isolated(|chain| {
-            let mut txs: Vec<zk::MpnTransaction> = mempool.clone().into_keys().collect();
-            txs.sort_unstable_by_key(|t| t.nonce);
-            for tx in txs {
-                if chain.apply_zero_tx(&tx).is_err() {
-                    mempool.remove(&tx);
-                }
-            }
-            Ok(())
-        })?;
-        Ok(())
-    }
-
     fn read_state(
         &self,
         contract_id: ContractId,

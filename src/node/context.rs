@@ -4,7 +4,7 @@ use super::{
 };
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError};
 use crate::client::messages::SocialProfiles;
-use crate::core::Header;
+use crate::core::{ChainSourcedTx, Header, TransactionAndDelta};
 use crate::utils;
 use crate::wallet::TxBuilder;
 use std::collections::HashMap;
@@ -82,28 +82,20 @@ impl<B: Blockchain> NodeContext<B> {
             firewall.refresh(local_ts);
         }
 
-        self.blockchain.cleanup_mempool(&mut self.mempool.tx)?;
         self.blockchain
-            .cleanup_mpn_transaction_mempool(&mut self.mempool.zk)?;
+            .cleanup_chain_mempool(&mut self.mempool.chain_sourced)?;
         self.blockchain
-            .cleanup_mpn_deposit_mempool(&mut self.mempool.tx_zk)?;
-        self.blockchain
-            .cleanup_mpn_withdraw_mempool(&mut self.mempool.zk_tx)?;
+            .cleanup_mpn_mempool(&mut self.mempool.mpn_sourced)?;
 
         if let Some(max) = self.opts.tx_max_time_alive {
-            for (tx, stats) in self.mempool.tx.clone().into_iter() {
+            for (tx, stats) in self.mempool.chain_sourced.clone().into_iter() {
                 if local_ts - stats.first_seen > max {
-                    self.mempool.tx.remove(&tx);
+                    self.mempool.chain_sourced.remove(&tx);
                 }
             }
-            for (tx, stats) in self.mempool.tx_zk.clone().into_iter() {
+            for (tx, stats) in self.mempool.mpn_sourced.clone().into_iter() {
                 if local_ts - stats.first_seen > max {
-                    self.mempool.tx_zk.remove(&tx);
-                }
-            }
-            for (tx, stats) in self.mempool.zk.clone().into_iter() {
-                if local_ts - stats.first_seen > max {
-                    self.mempool.zk.remove(&tx);
+                    self.mempool.mpn_sourced.remove(&tx);
                 }
             }
         }
@@ -122,10 +114,19 @@ impl<B: Blockchain> NodeContext<B> {
         wallet: TxBuilder,
     ) -> Result<Option<BlockPuzzle>, BlockchainError> {
         let ts = self.network_timestamp();
-        match self
-            .blockchain
-            .draft_block(ts, &self.mempool.tx, &wallet, true)
-        {
+        let raw_txs: Vec<TransactionAndDelta> = self
+            .mempool
+            .chain_sourced
+            .keys()
+            .filter_map(|tx| {
+                if let ChainSourcedTx::TransactionAndDelta(tx) = tx {
+                    Some(tx.clone())
+                } else {
+                    None
+                }
+            })
+            .collect();
+        match self.blockchain.draft_block(ts, &raw_txs, &wallet, true) {
             Ok(draft) => {
                 if let Some(draft) = draft {
                     let puzzle = Puzzle {

@@ -1,8 +1,8 @@
 use crate::blockchain::ZkBlockchainPatch;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
-    Account, Address, Block, ContractId, Header, Money, MpnDeposit, MpnWithdraw,
-    TransactionAndDelta,
+    Account, Address, Block, ChainSourcedTx, ContractId, Header, Money, MpnDeposit, MpnSourcedTx,
+    MpnWithdraw, TransactionAndDelta,
 };
 use crate::zk;
 use std::collections::HashMap;
@@ -237,10 +237,8 @@ pub struct GetMempoolRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMempoolResponse {
-    pub tx: Vec<TransactionAndDelta>,
-    pub tx_zk: Vec<MpnDeposit>,
-    pub zk_tx: Vec<MpnWithdraw>,
-    pub zk: Vec<zk::MpnTransaction>,
+    pub chain_sourced: Vec<ChainSourcedTx>,
+    pub mpn_sourced: Vec<MpnSourcedTx>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

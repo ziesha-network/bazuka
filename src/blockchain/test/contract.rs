@@ -29,9 +29,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
         1,
     );
 
-    let draft = chain
-        .draft_block(1, &with_dummy_stats(&[tx.clone()]), &miner, true)?
-        .unwrap();
+    let draft = chain.draft_block(1, &[tx.clone()], &miner, true)?.unwrap();
     chain.apply_block(&draft.block, true)?;
 
     assert_eq!(chain.get_height()?, 2);
@@ -89,9 +87,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         1,
     );
 
-    let draft = chain
-        .draft_block(1, &with_dummy_stats(&[tx.clone()]), &miner, false)?
-        .unwrap();
+    let draft = chain.draft_block(1, &[tx.clone()], &miner, false)?.unwrap();
 
     chain.apply_block(&draft.block, true)?;
 

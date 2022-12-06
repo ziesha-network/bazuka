@@ -78,46 +78,6 @@ pub struct MpnWithdraw<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub payment: ContractWithdraw<H, S>,
 }
 
-impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> PartialEq for MpnDeposit<H, S, ZS> {
-    fn eq(&self, other: &Self) -> bool {
-        bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
-    }
-}
-
-impl<H: Hash + PartialEq, S: SignatureScheme + PartialEq, ZS: ZkSignatureScheme + PartialEq> Eq
-    for MpnDeposit<H, S, ZS>
-{
-}
-impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> std::hash::Hash for MpnDeposit<H, S, ZS> {
-    fn hash<Hasher>(&self, state: &mut Hasher)
-    where
-        Hasher: std::hash::Hasher,
-    {
-        state.write(&bincode::serialize(self).unwrap());
-        state.finish();
-    }
-}
-
-impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> PartialEq for MpnWithdraw<H, S, ZS> {
-    fn eq(&self, other: &Self) -> bool {
-        bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
-    }
-}
-
-impl<H: Hash + PartialEq, S: SignatureScheme + PartialEq, ZS: ZkSignatureScheme + PartialEq> Eq
-    for MpnWithdraw<H, S, ZS>
-{
-}
-impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> std::hash::Hash for MpnWithdraw<H, S, ZS> {
-    fn hash<Hasher>(&self, state: &mut Hasher)
-    where
-        Hasher: std::hash::Hasher,
-    {
-        state.write(&bincode::serialize(self).unwrap());
-        state.finish();
-    }
-}
-
 impl<H: Hash, S: SignatureScheme> ContractDeposit<H, S> {
     pub fn verify_signature(&self) -> bool {
         let mut unsigned = self.clone();
@@ -211,14 +171,6 @@ pub struct TransactionAndDelta<H: Hash, S: SignatureScheme> {
     pub state_delta: Option<ZkDeltaPairs>,
 }
 
-impl<H: Hash, S: SignatureScheme> PartialEq<TransactionAndDelta<H, S>>
-    for TransactionAndDelta<H, S>
-{
-    fn eq(&self, other: &Self) -> bool {
-        bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
-    }
-}
-
 impl<H: Hash, S: SignatureScheme> Transaction<H, S> {
     pub fn size(&self) -> usize {
         bincode::serialize(self).unwrap().len()
@@ -239,16 +191,5 @@ impl<H: Hash, S: SignatureScheme> Transaction<H, S> {
                 }
             },
         }
-    }
-}
-
-impl<H: Hash, S: SignatureScheme + PartialEq> Eq for TransactionAndDelta<H, S> {}
-impl<H: Hash, S: SignatureScheme> std::hash::Hash for TransactionAndDelta<H, S> {
-    fn hash<Hasher>(&self, state: &mut Hasher)
-    where
-        Hasher: std::hash::Hasher,
-    {
-        state.write(&bincode::serialize(self).unwrap());
-        state.finish();
     }
 }

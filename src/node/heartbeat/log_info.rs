@@ -20,10 +20,8 @@ pub async fn log_info<B: Blockchain>(
         ),
     ]);
 
-    inf.push(("Tx Pool", ctx.mempool.tx.len().to_string()));
-    inf.push(("Deposit Pool", ctx.mempool.tx_zk.len().to_string()));
-    inf.push(("Withdraw Pool", ctx.mempool.zk_tx.len().to_string()));
-    inf.push(("Zk Pool", ctx.mempool.zk.len().to_string()));
+    inf.push(("Chain Pool", ctx.mempool.chain_sourced.len().to_string()));
+    inf.push(("MPN Pool", ctx.mempool.mpn_sourced.len().to_string()));
 
     let wallet_addr = ctx.wallet.get_address();
     let acc = ctx.blockchain.get_account(wallet_addr)?;

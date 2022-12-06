@@ -1,6 +1,7 @@
 use super::messages::{PostMpnDepositRequest, PostMpnDepositResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::{Blockchain, TransactionStats};
+use crate::core::ChainSourcedTx;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -10,9 +11,9 @@ pub async fn post_mpn_deposit<B: Blockchain>(
 ) -> Result<PostMpnDepositResponse, NodeError> {
     let mut context = context.write().await;
     let now = context.local_timestamp();
-    context
-        .mempool
-        .tx_zk
-        .insert(req.tx, TransactionStats { first_seen: now });
+    context.mempool.chain_sourced.insert(
+        ChainSourcedTx::MpnDeposit(req.tx),
+        TransactionStats { first_seen: now },
+    );
     Ok(PostMpnDepositResponse {})
 }

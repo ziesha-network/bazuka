@@ -1,6 +1,7 @@
 use super::messages::{TransactRequest, TransactResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::{Blockchain, TransactionStats};
+use crate::core::ChainSourcedTx;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -10,9 +11,9 @@ pub async fn transact<B: Blockchain>(
 ) -> Result<TransactResponse, NodeError> {
     let mut context = context.write().await;
     let now = context.local_timestamp();
-    context
-        .mempool
-        .tx
-        .insert(req.tx_delta, TransactionStats { first_seen: now });
+    context.mempool.chain_sourced.insert(
+        ChainSourcedTx::TransactionAndDelta(req.tx_delta),
+        TransactionStats { first_seen: now },
+    );
     Ok(TransactResponse {})
 }

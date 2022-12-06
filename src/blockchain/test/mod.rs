@@ -14,12 +14,6 @@ fn easy_config() -> BlockchainConfig {
     conf
 }
 
-fn with_dummy_stats(txs: &[TransactionAndDelta]) -> HashMap<TransactionAndDelta, TransactionStats> {
-    txs.iter()
-        .map(|tx| (tx.clone(), TransactionStats { first_seen: 0 }))
-        .collect()
-}
-
 fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), BlockchainError> {
     while b.get_height()? > 0 {
         assert_eq!(circulated_money(b)?, Money(2000000000000000000));
@@ -52,10 +46,7 @@ fn test_get_header_and_get_block() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
-    let new_block = chain
-        .draft_block(60, &mut HashMap::new(), &miner, true)?
-        .unwrap()
-        .block;
+    let new_block = chain.draft_block(60, &[], &miner, true)?.unwrap().block;
     chain.extend(1, &[new_block.clone()])?;
 
     assert_eq!(chain.get_block(1)?, new_block);
@@ -100,16 +91,11 @@ fn test_correct_target_calculation() -> Result<(), BlockchainError> {
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     chain.apply_block(
-        &chain
-            .draft_block(60, &mut HashMap::new(), &miner, true)?
-            .unwrap()
-            .block,
+        &chain.draft_block(60, &[], &miner, true)?.unwrap().block,
         true,
     )?;
 
-    let mut wrong_pow = chain
-        .draft_block(120, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    let mut wrong_pow = chain.draft_block(120, &[], &miner, true)?.unwrap();
     wrong_pow.block.header.proof_of_work.target = Difficulty(0x01ffffff);
     assert!(matches!(
         chain.apply_block(&wrong_pow.block, true),
@@ -129,27 +115,21 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     conf.difficulty_calc_interval = 3;
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf.clone())?;
 
-    let mut draft = chain
-        .draft_block(40, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    let mut draft = chain.draft_block(40, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
         Difficulty(0x00ffffff)
     );
     chain.extend(1, &[draft.block])?;
-    draft = chain
-        .draft_block(80, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    draft = chain.draft_block(80, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
         Difficulty(0x00ffffff)
     );
     chain.extend(2, &[draft.block])?;
-    draft = chain
-        .draft_block(120, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    draft = chain.draft_block(120, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
@@ -157,27 +137,21 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     );
     chain.extend(3, &[draft.block])?;
 
-    draft = chain
-        .draft_block(210, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    draft = chain.draft_block(210, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
         Difficulty(0x00aaaaaa)
     );
     chain.extend(4, &[draft.block])?;
-    draft = chain
-        .draft_block(300, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    draft = chain.draft_block(300, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
         Difficulty(0x00aaaaaa)
     );
     chain.extend(5, &[draft.block])?;
-    draft = chain
-        .draft_block(390, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    draft = chain.draft_block(390, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
@@ -185,27 +159,21 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     );
     chain.extend(6, &[draft.block])?;
 
-    draft = chain
-        .draft_block(391, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    draft = chain.draft_block(391, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
         Difficulty(0x00ffffff)
     );
     chain.extend(7, &[draft.block])?;
-    draft = chain
-        .draft_block(392, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    draft = chain.draft_block(392, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
         Difficulty(0x00ffffff)
     );
     chain.extend(8, &[draft.block])?;
-    draft = chain
-        .draft_block(393, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    draft = chain.draft_block(393, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
@@ -213,27 +181,21 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     );
     chain.extend(9, &[draft.block])?;
 
-    draft = chain
-        .draft_block(1000, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    draft = chain.draft_block(1000, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
         Difficulty(0x007fffff)
     );
     chain.extend(10, &[draft.block])?;
-    draft = chain
-        .draft_block(2000, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    draft = chain.draft_block(2000, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
         Difficulty(0x007fffff)
     );
     chain.extend(11, &[draft.block])?;
-    draft = chain
-        .draft_block(3000, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    draft = chain.draft_block(3000, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
@@ -270,9 +232,7 @@ fn test_pow_key_correctness() -> Result<(), BlockchainError> {
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     for i in 0..25 {
-        let mut draft = chain
-            .draft_block(i * 60, &mut HashMap::new(), &miner, true)?
-            .unwrap();
+        let mut draft = chain.draft_block(i * 60, &[], &miner, true)?.unwrap();
         mine_block(&chain, &mut draft)?;
         chain.apply_block(&draft.block, true)?;
         chain.update_states(&draft.patch)?;
@@ -306,16 +266,13 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
 
     let mut fork1 = chain.fork_on_ram();
     fork1.apply_block(
-        &fork1
-            .draft_block(10, &mut HashMap::new(), &miner, true)?
-            .unwrap()
-            .block,
+        &fork1.draft_block(10, &[], &miner, true)?.unwrap().block,
         true,
     )?;
     assert!(matches!(
         fork1.draft_block(
             5, // 5 < 10
-            &mut HashMap::new(),
+            &[],
             &miner,
             true,
         ),
@@ -325,7 +282,7 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
         &fork1
             .draft_block(
                 10, // 10, again, should be fine
-                &mut HashMap::new(),
+                &[],
                 &miner,
                 true,
             )?
@@ -336,10 +293,7 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
 
     for i in 11..30 {
         fork1.apply_block(
-            &fork1
-                .draft_block(i, &mut HashMap::new(), &miner, true)?
-                .unwrap()
-                .block,
+            &fork1.draft_block(i, &[], &miner, true)?.unwrap().block,
             true,
         )?;
     }
@@ -350,17 +304,14 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
     assert!(matches!(
         fork1.draft_block(
             24, // 24 < 25
-            &mut HashMap::new(),
+            &[],
             &miner,
             true,
         ),
         Err(BlockchainError::InvalidTimestamp)
     ));
     fork1.apply_block(
-        &fork1
-            .draft_block(25, &mut HashMap::new(), &miner, true)?
-            .unwrap()
-            .block,
+        &fork1.draft_block(25, &[], &miner, true)?.unwrap().block,
         true,
     )?;
 
@@ -376,13 +327,9 @@ fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let mut fork1 = chain.fork_on_ram();
-    let blk1 = fork1
-        .draft_block(0, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    let blk1 = fork1.draft_block(0, &[], &miner, true)?.unwrap();
     fork1.extend(1, &[blk1.block.clone()])?;
-    let blk2 = fork1
-        .draft_block(1, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    let blk2 = fork1.draft_block(1, &[], &miner, true)?.unwrap();
     fork1.extend(2, &[blk2.block.clone()])?;
     assert_eq!(fork1.get_height()?, 3);
 
@@ -421,13 +368,9 @@ fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
     let mut fork1 = chain.fork_on_ram();
-    let blk1 = fork1
-        .draft_block(0, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    let blk1 = fork1.draft_block(0, &[], &miner, true)?.unwrap();
     fork1.extend(1, &[blk1.block.clone()])?;
-    let blk2 = fork1
-        .draft_block(1, &mut HashMap::new(), &miner, true)?
-        .unwrap();
+    let blk2 = fork1.draft_block(1, &[], &miner, true)?.unwrap();
     fork1.extend(2, &[blk2.block.clone()])?;
     assert_eq!(fork1.get_height()?, 3);
 
@@ -469,10 +412,10 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
     let blk1 = chain
         .draft_block(
             1,
-            &with_dummy_stats(&[
+            &[
                 alice.create_transaction(miner.get_address(), Money(100), Money(0), 1),
                 alice.create_transaction(miner.get_address(), Money(200), Money(0), 2),
-            ]),
+            ],
             &miner,
             true,
         )?
@@ -481,10 +424,10 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
     let blk2 = chain
         .draft_block(
             1,
-            &with_dummy_stats(&[
+            &[
                 alice.create_transaction(miner.get_address(), Money(200), Money(0), 1),
                 alice.create_transaction(miner.get_address(), Money(100), Money(0), 2),
-            ]),
+            ],
             &miner,
             true,
         )?
@@ -535,7 +478,7 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     // Alice -> 2700 -> Bob (Fee 300)
     chain.apply_block(
         &chain
-            .draft_block(1, &with_dummy_stats(&[tx.clone()]), &miner, true)?
+            .draft_block(1, &[tx.clone()], &miner, true)?
             .unwrap()
             .block,
         true,
@@ -546,7 +489,7 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     // Alice -> 2700 -> Bob (Fee 300) (NOT APPLIED: DUPLICATED TRANSACTION!)
     chain.apply_block(
         &chain
-            .draft_block(1, &with_dummy_stats(&[tx.clone()]), &miner, true)?
+            .draft_block(1, &[tx.clone()], &miner, true)?
             .unwrap()
             .block,
         true,
@@ -558,10 +501,7 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
 
     // Alice -> 2700 -> Bob (Fee 300)
     chain.apply_block(
-        &chain
-            .draft_block(1, &with_dummy_stats(&[tx2]), &miner, true)?
-            .unwrap()
-            .block,
+        &chain.draft_block(1, &[tx2], &miner, true)?.unwrap().block,
         true,
     )?;
     assert_eq!(chain.get_account(alice.get_address())?.balance, Money(4000));
@@ -600,10 +540,7 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
 
     // Ensure tx is not included in block and bob has not received funds
     chain.apply_block(
-        &chain
-            .draft_block(1, &with_dummy_stats(&[tx]), &miner, true)?
-            .unwrap()
-            .block,
+        &chain.draft_block(1, &[tx], &miner, true)?.unwrap().block,
         true,
     )?;
     assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
@@ -640,7 +577,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     };
 
     // Ensure apply_tx will raise
-    match chain.draft_block(1, &with_dummy_stats(&[unsigned_tx.clone()]), &miner, false) {
+    match chain.draft_block(1, &[unsigned_tx.clone()], &miner, false) {
         Ok(_) => assert!(false, "Unsigned transaction shall not be applied"),
         Err(e) => assert!(matches!(e, BlockchainError::SignatureError)),
     }
@@ -648,7 +585,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     // Ensure tx is not included in block and bob has not received funds
     chain.apply_block(
         &chain
-            .draft_block(1, &with_dummy_stats(&[unsigned_tx]), &miner, true)?
+            .draft_block(1, &[unsigned_tx], &miner, true)?
             .unwrap()
             .block,
         true,
@@ -693,17 +630,14 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     };
 
     // Ensure apply_tx will raise
-    match chain.draft_block(1, &with_dummy_stats(&[tx.clone()]), &miner, false) {
+    match chain.draft_block(1, &[tx.clone()], &miner, false) {
         Ok(_) => assert!(false, "Invalid signed transaction shall not be applied"),
         Err(e) => assert!(matches!(e, BlockchainError::SignatureError)),
     }
 
     // Ensure tx is not included in block and bob has not received funds
     chain.apply_block(
-        &chain
-            .draft_block(1, &with_dummy_stats(&[tx]), &miner, true)?
-            .unwrap()
-            .block,
+        &chain.draft_block(1, &[tx], &miner, true)?.unwrap().block,
         true,
     )?;
     assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
@@ -733,12 +667,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 1,
-                &with_dummy_stats(&[alice.create_transaction(
-                    bob.get_address(),
-                    Money(2700),
-                    Money(300),
-                    1,
-                )]),
+                &[alice.create_transaction(bob.get_address(), Money(2700), Money(300), 1)],
                 &miner,
                 true,
             )?
@@ -754,12 +683,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 1,
-                &with_dummy_stats(&[bob.create_transaction(
-                    alice.get_address(),
-                    Money(2600),
-                    Money(200),
-                    1,
-                )]),
+                &[bob.create_transaction(alice.get_address(), Money(2600), Money(200), 1)],
                 &miner,
                 true,
             )?
@@ -775,12 +699,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 2,
-                &with_dummy_stats(&[bob.create_transaction(
-                    alice.get_address(),
-                    Money(2600),
-                    Money(100),
-                    1,
-                )]),
+                &[bob.create_transaction(alice.get_address(), Money(2600), Money(100), 1)],
                 &miner,
                 true,
             )?
@@ -796,12 +715,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 3,
-                &with_dummy_stats(&[alice.create_transaction(
-                    alice.get_address(),
-                    Money(100),
-                    Money(200),
-                    2,
-                )]),
+                &[alice.create_transaction(alice.get_address(), Money(100), Money(200), 2)],
                 &miner,
                 true,
             )?
@@ -817,12 +731,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 4,
-                &with_dummy_stats(&[alice.create_transaction(
-                    alice.get_address(),
-                    Money(20000),
-                    Money(9400),
-                    3,
-                )]),
+                &[alice.create_transaction(alice.get_address(), Money(20000), Money(9400), 3)],
                 &miner,
                 true,
             )?
@@ -838,12 +747,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 5,
-                &with_dummy_stats(&[alice.create_transaction(
-                    alice.get_address(),
-                    Money(1000),
-                    Money(8400),
-                    3,
-                )]),
+                &[alice.create_transaction(alice.get_address(), Money(1000), Money(8400), 3)],
                 &miner,
                 true,
             )?
@@ -907,7 +811,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let t1 = wallet1.create_transaction(wallet2.get_address(), Money(100), Money(0), 1);
     let mempool = vec![t1];
     let mut draft = chain
-        .draft_block(1650000000, &with_dummy_stats(&mempool), &wallet_miner, true)?
+        .draft_block(1650000000, &mempool, &wallet_miner, true)?
         .unwrap();
 
     assert!(matches!(
@@ -997,7 +901,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     };
     let mempool = vec![t_valid, t_invalid_unsigned, t_invalid_from_treasury];
     let mut draft = chain
-        .draft_block(1650000000, &with_dummy_stats(&mempool), &wallet_miner, true)?
+        .draft_block(1650000000, &mempool, &wallet_miner, true)?
         .unwrap();
 
     mine_block(&chain, &mut draft)?;
@@ -1037,7 +941,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
 
     let mempool = vec![t1, t2];
     let mut draft = chain
-        .draft_block(1650000000, &with_dummy_stats(&mempool), &wallet_miner, true)?
+        .draft_block(1650000000, &mempool, &wallet_miner, true)?
         .unwrap();
 
     mine_block(&chain, &mut draft)?;
@@ -1081,7 +985,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let t1 = wallet1.create_transaction(wallet2.get_address(), Money(1_000_000), Money(0), 1);
     let mut mempool = vec![t1];
     let mut draft = chain
-        .draft_block(1650000000, &with_dummy_stats(&mempool), &wallet_miner, true)?
+        .draft_block(1650000000, &mempool, &wallet_miner, true)?
         .unwrap();
 
     mine_block(&chain, &mut draft)?;
@@ -1092,7 +996,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     mempool.push(t2);
 
     let mut draft = chain
-        .draft_block(1650000001, &with_dummy_stats(&mempool), &wallet_miner, true)?
+        .draft_block(1650000001, &mempool, &wallet_miner, true)?
         .unwrap();
 
     mine_block(&chain, &mut draft)?;
