@@ -1,7 +1,7 @@
 mod tx_builder;
 pub use tx_builder::TxBuilder;
 
-use crate::core::{MpnDeposit, MpnWithdraw, TransactionAndDelta};
+use crate::core::{ChainSourcedTx, MpnDeposit, MpnSourcedTx, MpnWithdraw, TransactionAndDelta};
 use crate::zk::MpnTransaction;
 use bip39::Mnemonic;
 use rand_core_mnemonic::{CryptoRng, RngCore};
@@ -21,12 +21,18 @@ pub enum WalletError {
     BlockchainError(#[from] io::Error),
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Wallet {
+pub struct LegacyWallet {
     mnemonic: Mnemonic,
     tx_nonce: Option<u32>,
     mpn_nonces: HashMap<u32, Option<u64>>, // Nonce for each MPN account
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Wallet {
+    mnemonic: Mnemonic,
+    chain_sourced_txs: Vec<ChainSourcedTx>,
+    mpn_sourced_txs: HashMap<u32, Vec<MpnSourcedTx>>,
 }
 
 impl Wallet {
@@ -35,41 +41,55 @@ impl Wallet {
             mnemonic: mnemonic.unwrap_or_else(|| {
                 Mnemonic::generate_in_with(rng, bip39::Language::English, 12).unwrap()
             }),
-            tx_nonce: None,
-            mpn_nonces: HashMap::new(),
+            chain_sourced_txs: Vec::new(),
+            mpn_sourced_txs: HashMap::new(),
         }
     }
     pub fn mpn_indices(&self) -> Vec<u32> {
-        self.mpn_nonces.keys().cloned().collect()
+        self.mpn_sourced_txs.keys().cloned().collect()
     }
     pub fn add_mpn_index(&mut self, index: u32) {
-        self.mpn_nonces.insert(index, None);
+        self.mpn_sourced_txs.insert(index, Vec::new());
     }
     pub fn reset(&mut self) {
-        self.tx_nonce = None;
-        self.mpn_nonces.iter_mut().for_each(|(_, v)| {
-            *v = None;
+        self.chain_sourced_txs = Vec::new();
+        self.mpn_sourced_txs.iter_mut().for_each(|(_, v)| {
+            *v = Vec::new();
         });
     }
     pub fn add_rsend(&mut self, tx: TransactionAndDelta) {
-        self.tx_nonce = Some(tx.tx.nonce);
+        self.chain_sourced_txs
+            .push(ChainSourcedTx::TransactionAndDelta(tx));
     }
     pub fn add_deposit(&mut self, tx: MpnDeposit) {
-        self.tx_nonce = Some(tx.payment.nonce);
+        self.chain_sourced_txs.push(ChainSourcedTx::MpnDeposit(tx));
     }
     pub fn add_withdraw(&mut self, tx: MpnWithdraw) {
-        self.mpn_nonces
-            .insert(tx.zk_address_index, Some(tx.zk_nonce));
+        self.mpn_sourced_txs
+            .entry(tx.zk_address_index)
+            .or_default()
+            .push(MpnSourcedTx::MpnWithdraw(tx));
     }
     pub fn add_zsend(&mut self, tx: MpnTransaction) {
-        self.mpn_nonces.insert(tx.src_index, Some(tx.nonce));
+        self.mpn_sourced_txs
+            .entry(tx.src_index)
+            .or_default()
+            .push(MpnSourcedTx::MpnTransaction(tx));
     }
     pub fn new_r_nonce(&self) -> Option<u32> {
-        self.tx_nonce.map(|n| n + 1)
+        self.chain_sourced_txs
+            .iter()
+            .map(|tx| tx.nonce())
+            .max()
+            .map(|n| n + 1)
     }
     pub fn new_z_nonce(&self, index: u32) -> Option<u64> {
-        if let Some(Some(n)) = self.mpn_nonces.get(&index).map(|n| n.map(|n| n + 1)) {
-            Some(n)
+        if let Some(Some(n)) = self
+            .mpn_sourced_txs
+            .get(&index)
+            .map(|it| it.iter().map(|tx| tx.nonce()).max())
+        {
+            Some(n + 1)
         } else {
             None
         }
@@ -81,10 +101,22 @@ impl Wallet {
         &self.mnemonic
     }
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Option<Self>, WalletError> {
-        Ok(if let Ok(mut f) = File::open(path) {
+        Ok(if let Ok(mut f) = File::open(&path) {
             let mut bytes = Vec::new();
             f.read_to_end(&mut bytes)?;
-            Some(bincode::deserialize(&bytes)?)
+            let legacy: Option<LegacyWallet> = bincode::deserialize(&bytes).ok();
+            if let Some(legacy) = legacy {
+                println!("Migrating wallet...");
+                let wallet = Self {
+                    mnemonic: legacy.mnemonic,
+                    chain_sourced_txs: Vec::new(),
+                    mpn_sourced_txs: HashMap::new(),
+                };
+                wallet.save(&path)?;
+                Some(wallet)
+            } else {
+                Some(bincode::deserialize(&bytes)?)
+            }
         } else {
             None
         })
