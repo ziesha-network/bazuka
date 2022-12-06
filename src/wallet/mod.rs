@@ -31,8 +31,8 @@ pub struct LegacyWallet {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Wallet {
     mnemonic: Mnemonic,
-    chain_sourced_txs: Vec<ChainSourcedTx>,
-    mpn_sourced_txs: HashMap<u32, Vec<MpnSourcedTx>>,
+    pub chain_sourced_txs: Vec<ChainSourcedTx>,
+    pub mpn_sourced_txs: HashMap<u32, Vec<MpnSourcedTx>>,
 }
 
 impl Wallet {

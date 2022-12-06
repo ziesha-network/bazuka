@@ -16,8 +16,7 @@ use {
 use {
     bazuka::client::{BazukaClient, NodeError, PeerAddress},
     bazuka::config,
-    bazuka::core::Money,
-    bazuka::core::MpnAddress,
+    bazuka::core::{ChainSourcedTx, Money, MpnAddress, MpnSourcedTx},
     bazuka::wallet::{TxBuilder, Wallet},
     colored::Colorize,
     rand::Rng,
@@ -166,6 +165,49 @@ enum CliOptions {
 
     /// Chain subcommand
     Chain(ChainCliOptions),
+}
+
+#[cfg(feature = "client")]
+#[allow(dead_code)]
+async fn resend_all_wallet_txs(conf: BazukaConfig, wallet: &Wallet) -> Result<(), NodeError> {
+    let tx_builder = TxBuilder::new(&wallet.seed());
+    let (req_loop, client) = BazukaClient::connect(
+        tx_builder.get_priv_key(),
+        conf.random_node(),
+        conf.network,
+        None,
+    );
+    try_join!(
+        async move {
+            for tx in wallet.chain_sourced_txs.iter() {
+                match tx {
+                    ChainSourcedTx::TransactionAndDelta(tx) => {
+                        client.transact(tx.clone()).await?;
+                    }
+                    ChainSourcedTx::MpnDeposit(tx) => {
+                        client.transact_contract_deposit(tx.clone()).await?;
+                    }
+                }
+            }
+            for acc in wallet.mpn_sourced_txs.values() {
+                for tx in acc.iter() {
+                    match tx {
+                        MpnSourcedTx::MpnTransaction(tx) => {
+                            client.zero_transact(tx.clone()).await?;
+                        }
+                        MpnSourcedTx::MpnWithdraw(tx) => {
+                            client.transact_contract_withdraw(tx.clone()).await?;
+                        }
+                    }
+                }
+            }
+            Ok::<(), NodeError>(())
+        },
+        req_loop
+    )
+    .unwrap();
+
+    Ok(())
 }
 
 #[cfg(feature = "node")]
@@ -663,7 +705,7 @@ async fn main() -> Result<(), NodeError> {
                                 curr_nonce
                                     .map(|n| if n > resp.account.nonce {
                                         format!(
-                                            "(Pending transactions: {})",
+                                            " (Pending transactions: {})",
                                             n - resp.account.nonce
                                         )
                                     } else {
