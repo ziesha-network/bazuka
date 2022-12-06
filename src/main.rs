@@ -425,6 +425,10 @@ async fn main() -> Result<(), NodeError> {
                             "Rollback data are corrupted!"
                         );
                     }
+                    println!(
+                        "Currency in Circulation: {}",
+                        chain.currency_in_circulation().unwrap()
+                    );
                 }
             }
         }

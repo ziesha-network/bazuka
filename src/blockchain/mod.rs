@@ -75,6 +75,8 @@ pub enum TxSideEffect {
 }
 
 pub trait Blockchain {
+    fn currency_in_circulation(&self) -> Result<Money, BlockchainError>;
+
     fn config(&self) -> &BlockchainConfig;
 
     fn cleanup_chain_mempool(
@@ -1567,6 +1569,19 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn config(&self) -> &BlockchainConfig {
         &self.config
+    }
+
+    fn currency_in_circulation(&self) -> Result<Money, BlockchainError> {
+        let mut money_sum = Money(0);
+        for (_, v) in self.database.pairs("ACC-".into())? {
+            let acc: Account = v.try_into().unwrap();
+            money_sum += acc.balance;
+        }
+        for (_, v) in self.database.pairs("CAC".into())? {
+            let acc: ContractAccount = v.try_into().unwrap();
+            money_sum += acc.balance;
+        }
+        Ok(money_sum)
     }
 }
 
