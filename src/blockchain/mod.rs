@@ -8,6 +8,7 @@ use crate::core::{
     TransactionData, ZkHasher as CoreZkHasher,
 };
 use crate::crypto::jubjub;
+use crate::crypto::ZkSignatureScheme;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
 use crate::utils;
 use crate::wallet::TxBuilder;
@@ -310,7 +311,24 @@ impl<K: KvStore> KvStoreChain<K> {
             if withdraw.zk_nonce != src.nonce {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
-            // TODO: Check signature!
+            let calldata = CoreZkHasher::hash(&[
+                zk::ZkScalar::from(withdraw.zk_address.decompress().0),
+                zk::ZkScalar::from(withdraw.zk_address.decompress().1),
+                zk::ZkScalar::from(withdraw.zk_nonce),
+                zk::ZkScalar::from(withdraw.zk_sig.r.0),
+                zk::ZkScalar::from(withdraw.zk_sig.r.1),
+                zk::ZkScalar::from(withdraw.zk_sig.s),
+            ]);
+            if withdraw.payment.calldata != calldata {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
+            let fingerprint: zk::ZkScalar =
+                crate::zk::hash_to_scalar(&bincode::serialize(&withdraw.payment).unwrap());
+            let msg =
+                CoreZkHasher::hash(&[fingerprint, zk::ZkScalar::from(withdraw.zk_nonce as u64)]);
+            if !crate::core::ZkSigner::verify(&withdraw.zk_address, msg, &withdraw.zk_sig) {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
             if src.balance < withdraw.payment.fee + withdraw.payment.amount {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
