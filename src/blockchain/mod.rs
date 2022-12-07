@@ -680,9 +680,8 @@ impl<K: KvStore> KvStoreChain<K> {
                             keys::contract_account(contract_id),
                             cont_account.into(),
                         )])?;
-
-                        acc_src.balance += executor_fee; // Pay executor fee
                     }
+                    acc_src.balance += executor_fee; // Pay executor fee
 
                     let cont_account = chain.get_contract_account(*contract_id)?;
 
