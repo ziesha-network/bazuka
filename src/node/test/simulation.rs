@@ -48,6 +48,7 @@ fn create_test_node(
         out_send,
         None,
         None,
+        None,
     );
     (
         node,

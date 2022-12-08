@@ -117,6 +117,8 @@ enum NodeCliOptions {
         client_only: bool,
         #[structopt(long)]
         discord_handle: Option<String>,
+        #[structopt(long)]
+        min_fee: Option<String>,
     },
     /// Get status of a node
     Status {},
@@ -216,6 +218,7 @@ async fn run_node(
     wallet: Wallet,
     social_profiles: SocialProfiles,
     client_only: bool,
+    min_fee: Money,
 ) -> Result<(), NodeError> {
     let address = if client_only {
         None
@@ -282,7 +285,7 @@ async fn run_node(
         out_send,
         Some(firewall),
         Some(bazuka_config.miner_token.clone()),
-        None, // todo: set
+        Some(min_fee),
     );
 
     // Async loop that is responsible for getting incoming HTTP requests through a
@@ -369,6 +372,8 @@ fn generate_miner_token() -> String {
 #[cfg(feature = "client")]
 #[tokio::main]
 async fn main() -> Result<(), NodeError> {
+    use std::str::FromStr;
+
     env_logger::init();
 
     let opts = CliOptions::from_args();
@@ -445,9 +450,11 @@ async fn main() -> Result<(), NodeError> {
             NodeCliOptions::Start {
                 discord_handle,
                 client_only,
+                min_fee,
             } => {
                 let conf = conf.expect("Bazuka is not initialized!");
                 let wallet = wallet.expect("Wallet is not initialized!");
+                let min_fee: Money = FromStr::from_str(&min_fee.unwrap_or("0.00001".to_string())).unwrap();
                 run_node(
                     conf.clone(),
                     wallet.clone(),
@@ -455,6 +462,7 @@ async fn main() -> Result<(), NodeError> {
                         discord: discord_handle,
                     },
                     client_only,
+                    min_fee
                 )
                 .await?;
             }

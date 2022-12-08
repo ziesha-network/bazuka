@@ -214,7 +214,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
     Ok(())
 }
 
-fn sample_contract_call() -> TransactionAndDelta {
+pub fn sample_contract_call() -> TransactionAndDelta {
     let updater = TxBuilder::new(&Vec::from("ABC"));
 
     let cid =
