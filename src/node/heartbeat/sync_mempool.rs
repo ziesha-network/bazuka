@@ -31,14 +31,30 @@ pub async fn sync_mempool<B: Blockchain>(
             .into_iter()
             .map(|(_, r)| (r.chain_sourced, r.mpn_sourced))
             .collect::<Vec<_>>();
+        let mut fee_skipped_txs = 0;
         for (chained_source_txs, mpn_sourced_txs) in resps {
+
             for tx in chained_source_txs {
+                if let Some(tx_delta) = tx.tx_delta() {
+                    if tx_delta.tx.fee.lt(&ctx.min_fee) {
+                        log::debug!("skipping tx {:?}, fee too low", tx_delta);
+                        fee_skipped_txs += 1;
+                        continue;
+                    }
+                } else if let Some(mpn_tx) = tx.mpn_tx() {
+                    if mpn_tx.payment.fee.lt(&ctx.min_fee) {
+                        log::debug!("skipping tx {:?}, fee too low", mpn_tx);
+                        fee_skipped_txs += 1;
+                        continue;
+                    }
+                }
                 ctx.mempool
                     .chain_sourced
                     .entry(tx)
                     .or_insert(TransactionStats { first_seen: now });
             }
             for tx in mpn_sourced_txs {
+                // todo: validate min fee
                 ctx.mempool
                     .mpn_sourced
                     .entry(tx)

@@ -14,6 +14,7 @@ use crate::client::{
     messages::SocialProfiles, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress,
     Timestamp, MINER_TOKEN_HEADER, NETWORK_HEADER, SIGNATURE_HEADER,
 };
+use crate::core::Money;
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::utils::local_timestamp;
@@ -26,6 +27,7 @@ use mempool::Mempool;
 use peer_manager::PeerManager;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -374,6 +376,7 @@ pub async fn node_create<B: Blockchain>(
     outgoing: mpsc::UnboundedSender<NodeRequest>,
     firewall: Option<Firewall>,
     miner_token: Option<String>,
+    min_fee: Option<Money>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
         miner_token: miner_token,
@@ -403,6 +406,7 @@ pub async fn node_create<B: Blockchain>(
         outdated_since: None,
 
         miner_puzzle: None,
+        min_fee: min_fee.unwrap_or(Money::from_str("0.00001").unwrap() /* shouldnt ever panic */ ),
     }));
 
     let server_future = async {

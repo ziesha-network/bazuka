@@ -282,6 +282,7 @@ async fn run_node(
         out_send,
         Some(firewall),
         Some(bazuka_config.miner_token.clone()),
+        None, // todo: set
     );
 
     // Async loop that is responsible for getting incoming HTTP requests through a

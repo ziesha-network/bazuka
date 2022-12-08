@@ -53,6 +53,18 @@ impl ChainSourcedTx {
             ChainSourcedTx::MpnDeposit(mpn_deposit) => mpn_deposit.payment.nonce,
         }
     }
+    pub fn mpn_tx(&self) -> Option<&MpnDeposit> {
+        match self {
+            ChainSourcedTx::MpnDeposit(tx) => Some(tx),
+            _ => None
+        }
+    }
+    pub fn tx_delta(&self) -> Option<&TransactionAndDelta> {
+        match self {
+            ChainSourcedTx::TransactionAndDelta(tx) => Some(tx),
+            _ => None
+        }
+    }
 }
 
 // Transactions initiated from MPN accounts

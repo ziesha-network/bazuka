@@ -4,7 +4,7 @@ use super::{
 };
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError};
 use crate::client::messages::SocialProfiles;
-use crate::core::{ChainSourcedTx, Header, TransactionAndDelta};
+use crate::core::{ChainSourcedTx, Header, TransactionAndDelta, Money};
 use crate::utils;
 use crate::wallet::TxBuilder;
 use std::collections::HashMap;
@@ -34,6 +34,8 @@ pub struct NodeContext<B: Blockchain> {
 
     pub outdated_since: Option<Timestamp>,
     pub banned_headers: HashMap<Header, Timestamp>,
+
+    pub min_fee: Money,
 }
 
 impl<B: Blockchain> NodeContext<B> {
