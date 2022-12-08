@@ -53,7 +53,7 @@ impl ChainSourcedTx {
             ChainSourcedTx::MpnDeposit(mpn_deposit) => mpn_deposit.payment.nonce,
         }
     }
-    pub fn mpn_tx(&self) -> Option<&MpnDeposit> {
+    pub fn mpn_deposit(&self) -> Option<&MpnDeposit> {
         match self {
             ChainSourcedTx::MpnDeposit(tx) => Some(tx),
             _ => None
@@ -79,6 +79,18 @@ impl MpnSourcedTx {
         match self {
             MpnSourcedTx::MpnTransaction(mpn_tx) => mpn_tx.nonce,
             MpnSourcedTx::MpnWithdraw(mpn_withdraw) => mpn_withdraw.zk_nonce,
+        }
+    }
+    pub fn mpn_tx(&self) -> Option<&MpnTransaction> {
+        match self {
+            MpnSourcedTx::MpnTransaction(tx) => Some(tx),
+            _ => None
+        }
+    }
+    pub fn mpn_withdraw(&self) -> Option<&MpnWithdraw> {
+        match self {
+            MpnSourcedTx::MpnWithdraw(tx) => Some(tx),
+            _ => None,
         }
     }
 }
