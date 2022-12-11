@@ -1,8 +1,6 @@
 use super::*;
 use crate::blockchain::TransactionStats;
 use crate::common::*;
-use crate::core::{MpnTransaction, Money, MpnSourcedTx, ChainSourcedTx};
-
 pub async fn sync_mempool<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
@@ -35,7 +33,7 @@ pub async fn sync_mempool<B: Blockchain>(
         let mut fee_skipped_txs = 0;
         for (chained_source_txs, mpn_sourced_txs) in resps {
             for tx in chained_source_txs {
-                                // ensure the transaction fee is greater than or equal to the minimum
+                // ensure the transaction fee is greater than or equal to the minimum
                 // fee value the node is willing to accept
                 if !tx.validate_minimum_fee(&ctx.min_fee) {
                     log::debug!("skipping tx {:?}, fee too low", tx);
@@ -48,13 +46,6 @@ pub async fn sync_mempool<B: Blockchain>(
                     .or_insert(TransactionStats { first_seen: now });
             }
             for tx in mpn_sourced_txs {
-                // ensure the transaction fee is greater than or equal to the minimum
-                // fee value the node is willing to accept
-                if !tx.validate_minimum_fee(&ctx.min_fee) {
-                    log::debug!("skipping tx {:?}, fee too low", tx);
-                    fee_skipped_txs += 1;
-                    continue;
-                }
                 ctx.mempool
                     .mpn_sourced
                     .entry(tx)

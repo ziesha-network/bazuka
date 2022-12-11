@@ -48,7 +48,7 @@ fn create_test_node(
         out_send,
         None,
         None,
-        None,
+        Some(Money(1)),
     );
     (
         node,

@@ -10,6 +10,9 @@ pub async fn transact<B: Blockchain>(
     req: TransactRequest,
 ) -> Result<TransactResponse, NodeError> {
     let mut context = context.write().await;
+    if req.tx_delta.tx.fee.lt(&context.min_fee) {
+        return Err(NodeError::InsufficientFee);
+    }
     let now = context.local_timestamp();
     context.mempool.chain_sourced.insert(
         ChainSourcedTx::TransactionAndDelta(req.tx_delta),

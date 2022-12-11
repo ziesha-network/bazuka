@@ -244,8 +244,8 @@ pub fn sample_contract_call() -> TransactionAndDelta {
         state_delta.clone(),
         state_model.compress::<ZkHasher>(&full_state.data).unwrap(),
         zk::ZkProof::Dummy(true),
-        Money(0),
-        Money(0),
+        Money(2),
+        Money(2),
         1,
     )
 }
