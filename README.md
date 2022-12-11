@@ -77,7 +77,7 @@ Available flags:
 Example to initialize a node with 2 bootstrap nodes `23.34.12.45:8765` and `34.56.78.23:8765` on the `groth-3` network:
 
 ```
-bazuka init --network groth-3 --bootstrap 23.34.12.45:8765 --bootstrap 34.56.78.23:8765
+bazuka init --network groth-6 --bootstrap 23.34.12.45:8765 --bootstrap 34.56.78.23:8765
 ```
 
 After initializing your node you can run it through:
