@@ -39,6 +39,7 @@ struct BazukaConfig {
     miner_token: String,
     bootstrap: Vec<PeerAddress>,
     db: PathBuf,
+    min_fee: Option<String>,
 }
 
 #[cfg(feature = "client")]
@@ -117,8 +118,6 @@ enum NodeCliOptions {
         client_only: bool,
         #[structopt(long)]
         discord_handle: Option<String>,
-        #[structopt(long)]
-        min_fee: Option<String>,
     },
     /// Get status of a node
     Status {},
@@ -156,6 +155,8 @@ enum CliOptions {
         external: Option<PeerAddress>,
         #[structopt(long)]
         db: Option<PathBuf>,
+        #[structopt(long)]
+        min_fee: Option<String>,
     },
 
     #[cfg(feature = "node")]
@@ -450,11 +451,10 @@ async fn main() -> Result<(), NodeError> {
             NodeCliOptions::Start {
                 discord_handle,
                 client_only,
-                min_fee,
             } => {
                 let conf = conf.expect("Bazuka is not initialized!");
                 let wallet = wallet.expect("Wallet is not initialized!");
-                let min_fee: Money = FromStr::from_str(&min_fee.unwrap_or("0.00001".to_string())).unwrap();
+                let min_fee: Money = FromStr::from_str(&conf.min_fee.as_ref().unwrap_or(&"0.00001".to_string())).unwrap();
                 run_node(
                     conf.clone(),
                     wallet.clone(),
@@ -493,6 +493,7 @@ async fn main() -> Result<(), NodeError> {
             external,
             listen,
             db,
+            min_fee
         } => {
             if wallet.is_none() {
                 let w = Wallet::create(&mut rand_mnemonic::thread_rng(), mnemonic);
@@ -527,6 +528,7 @@ async fn main() -> Result<(), NodeError> {
                         db: db.unwrap_or_else(|| {
                             home::home_dir().unwrap().join(Path::new(".bazuka"))
                         }),
+                        min_fee: Some(min_fee.unwrap_or("0.0001".to_string())),
                     })
                     .unwrap(),
                 )
