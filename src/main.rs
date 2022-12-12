@@ -106,6 +106,8 @@ enum WalletOptions {
     Reset {},
     /// Get info and balances of the wallet
     Info {},
+    /// Resend pending transactions
+    ResendPending {},
 }
 
 #[derive(StructOpt)]
@@ -686,6 +688,10 @@ async fn main() -> Result<(), NodeError> {
                 let mut wallet = wallet.expect("Bazuka is not initialized!");
                 wallet.reset();
                 wallet.save(wallet_path).unwrap();
+            }
+            WalletOptions::ResendPending {} => {
+                let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                resend_all_wallet_txs(conf, &wallet).await?;
             }
             WalletOptions::Info {} => {
                 let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
