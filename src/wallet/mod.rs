@@ -101,25 +101,31 @@ impl Wallet {
         &self.mnemonic
     }
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Option<Self>, WalletError> {
-        Ok(if let Ok(mut f) = File::open(&path) {
+        if let Ok(mut f) = File::open(&path) {
             let mut bytes = Vec::new();
             f.read_to_end(&mut bytes)?;
-            let legacy: Option<LegacyWallet> = bincode::deserialize(&bytes).ok();
-            if let Some(legacy) = legacy {
-                println!("Migrating wallet...");
-                let wallet = Self {
-                    mnemonic: legacy.mnemonic,
-                    chain_sourced_txs: Vec::new(),
-                    mpn_sourced_txs: HashMap::new(),
-                };
-                wallet.save(&path)?;
-                Some(wallet)
-            } else {
-                Some(bincode::deserialize(&bytes)?)
+            let wallet: Result<Self, bincode::Error> = bincode::deserialize(&bytes);
+            match wallet {
+                Ok(w) => Ok(Some(w)),
+                Err(e) => {
+                    let legacy: Option<LegacyWallet> = bincode::deserialize(&bytes).ok();
+                    if let Some(legacy) = legacy {
+                        println!("Migrating wallet...");
+                        let wallet = Self {
+                            mnemonic: legacy.mnemonic,
+                            chain_sourced_txs: Vec::new(),
+                            mpn_sourced_txs: HashMap::new(),
+                        };
+                        wallet.save(&path)?;
+                        Ok(Some(wallet))
+                    } else {
+                        Err(WalletError::BincodeError(e))
+                    }
+                }
             }
         } else {
-            None
-        })
+            Ok(None)
+        }
     }
     pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), WalletError> {
         File::create(path)?.write_all(&bincode::serialize(self)?)?;
