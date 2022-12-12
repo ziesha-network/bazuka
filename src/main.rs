@@ -420,24 +420,39 @@ async fn main() -> Result<(), NodeError> {
                     while fork.get_height().unwrap() != 0 {
                         fork.rollback().unwrap();
                     }
-                    if !fork.db().pairs("".into()).unwrap().is_empty() {
-                        println!(
-                            "{} {}",
-                            "Error:".bright_red(),
-                            "Rollback data are corrupted!"
-                        );
-                    }
-                    println!(
-                        "Currency in Circulation: {}",
-                        chain.currency_in_circulation().unwrap()
-                    );
+                    let rollback_validity_check = fork.db().pairs("".into()).unwrap().is_empty();
                     let mut sum_mpn: Money = 0.into();
                     for mpn_acc in chain.get_mpn_accounts(0, 10000).unwrap() {
                         sum_mpn += mpn_acc.1.balance;
                     }
-                    println!("MPN accounts balance: {}", sum_mpn);
-                    let mpn_acc = chain.get_contract_account(mpn_contract_id).unwrap();
-                    println!("MPN contract balance: {}", mpn_acc.balance);
+                    let mpn_contract_balance_check =
+                        sum_mpn == chain.get_contract_account(mpn_contract_id).unwrap().balance;
+                    let currency_in_circulation_check = chain.currency_in_circulation().unwrap()
+                        == Money::from(2000000000000000000);
+                    println!(
+                        "Rollback validity check: {}",
+                        if rollback_validity_check {
+                            "PASS".bright_green()
+                        } else {
+                            "FAIL".bright_red()
+                        }
+                    );
+                    println!(
+                        "MPN contract balance check: {}",
+                        if mpn_contract_balance_check {
+                            "PASS".bright_green()
+                        } else {
+                            "FAIL".bright_red()
+                        }
+                    );
+                    println!(
+                        "Currency in circulation check: {}",
+                        if currency_in_circulation_check {
+                            "PASS".bright_green()
+                        } else {
+                            "FAIL".bright_red()
+                        }
+                    );
                 }
             }
         }
