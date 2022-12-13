@@ -74,8 +74,6 @@ pub enum BlockchainError {
     InsufficientMpnUpdates,
     #[error("invalid zero-transaction")]
     InvalidMpnTransaction,
-    #[error("cannot send funds to yourself")]
-    SelfPaymentNotAllowed,
     #[error("executor cannot execute his own payments")]
     CannotExecuteOwnPayments,
     #[error("contract contains invalid state-model")]

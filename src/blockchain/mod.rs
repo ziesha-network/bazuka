@@ -458,20 +458,20 @@ impl<K: KvStore> KvStoreChain<K> {
             match &tx.data {
                 TransactionData::RegularSend { entries } => {
                     for entry in entries {
-                        if entry.dst == tx.src {
-                            return Err(BlockchainError::SelfPaymentNotAllowed);
-                        }
-                        if acc_src.balance < entry.amount {
-                            return Err(BlockchainError::BalanceInsufficient);
-                        }
-                        acc_src.balance -= entry.amount;
+                        if entry.dst != tx.src {
+                            if acc_src.balance < entry.amount {
+                                return Err(BlockchainError::BalanceInsufficient);
+                            }
+                            acc_src.balance -= entry.amount;
 
-                        let mut acc_dst = chain.get_account(entry.dst.clone())?;
-                        acc_dst.balance += entry.amount;
+                            let mut acc_dst = chain.get_account(entry.dst.clone())?;
+                            acc_dst.balance += entry.amount;
 
-                        chain
-                            .database
-                            .update(&[WriteOp::Put(keys::account(&entry.dst), acc_dst.into())])?;
+                            chain.database.update(&[WriteOp::Put(
+                                keys::account(&entry.dst),
+                                acc_dst.into(),
+                            )])?;
+                        }
                     }
                 }
                 TransactionData::CreateContract { contract } => {
