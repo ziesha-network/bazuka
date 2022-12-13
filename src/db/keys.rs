@@ -46,6 +46,10 @@ pub fn contract(contract_id: &ContractId) -> StringKey {
     format!("CON-{}", contract_id).into()
 }
 
+pub fn token(token_id: &ZkScalar) -> StringKey {
+    format!("TKN-{}", token_id).into()
+}
+
 pub fn contract_updates() -> StringKey {
     "CUP".into()
 }

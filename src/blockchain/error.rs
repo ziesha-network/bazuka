@@ -88,4 +88,6 @@ pub enum BlockchainError {
     DepositWithdrawPassedToWrongFunction,
     #[error("block not on the testnet forced fork")]
     TestnetForcedFork,
+    #[error("token already exists")]
+    TokenAlreadyExists,
 }

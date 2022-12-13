@@ -1,6 +1,6 @@
 use crate::core::{
-    Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, ProofOfWork, Transaction,
-    TransactionData,
+    Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, ProofOfWork, Token,
+    Transaction, TransactionData,
 };
 use crate::crypto::jubjub::*;
 use crate::zk::{
@@ -22,6 +22,23 @@ impl From<&MpnAccount> for ExplorerMpnAccount {
             nonce: obj.nonce,
             address: PublicKey(obj.address.compress()).to_string(),
             balance: obj.balance.into(),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerToken {
+    pub id: String,
+    pub supply: u64,
+    pub mintable: bool,
+}
+
+impl From<&Token> for ExplorerToken {
+    fn from(obj: &Token) -> Self {
+        Self {
+            id: obj.id.to_string(),
+            supply: obj.supply,
+            mintable: obj.mintable,
         }
     }
 }
@@ -280,6 +297,9 @@ pub enum ExplorerTransactionData {
         contract_id: String,
         updates: Vec<ExplorerContractUpdate>,
     },
+    CreateToken {
+        token: ExplorerToken,
+    },
 }
 
 impl From<&TransactionData> for ExplorerTransactionData {
@@ -300,6 +320,9 @@ impl From<&TransactionData> for ExplorerTransactionData {
             } => Self::UpdateContract {
                 contract_id: contract_id.to_string(),
                 updates: updates.iter().map(|u| u.into()).collect(),
+            },
+            TransactionData::CreateToken { token } => Self::CreateToken {
+                token: token.into(),
             },
         }
     }

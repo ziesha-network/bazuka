@@ -137,6 +137,13 @@ pub struct RegularSendEntry<S: SignatureScheme> {
     pub amount: Money,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub struct Token {
+    pub id: ZkScalar,
+    pub supply: u64, // 1u64 in case of a NFT
+    pub mintable: bool,
+}
+
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
@@ -153,6 +160,9 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
     UpdateContract {
         contract_id: ContractId<H>,
         updates: Vec<ContractUpdate<H, S>>,
+    },
+    CreateToken {
+        token: Token,
     },
 }
 

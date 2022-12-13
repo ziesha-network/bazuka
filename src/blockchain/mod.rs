@@ -4,7 +4,7 @@ pub use error::*;
 use crate::core::{
     hash::Hash, Account, Address, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
     ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnDeposit, MpnSourcedTx,
-    MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Transaction, TransactionAndDelta,
+    MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Token, Transaction, TransactionAndDelta,
     TransactionData, ZkHasher as CoreZkHasher,
 };
 use crate::crypto::jubjub;
@@ -90,6 +90,8 @@ pub trait Blockchain {
     ) -> Result<(), BlockchainError>;
 
     fn db_checksum(&self) -> Result<String, BlockchainError>;
+
+    fn get_token(&self, token_id: zk::ZkScalar) -> Result<Option<Token>, BlockchainError>;
 
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn get_mpn_account(&self, index: u32) -> Result<zk::MpnAccount, BlockchainError>;
@@ -456,6 +458,15 @@ impl<K: KvStore> KvStoreChain<K> {
             acc_src.nonce += 1;
 
             match &tx.data {
+                TransactionData::CreateToken { token } => {
+                    if chain.get_token(token.id)?.is_some() {
+                        return Err(BlockchainError::TokenAlreadyExists);
+                    } else {
+                        chain
+                            .database
+                            .update(&[WriteOp::Put(keys::token(&token.id), token.into())])?;
+                    }
+                }
                 TransactionData::RegularSend { entries } => {
                     for entry in entries {
                         if entry.dst != tx.src {
@@ -1117,6 +1128,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .get(keys::contract_account(&contract_id))?
             .map(|b| b.try_into())
             .ok_or(BlockchainError::ContractNotFound)??)
+    }
+
+    fn get_token(&self, token_id: zk::ZkScalar) -> Result<Option<Token>, BlockchainError> {
+        Ok(match self.database.get(keys::token(&token_id))? {
+            Some(b) => Some(b.try_into()?),
+            None => None,
+        })
     }
 
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {

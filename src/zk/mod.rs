@@ -115,6 +115,12 @@ pub fn hash_to_scalar(inp: &[u8]) -> ZkScalar {
     ZkScalar::new(&Hasher::hash(inp))
 }
 
+impl std::fmt::Display for ZkScalar {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 impl ZkScalar {
     pub fn new(num_le: &[u8]) -> Self {
         let bts = BigUint::from_bytes_le(num_le)
