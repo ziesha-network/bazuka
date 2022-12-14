@@ -90,4 +90,10 @@ pub enum BlockchainError {
     TestnetForcedFork,
     #[error("token already exists")]
     TokenAlreadyExists,
+    #[error("token not found")]
+    TokenNotFound,
+    #[error("token not mintable")]
+    TokenNotMintable,
+    #[error("token is being minter by a wrong minter")]
+    TokenWrongMinter,
 }

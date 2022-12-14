@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::{Address, ContractId};
+use crate::core::{Address, ContractId, TokenId};
 use crate::zk::ZkDataLocator;
 
 pub fn height() -> StringKey {
@@ -46,7 +46,7 @@ pub fn contract(contract_id: &ContractId) -> StringKey {
     format!("CON-{}", contract_id).into()
 }
 
-pub fn token(token_id: &ZkScalar) -> StringKey {
+pub fn token(token_id: &TokenId) -> StringKey {
     format!("TKN-{}", token_id).into()
 }
 

@@ -33,7 +33,8 @@ pub type MpnWithdraw = transaction::MpnWithdraw<Hasher, Signer, ZkSigner>;
 pub type MpnTransaction = zk::MpnTransaction;
 pub type Header = header::Header<Hasher>;
 pub type Block = blocks::Block<Hasher, Signer>;
-pub type Token = transaction::Token;
+pub type TokenId = transaction::TokenId;
+pub type Token = transaction::Token<Signer>;
 
 pub type ProofOfWork = header::ProofOfWork;
 pub type ContractId = transaction::ContractId<Hasher>;

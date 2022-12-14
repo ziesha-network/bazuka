@@ -30,7 +30,7 @@ impl From<&MpnAccount> for ExplorerMpnAccount {
 pub struct ExplorerToken {
     pub id: String,
     pub supply: u64,
-    pub mintable: bool,
+    pub minter: Option<String>,
 }
 
 impl From<&Token> for ExplorerToken {
@@ -38,7 +38,7 @@ impl From<&Token> for ExplorerToken {
         Self {
             id: obj.id.to_string(),
             supply: obj.supply,
-            mintable: obj.mintable,
+            minter: obj.minter.as_ref().map(|a| a.to_string()),
         }
     }
 }
@@ -300,6 +300,10 @@ pub enum ExplorerTransactionData {
     CreateToken {
         token: ExplorerToken,
     },
+    MintToken {
+        token_id: String,
+        amount: u64,
+    },
 }
 
 impl From<&TransactionData> for ExplorerTransactionData {
@@ -323,6 +327,10 @@ impl From<&TransactionData> for ExplorerTransactionData {
             },
             TransactionData::CreateToken { token } => Self::CreateToken {
                 token: token.into(),
+            },
+            TransactionData::MintToken { token_id, amount } => Self::MintToken {
+                token_id: token_id.to_string(),
+                amount: *amount,
             },
         }
     }

@@ -30,6 +30,15 @@ impl<H: Hash> std::fmt::Display for ContractId<H> {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy)]
+pub struct TokenId(pub ZkScalar);
+
+impl std::fmt::Display for TokenId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
 impl<H: Hash> FromStr for ContractId<H> {
     type Err = ParseContractIdError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -138,10 +147,10 @@ pub struct RegularSendEntry<S: SignatureScheme> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
-pub struct Token {
-    pub id: ZkScalar,
+pub struct Token<S: SignatureScheme> {
+    pub id: TokenId,
     pub supply: u64, // 1u64 in case of a NFT
-    pub mintable: bool,
+    pub minter: Option<Address<S>>,
 }
 
 // A transaction could be as simple as sending some funds, or as complicated as
@@ -162,7 +171,11 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
         updates: Vec<ContractUpdate<H, S>>,
     },
     CreateToken {
-        token: Token,
+        token: Token<S>,
+    },
+    MintToken {
+        token_id: TokenId,
+        amount: u64,
     },
 }
 

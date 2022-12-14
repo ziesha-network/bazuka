@@ -4,8 +4,8 @@ pub use error::*;
 use crate::core::{
     hash::Hash, Account, Address, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
     ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnDeposit, MpnSourcedTx,
-    MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Token, Transaction, TransactionAndDelta,
-    TransactionData, ZkHasher as CoreZkHasher,
+    MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Token, TokenId, Transaction,
+    TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
 };
 use crate::crypto::jubjub;
 use crate::crypto::ZkSignatureScheme;
@@ -91,7 +91,7 @@ pub trait Blockchain {
 
     fn db_checksum(&self) -> Result<String, BlockchainError>;
 
-    fn get_token(&self, token_id: zk::ZkScalar) -> Result<Option<Token>, BlockchainError>;
+    fn get_token(&self, token_id: TokenId) -> Result<Option<Token>, BlockchainError>;
 
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn get_mpn_account(&self, index: u32) -> Result<zk::MpnAccount, BlockchainError>;
@@ -465,6 +465,25 @@ impl<K: KvStore> KvStoreChain<K> {
                         chain
                             .database
                             .update(&[WriteOp::Put(keys::token(&token.id), token.into())])?;
+                    }
+                }
+                TransactionData::MintToken { token_id, amount } => {
+                    if let Some(mut token) = chain.get_token(*token_id)? {
+                        if let Some(minter) = token.minter.clone() {
+                            if minter == tx.src {
+                                token.supply += amount;
+                                chain.database.update(&[WriteOp::Put(
+                                    keys::token(&token_id),
+                                    (&token).into(),
+                                )])?;
+                            } else {
+                                return Err(BlockchainError::TokenWrongMinter);
+                            }
+                        } else {
+                            return Err(BlockchainError::TokenNotMintable);
+                        }
+                    } else {
+                        return Err(BlockchainError::TokenNotFound);
                     }
                 }
                 TransactionData::RegularSend { entries } => {
@@ -1130,7 +1149,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .ok_or(BlockchainError::ContractNotFound)??)
     }
 
-    fn get_token(&self, token_id: zk::ZkScalar) -> Result<Option<Token>, BlockchainError> {
+    fn get_token(&self, token_id: TokenId) -> Result<Option<Token>, BlockchainError> {
         Ok(match self.database.get(keys::token(&token_id))? {
             Some(b) => Some(b.try_into()?),
             None => None,
