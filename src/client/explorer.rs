@@ -1,6 +1,6 @@
 use crate::core::{
     Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, ProofOfWork, Token,
-    Transaction, TransactionData,
+    TokenUpdate, Transaction, TransactionData,
 };
 use crate::crypto::jubjub::*;
 use crate::zk::{
@@ -30,7 +30,7 @@ impl From<&MpnAccount> for ExplorerMpnAccount {
 pub struct ExplorerToken {
     pub id: String,
     pub supply: u64,
-    pub minter: Option<String>,
+    pub owner: Option<String>,
 }
 
 impl From<&Token> for ExplorerToken {
@@ -38,7 +38,7 @@ impl From<&Token> for ExplorerToken {
         Self {
             id: obj.id.to_string(),
             supply: obj.supply,
-            minter: obj.minter.as_ref().map(|a| a.to_string()),
+            owner: obj.owner.as_ref().map(|a| a.to_string()),
         }
     }
 }
@@ -223,6 +223,26 @@ impl From<&ZkProof> for ExplorerZkProof {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
+pub enum ExplorerTokenUpdate {
+    Issue { amount: u64 },
+    Redeem { amount: u64 },
+    ChangeOwner { owner: String },
+}
+
+impl From<&TokenUpdate> for ExplorerTokenUpdate {
+    fn from(obj: &TokenUpdate) -> Self {
+        match obj {
+            TokenUpdate::Issue { amount } => Self::Issue { amount: *amount },
+            TokenUpdate::Redeem { amount } => Self::Redeem { amount: *amount },
+            TokenUpdate::ChangeOwner { owner } => Self::ChangeOwner {
+                owner: owner.to_string(),
+            },
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(tag = "type")]
 pub enum ExplorerContractUpdate {
     Deposit {
         deposit_circuit_id: u32,
@@ -300,9 +320,9 @@ pub enum ExplorerTransactionData {
     CreateToken {
         token: ExplorerToken,
     },
-    MintToken {
+    UpdateToken {
         token_id: String,
-        amount: u64,
+        update: ExplorerTokenUpdate,
     },
 }
 
@@ -328,9 +348,9 @@ impl From<&TransactionData> for ExplorerTransactionData {
             TransactionData::CreateToken { token } => Self::CreateToken {
                 token: token.into(),
             },
-            TransactionData::MintToken { token_id, amount } => Self::MintToken {
+            TransactionData::UpdateToken { token_id, update } => Self::UpdateToken {
                 token_id: token_id.to_string(),
-                amount: *amount,
+                update: update.into(),
             },
         }
     }

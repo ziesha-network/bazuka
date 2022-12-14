@@ -150,7 +150,14 @@ pub struct RegularSendEntry<S: SignatureScheme> {
 pub struct Token<S: SignatureScheme> {
     pub id: TokenId,
     pub supply: u64, // 1u64 in case of a NFT
-    pub minter: Option<Address<S>>,
+    pub owner: Option<Address<S>>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+pub enum TokenUpdate<S: SignatureScheme> {
+    Issue { amount: u64 },
+    Redeem { amount: u64 },
+    ChangeOwner { owner: Address<S> },
 }
 
 // A transaction could be as simple as sending some funds, or as complicated as
@@ -173,9 +180,9 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
     CreateToken {
         token: Token<S>,
     },
-    MintToken {
+    UpdateToken {
         token_id: TokenId,
-        amount: u64,
+        update: TokenUpdate<S>,
     },
 }
 

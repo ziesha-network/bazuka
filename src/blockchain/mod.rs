@@ -4,8 +4,8 @@ pub use error::*;
 use crate::core::{
     hash::Hash, Account, Address, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
     ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnDeposit, MpnSourcedTx,
-    MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Token, TokenId, Transaction,
-    TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
+    MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Token, TokenId, TokenUpdate,
+    Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
 };
 use crate::crypto::jubjub;
 use crate::crypto::ZkSignatureScheme;
@@ -467,20 +467,44 @@ impl<K: KvStore> KvStoreChain<K> {
                             .update(&[WriteOp::Put(keys::token(&token.id), token.into())])?;
                     }
                 }
-                TransactionData::MintToken { token_id, amount } => {
+                TransactionData::UpdateToken { token_id, update } => {
                     if let Some(mut token) = chain.get_token(*token_id)? {
-                        if let Some(minter) = token.minter.clone() {
-                            if minter == tx.src {
-                                token.supply += amount;
-                                chain.database.update(&[WriteOp::Put(
-                                    keys::token(&token_id),
-                                    (&token).into(),
-                                )])?;
+                        if let Some(owner) = token.owner.clone() {
+                            if owner == tx.src {
+                                match update {
+                                    TokenUpdate::Issue { amount } => {
+                                        *acc_src.tokens.entry(*token_id).or_default() += amount;
+                                        token.supply += amount;
+                                        chain.database.update(&[WriteOp::Put(
+                                            keys::token(&token_id),
+                                            (&token).into(),
+                                        )])?;
+                                    }
+                                    TokenUpdate::Redeem { amount } => {
+                                        let entry = acc_src.tokens.entry(*token_id).or_default();
+                                        if *entry < *amount || token.supply < *amount {
+                                            return Err(BlockchainError::TokenInsufficientSupply);
+                                        }
+                                        *entry -= amount;
+                                        token.supply -= amount;
+                                        chain.database.update(&[WriteOp::Put(
+                                            keys::token(&token_id),
+                                            (&token).into(),
+                                        )])?;
+                                    }
+                                    TokenUpdate::ChangeOwner { owner } => {
+                                        token.owner = Some(owner.clone());
+                                        chain.database.update(&[WriteOp::Put(
+                                            keys::token(&token_id),
+                                            (&token).into(),
+                                        )])?;
+                                    }
+                                }
                             } else {
-                                return Err(BlockchainError::TokenWrongMinter);
+                                return Err(BlockchainError::TokenUpdatePermissionDenied);
                             }
                         } else {
-                            return Err(BlockchainError::TokenNotMintable);
+                            return Err(BlockchainError::TokenNotUpdatable);
                         }
                     } else {
                         return Err(BlockchainError::TokenNotFound);

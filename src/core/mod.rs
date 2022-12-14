@@ -34,6 +34,7 @@ pub type MpnTransaction = zk::MpnTransaction;
 pub type Header = header::Header<Hasher>;
 pub type Block = blocks::Block<Hasher, Signer>;
 pub type TokenId = transaction::TokenId;
+pub type TokenUpdate = transaction::TokenUpdate<Signer>;
 pub type Token = transaction::Token<Signer>;
 
 pub type ProofOfWork = header::ProofOfWork;

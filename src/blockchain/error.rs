@@ -92,8 +92,10 @@ pub enum BlockchainError {
     TokenAlreadyExists,
     #[error("token not found")]
     TokenNotFound,
-    #[error("token not mintable")]
-    TokenNotMintable,
-    #[error("token is being minter by a wrong minter")]
-    TokenWrongMinter,
+    #[error("token not updatable")]
+    TokenNotUpdatable,
+    #[error("token is being updated by a wrong account")]
+    TokenUpdatePermissionDenied,
+    #[error("token supply not enough to be redeemed")]
+    TokenInsufficientSupply,
 }
