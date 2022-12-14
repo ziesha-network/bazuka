@@ -105,7 +105,7 @@ lazy_static! {
     .unwrap();
 }
 
-#[derive(PrimeField, Serialize, Deserialize)]
+#[derive(PrimeField, Serialize, Deserialize, Hash)]
 #[PrimeFieldModulus = "52435875175126190479447740508185965837690552500527637822603658699938581184513"]
 #[PrimeFieldGenerator = "7"]
 #[PrimeFieldReprEndianness = "little"]

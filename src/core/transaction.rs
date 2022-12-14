@@ -30,7 +30,7 @@ impl<H: Hash> std::fmt::Display for ContractId<H> {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy, Hash, Eq)]
 pub struct TokenId(pub ZkScalar);
 
 impl std::fmt::Display for TokenId {

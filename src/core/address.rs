@@ -1,5 +1,7 @@
+use super::transaction::TokenId;
 use super::Money;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
+use std::collections::HashMap;
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -101,6 +103,7 @@ pub enum Signature<S: SignatureScheme> {
 pub struct Account {
     pub balance: Money,
     pub nonce: u32,
+    pub tokens: HashMap<TokenId, u64>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]

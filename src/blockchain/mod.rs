@@ -1166,6 +1166,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     Money(0)
                 },
                 nonce: 0,
+                tokens: HashMap::new(),
             },
         })
     }
