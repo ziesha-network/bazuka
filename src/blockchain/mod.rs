@@ -473,7 +473,13 @@ impl<K: KvStore> KvStoreChain<K> {
                             if owner == tx.src {
                                 match update {
                                     TokenUpdate::Issue { amount } => {
-                                        *acc_src.tokens.entry(*token_id).or_default() += amount;
+                                        let entry = acc_src.tokens.entry(*token_id).or_default();
+                                        if *entry + *amount < *entry
+                                            || token.supply + *amount < token.supply
+                                        {
+                                            return Err(BlockchainError::TokenSupplyOverflow);
+                                        }
+                                        *entry += amount;
                                         token.supply += amount;
                                         chain.database.update(&[WriteOp::Put(
                                             keys::token(&token_id),
@@ -483,7 +489,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                     TokenUpdate::Redeem { amount } => {
                                         let entry = acc_src.tokens.entry(*token_id).or_default();
                                         if *entry < *amount || token.supply < *amount {
-                                            return Err(BlockchainError::TokenInsufficientSupply);
+                                            return Err(BlockchainError::TokenSupplyInsufficient);
                                         }
                                         *entry -= amount;
                                         token.supply -= amount;

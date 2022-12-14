@@ -97,5 +97,7 @@ pub enum BlockchainError {
     #[error("token is being updated by a wrong account")]
     TokenUpdatePermissionDenied,
     #[error("token supply not enough to be redeemed")]
-    TokenInsufficientSupply,
+    TokenSupplyInsufficient,
+    #[error("token supply overflows when issued")]
+    TokenSupplyOverflow,
 }
