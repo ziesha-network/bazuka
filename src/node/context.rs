@@ -4,7 +4,7 @@ use super::{
 };
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError};
 use crate::client::messages::SocialProfiles;
-use crate::core::{ChainSourcedTx, Header, TransactionAndDelta, Money};
+use crate::core::{ChainSourcedTx, Header, Money, TransactionAndDelta};
 use crate::utils;
 use crate::wallet::TxBuilder;
 use std::collections::HashMap;

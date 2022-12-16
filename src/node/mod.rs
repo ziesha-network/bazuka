@@ -406,7 +406,9 @@ pub async fn node_create<B: Blockchain>(
         outdated_since: None,
 
         miner_puzzle: None,
-        min_fee: min_fee.unwrap_or(Money::from_str("0.00001").unwrap() /* shouldnt ever panic */ ),
+        min_fee: min_fee.unwrap_or(
+            Money::from_str("0.00001").unwrap(), /* shouldnt ever panic */
+        ),
     }));
 
     let server_future = async {

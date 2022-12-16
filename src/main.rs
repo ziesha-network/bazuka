@@ -454,7 +454,9 @@ async fn main() -> Result<(), NodeError> {
             } => {
                 let conf = conf.expect("Bazuka is not initialized!");
                 let wallet = wallet.expect("Wallet is not initialized!");
-                let min_fee: Money = FromStr::from_str(&conf.min_fee.as_ref().unwrap_or(&"0.00001".to_string())).unwrap();
+                let min_fee: Money =
+                    FromStr::from_str(&conf.min_fee.as_ref().unwrap_or(&"0.00001".to_string()))
+                        .unwrap();
                 run_node(
                     conf.clone(),
                     wallet.clone(),
@@ -462,7 +464,7 @@ async fn main() -> Result<(), NodeError> {
                         discord: discord_handle,
                     },
                     client_only,
-                    min_fee
+                    min_fee,
                 )
                 .await?;
             }
@@ -493,7 +495,7 @@ async fn main() -> Result<(), NodeError> {
             external,
             listen,
             db,
-            min_fee
+            min_fee,
         } => {
             if wallet.is_none() {
                 let w = Wallet::create(&mut rand_mnemonic::thread_rng(), mnemonic);
