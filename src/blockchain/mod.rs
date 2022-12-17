@@ -462,6 +462,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     if chain.get_token(token.id)?.is_some() {
                         return Err(BlockchainError::TokenAlreadyExists);
                     } else {
+                        acc_src.tokens.insert(token.id, token.supply);
                         chain
                             .database
                             .update(&[WriteOp::Put(keys::token(&token.id), token.into())])?;
