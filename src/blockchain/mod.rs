@@ -244,11 +244,11 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InvalidTransactionNonce);
             }
             addr_account.nonce += 1;
-            if addr_account.balance() < deposit.amount + deposit.fee {
+            if addr_account.balance(TokenId::Ziesha) < deposit.amount + deposit.fee {
                 return Err(BlockchainError::BalanceInsufficient);
             }
-            *addr_account.mut_balance() -= deposit.amount + deposit.fee;
-            *contract_account.mut_balance() += deposit.amount;
+            *addr_account.mut_balance(TokenId::Ziesha) -= deposit.amount + deposit.fee;
+            *contract_account.mut_balance(TokenId::Ziesha) += deposit.amount;
 
             chain.database.update(&[WriteOp::Put(
                 keys::contract_account(&deposit.contract_id),
@@ -358,11 +358,11 @@ impl<K: KvStore> KvStoreChain<K> {
 
             let mut addr_account = chain.get_account(Address::PublicKey(withdraw.dst.clone()))?;
 
-            if contract_account.balance() < withdraw.amount + withdraw.fee {
+            if contract_account.balance(TokenId::Ziesha) < withdraw.amount + withdraw.fee {
                 return Err(BlockchainError::ContractBalanceInsufficient);
             }
-            *contract_account.mut_balance() -= withdraw.amount + withdraw.fee;
-            *addr_account.mut_balance() += withdraw.amount;
+            *contract_account.mut_balance(TokenId::Ziesha) -= withdraw.amount + withdraw.fee;
+            *addr_account.mut_balance(TokenId::Ziesha) += withdraw.amount;
 
             chain.database.update(&[WriteOp::Put(
                 keys::contract_account(&withdraw.contract_id),
@@ -450,11 +450,11 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InvalidTransactionNonce);
             }
 
-            if acc_src.balance() < tx.fee {
+            if acc_src.balance(TokenId::Ziesha) < tx.fee {
                 return Err(BlockchainError::BalanceInsufficient);
             }
 
-            *acc_src.mut_balance() -= tx.fee;
+            *acc_src.mut_balance(TokenId::Ziesha) -= tx.fee;
             acc_src.nonce += 1;
 
             match &tx.data {
@@ -520,13 +520,13 @@ impl<K: KvStore> KvStoreChain<K> {
                 TransactionData::RegularSend { entries } => {
                     for entry in entries {
                         if entry.dst != tx.src {
-                            if acc_src.balance() < entry.amount {
+                            if acc_src.balance(entry.token) < entry.amount {
                                 return Err(BlockchainError::BalanceInsufficient);
                             }
-                            *acc_src.mut_balance() -= entry.amount;
+                            *acc_src.mut_balance(entry.token) -= entry.amount;
 
                             let mut acc_dst = chain.get_account(entry.dst.clone())?;
-                            *acc_dst.mut_balance() += entry.amount;
+                            *acc_dst.mut_balance(entry.token) += entry.amount;
 
                             chain.database.update(&[WriteOp::Put(
                                 keys::account(&entry.dst),
@@ -720,7 +720,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                 executor_fee += *fee;
 
                                 let mut cont_account = chain.get_contract_account(*contract_id)?;
-                                *cont_account.mut_balance() -= *fee;
+                                *cont_account.mut_balance(TokenId::Ziesha) -= *fee;
                                 chain.database.update(&[WriteOp::Put(
                                     keys::contract_account(contract_id),
                                     cont_account.into(),
@@ -1354,7 +1354,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(blks)
     }
     fn next_reward(&self) -> Result<Money, BlockchainError> {
-        let supply = self.get_account(Address::Treasury)?.balance();
+        let supply = self
+            .get_account(Address::Treasury)?
+            .balance(TokenId::Ziesha);
         Ok(supply / self.config.reward_ratio)
     }
     fn draft_block(
@@ -1663,11 +1665,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let mut money_sum = Money(0);
         for (_, v) in self.database.pairs("ACC-".into())? {
             let acc: Account = v.try_into().unwrap();
-            money_sum += acc.balance();
+            money_sum += acc.balance(TokenId::Ziesha);
         }
         for (_, v) in self.database.pairs("CAC".into())? {
             let acc: ContractAccount = v.try_into().unwrap();
-            money_sum += acc.balance();
+            money_sum += acc.balance(TokenId::Ziesha);
         }
         Ok(money_sum)
     }

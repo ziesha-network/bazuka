@@ -16,7 +16,7 @@ use {
 use {
     bazuka::client::{BazukaClient, NodeError, PeerAddress},
     bazuka::config,
-    bazuka::core::{ChainSourcedTx, Money, MpnAddress, MpnSourcedTx},
+    bazuka::core::{ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId},
     bazuka::wallet::{TxBuilder, Wallet},
     colored::Colorize,
     rand::Rng,
@@ -429,7 +429,7 @@ async fn main() -> Result<(), NodeError> {
                         == chain
                             .get_contract_account(mpn_contract_id)
                             .unwrap()
-                            .balance();
+                            .balance(TokenId::Ziesha);
                     let currency_in_circulation_check = chain.currency_in_circulation().unwrap()
                         == Money::from(2000000000000000000);
                     println!(
@@ -736,7 +736,7 @@ async fn main() -> Result<(), NodeError> {
                             "Main chain balance:".bright_yellow(),
                             acc.map(|resp| format!(
                                 "{}{}",
-                                resp.account.balance(),
+                                resp.account.balance(TokenId::Ziesha),
                                 curr_nonce
                                     .map(|n| if n > resp.account.nonce {
                                         format!(

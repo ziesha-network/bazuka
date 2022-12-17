@@ -127,15 +127,11 @@ pub struct ContractAccount {
 }
 
 impl ContractAccount {
-    // Ziesha balance
-    pub fn balance(&self) -> Money {
-        self.tokens
-            .get(&TokenId::Ziesha)
-            .cloned()
-            .unwrap_or_default()
+    pub fn balance(&self, token: TokenId) -> Money {
+        self.tokens.get(&token).cloned().unwrap_or_default()
     }
-    pub fn mut_balance(&mut self) -> &mut Money {
-        self.tokens.entry(TokenId::Ziesha).or_default()
+    pub fn mut_balance(&mut self, token: TokenId) -> &mut Money {
+        self.tokens.entry(token).or_default()
     }
 }
 

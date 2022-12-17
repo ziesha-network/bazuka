@@ -25,7 +25,10 @@ pub async fn log_info<B: Blockchain>(
 
     let wallet_addr = ctx.wallet.get_address();
     let acc = ctx.blockchain.get_account(wallet_addr)?;
-    inf.push(("Balance", acc.balance().to_string()));
+    inf.push((
+        "Balance",
+        acc.balance(crate::core::TokenId::Ziesha).to_string(),
+    ));
 
     println!(
         "{}",
