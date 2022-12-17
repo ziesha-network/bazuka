@@ -32,11 +32,11 @@ fn circulated_money<K: KvStore>(b: &KvStoreChain<K>) -> Result<Money, Blockchain
     let mut money_sum = Money(0);
     for (_, v) in b.database.pairs("ACC-".into())? {
         let acc: Account = v.try_into().unwrap();
-        money_sum += acc.balance;
+        money_sum += acc.balance();
     }
     for (_, v) in b.database.pairs("CONT-ACC".into())? {
         let acc: ContractAccount = v.try_into().unwrap();
-        money_sum += acc.balance;
+        money_sum += acc.balance();
     }
     Ok(money_sum)
 }
@@ -564,6 +564,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: bob.get_address(),
+                token: TokenId::Ziesha,
                 amount: Money(1000),
             }],
         },
@@ -612,6 +613,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: bob.get_address(),
+                token: TokenId::Ziesha,
                 amount: Money(1000),
             }],
         },
@@ -782,6 +784,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: wallet1.get_address(),
+                token: TokenId::Ziesha,
                 amount: Money(10_000_000),
             }],
         },
@@ -816,6 +819,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
         TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: w2_address,
+                token: TokenId::Ziesha,
                 amount: Money(100)
             }]
         }
@@ -842,6 +846,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: wallet1.get_address(),
+                token: TokenId::Ziesha,
                 amount: Money(10_000_000),
             }],
         },
@@ -859,6 +864,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
             data: TransactionData::RegularSend {
                 entries: vec![RegularSendEntry {
                     dst: wallet2.get_address(),
+                    token: TokenId::Ziesha,
                     amount: Money(300),
                 }],
             },
@@ -874,6 +880,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
             data: TransactionData::RegularSend {
                 entries: vec![RegularSendEntry {
                     dst: wallet2.get_address(),
+                    token: TokenId::Ziesha,
                     amount: Money(500),
                 }],
             },
@@ -910,6 +917,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: wallet1.get_address(),
+                token: TokenId::Ziesha,
                 amount: Money(10_000_000),
             }],
         },
@@ -956,6 +964,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: wallet1.get_address(),
+                token: TokenId::Ziesha,
                 amount: Money(10_000_000),
             }],
         },
@@ -998,6 +1007,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
         TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: wallet2.get_address(),
+                token: TokenId::Ziesha,
                 amount: Money(500_000)
             }]
         }

@@ -425,8 +425,11 @@ async fn main() -> Result<(), NodeError> {
                     for mpn_acc in chain.get_mpn_accounts(0, 10000).unwrap() {
                         sum_mpn += mpn_acc.1.balance;
                     }
-                    let mpn_contract_balance_check =
-                        sum_mpn == chain.get_contract_account(mpn_contract_id).unwrap().balance;
+                    let mpn_contract_balance_check = sum_mpn
+                        == chain
+                            .get_contract_account(mpn_contract_id)
+                            .unwrap()
+                            .balance();
                     let currency_in_circulation_check = chain.currency_in_circulation().unwrap()
                         == Money::from(2000000000000000000);
                     println!(
@@ -733,7 +736,7 @@ async fn main() -> Result<(), NodeError> {
                             "Main chain balance:".bright_yellow(),
                             acc.map(|resp| format!(
                                 "{}{}",
-                                resp.account.balance,
+                                resp.account.balance(),
                                 curr_nonce
                                     .map(|n| if n > resp.account.nonce {
                                         format!(

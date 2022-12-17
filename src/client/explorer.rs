@@ -37,7 +37,7 @@ impl From<&Token> for ExplorerToken {
     fn from(obj: &Token) -> Self {
         Self {
             id: obj.id.to_string(),
-            supply: obj.supply,
+            supply: obj.supply.into(),
             owner: obj.owner.as_ref().map(|a| a.to_string()),
         }
     }
@@ -232,8 +232,12 @@ pub enum ExplorerTokenUpdate {
 impl From<&TokenUpdate> for ExplorerTokenUpdate {
     fn from(obj: &TokenUpdate) -> Self {
         match obj {
-            TokenUpdate::Issue { amount } => Self::Issue { amount: *amount },
-            TokenUpdate::Redeem { amount } => Self::Redeem { amount: *amount },
+            TokenUpdate::Issue { amount } => Self::Issue {
+                amount: (*amount).into(),
+            },
+            TokenUpdate::Redeem { amount } => Self::Redeem {
+                amount: (*amount).into(),
+            },
             TokenUpdate::ChangeOwner { owner } => Self::ChangeOwner {
                 owner: owner.to_string(),
             },

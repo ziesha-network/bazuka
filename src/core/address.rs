@@ -101,9 +101,21 @@ pub enum Signature<S: SignatureScheme> {
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct Account {
-    pub balance: Money,
     pub nonce: u32,
-    pub tokens: HashMap<TokenId, u64>,
+    pub tokens: HashMap<TokenId, Money>,
+}
+
+impl Account {
+    // Ziesha balance
+    pub fn balance(&self) -> Money {
+        self.tokens
+            .get(&TokenId::Ziesha)
+            .cloned()
+            .unwrap_or_default()
+    }
+    pub fn mut_balance(&mut self) -> &mut Money {
+        self.tokens.entry(TokenId::Ziesha).or_default()
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]

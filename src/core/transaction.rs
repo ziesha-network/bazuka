@@ -4,6 +4,7 @@ use super::Money;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
 use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkProof, ZkScalar};
 
+use std::collections::HashMap;
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -31,11 +32,21 @@ impl<H: Hash> std::fmt::Display for ContractId<H> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy, Hash, Eq)]
-pub struct TokenId(pub ZkScalar);
+pub enum TokenId {
+    Ziesha,
+    Custom(ZkScalar),
+}
 
 impl std::fmt::Display for TokenId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self.0)
+        match self {
+            TokenId::Ziesha => {
+                write!(f, "Ziesha")
+            }
+            TokenId::Custom(id) => {
+                write!(f, "{:?}", id)
+            }
+        }
     }
 }
 
@@ -111,8 +122,21 @@ impl<H: Hash, S: SignatureScheme> ContractWithdraw<H, S> {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct ContractAccount {
     pub height: u64,
-    pub balance: Money,
+    pub tokens: HashMap<TokenId, Money>,
     pub compressed_state: ZkCompressedState,
+}
+
+impl ContractAccount {
+    // Ziesha balance
+    pub fn balance(&self) -> Money {
+        self.tokens
+            .get(&TokenId::Ziesha)
+            .cloned()
+            .unwrap_or_default()
+    }
+    pub fn mut_balance(&mut self) -> &mut Money {
+        self.tokens.entry(TokenId::Ziesha).or_default()
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
@@ -143,20 +167,21 @@ pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct RegularSendEntry<S: SignatureScheme> {
     pub dst: Address<S>,
+    pub token: TokenId,
     pub amount: Money,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct Token<S: SignatureScheme> {
     pub id: TokenId,
-    pub supply: u64, // 1u64 in case of a NFT
+    pub supply: Money, // 1u64 in case of a NFT
     pub owner: Option<Address<S>>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum TokenUpdate<S: SignatureScheme> {
-    Issue { amount: u64 },
-    Redeem { amount: u64 },
+    Issue { amount: Money },
+    Redeem { amount: Money },
     ChangeOwner { owner: Address<S> },
 }
 

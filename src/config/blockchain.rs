@@ -171,7 +171,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
 
 #[cfg(test)]
 pub fn get_test_blockchain_config() -> BlockchainConfig {
-    use crate::core::RegularSendEntry;
+    use crate::core::{RegularSendEntry, TokenId};
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
@@ -194,6 +194,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: abc.get_address(),
+                token: TokenId::Ziesha,
                 amount: Money(10000),
             }],
         },
