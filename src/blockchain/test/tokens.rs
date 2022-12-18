@@ -83,17 +83,123 @@ fn test_disallow_duplicate_token() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_token_balances() -> Result<(), BlockchainError> {
-    /*let miner = TxBuilder::new(&Vec::from("MINER"));
-    let alice = TxBuilder::new(&Vec::from("ABC"));
-    let bob = TxBuilder::new(&Vec::from("CBA"));
+    let miner = TxBuilder::new(&Vec::from("MINER"));
+    let alice = TxBuilder::new(&Vec::from("ABCD"));
+    let bob = TxBuilder::new(&Vec::from("DCBA"));
 
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
-    // Alice: 10000 Bob: 0
+    let token_id = TokenId::Custom(ZkScalar::from(123));
     assert_eq!(
-        chain.get_account(alice.get_address())?.balance(TokenId::Ziesha),
-        Money(10000)
+        chain.get_account(alice.get_address())?.balance(token_id),
+        Money(0)
     );
-    assert_eq!(chain.get_account(bob.get_address())?.balance(TokenId::Ziesha), Money(0));*/
+
+    // Cannot spend uncreated token
+    assert!(matches!(
+        chain.draft_block(
+            1,
+            &[alice.create_token_transaction(bob.get_address(), token_id, Money(1), Money(0), 1)],
+            &miner,
+            false,
+        ),
+        Err(BlockchainError::BalanceInsufficient)
+    ));
+
+    chain.apply_block(
+        &chain
+            .draft_block(
+                1,
+                &[alice.create_token(
+                    token_id,
+                    Money(12345),
+                    Some(alice.get_address()),
+                    Money(0),
+                    1,
+                )],
+                &miner,
+                false,
+            )?
+            .unwrap()
+            .block,
+        true,
+    )?;
+
+    assert_eq!(
+        chain.get_account(alice.get_address())?.balance(token_id),
+        Money(12345)
+    );
+
+    chain.apply_block(
+        &chain
+            .draft_block(
+                1,
+                &[alice.create_token_transaction(
+                    bob.get_address(),
+                    token_id,
+                    Money(20),
+                    Money(0),
+                    2,
+                )],
+                &miner,
+                false,
+            )?
+            .unwrap()
+            .block,
+        true,
+    )?;
+
+    assert_eq!(
+        chain.get_account(alice.get_address())?.balance(token_id),
+        Money(12325)
+    );
+    assert_eq!(
+        chain.get_account(bob.get_address())?.balance(token_id),
+        Money(20)
+    );
+
+    // Check insufficient token balance
+    assert!(matches!(
+        chain.draft_block(
+            1,
+            &[alice.create_token_transaction(
+                bob.get_address(),
+                token_id,
+                Money(12326),
+                Money(0),
+                3
+            )],
+            &miner,
+            false,
+        ),
+        Err(BlockchainError::BalanceInsufficient)
+    ));
+
+    chain.apply_block(
+        &chain
+            .draft_block(
+                1,
+                &[alice.create_token_transaction(
+                    bob.get_address(),
+                    token_id,
+                    Money(12325),
+                    Money(0),
+                    3,
+                )],
+                &miner,
+                false,
+            )?
+            .unwrap()
+            .block,
+        true,
+    )?;
+
+    assert_eq!(
+        chain.get_account(alice.get_address())?.balance(token_id),
+        Money(0)
+    );
+
+    rollback_till_empty(&mut chain)?;
+
     Ok(())
 }

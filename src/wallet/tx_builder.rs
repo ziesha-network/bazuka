@@ -48,6 +48,16 @@ impl TxBuilder {
         let bytes = bincode::serialize(&tx).unwrap();
         tx.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
     }
+    pub fn create_token_transaction(
+        &self,
+        dst: Address,
+        token: TokenId,
+        amount: Money,
+        fee: Money,
+        nonce: u32,
+    ) -> TransactionAndDelta {
+        self.create_multi_transaction(vec![RegularSendEntry { dst, token, amount }], fee, nonce)
+    }
     pub fn create_transaction(
         &self,
         dst: Address,
@@ -55,15 +65,7 @@ impl TxBuilder {
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
-        self.create_multi_transaction(
-            vec![RegularSendEntry {
-                dst,
-                token: TokenId::Ziesha,
-                amount,
-            }],
-            fee,
-            nonce,
-        )
+        self.create_token_transaction(dst, TokenId::Ziesha, amount, fee, nonce)
     }
     pub fn create_token(
         &self,
