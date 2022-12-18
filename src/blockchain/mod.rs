@@ -917,6 +917,9 @@ impl<K: KvStore> KvStoreChain<K> {
                                 return Err(BlockchainError::AddressNotAllowedToMine);
                             }
                         }
+                        if reward_entry.token != TokenId::Ziesha {
+                            return Err(BlockchainError::InvalidMinerReward);
+                        }
                         if reward_entry.amount != next_reward + fee_sum {
                             return Err(BlockchainError::InvalidMinerReward);
                         }
