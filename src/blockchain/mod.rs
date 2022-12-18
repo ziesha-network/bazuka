@@ -26,7 +26,6 @@ use crate::consensus::pow::Difficulty;
 pub struct BlockchainConfig {
     pub limited_miners: Option<HashSet<Address>>,
     pub genesis: BlockAndPatch,
-    pub total_supply: Money,
     pub reward_ratio: u64,
     pub max_block_size: usize,
     pub max_delta_count: usize,
@@ -1191,13 +1190,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(match self.database.get(keys::account(&addr))? {
             Some(b) => b.try_into()?,
             None => Account {
-                tokens: if addr == Address::Treasury {
-                    [(TokenId::Ziesha, self.config.total_supply)]
-                        .into_iter()
-                        .collect()
-                } else {
-                    HashMap::new()
-                },
+                tokens: HashMap::new(),
                 nonce: 0,
             },
         })

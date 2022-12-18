@@ -50,7 +50,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
     let alice = TxBuilder::new(&Vec::from("ABC"));
     let cid =
-        ContractId::from_str("3bec200a4154bfbe4836a6e8e27cee3771f5b4056e81683fcff2eb7897e6b67d")
+        ContractId::from_str("9f899282c6e06f8bc3677a90457a8f42c956b8e3f55e64b7ceea890e201c718e")
             .unwrap();
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 

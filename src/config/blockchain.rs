@@ -4,7 +4,7 @@ use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
-    Address, Block, ContractId, Header, Money, ProofOfWork, Signature, Transaction,
+    Address, Block, ContractId, Header, Money, ProofOfWork, Signature, Token, TokenId, Transaction,
     TransactionAndDelta, TransactionData, ZkHasher,
 };
 use crate::zk;
@@ -58,7 +58,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
         data: TransactionData::CreateContract {
             contract: mpn_contract,
         },
-        nonce: 1,
+        nonce: 2, // MPN contract is created after Ziesha token is created
         fee: Money(0),
         sig: Signature::Unsigned,
     };
@@ -109,6 +109,20 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
     let min_diff = Difficulty(0x032fffff);
 
+    let ziesha_token_creation_tx = Transaction {
+        src: Address::Treasury,
+        data: TransactionData::CreateToken {
+            token: Token {
+                id: TokenId::Ziesha,
+                supply: Money(2_000_000_000_u64 * UNIT),
+                owner: None,
+            },
+        },
+        nonce: 1,
+        fee: Money(0),
+        sig: Signature::Unsigned,
+    };
+
     let blk = Block {
         header: Header {
             parent_hash: Default::default(),
@@ -120,7 +134,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 nonce: 0,
             },
         },
-        body: vec![mpn_tx_delta.tx],
+        body: vec![ziesha_token_creation_tx, mpn_tx_delta.tx],
     };
 
     BlockchainConfig {
@@ -137,7 +151,6 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 .collect(),
             },
         },
-        total_supply: Money(2_000_000_000_u64 * UNIT), // 2 Billion ZIK
         reward_ratio: 100_000, // 1/100_000 -> 0.01% of Treasury Supply per block
         max_block_size: (1 * MB) as usize,
         max_delta_count: 1024, // Only allow max of 1024 ZkScalar cells to be added per block
@@ -174,6 +187,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     use crate::core::{RegularSendEntry, TokenId};
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
+    println!("{}", mpn_contract_id);
 
     let min_diff = Difficulty(0x007fffff);
 
@@ -187,7 +201,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.genesis.block.header.proof_of_work.target = min_diff;
     conf.testnet_height_limit = None;
 
-    conf.genesis.block.body[0] = get_test_mpn_contract().tx;
+    conf.genesis.block.body[1] = get_test_mpn_contract().tx;
     let abc = TxBuilder::new(&Vec::from("ABC"));
     conf.genesis.block.body.push(Transaction {
         src: Address::Treasury,
@@ -198,7 +212,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
                 amount: Money(10000),
             }],
         },
-        nonce: 2,
+        nonce: 3,
         fee: Money(0),
         sig: Signature::Unsigned,
     });

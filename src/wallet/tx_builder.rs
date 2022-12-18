@@ -1,6 +1,6 @@
 use crate::core::{
     Address, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Money, MpnAddress,
-    MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, TokenId, Transaction,
+    MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token, TokenId, Transaction,
     TransactionAndDelta, TransactionData, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
@@ -64,6 +64,33 @@ impl TxBuilder {
             fee,
             nonce,
         )
+    }
+    pub fn create_token(
+        &self,
+        id: TokenId,
+        supply: Money,
+        minter: Option<Address>,
+        fee: Money,
+        nonce: u32,
+    ) -> TransactionAndDelta {
+        let mut tx = Transaction {
+            src: self.get_address(),
+            data: TransactionData::CreateToken {
+                token: Token {
+                    id,
+                    owner: minter,
+                    supply,
+                },
+            },
+            nonce,
+            fee,
+            sig: Signature::Unsigned,
+        };
+        self.sign_tx(&mut tx);
+        TransactionAndDelta {
+            tx,
+            state_delta: None,
+        }
     }
     pub fn create_multi_transaction(
         &self,

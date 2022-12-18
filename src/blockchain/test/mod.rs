@@ -5,6 +5,7 @@ use crate::crypto::SignatureScheme;
 use crate::db;
 
 mod contract;
+mod tokens;
 
 fn easy_config() -> BlockchainConfig {
     let mut conf = blockchain::get_test_blockchain_config();
@@ -32,11 +33,11 @@ fn circulated_money<K: KvStore>(b: &KvStoreChain<K>) -> Result<Money, Blockchain
     let mut money_sum = Money(0);
     for (_, v) in b.database.pairs("ACC-".into())? {
         let acc: Account = v.try_into().unwrap();
-        money_sum += acc.balance();
+        money_sum += acc.balance(TokenId::Ziesha);
     }
     for (_, v) in b.database.pairs("CONT-ACC".into())? {
         let acc: ContractAccount = v.try_into().unwrap();
-        money_sum += acc.balance();
+        money_sum += acc.balance(TokenId::Ziesha);
     }
     Ok(money_sum)
 }
@@ -438,10 +439,20 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
     let mut fork2 = chain.fork_on_ram();
 
     fork1.apply_block(&blk1, true)?;
-    assert_eq!(fork1.get_account(alice.get_address())?.balance, Money(9700));
+    assert_eq!(
+        fork1
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(9700)
+    );
 
     fork2.apply_block(&blk2, true)?;
-    assert_eq!(fork2.get_account(alice.get_address())?.balance, Money(9700));
+    assert_eq!(
+        fork2
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(9700)
+    );
 
     let mut blk_wrong = blk1.clone();
     blk_wrong.header.block_root = Default::default();
@@ -468,10 +479,17 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
 
     // Alice: 10000 Bob: 0
     assert_eq!(
-        chain.get_account(alice.get_address())?.balance,
+        chain
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
         Money(10000)
     );
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(0)
+    );
 
     let tx = alice.create_transaction(bob.get_address(), Money(2700), Money(300), 1);
 
@@ -483,8 +501,18 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
             .block,
         true,
     )?;
-    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(7000));
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(2700));
+    assert_eq!(
+        chain
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(7000)
+    );
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(2700)
+    );
 
     // Alice -> 2700 -> Bob (Fee 300) (NOT APPLIED: DUPLICATED TRANSACTION!)
     chain.apply_block(
@@ -494,8 +522,18 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
             .block,
         true,
     )?;
-    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(7000));
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(2700));
+    assert_eq!(
+        chain
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(7000)
+    );
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(2700)
+    );
 
     let tx2 = alice.create_transaction(bob.get_address(), Money(2700), Money(300), 2);
 
@@ -504,8 +542,18 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
         &chain.draft_block(1, &[tx2], &miner, true)?.unwrap().block,
         true,
     )?;
-    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(4000));
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(5400));
+    assert_eq!(
+        chain
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(4000)
+    );
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(5400)
+    );
 
     rollback_till_empty(&mut chain)?;
 
@@ -522,10 +570,17 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
 
     // Alice: 10000 Bob: 0
     assert_eq!(
-        chain.get_account(alice.get_address())?.balance,
+        chain
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
         Money(10000)
     );
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(0)
+    );
 
     let tx = alice.create_transaction(bob.get_address(), Money(9701), Money(300), 1);
 
@@ -543,7 +598,12 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
         &chain.draft_block(1, &[tx], &miner, true)?.unwrap().block,
         true,
     )?;
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(0)
+    );
 
     rollback_till_empty(&mut chain)?;
 
@@ -591,7 +651,12 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
             .block,
         true,
     )?;
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(0)
+    );
 
     rollback_till_empty(&mut chain)?;
 
@@ -642,7 +707,12 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
         &chain.draft_block(1, &[tx], &miner, true)?.unwrap().block,
         true,
     )?;
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(0)
+    );
 
     rollback_till_empty(&mut chain)?;
 
@@ -659,10 +729,17 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
 
     // Alice: 10000 Bob: 0
     assert_eq!(
-        chain.get_account(alice.get_address())?.balance,
+        chain
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
         Money(10000)
     );
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(0)
+    );
 
     // Alice -> 2700 -> Bob (Fee 300)
     chain.apply_block(
@@ -677,8 +754,18 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .block,
         true,
     )?;
-    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(7000));
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(2700));
+    assert_eq!(
+        chain
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(7000)
+    );
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(2700)
+    );
 
     // Bob -> 2600 -> Alice (Fee 200) (BALANCE INSUFFICIENT!)
     chain.apply_block(
@@ -693,8 +780,18 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .block,
         true,
     )?;
-    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(7000));
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(2700));
+    assert_eq!(
+        chain
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(7000)
+    );
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(2700)
+    );
 
     // Bob -> 2600 -> Alice (Fee 200)
     chain.apply_block(
@@ -709,8 +806,18 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .block,
         true,
     )?;
-    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(9600));
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
+    assert_eq!(
+        chain
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(9600)
+    );
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(0)
+    );
 
     // Alice -> 100 -> Alice (Fee 200) (SELF PAYMENT NOT ALLOWED)
     chain.apply_block(
@@ -725,8 +832,18 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .block,
         true,
     )?;
-    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(9400));
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
+    assert_eq!(
+        chain
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(9400)
+    );
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(0)
+    );
 
     // Alice -> 20000 -> Alice (Fee 9400) (SELF PAYMENT NOT ALLOWED)
     chain.apply_block(
@@ -741,8 +858,18 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .block,
         true,
     )?;
-    assert_eq!(chain.get_account(alice.get_address())?.balance, Money(0));
-    assert_eq!(chain.get_account(bob.get_address())?.balance, Money(0));
+    assert_eq!(
+        chain
+            .get_account(alice.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(0)
+    );
+    assert_eq!(
+        chain
+            .get_account(bob.get_address())?
+            .balance(TokenId::Ziesha),
+        Money(0)
+    );
 
     rollback_till_empty(&mut chain)?;
 
@@ -779,7 +906,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
 
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = Difficulty(0x0000ffff);
-    conf.genesis.block.body = vec![Transaction {
+    conf.genesis.block.body.push(Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
@@ -788,10 +915,10 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
                 amount: Money(10_000_000),
             }],
         },
-        nonce: 1,
+        nonce: 4,
         fee: Money(0),
         sig: Signature::Unsigned,
-    }];
+    });
 
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
@@ -826,7 +953,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     );
 
     let account = chain.get_account(wallet2.get_address())?;
-    assert_eq!(Money(100), account.balance);
+    assert_eq!(Money(100), account.balance(TokenId::Ziesha));
     assert_eq!(0, account.nonce);
 
     rollback_till_empty(&mut chain)?;
@@ -841,7 +968,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     let wallet2 = TxBuilder::new(&Vec::from("CBA"));
 
     let mut conf = blockchain::get_test_blockchain_config();
-    conf.genesis.block.body = vec![Transaction {
+    conf.genesis.block.body.push(Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
@@ -850,10 +977,10 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
                 amount: Money(10_000_000),
             }],
         },
-        nonce: 1,
+        nonce: 4,
         fee: Money(0),
         sig: Signature::Unsigned,
-    }];
+    });
 
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
@@ -908,11 +1035,11 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
 #[test]
 fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainError> {
     let wallet_miner = TxBuilder::new(&Vec::from("MINER"));
-    let wallet1 = TxBuilder::new(&Vec::from("ABC"));
-    let wallet2 = TxBuilder::new(&Vec::from("CBA"));
+    let wallet1 = TxBuilder::new(&Vec::from("ABCD"));
+    let wallet2 = TxBuilder::new(&Vec::from("CBAD"));
 
     let mut conf = blockchain::get_test_blockchain_config();
-    conf.genesis.block.body = vec![Transaction {
+    conf.genesis.block.body.push(Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
@@ -921,10 +1048,10 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
                 amount: Money(10_000_000),
             }],
         },
-        nonce: 1,
+        nonce: 4,
         fee: Money(0),
         sig: Signature::Unsigned,
-    }];
+    });
 
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
@@ -944,8 +1071,8 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
 
     let account1 = chain.get_account(wallet1.get_address())?;
     let account2 = chain.get_account(wallet2.get_address())?;
-    assert_eq!(Money(10_000_000 - 7000), account1.balance);
-    assert_eq!(Money(7000), account2.balance);
+    assert_eq!(Money(10_000_000 - 7000), account1.balance(TokenId::Ziesha));
+    assert_eq!(Money(7000), account2.balance(TokenId::Ziesha));
 
     rollback_till_empty(&mut chain)?;
 
@@ -959,7 +1086,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let wallet2 = TxBuilder::new(&Vec::from("CBA"));
 
     let mut conf = blockchain::get_test_blockchain_config();
-    conf.genesis.block.body = vec![Transaction {
+    conf.genesis.block.body.push(Transaction {
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
@@ -968,10 +1095,10 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
                 amount: Money(10_000_000),
             }],
         },
-        nonce: 1,
+        nonce: 4,
         fee: Money(0),
         sig: Signature::Unsigned,
-    }];
+    });
 
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
@@ -1026,7 +1153,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     assert_eq!(2, height);
 
     let account = chain.get_account(wallet2.get_address())?;
-    assert_eq!(Money(1_000_000), account.balance);
+    assert_eq!(Money(1_000_000), account.balance(TokenId::Ziesha));
     assert_eq!(0, account.nonce);
 
     rollback_till_empty(&mut chain)?;
