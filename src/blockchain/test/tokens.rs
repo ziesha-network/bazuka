@@ -6,6 +6,24 @@ fn test_disallow_duplicate_token() -> Result<(), BlockchainError> {
     let alice = TxBuilder::new(&Vec::from("ABC"));
 
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+
+    // Check disallow recreating Ziesha token
+    assert!(matches!(
+        chain.draft_block(
+            3,
+            &[alice.create_token(
+                TokenId::Ziesha,
+                Money(200),
+                Some(alice.get_address()),
+                Money(0),
+                1,
+            )],
+            &miner,
+            false,
+        ),
+        Err(BlockchainError::TokenAlreadyExists)
+    ));
+
     chain.apply_block(
         &chain
             .draft_block(
