@@ -105,11 +105,21 @@ lazy_static! {
     .unwrap();
 }
 
-#[derive(PrimeField, Serialize, Deserialize, Hash)]
+#[derive(PrimeField, Serialize, Deserialize)]
 #[PrimeFieldModulus = "52435875175126190479447740508185965837690552500527637822603658699938581184513"]
 #[PrimeFieldGenerator = "7"]
 #[PrimeFieldReprEndianness = "little"]
 pub struct ZkScalar([u64; 4]);
+
+impl std::hash::Hash for ZkScalar {
+    fn hash<Hasher>(&self, state: &mut Hasher)
+    where
+        Hasher: std::hash::Hasher,
+    {
+        self.0.hash(state);
+        state.finish();
+    }
+}
 
 pub fn hash_to_scalar(inp: &[u8]) -> ZkScalar {
     ZkScalar::new(&Hasher::hash(inp))
