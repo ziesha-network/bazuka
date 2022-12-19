@@ -863,12 +863,6 @@ impl<K: KvStore> KvStoreChain<K> {
         let (ops, _) = self.isolated(|chain| {
             let curr_height = chain.get_height()?;
 
-            if block.header.number > 1850 {
-                if block.header.proof_of_work.timestamp < 1669740000 {
-                    return Err(BlockchainError::TestnetForcedFork);
-                }
-            }
-
             if let Some(height_limit) = self.config.testnet_height_limit {
                 if block.header.number >= height_limit {
                     return Err(BlockchainError::TestnetHeightLimitReached);
