@@ -92,12 +92,8 @@ mod tests {
 
     #[test]
     fn test_hash_deterministic() {
-        let mut h = PoseidonState::new(&[
-            ZkScalar::one(),
-            ZkScalar::one(),
-            ZkScalar::one(),
-            ZkScalar::one(),
-        ]);
+        let mut h =
+            PoseidonState::new(&[ZkScalar::ONE, ZkScalar::ONE, ZkScalar::ONE, ZkScalar::ONE]);
 
         let mut h2 = h.clone();
         let result = h.hash();
@@ -108,10 +104,10 @@ mod tests {
     #[test]
     fn test_hash_reflects_changes() {
         for arity in 1..MAX_ARITY + 1 {
-            let mut vals = vec![ZkScalar::zero(); arity];
+            let mut vals = vec![ZkScalar::ZERO; arity];
             let original = poseidon(&vals);
             for i in 0..vals.len() {
-                vals[i] = ZkScalar::one();
+                vals[i] = ZkScalar::ONE;
                 assert!(poseidon(&vals) != original);
             }
         }
