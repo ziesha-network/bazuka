@@ -19,6 +19,7 @@ use {
     bazuka::core::{ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId},
     bazuka::wallet::{TxBuilder, Wallet},
     colored::Colorize,
+    ff::Field,
     rand::Rng,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
@@ -55,6 +56,17 @@ impl BazukaConfig {
 #[derive(StructOpt)]
 #[cfg(feature = "client")]
 enum WalletOptions {
+    /// Creates a new token
+    NewToken {
+        #[structopt(long)]
+        name: String,
+        #[structopt(long)]
+        supply: u64,
+        #[structopt(long)]
+        mintable: bool,
+        #[structopt(long, default_value = "0")]
+        fee: Money,
+    },
     /// Creates a new MPN-account
     NewAccount {
         #[structopt(long)]
@@ -551,6 +563,46 @@ async fn main() -> Result<(), NodeError> {
             println!("Client feature not turned on!");
         }
         CliOptions::Wallet(wallet_opts) => match wallet_opts {
+            WalletOptions::NewToken {
+                name: _,
+                supply,
+                mintable,
+                fee,
+            } => {
+                let mut rng = rand::thread_rng();
+                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tx_builder = TxBuilder::new(&wallet.seed());
+                let (req_loop, client) = BazukaClient::connect(
+                    tx_builder.get_priv_key(),
+                    conf.random_node(),
+                    conf.network,
+                    None,
+                );
+                try_join!(
+                    async move {
+                        let curr_nonce = client
+                            .get_account(tx_builder.get_address())
+                            .await?
+                            .account
+                            .nonce;
+                        let tid = TokenId::Custom(bazuka::zk::ZkScalar::random(&mut rng));
+                        let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
+                        let pay = tx_builder.create_token(
+                            tid,
+                            supply.into(),
+                            mintable.then(|| tx_builder.get_address()),
+                            fee,
+                            new_nonce,
+                        );
+                        wallet.add_rsend(pay.clone());
+                        wallet.save(wallet_path).unwrap();
+                        println!("{:#?}", client.transact(pay).await?);
+                        Ok::<(), NodeError>(())
+                    },
+                    req_loop
+                )
+                .unwrap();
+            }
             WalletOptions::NewAccount {
                 index,
                 initial,

@@ -82,7 +82,7 @@ impl FromStr for PublicKey {
             .rev()
             .collect::<Result<Vec<u8>, std::num::ParseIntError>>()
             .map_err(|_| ParsePublicKeyError::Invalid)?;
-        let mut repr = ZkScalar::zero().to_repr();
+        let mut repr = ZkScalar::ZERO.to_repr();
         repr.as_mut().clone_from_slice(&bytes);
         Ok(PublicKey(PointCompressed(
             ZkScalar::from_repr(repr).unwrap(),

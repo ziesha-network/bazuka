@@ -15,7 +15,7 @@ struct PoseidonState {
 impl PoseidonState {
     pub fn new(elems: &[ZkScalar]) -> Self {
         let mut elements = elems.to_vec();
-        elements.insert(0, ZkScalar::zero());
+        elements.insert(0, ZkScalar::ZERO);
         Self {
             present_elements: 0u64,
             constants_offset: 0,

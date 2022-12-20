@@ -22,10 +22,10 @@ impl AddAssign<&PointAffine> for PointAffine {
             *self = self.double();
             return;
         }
-        let xx = (ZkScalar::one() + *D * self.0 * other.0 * self.1 * other.1)
+        let xx = (ZkScalar::ONE + *D * self.0 * other.0 * self.1 * other.1)
             .invert()
             .unwrap();
-        let yy = (ZkScalar::one() - *D * self.0 * other.0 * self.1 * other.1)
+        let yy = (ZkScalar::ONE - *D * self.0 * other.0 * self.1 * other.1)
             .invert()
             .unwrap();
         *self = Self(
@@ -37,18 +37,17 @@ impl AddAssign<&PointAffine> for PointAffine {
 
 impl PointAffine {
     pub fn is_on_curve(&self) -> bool {
-        self.1 * self.1 - self.0 * self.0
-            == ZkScalar::one() + *D * self.0 * self.0 * self.1 * self.1
+        self.1 * self.1 - self.0 * self.0 == ZkScalar::ONE + *D * self.0 * self.0 * self.1 * self.1
     }
     pub fn is_infinity(&self) -> bool {
-        self.0.is_zero().into() && (self.1 == ZkScalar::one() || self.1 == -ZkScalar::one())
+        self.0.is_zero().into() && (self.1 == ZkScalar::ONE || self.1 == -ZkScalar::ONE)
     }
     pub fn zero() -> Self {
-        Self(ZkScalar::zero(), ZkScalar::one())
+        Self(ZkScalar::ZERO, ZkScalar::ONE)
     }
     pub fn double(&self) -> Self {
         let xx = (*A * self.0 * self.0 + self.1 * self.1).invert().unwrap();
-        let yy = (ZkScalar::one() + ZkScalar::one() - *A * self.0 * self.0 - self.1 * self.1)
+        let yy = (ZkScalar::ONE + ZkScalar::ONE - *A * self.0 * self.0 - self.1 * self.1)
             .invert()
             .unwrap();
         Self(
@@ -68,7 +67,7 @@ impl PointAffine {
         result.to_affine()
     }
     pub fn to_projective(&self) -> PointProjective {
-        PointProjective(self.0, self.1, ZkScalar::one())
+        PointProjective(self.0, self.1, ZkScalar::ONE)
     }
     pub fn compress(&self) -> PointCompressed {
         PointCompressed(self.0, self.1.is_odd().into())
@@ -77,8 +76,8 @@ impl PointAffine {
 
 impl PointCompressed {
     pub fn decompress(&self) -> PointAffine {
-        let mut y = ((ZkScalar::one() - *D * self.0.square()).invert().unwrap()
-            * (ZkScalar::one() - *A * self.0.square()))
+        let mut y = ((ZkScalar::ONE - *D * self.0.square()).invert().unwrap()
+            * (ZkScalar::ONE - *A * self.0.square()))
         .sqrt()
         .unwrap();
         let is_odd: bool = y.is_odd().into();
@@ -117,7 +116,7 @@ impl AddAssign<&PointProjective> for PointProjective {
 
 impl PointProjective {
     pub fn zero() -> Self {
-        PointProjective(ZkScalar::zero(), ZkScalar::one(), ZkScalar::zero())
+        PointProjective(ZkScalar::ZERO, ZkScalar::ONE, ZkScalar::ZERO)
     }
     pub fn is_zero(&self) -> bool {
         self.2.is_zero().into()
@@ -145,7 +144,7 @@ impl PointProjective {
 }
 
 lazy_static! {
-    pub static ref A: ZkScalar = ZkScalar::one().neg();
+    pub static ref A: ZkScalar = ZkScalar::ONE.neg();
     pub static ref D: ZkScalar = ZkScalar::from_str_vartime(
         "19257038036680949359750312669786877991949435402254120286184196891950884077233"
     )
