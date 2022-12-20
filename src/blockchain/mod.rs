@@ -577,6 +577,10 @@ impl<K: KvStore> KvStoreChain<K> {
                                 return Err(BlockchainError::BalanceInsufficient);
                             }
                             src_bal -= entry.amount;
+                            chain.database.update(&[WriteOp::Put(
+                                keys::account_balance(&tx.src, entry.token),
+                                src_bal.into(),
+                            )])?;
 
                             let mut dst_bal = chain.get_balance(entry.dst.clone(), entry.token)?;
                             dst_bal += entry.amount;

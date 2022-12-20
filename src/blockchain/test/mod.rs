@@ -31,13 +31,17 @@ fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), Blockc
 
 fn circulated_money<K: KvStore>(b: &KvStoreChain<K>) -> Result<Money, BlockchainError> {
     let mut money_sum = Money(0);
-    for (_, v) in b.database.pairs("ACB-".into())? {
-        let bal: Money = v.try_into().unwrap();
-        money_sum += bal;
+    for (k, v) in b.database.pairs("ACB-".into())? {
+        if k.0.ends_with("Ziesha") {
+            let bal: Money = v.try_into().unwrap();
+            money_sum += bal;
+        }
     }
-    for (_, v) in b.database.pairs("CAC".into())? {
-        let bal: Money = v.try_into().unwrap();
-        money_sum += bal;
+    for (k, v) in b.database.pairs("CAB-".into())? {
+        if k.0.ends_with("Ziesha") {
+            let bal: Money = v.try_into().unwrap();
+            money_sum += bal;
+        }
     }
     Ok(money_sum)
 }
