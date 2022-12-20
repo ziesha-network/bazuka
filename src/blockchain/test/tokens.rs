@@ -98,10 +98,7 @@ fn test_token_balances() -> Result<(), BlockchainError> {
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     let token_id = TokenId::Custom(ZkScalar::from(123));
-    assert_eq!(
-        chain.get_account(alice.get_address())?.balance(token_id),
-        Money(0)
-    );
+    assert_eq!(chain.get_balance(alice.get_address(), token_id)?, Money(0));
 
     // Cannot spend uncreated token
     assert!(matches!(
@@ -136,7 +133,7 @@ fn test_token_balances() -> Result<(), BlockchainError> {
     )?;
 
     assert_eq!(
-        chain.get_account(alice.get_address())?.balance(token_id),
+        chain.get_balance(alice.get_address(), token_id)?,
         Money(12345)
     );
 
@@ -160,13 +157,10 @@ fn test_token_balances() -> Result<(), BlockchainError> {
     )?;
 
     assert_eq!(
-        chain.get_account(alice.get_address())?.balance(token_id),
+        chain.get_balance(alice.get_address(), token_id)?,
         Money(12325)
     );
-    assert_eq!(
-        chain.get_account(bob.get_address())?.balance(token_id),
-        Money(20)
-    );
+    assert_eq!(chain.get_balance(bob.get_address(), token_id)?, Money(20));
 
     // Check insufficient token balance
     assert!(matches!(
@@ -204,10 +198,7 @@ fn test_token_balances() -> Result<(), BlockchainError> {
         true,
     )?;
 
-    assert_eq!(
-        chain.get_account(alice.get_address())?.balance(token_id),
-        Money(0)
-    );
+    assert_eq!(chain.get_balance(alice.get_address(), token_id)?, Money(0));
 
     rollback_till_empty(&mut chain)?;
 
