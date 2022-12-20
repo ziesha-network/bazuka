@@ -788,25 +788,19 @@ async fn main() -> Result<(), NodeError> {
                     async move {
                         let acc = client.get_account(tx_builder.get_address()).await;
                         let curr_nonce = wallet.new_r_nonce().map(|n| n - 1);
-                        println!(
-                            "{} {}",
-                            "Main chain balance:".bright_yellow(),
-                            acc.map(|resp| format!(
-                                "{}{}",
-                                resp.account.balance(TokenId::Ziesha),
-                                curr_nonce
-                                    .map(|n| if n > resp.account.nonce {
-                                        format!(
-                                            " (Pending transactions: {})",
-                                            n - resp.account.nonce
-                                        )
-                                    } else {
-                                        "".into()
-                                    })
-                                    .unwrap_or_default()
-                            ))
-                            .unwrap_or("Node not available!".into()),
-                        );
+                        println!();
+                        println!("{}", "Main chain balances\n---------".bright_yellow());
+                        if let Ok(resp) = acc {
+                            for (tkn, balance) in resp.account.tokens.iter() {
+                                println!("{}: {}", tkn, balance);
+                            }
+                            if let Some(nonce) = curr_nonce {
+                                println!("(Pending transactions: {})", nonce - resp.account.nonce);
+                            }
+                        } else {
+                            println!("Node not available!");
+                        }
+
                         println!();
                         println!("{}", "MPN Accounts\n---------".bright_yellow());
                         for ind in wallet.mpn_indices() {
