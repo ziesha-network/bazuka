@@ -24,11 +24,10 @@ pub async fn log_info<B: Blockchain>(
     inf.push(("MPN Pool", ctx.mempool.mpn_sourced.len().to_string()));
 
     let wallet_addr = ctx.wallet.get_address();
-    let acc = ctx.blockchain.get_account(wallet_addr)?;
-    inf.push((
-        "Balance",
-        acc.balance(crate::core::TokenId::Ziesha).to_string(),
-    ));
+    let balance = ctx
+        .blockchain
+        .get_balance(wallet_addr, crate::core::TokenId::Ziesha)?;
+    inf.push(("Balance", balance.to_string()));
 
     println!(
         "{}",

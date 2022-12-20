@@ -4,7 +4,6 @@ use super::Money;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
 use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkProof, ZkScalar};
 
-use std::collections::HashMap;
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -122,17 +121,7 @@ impl<H: Hash, S: SignatureScheme> ContractWithdraw<H, S> {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct ContractAccount {
     pub height: u64,
-    pub tokens: HashMap<TokenId, Money>,
     pub compressed_state: ZkCompressedState,
-}
-
-impl ContractAccount {
-    pub fn balance(&self, token: TokenId) -> Money {
-        self.tokens.get(&token).cloned().unwrap_or_default()
-    }
-    pub fn mut_balance(&mut self, token: TokenId) -> &mut Money {
-        self.tokens.entry(token).or_default()
-    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]

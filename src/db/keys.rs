@@ -38,8 +38,16 @@ pub fn account(address: &Address) -> StringKey {
     format!("ACC-{}", address).into()
 }
 
+pub fn account_balance(address: &Address, token_id: TokenId) -> StringKey {
+    format!("ACB-{}-{}", address, token_id).into()
+}
+
 pub fn contract_account(contract_id: &ContractId) -> StringKey {
     format!("CAC-{}", contract_id).into()
+}
+
+pub fn contract_balance(contract_id: &ContractId, token_id: TokenId) -> StringKey {
+    format!("CAB-{}-{}", contract_id, token_id).into()
 }
 
 pub fn contract(contract_id: &ContractId) -> StringKey {
