@@ -170,6 +170,8 @@ pub struct RegularSendEntry<S: SignatureScheme> {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct Token<S: SignatureScheme> {
     pub id: TokenId,
+    pub name: String,
+    pub symbol: String,
     pub supply: Money, // 1u64 in case of a NFT
     pub owner: Option<Address<S>>,
 }

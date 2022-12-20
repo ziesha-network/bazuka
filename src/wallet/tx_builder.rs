@@ -70,6 +70,8 @@ impl TxBuilder {
     pub fn create_token(
         &self,
         id: TokenId,
+        name: String,
+        symbol: String,
         supply: Money,
         minter: Option<Address>,
         fee: Money,
@@ -80,6 +82,8 @@ impl TxBuilder {
             data: TransactionData::CreateToken {
                 token: Token {
                     id,
+                    name,
+                    symbol,
                     owner: minter,
                     supply,
                 },

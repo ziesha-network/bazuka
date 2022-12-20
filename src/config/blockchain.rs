@@ -114,6 +114,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         data: TransactionData::CreateToken {
             token: Token {
                 id: TokenId::Ziesha,
+                name: "Ziesha".into(),
+                symbol: "ZSH".into(),
                 supply: Money(2_000_000_000_u64 * UNIT),
                 owner: None,
             },
@@ -184,7 +186,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
 
 #[cfg(test)]
 pub fn get_test_blockchain_config() -> BlockchainConfig {
-    use crate::core::{RegularSendEntry, TokenId};
+    use crate::core::RegularSendEntry;
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
     println!("{}", mpn_contract_id);

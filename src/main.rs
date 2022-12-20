@@ -61,6 +61,8 @@ enum WalletOptions {
         #[structopt(long)]
         name: String,
         #[structopt(long)]
+        symbol: String,
+        #[structopt(long)]
         supply: u64,
         #[structopt(long)]
         mintable: bool,
@@ -564,7 +566,8 @@ async fn main() -> Result<(), NodeError> {
         }
         CliOptions::Wallet(wallet_opts) => match wallet_opts {
             WalletOptions::NewToken {
-                name: _,
+                name,
+                symbol,
                 supply,
                 mintable,
                 fee,
@@ -589,6 +592,8 @@ async fn main() -> Result<(), NodeError> {
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
                         let pay = tx_builder.create_token(
                             tid,
+                            name,
+                            symbol,
                             supply.into(),
                             mintable.then(|| tx_builder.get_address()),
                             fee,

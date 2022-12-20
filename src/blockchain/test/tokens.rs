@@ -13,6 +13,8 @@ fn test_disallow_duplicate_token() -> Result<(), BlockchainError> {
             3,
             &[alice.create_token(
                 TokenId::Ziesha,
+                "Ziesha".into(),
+                "ZSH".into(),
                 Money(200),
                 Some(alice.get_address()),
                 Money(0),
@@ -30,6 +32,8 @@ fn test_disallow_duplicate_token() -> Result<(), BlockchainError> {
                 1,
                 &[alice.create_token(
                     TokenId::Custom(ZkScalar::from(1)),
+                    "Token One".into(),
+                    "ONE".into(),
                     Money(100),
                     Some(alice.get_address()),
                     Money(0),
@@ -48,6 +52,8 @@ fn test_disallow_duplicate_token() -> Result<(), BlockchainError> {
                 2,
                 &[alice.create_token(
                     TokenId::Custom(ZkScalar::from(2)),
+                    "Token Two".into(),
+                    "TWO".into(),
                     Money(200),
                     Some(alice.get_address()),
                     Money(0),
@@ -67,6 +73,8 @@ fn test_disallow_duplicate_token() -> Result<(), BlockchainError> {
             3,
             &[alice.create_token(
                 TokenId::Custom(ZkScalar::from(2)),
+                "Token Two".into(),
+                "TWO".into(),
                 Money(200),
                 Some(alice.get_address()),
                 Money(0),
@@ -112,6 +120,8 @@ fn test_token_balances() -> Result<(), BlockchainError> {
                 1,
                 &[alice.create_token(
                     token_id,
+                    "My Token".into(),
+                    "MYT".into(),
                     Money(12345),
                     Some(alice.get_address()),
                     Money(0),
