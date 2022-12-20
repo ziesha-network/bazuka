@@ -100,4 +100,6 @@ pub enum BlockchainError {
     TokenSupplyInsufficient,
     #[error("token supply overflows when issued")]
     TokenSupplyOverflow,
+    #[error("token has an invalid name/symbol")]
+    TokenBadNameSymbol,
 }

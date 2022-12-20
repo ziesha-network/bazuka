@@ -461,6 +461,16 @@ impl<K: KvStore> KvStoreChain<K> {
                     if chain.get_token(token.id)?.is_some() {
                         return Err(BlockchainError::TokenAlreadyExists);
                     } else {
+                        const MAX_NAME_LENGTH: usize = 10;
+                        const MIN_SYMBOL_LENGTH: usize = 3;
+                        const MAX_SYMBOL_LENGTH: usize = 6;
+                        if !token.symbol.chars().all(|x| x.is_ascii_alphabetic())
+                            || token.symbol.len() < MIN_SYMBOL_LENGTH
+                            || token.symbol.len() > MAX_SYMBOL_LENGTH
+                            || token.name.len() > MAX_NAME_LENGTH
+                        {
+                            return Err(BlockchainError::TokenBadNameSymbol);
+                        }
                         acc_src.tokens.insert(token.id, token.supply);
                         chain
                             .database
