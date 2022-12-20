@@ -1,6 +1,6 @@
 [package]
 name = "bazuka"
-version = "0.5.4"
+version = "0.6.0"
 authors = ["El Geuse <geusebetel@proton.me>"]
 edition = "2021"
 
