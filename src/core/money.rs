@@ -1,4 +1,4 @@
-use crate::config::{SYMBOL, UNIT, UNIT_ZEROS};
+use crate::config::{UNIT, UNIT_ZEROS};
 use std::ops::{Add, AddAssign, Div, Sub, SubAssign};
 use std::str::FromStr;
 use thiserror::Error;
@@ -42,7 +42,7 @@ impl std::fmt::Display for Money {
                 s.push('0');
             }
         }
-        write!(f, "{}{}", s, SYMBOL)
+        write!(f, "{}", s)
     }
 }
 
@@ -124,25 +124,16 @@ mod tests {
 
     #[test]
     fn test_money_to_str() {
-        assert_eq!(format!("{}", Money(0)), format!("0.0{}", SYMBOL));
-        assert_eq!(format!("{}", Money(1)), format!("0.000000001{}", SYMBOL));
-        assert_eq!(format!("{}", Money(12)), format!("0.000000012{}", SYMBOL));
-        assert_eq!(format!("{}", Money(1234)), format!("0.000001234{}", SYMBOL));
-        assert_eq!(
-            format!("{}", Money(123000000000)),
-            format!("123.0{}", SYMBOL)
-        );
-        assert_eq!(
-            format!("{}", Money(123456789)),
-            format!("0.123456789{}", SYMBOL)
-        );
-        assert_eq!(
-            format!("{}", Money(1234567898)),
-            format!("1.234567898{}", SYMBOL)
-        );
+        assert_eq!(format!("{}", Money(0)), "0.0");
+        assert_eq!(format!("{}", Money(1)), "0.000000001");
+        assert_eq!(format!("{}", Money(12)), "0.000000012");
+        assert_eq!(format!("{}", Money(1234)), "0.000001234");
+        assert_eq!(format!("{}", Money(123000000000)), "123.0");
+        assert_eq!(format!("{}", Money(123456789)), "0.123456789");
+        assert_eq!(format!("{}", Money(1234567898)), "1.234567898");
         assert_eq!(
             format!("{}", Money(123456789987654321)),
-            format!("123456789.987654321{}", SYMBOL)
+            "123456789.987654321"
         );
     }
 

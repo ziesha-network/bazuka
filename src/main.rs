@@ -68,7 +68,7 @@ enum WalletOptions {
         #[structopt(long)]
         symbol: String,
         #[structopt(long)]
-        supply: u64,
+        supply: Money,
         #[structopt(long)]
         mintable: bool,
         #[structopt(long, default_value = "0")]
@@ -604,13 +604,15 @@ async fn main() -> Result<(), NodeError> {
                             tid,
                             name,
                             symbol,
-                            supply.into(),
+                            supply,
                             mintable.then(|| tx_builder.get_address()),
                             fee,
                             new_nonce,
                         );
+                        wallet.add_token(tid);
                         wallet.add_rsend(pay.clone());
                         wallet.save(wallet_path).unwrap();
+                        println!("Token-Id: {}", tid);
                         println!("{:#?}", client.transact(pay).await?);
                         Ok::<(), NodeError>(())
                     },
@@ -799,17 +801,28 @@ async fn main() -> Result<(), NodeError> {
                         let acc = client.get_account(tx_builder.get_address()).await;
                         let mut token_balances = Vec::new();
                         for tkn in wallet.get_tokens() {
-                            let balance =
-                                client.get_balance(tx_builder.get_address(), *tkn).await?;
-                            token_balances.push(balance);
+                            if let Ok(balance) =
+                                client.get_balance(tx_builder.get_address(), *tkn).await
+                            {
+                                token_balances.push((tkn, balance));
+                            }
                         }
 
                         let curr_nonce = wallet.new_r_nonce().map(|n| n - 1);
                         println!();
                         println!("{}", "Main chain balances\n---------".bright_yellow());
                         if let Ok(resp) = acc {
-                            for tkn in token_balances {
-                                println!("{}: {}", tkn.name, tkn.balance);
+                            for (id, inf) in token_balances {
+                                println!(
+                                    "{}: {}{}",
+                                    inf.name,
+                                    inf.balance,
+                                    if *id == TokenId::Ziesha {
+                                        bazuka::config::SYMBOL
+                                    } else {
+                                        ""
+                                    }
+                                );
                             }
                             if let Some(nonce) = curr_nonce {
                                 println!("(Pending transactions: {})", nonce - resp.account.nonce);
