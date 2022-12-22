@@ -1,7 +1,7 @@
 use crate::core::{hash::Hash, Hasher, Money, ZkHasher as ZkMainHasher};
 use crate::crypto::{jubjub, ZkSignatureScheme};
 
-use ff::PrimeField;
+use ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use num_integer::Integer;
 use serde::{Deserialize, Serialize};
@@ -127,7 +127,41 @@ pub fn hash_to_scalar(inp: &[u8]) -> ZkScalar {
 
 impl std::fmt::Display for ZkScalar {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        let rep = self
+            .to_repr()
+            .as_ref()
+            .iter()
+            .rev()
+            .cloned()
+            .collect::<Vec<u8>>();
+        write!(f, "0x{}", hex::encode(rep))
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum ParseZkScalarError {
+    #[error("scalar invalid")]
+    Invalid,
+}
+
+impl std::str::FromStr for ZkScalar {
+    type Err = ParseZkScalarError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if !s.starts_with("0x") {
+            return Err(Self::Err::Invalid);
+        }
+        let bytes = hex::decode(&s[2..])
+            .map_err(|_| Self::Err::Invalid)?
+            .into_iter()
+            .rev()
+            .collect::<Vec<u8>>();
+        if bytes.len() != 32 {
+            return Err(Self::Err::Invalid);
+        }
+        let mut ret = Self::ZERO.to_repr();
+        ret.as_mut().copy_from_slice(&bytes);
+        let opt: Option<Self> = Self::from_repr(ret).into();
+        Ok(opt.ok_or(Self::Err::Invalid)?)
     }
 }
 

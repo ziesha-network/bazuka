@@ -84,8 +84,9 @@ impl FromStr for PublicKey {
             .map_err(|_| ParsePublicKeyError::Invalid)?;
         let mut repr = ZkScalar::ZERO.to_repr();
         repr.as_mut().clone_from_slice(&bytes);
+        let as_opt: Option<ZkScalar> = ZkScalar::from_repr(repr).into();
         Ok(PublicKey(PointCompressed(
-            ZkScalar::from_repr(repr).unwrap(),
+            as_opt.ok_or(ParsePublicKeyError::Invalid)?,
             oddity,
         )))
     }

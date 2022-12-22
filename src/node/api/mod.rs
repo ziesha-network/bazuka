@@ -46,3 +46,5 @@ mod get_mempool;
 pub use get_mempool::*;
 mod get_debug_data;
 pub use get_debug_data::*;
+mod get_balance;
+pub use get_balance::*;

@@ -1,7 +1,9 @@
 mod tx_builder;
 pub use tx_builder::TxBuilder;
 
-use crate::core::{ChainSourcedTx, MpnDeposit, MpnSourcedTx, MpnWithdraw, TransactionAndDelta};
+use crate::core::{
+    ChainSourcedTx, MpnDeposit, MpnSourcedTx, MpnWithdraw, TokenId, TransactionAndDelta,
+};
 use crate::zk::MpnTransaction;
 use bip39::Mnemonic;
 use rand_core_mnemonic::{CryptoRng, RngCore};
@@ -22,15 +24,9 @@ pub enum WalletError {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct LegacyWallet {
-    mnemonic: Mnemonic,
-    tx_nonce: Option<u32>,
-    mpn_nonces: HashMap<u32, Option<u64>>, // Nonce for each MPN account
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Wallet {
     mnemonic: Mnemonic,
+    pub tokens: Vec<TokenId>,
     pub chain_sourced_txs: Vec<ChainSourcedTx>,
     pub mpn_sourced_txs: HashMap<u32, Vec<MpnSourcedTx>>,
 }
@@ -43,7 +39,16 @@ impl Wallet {
             }),
             chain_sourced_txs: Vec::new(),
             mpn_sourced_txs: HashMap::new(),
+            tokens: vec![TokenId::Ziesha],
         }
+    }
+    pub fn add_token(&mut self, token_id: TokenId) {
+        if !self.tokens.contains(&token_id) {
+            self.tokens.push(token_id);
+        }
+    }
+    pub fn get_tokens(&self) -> &[TokenId] {
+        &self.tokens
     }
     pub fn mpn_indices(&self) -> Vec<u32> {
         self.mpn_sourced_txs.keys().cloned().collect()
@@ -104,25 +109,7 @@ impl Wallet {
         if let Ok(mut f) = File::open(&path) {
             let mut bytes = Vec::new();
             f.read_to_end(&mut bytes)?;
-            let wallet: Result<Self, bincode::Error> = bincode::deserialize(&bytes);
-            match wallet {
-                Ok(w) => Ok(Some(w)),
-                Err(e) => {
-                    let legacy: Option<LegacyWallet> = bincode::deserialize(&bytes).ok();
-                    if let Some(legacy) = legacy {
-                        println!("Migrating wallet...");
-                        let wallet = Self {
-                            mnemonic: legacy.mnemonic,
-                            chain_sourced_txs: Vec::new(),
-                            mpn_sourced_txs: HashMap::new(),
-                        };
-                        wallet.save(&path)?;
-                        Ok(Some(wallet))
-                    } else {
-                        Err(WalletError::BincodeError(e))
-                    }
-                }
-            }
+            Ok(Some(bincode::deserialize(&bytes)?))
         } else {
             Ok(None)
         }

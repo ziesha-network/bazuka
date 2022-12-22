@@ -1,4 +1,4 @@
-use crate::core::{Address, MpnDeposit, MpnWithdraw, Signer, TransactionAndDelta};
+use crate::core::{Address, MpnDeposit, MpnWithdraw, Signer, TokenId, TransactionAndDelta};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::zk::MpnTransaction;
@@ -123,7 +123,6 @@ impl OutgoingSender {
                 return Err(NodeError::SizeLimitError);
             }
         }
-
         let body_bytes = hyper::body::to_bytes(body).await?;
 
         if status != StatusCode::OK {
@@ -362,6 +361,23 @@ impl BazukaClient {
                 format!("http://{}/account", self.peer),
                 GetAccountRequest {
                     address: address.to_string(),
+                },
+                Limit::default(),
+            )
+            .await
+    }
+
+    pub async fn get_balance(
+        &self,
+        address: Address,
+        token_id: TokenId,
+    ) -> Result<GetBalanceResponse, NodeError> {
+        self.sender
+            .json_get::<GetBalanceRequest, GetBalanceResponse>(
+                format!("http://{}/balance", self.peer),
+                GetBalanceRequest {
+                    address: address.to_string(),
+                    token_id: token_id.to_string(),
                 },
                 Limit::default(),
             )

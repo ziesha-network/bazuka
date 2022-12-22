@@ -56,6 +56,11 @@ impl BazukaConfig {
 #[derive(StructOpt)]
 #[cfg(feature = "client")]
 enum WalletOptions {
+    /// Add a new token to the wallet
+    AddToken {
+        #[structopt(long)]
+        id: TokenId,
+    },
     /// Creates a new token
     NewToken {
         #[structopt(long)]
@@ -564,6 +569,12 @@ async fn main() -> Result<(), NodeError> {
             println!("Client feature not turned on!");
         }
         CliOptions::Wallet(wallet_opts) => match wallet_opts {
+            WalletOptions::AddToken { id } => {
+                let mut wallet = wallet.expect("Bazuka is not initialized!");
+
+                wallet.add_token(id);
+                wallet.save(wallet_path).unwrap();
+            }
             WalletOptions::NewToken {
                 name,
                 symbol,
@@ -785,13 +796,25 @@ async fn main() -> Result<(), NodeError> {
                 );
                 try_join!(
                     async move {
-                        /*let acc = client.get_account(tx_builder.get_address()).await;
+                        let acc = client.get_account(tx_builder.get_address()).await;
+                        let mut token_balances = Vec::new();
+                        for tkn in wallet.get_tokens() {
+                            let balance = client.get_balance(tx_builder.get_address(), *tkn).await;
+                            token_balances.push((tkn.clone(), balance));
+                        }
+
                         let curr_nonce = wallet.new_r_nonce().map(|n| n - 1);
                         println!();
                         println!("{}", "Main chain balances\n---------".bright_yellow());
                         if let Ok(resp) = acc {
-                            for (tkn, balance) in resp.account.tokens.iter() {
-                                println!("{}: {}", tkn, balance);
+                            for (tkn, balance) in token_balances {
+                                println!(
+                                    "{}: {}",
+                                    tkn,
+                                    balance
+                                        .map(|b| b.balance.to_string())
+                                        .unwrap_or("Not available!".into())
+                                );
                             }
                             if let Some(nonce) = curr_nonce {
                                 println!("(Pending transactions: {})", nonce - resp.account.nonce);
@@ -823,7 +846,7 @@ async fn main() -> Result<(), NodeError> {
                             } else {
                                 println!("\tNode not available!");
                             }
-                        }*/
+                        }
                         Ok::<(), NodeError>(())
                     },
                     req_loop

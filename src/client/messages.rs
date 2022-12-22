@@ -175,16 +175,6 @@ pub struct GetHeadersResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetBalanceRequest {
-    pub addr: Address,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetBalanceResponse {
-    pub amount: Money,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TransactRequest {
     pub tx_delta: TransactionAndDelta,
 }
@@ -248,4 +238,15 @@ pub struct GetDebugDataRequest {}
 pub struct GetDebugDataResponse {
     pub logs: String,
     pub db_checksum: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetBalanceRequest {
+    pub address: String,
+    pub token_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetBalanceResponse {
+    pub balance: Money,
 }

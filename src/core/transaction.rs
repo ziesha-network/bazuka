@@ -18,6 +18,12 @@ pub enum ParseContractIdError {
     Invalid,
 }
 
+#[derive(Error, Debug)]
+pub enum ParseTokenIdError {
+    #[error("token-id invalid")]
+    Invalid,
+}
+
 impl<H: Hash> ContractId<H> {
     pub fn new<S: SignatureScheme>(tx: &Transaction<H, S>) -> Self {
         Self(tx.hash())
@@ -43,8 +49,20 @@ impl std::fmt::Display for TokenId {
                 write!(f, "Ziesha")
             }
             TokenId::Custom(id) => {
-                write!(f, "{:?}", id)
+                write!(f, "{}", id)
             }
+        }
+    }
+}
+
+impl FromStr for TokenId {
+    type Err = ParseTokenIdError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "Ziesha" {
+            Ok(Self::Ziesha)
+        } else {
+            let parsed: ZkScalar = s.parse().map_err(|_| Self::Err::Invalid)?;
+            Ok(Self::Custom(parsed))
         }
     }
 }

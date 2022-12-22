@@ -30,6 +30,8 @@ pub enum NodeError {
     AddrParseError(#[from] std::net::AddrParseError),
     #[error("cannot parse account address: {0}")]
     AccountParseAddressError(#[from] crate::core::ParseAddressError),
+    #[error("cannot parse account address: {0}")]
+    TokenIdParseError(#[from] crate::core::ParseTokenIdError),
     #[error("timeout reached: {0}")]
     TimeoutError(#[from] tokio::time::error::Elapsed),
     #[error("http body size limit error")]
