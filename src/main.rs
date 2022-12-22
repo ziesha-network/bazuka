@@ -106,6 +106,8 @@ enum WalletOptions {
         #[structopt(long)]
         to: String,
         #[structopt(long)]
+        token: Option<usize>,
+        #[structopt(long)]
         amount: Money,
         #[structopt(long, default_value = "0")]
         fee: Money,
@@ -710,7 +712,12 @@ async fn main() -> Result<(), NodeError> {
                 )
                 .unwrap();
             }
-            WalletOptions::Rsend { to, amount, fee } => {
+            WalletOptions::Rsend {
+                to,
+                token,
+                amount,
+                fee,
+            } => {
                 let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
                 let tx_builder = TxBuilder::new(&wallet.seed());
                 let (req_loop, client) = BazukaClient::connect(
@@ -719,6 +726,16 @@ async fn main() -> Result<(), NodeError> {
                     conf.network,
                     None,
                 );
+                let tkn = if let Some(token) = token {
+                    if token >= wallet.get_tokens().len() {
+                        panic!("Wrong token selected!");
+                    } else {
+                        wallet.get_tokens()[token]
+                    }
+                } else {
+                    TokenId::Ziesha
+                };
+
                 try_join!(
                     async move {
                         let curr_nonce = client
@@ -727,8 +744,9 @@ async fn main() -> Result<(), NodeError> {
                             .account
                             .nonce;
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let tx = tx_builder.create_transaction(
+                        let tx = tx_builder.create_token_transaction(
                             to.parse().unwrap(),
+                            tkn,
                             amount,
                             fee,
                             new_nonce,
@@ -800,11 +818,11 @@ async fn main() -> Result<(), NodeError> {
                     async move {
                         let acc = client.get_account(tx_builder.get_address()).await;
                         let mut token_balances = Vec::new();
-                        for tkn in wallet.get_tokens() {
+                        for (ind, tkn) in wallet.get_tokens().iter().enumerate() {
                             if let Ok(balance) =
                                 client.get_balance(tx_builder.get_address(), *tkn).await
                             {
-                                token_balances.push((tkn, balance));
+                                token_balances.push((ind, tkn, balance));
                             }
                         }
 
@@ -812,9 +830,10 @@ async fn main() -> Result<(), NodeError> {
                         println!();
                         println!("{}", "Main chain balances\n---------".bright_yellow());
                         if let Ok(resp) = acc {
-                            for (id, inf) in token_balances {
+                            for (ind, id, inf) in token_balances {
                                 println!(
-                                    "{}: {}{}",
+                                    "#{} {}: {}{}",
+                                    ind,
                                     inf.name,
                                     inf.balance,
                                     if *id == TokenId::Ziesha {
