@@ -799,22 +799,17 @@ async fn main() -> Result<(), NodeError> {
                         let acc = client.get_account(tx_builder.get_address()).await;
                         let mut token_balances = Vec::new();
                         for tkn in wallet.get_tokens() {
-                            let balance = client.get_balance(tx_builder.get_address(), *tkn).await;
-                            token_balances.push((tkn.clone(), balance));
+                            let balance =
+                                client.get_balance(tx_builder.get_address(), *tkn).await?;
+                            token_balances.push(balance);
                         }
 
                         let curr_nonce = wallet.new_r_nonce().map(|n| n - 1);
                         println!();
                         println!("{}", "Main chain balances\n---------".bright_yellow());
                         if let Ok(resp) = acc {
-                            for (tkn, balance) in token_balances {
-                                println!(
-                                    "{}: {}",
-                                    tkn,
-                                    balance
-                                        .map(|b| b.balance.to_string())
-                                        .unwrap_or("Not available!".into())
-                                );
+                            for tkn in token_balances {
+                                println!("{}: {}", tkn.name, tkn.balance);
                             }
                             if let Some(nonce) = curr_nonce {
                                 println!("(Pending transactions: {})", nonce - resp.account.nonce);

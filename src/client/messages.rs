@@ -249,4 +249,6 @@ pub struct GetBalanceRequest {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetBalanceResponse {
     pub balance: Money,
+    pub name: String,
+    pub symbol: String,
 }
