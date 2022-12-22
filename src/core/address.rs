@@ -1,7 +1,4 @@
-use super::transaction::TokenId;
-use super::Money;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
-use std::collections::HashMap;
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -102,16 +99,6 @@ pub enum Signature<S: SignatureScheme> {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct Account {
     pub nonce: u32,
-    pub tokens: HashMap<TokenId, Money>,
-}
-
-impl Account {
-    pub fn balance(&self, token: TokenId) -> Money {
-        self.tokens.get(&token).cloned().unwrap_or_default()
-    }
-    pub fn mut_balance(&mut self, token: TokenId) -> &mut Money {
-        self.tokens.entry(token).or_default()
-    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]

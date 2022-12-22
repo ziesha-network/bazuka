@@ -31,13 +31,17 @@ fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), Blockc
 
 fn circulated_money<K: KvStore>(b: &KvStoreChain<K>) -> Result<Money, BlockchainError> {
     let mut money_sum = Money(0);
-    for (_, v) in b.database.pairs("ACC-".into())? {
-        let acc: Account = v.try_into().unwrap();
-        money_sum += acc.balance(TokenId::Ziesha);
+    for (k, v) in b.database.pairs("ACB-".into())? {
+        if k.0.ends_with("Ziesha") {
+            let bal: Money = v.try_into().unwrap();
+            money_sum += bal;
+        }
     }
-    for (_, v) in b.database.pairs("CONT-ACC".into())? {
-        let acc: ContractAccount = v.try_into().unwrap();
-        money_sum += acc.balance(TokenId::Ziesha);
+    for (k, v) in b.database.pairs("CAB-".into())? {
+        if k.0.ends_with("Ziesha") {
+            let bal: Money = v.try_into().unwrap();
+            money_sum += bal;
+        }
     }
     Ok(money_sum)
 }
@@ -440,17 +444,13 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
 
     fork1.apply_block(&blk1, true)?;
     assert_eq!(
-        fork1
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        fork1.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(9700)
     );
 
     fork2.apply_block(&blk2, true)?;
     assert_eq!(
-        fork2
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        fork2.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(9700)
     );
 
@@ -479,15 +479,11 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
 
     // Alice: 10000 Bob: 0
     assert_eq!(
-        chain
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(10000)
     );
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(0)
     );
 
@@ -502,15 +498,11 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(
-        chain
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(7000)
     );
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(2700)
     );
 
@@ -523,15 +515,11 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(
-        chain
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(7000)
     );
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(2700)
     );
 
@@ -543,15 +531,11 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(
-        chain
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(4000)
     );
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(5400)
     );
 
@@ -570,15 +554,11 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
 
     // Alice: 10000 Bob: 0
     assert_eq!(
-        chain
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(10000)
     );
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(0)
     );
 
@@ -599,9 +579,7 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(0)
     );
 
@@ -652,9 +630,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(0)
     );
 
@@ -708,9 +684,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(0)
     );
 
@@ -729,15 +703,11 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
 
     // Alice: 10000 Bob: 0
     assert_eq!(
-        chain
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(10000)
     );
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(0)
     );
 
@@ -755,15 +725,11 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(
-        chain
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(7000)
     );
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(2700)
     );
 
@@ -781,15 +747,11 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(
-        chain
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(7000)
     );
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(2700)
     );
 
@@ -807,15 +769,11 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(
-        chain
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(9600)
     );
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(0)
     );
 
@@ -833,15 +791,11 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(
-        chain
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(9400)
     );
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(0)
     );
 
@@ -859,15 +813,11 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
         true,
     )?;
     assert_eq!(
-        chain
-            .get_account(alice.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Money(0)
     );
     assert_eq!(
-        chain
-            .get_account(bob.get_address())?
-            .balance(TokenId::Ziesha),
+        chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Money(0)
     );
 
@@ -952,8 +902,9 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
         }
     );
 
+    let balance = chain.get_balance(wallet2.get_address(), TokenId::Ziesha)?;
     let account = chain.get_account(wallet2.get_address())?;
-    assert_eq!(Money(100), account.balance(TokenId::Ziesha));
+    assert_eq!(Money(100), balance);
     assert_eq!(0, account.nonce);
 
     rollback_till_empty(&mut chain)?;
@@ -1069,10 +1020,10 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
 
     assert_eq!(3, draft.block.body.len());
 
-    let account1 = chain.get_account(wallet1.get_address())?;
-    let account2 = chain.get_account(wallet2.get_address())?;
-    assert_eq!(Money(10_000_000 - 7000), account1.balance(TokenId::Ziesha));
-    assert_eq!(Money(7000), account2.balance(TokenId::Ziesha));
+    let account1 = chain.get_balance(wallet1.get_address(), TokenId::Ziesha)?;
+    let account2 = chain.get_balance(wallet2.get_address(), TokenId::Ziesha)?;
+    assert_eq!(Money(10_000_000 - 7000), account1);
+    assert_eq!(Money(7000), account2);
 
     rollback_till_empty(&mut chain)?;
 
@@ -1153,7 +1104,8 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     assert_eq!(2, height);
 
     let account = chain.get_account(wallet2.get_address())?;
-    assert_eq!(Money(1_000_000), account.balance(TokenId::Ziesha));
+    let balance = chain.get_balance(wallet2.get_address(), TokenId::Ziesha)?;
+    assert_eq!(Money(1_000_000), balance);
     assert_eq!(0, account.nonce);
 
     rollback_till_empty(&mut chain)?;

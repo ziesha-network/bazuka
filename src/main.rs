@@ -441,9 +441,8 @@ async fn main() -> Result<(), NodeError> {
                     }
                     let mpn_contract_balance_check = sum_mpn
                         == chain
-                            .get_contract_account(mpn_contract_id)
-                            .unwrap()
-                            .balance(TokenId::Ziesha);
+                            .get_contract_balance(mpn_contract_id, TokenId::Ziesha)
+                            .unwrap();
                     let currency_in_circulation_check = chain.currency_in_circulation().unwrap()
                         == Money::from(2000000000000000000);
                     println!(
@@ -786,7 +785,7 @@ async fn main() -> Result<(), NodeError> {
                 );
                 try_join!(
                     async move {
-                        let acc = client.get_account(tx_builder.get_address()).await;
+                        /*let acc = client.get_account(tx_builder.get_address()).await;
                         let curr_nonce = wallet.new_r_nonce().map(|n| n - 1);
                         println!();
                         println!("{}", "Main chain balances\n---------".bright_yellow());
@@ -824,7 +823,7 @@ async fn main() -> Result<(), NodeError> {
                             } else {
                                 println!("\tNode not available!");
                             }
-                        }
+                        }*/
                         Ok::<(), NodeError>(())
                     },
                     req_loop

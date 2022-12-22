@@ -1,7 +1,9 @@
 pub mod keys;
 
 use crate::blockchain::{ZkBlockchainPatch, ZkCompressedStateChange};
-use crate::core::{hash::Hash, Account, Block, ContractAccount, ContractId, Hasher, Header, Token};
+use crate::core::{
+    hash::Hash, Account, Block, ContractAccount, ContractId, Hasher, Header, Money, Token,
+};
 use crate::crypto::merkle::MerkleTree;
 use crate::zk::{
     ZkCompressedState, ZkContract, ZkDataPairs, ZkDeltaPairs, ZkScalar, ZkState, ZkStateModel,
@@ -107,7 +109,8 @@ gen_try_into!(
     ZkScalar,
     ZkDataPairs,
     ZkDeltaPairs,
-    Token
+    Token,
+    Money
 );
 gen_from!(
     u32,
@@ -131,7 +134,8 @@ gen_from!(
     ZkScalar,
     &ZkDataPairs,
     &ZkDeltaPairs,
-    &Token
+    &Token,
+    Money
 );
 
 impl Key for StringKey {
