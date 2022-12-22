@@ -820,7 +820,7 @@ async fn main() -> Result<(), NodeError> {
                                     if *id == TokenId::Ziesha {
                                         bazuka::config::SYMBOL
                                     } else {
-                                        ""
+                                        format!(" {}", inf.symbol)
                                     }
                                 );
                             }
