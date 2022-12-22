@@ -1733,13 +1733,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn currency_in_circulation(&self) -> Result<Money, BlockchainError> {
         let mut money_sum = Money(0);
-        for (_, v) in self.database.pairs("ACB-".into())? {
-            let bal: Money = v.try_into().unwrap();
-            money_sum += bal;
+        for (k, v) in self.database.pairs("ACB-".into())? {
+            if k.0.ends_with("Ziesha") {
+                let bal: Money = v.try_into().unwrap();
+                money_sum += bal;
+            }
         }
-        for (_, v) in self.database.pairs("CAB".into())? {
-            let bal: Money = v.try_into().unwrap();
-            money_sum += bal;
+        for (k, v) in self.database.pairs("CAB-".into())? {
+            if k.0.ends_with("Ziesha") {
+                let bal: Money = v.try_into().unwrap();
+                money_sum += bal;
+            }
         }
         Ok(money_sum)
     }
