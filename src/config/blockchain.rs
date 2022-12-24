@@ -1,4 +1,4 @@
-use super::UNIT;
+use super::{UNIT, UNIT_ZEROS};
 
 use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
@@ -112,6 +112,7 @@ fn get_ziesha_token_creation_tx() -> Transaction {
                 name: "Ziesha".into(),
                 symbol: "ZSH".into(),
                 supply: Money(2_000_000_000_u64 * UNIT),
+                decimals: UNIT_ZEROS,
                 owner: None,
             },
         },

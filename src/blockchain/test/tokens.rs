@@ -12,6 +12,7 @@ fn test_token_balances() -> Result<(), BlockchainError> {
         "My Token".into(),
         "MYT".into(),
         Money(12345),
+        0,
         Some(alice.get_address()),
         Money(0),
         1,

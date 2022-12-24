@@ -184,6 +184,7 @@ pub struct Token<S: SignatureScheme> {
     pub name: String,
     pub symbol: String,
     pub supply: Money, // 1u64 in case of a NFT
+    pub decimals: u8,
     pub owner: Option<Address<S>>,
 }
 

@@ -68,6 +68,8 @@ enum WalletOptions {
         symbol: String,
         #[structopt(long)]
         supply: Money,
+        #[structopt(long, default_value = "0")]
+        decimals: u8,
         #[structopt(long)]
         mintable: bool,
         #[structopt(long, default_value = "0")]
@@ -580,6 +582,7 @@ async fn main() -> Result<(), NodeError> {
                 name,
                 symbol,
                 supply,
+                decimals,
                 mintable,
                 fee,
             } => {
@@ -604,6 +607,7 @@ async fn main() -> Result<(), NodeError> {
                             name,
                             symbol,
                             supply,
+                            decimals,
                             mintable.then(|| tx_builder.get_address()),
                             fee,
                             new_nonce,
