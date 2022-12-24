@@ -188,6 +188,26 @@ pub struct Token<S: SignatureScheme> {
     pub owner: Option<Address<S>>,
 }
 
+impl<S: SignatureScheme> Token<S> {
+    pub fn validate(&self) -> bool {
+        use regex::Regex;
+        const MIN_NAME_LEN: usize = 3;
+        const MAX_NAME_LEN: usize = 32;
+        const MIN_SYMBOL_LEN: usize = 3;
+        const MAX_SYMBOL_LEN: usize = 6;
+        lazy_static! {
+            static ref RE_NAME: Regex = Regex::new(r"(?:[a-zA-Z0-9]+ )*[a-zA-Z0-9]+").unwrap();
+            static ref RE_SYMBOL: Regex = Regex::new(r"[A-Z][A-Z0-9]*").unwrap();
+        }
+        self.name.len() >= MIN_NAME_LEN
+            && self.name.len() <= MAX_NAME_LEN
+            && self.symbol.len() >= MIN_SYMBOL_LEN
+            && self.symbol.len() <= MAX_SYMBOL_LEN
+            && RE_NAME.is_match(&self.name)
+            && RE_SYMBOL.is_match(&self.symbol)
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum TokenUpdate<S: SignatureScheme> {
     Issue { amount: Money },
