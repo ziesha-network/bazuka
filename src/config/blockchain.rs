@@ -104,16 +104,11 @@ fn get_test_mpn_contract() -> TransactionAndDelta {
     mpn_tx_delta
 }
 
-pub fn get_blockchain_config() -> BlockchainConfig {
-    let mpn_tx_delta = get_mpn_contract();
-    let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
-    let min_diff = Difficulty(0x020fffff);
-
-    let ziesha_token_creation_tx = Transaction {
+fn get_ziesha_token_creation_tx() -> Transaction {
+    Transaction {
         src: Address::Treasury,
         data: TransactionData::CreateToken {
             token: Token {
-                id: TokenId::Ziesha,
                 name: "Ziesha".into(),
                 symbol: "ZSH".into(),
                 supply: Money(2_000_000_000_u64 * UNIT),
@@ -123,7 +118,16 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         nonce: 1,
         fee: Money(0),
         sig: Signature::Unsigned,
-    };
+    }
+}
+
+pub fn get_blockchain_config() -> BlockchainConfig {
+    let mpn_tx_delta = get_mpn_contract();
+    let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
+    let min_diff = Difficulty(0x020fffff);
+
+    let ziesha_token_creation_tx = get_ziesha_token_creation_tx();
+    let ziesha_token_id = TokenId::new(&ziesha_token_creation_tx);
 
     let blk = Block {
         header: Header {
@@ -142,6 +146,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     BlockchainConfig {
         limited_miners: None,
         mpn_contract_id,
+        ziesha_token_id,
         genesis: BlockAndPatch {
             block: blk,
             patch: ZkBlockchainPatch {

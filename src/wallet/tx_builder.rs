@@ -69,19 +69,17 @@ impl TxBuilder {
     }
     pub fn create_token(
         &self,
-        id: TokenId,
         name: String,
         symbol: String,
         supply: Money,
         minter: Option<Address>,
         fee: Money,
         nonce: u32,
-    ) -> TransactionAndDelta {
+    ) -> (TransactionAndDelta, TokenId) {
         let mut tx = Transaction {
             src: self.get_address(),
             data: TransactionData::CreateToken {
                 token: Token {
-                    id,
                     name,
                     symbol,
                     owner: minter,
@@ -93,10 +91,15 @@ impl TxBuilder {
             sig: Signature::Unsigned,
         };
         self.sign_tx(&mut tx);
-        TransactionAndDelta {
-            tx,
-            state_delta: None,
-        }
+
+        let token_id = TokenId::new(&tx);
+        (
+            TransactionAndDelta {
+                tx,
+                state_delta: None,
+            },
+            token_id,
+        )
     }
     pub fn create_multi_transaction(
         &self,

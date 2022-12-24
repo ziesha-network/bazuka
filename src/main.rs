@@ -19,7 +19,6 @@ use {
     bazuka::core::{ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId},
     bazuka::wallet::{TxBuilder, Wallet},
     colored::Colorize,
-    ff::Field,
     rand::Rng,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
@@ -584,7 +583,6 @@ async fn main() -> Result<(), NodeError> {
                 mintable,
                 fee,
             } => {
-                let mut rng = rand::thread_rng();
                 let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
                 let tx_builder = TxBuilder::new(&wallet.seed());
                 let (req_loop, client) = BazukaClient::connect(
@@ -600,10 +598,9 @@ async fn main() -> Result<(), NodeError> {
                             .await?
                             .account
                             .nonce;
-                        let tid = TokenId::Custom(bazuka::zk::ZkScalar::random(&mut rng));
+
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let pay = tx_builder.create_token(
-                            tid,
+                        let (pay, token_id) = tx_builder.create_token(
                             name,
                             symbol,
                             supply,
@@ -611,10 +608,10 @@ async fn main() -> Result<(), NodeError> {
                             fee,
                             new_nonce,
                         );
-                        wallet.add_token(tid);
+                        wallet.add_token(token_id);
                         wallet.add_rsend(pay.clone());
                         wallet.save(wallet_path).unwrap();
-                        println!("Token-Id: {}", tid);
+                        println!("Token-Id: {}", token_id);
                         println!("{:#?}", client.transact(pay).await?);
                         Ok::<(), NodeError>(())
                     },

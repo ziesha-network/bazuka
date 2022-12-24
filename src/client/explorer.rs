@@ -28,7 +28,8 @@ impl From<&MpnAccount> for ExplorerMpnAccount {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerToken {
-    pub id: String,
+    pub name: String,
+    pub symbol: String,
     pub supply: u64,
     pub owner: Option<String>,
 }
@@ -36,7 +37,8 @@ pub struct ExplorerToken {
 impl From<&Token> for ExplorerToken {
     fn from(obj: &Token) -> Self {
         Self {
-            id: obj.id.to_string(),
+            name: obj.name.clone(),
+            symbol: obj.symbol.clone(),
             supply: obj.supply.into(),
             owner: obj.owner.as_ref().map(|a| a.to_string()),
         }

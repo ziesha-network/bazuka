@@ -35,6 +35,7 @@ pub struct BlockchainConfig {
     pub pow_key_change_delay: u64,
     pub pow_key_change_interval: u64,
     pub median_timestamp_count: u64,
+    pub ziesha_token_id: TokenId,
     pub mpn_contract_id: ContractId,
     pub mpn_num_function_calls: usize,
     pub mpn_num_contract_deposits: usize,
@@ -487,7 +488,15 @@ impl<K: KvStore> KvStoreChain<K> {
 
             match &tx.data {
                 TransactionData::CreateToken { token } => {
-                    if chain.get_token(token.id)?.is_some() {
+                    let token_id = {
+                        let tid = TokenId::new(tx);
+                        if tid == self.config.ziesha_token_id {
+                            TokenId::Ziesha
+                        } else {
+                            tid
+                        }
+                    };
+                    if chain.get_token(token_id)?.is_some() {
                         return Err(BlockchainError::TokenAlreadyExists);
                     } else {
                         const MAX_NAME_LENGTH: usize = 20;
@@ -501,12 +510,12 @@ impl<K: KvStore> KvStoreChain<K> {
                             return Err(BlockchainError::TokenBadNameSymbol);
                         }
                         chain.database.update(&[WriteOp::Put(
-                            keys::account_balance(&tx.src, token.id),
+                            keys::account_balance(&tx.src, token_id),
                             token.supply.into(),
                         )])?;
                         chain
                             .database
-                            .update(&[WriteOp::Put(keys::token(&token.id), token.into())])?;
+                            .update(&[WriteOp::Put(keys::token(&token_id), token.into())])?;
                     }
                 }
                 TransactionData::UpdateToken { token_id, update } => {

@@ -41,6 +41,11 @@ pub enum TokenId {
     Ziesha,
     Custom(ZkScalar),
 }
+impl TokenId {
+    pub fn new<H: Hash, S: SignatureScheme>(tx: &Transaction<H, S>) -> Self {
+        Self::Custom(crate::zk::hash_to_scalar(&bincode::serialize(&tx).unwrap()))
+    }
+}
 
 impl std::fmt::Display for TokenId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -176,7 +181,6 @@ pub struct RegularSendEntry<S: SignatureScheme> {
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct Token<S: SignatureScheme> {
-    pub id: TokenId,
     pub name: String,
     pub symbol: String,
     pub supply: Money, // 1u64 in case of a NFT

@@ -1,7 +1,7 @@
 use crate::blockchain::ZkBlockchainPatch;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
-    Account, Address, Block, ChainSourcedTx, ContractId, Header, Money, MpnDeposit, MpnSourcedTx,
+    Account, Block, ChainSourcedTx, ContractId, Header, Money, MpnDeposit, MpnSourcedTx,
     MpnWithdraw, TransactionAndDelta,
 };
 use crate::zk;
