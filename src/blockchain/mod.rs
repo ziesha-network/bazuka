@@ -513,10 +513,10 @@ impl<K: KvStore> KvStoreChain<K> {
                 }
                 TransactionData::UpdateToken { token_id, update } => {
                     if let Some(mut token) = chain.get_token(*token_id)? {
-                        if let Some(owner) = token.owner.clone() {
-                            if owner == tx.src {
+                        if let Some(minter) = token.minter.clone() {
+                            if minter == tx.src {
                                 match update {
-                                    TokenUpdate::Issue { amount } => {
+                                    TokenUpdate::Mint { amount } => {
                                         let mut bal =
                                             chain.get_balance(tx.src.clone(), *token_id)?;
                                         if bal + *amount < bal
@@ -535,25 +535,8 @@ impl<K: KvStore> KvStoreChain<K> {
                                             bal.into(),
                                         )])?;
                                     }
-                                    TokenUpdate::Redeem { amount } => {
-                                        let mut bal =
-                                            chain.get_balance(tx.src.clone(), *token_id)?;
-                                        if bal < *amount || token.supply < *amount {
-                                            return Err(BlockchainError::TokenSupplyInsufficient);
-                                        }
-                                        bal -= *amount;
-                                        token.supply -= *amount;
-                                        chain.database.update(&[WriteOp::Put(
-                                            keys::token(&token_id),
-                                            (&token).into(),
-                                        )])?;
-                                        chain.database.update(&[WriteOp::Put(
-                                            keys::account_balance(&tx.src, *token_id),
-                                            bal.into(),
-                                        )])?;
-                                    }
-                                    TokenUpdate::ChangeOwner { owner } => {
-                                        token.owner = Some(owner.clone());
+                                    TokenUpdate::ChangeMinter { minter } => {
+                                        token.minter = Some(minter.clone());
                                         chain.database.update(&[WriteOp::Put(
                                             keys::token(&token_id),
                                             (&token).into(),

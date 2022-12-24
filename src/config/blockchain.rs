@@ -113,7 +113,7 @@ fn get_ziesha_token_creation_tx() -> Transaction {
                 symbol: "ZSH".into(),
                 supply: Money(2_000_000_000_u64 * UNIT),
                 decimals: UNIT_ZEROS,
-                owner: None,
+                minter: None,
             },
         },
         nonce: 1,

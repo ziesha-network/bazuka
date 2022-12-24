@@ -83,7 +83,7 @@ impl TxBuilder {
                 token: Token {
                     name,
                     symbol,
-                    owner: minter,
+                    minter,
                     supply,
                     decimals,
                 },

@@ -31,7 +31,7 @@ pub struct ExplorerToken {
     pub name: String,
     pub symbol: String,
     pub supply: u64,
-    pub owner: Option<String>,
+    pub minter: Option<String>,
 }
 
 impl From<&Token> for ExplorerToken {
@@ -40,7 +40,7 @@ impl From<&Token> for ExplorerToken {
             name: obj.name.clone(),
             symbol: obj.symbol.clone(),
             supply: obj.supply.into(),
-            owner: obj.owner.as_ref().map(|a| a.to_string()),
+            minter: obj.minter.as_ref().map(|a| a.to_string()),
         }
     }
 }
@@ -226,22 +226,18 @@ impl From<&ZkProof> for ExplorerZkProof {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ExplorerTokenUpdate {
-    Issue { amount: u64 },
-    Redeem { amount: u64 },
-    ChangeOwner { owner: String },
+    Mint { amount: u64 },
+    ChangeMinter { minter: String },
 }
 
 impl From<&TokenUpdate> for ExplorerTokenUpdate {
     fn from(obj: &TokenUpdate) -> Self {
         match obj {
-            TokenUpdate::Issue { amount } => Self::Issue {
+            TokenUpdate::Mint { amount } => Self::Mint {
                 amount: (*amount).into(),
             },
-            TokenUpdate::Redeem { amount } => Self::Redeem {
-                amount: (*amount).into(),
-            },
-            TokenUpdate::ChangeOwner { owner } => Self::ChangeOwner {
-                owner: owner.to_string(),
+            TokenUpdate::ChangeMinter { minter } => Self::ChangeMinter {
+                minter: minter.to_string(),
             },
         }
     }

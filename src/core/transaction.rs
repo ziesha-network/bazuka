@@ -185,7 +185,7 @@ pub struct Token<S: SignatureScheme> {
     pub symbol: String,
     pub supply: Money, // 1u64 in case of a NFT
     pub decimals: u8,
-    pub owner: Option<Address<S>>,
+    pub minter: Option<Address<S>>,
 }
 
 impl<S: SignatureScheme> Token<S> {
@@ -210,9 +210,8 @@ impl<S: SignatureScheme> Token<S> {
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum TokenUpdate<S: SignatureScheme> {
-    Issue { amount: Money },
-    Redeem { amount: Money },
-    ChangeOwner { owner: Address<S> },
+    Mint { amount: Money },
+    ChangeMinter { minter: Address<S> },
 }
 
 // A transaction could be as simple as sending some funds, or as complicated as
