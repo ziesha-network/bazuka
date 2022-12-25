@@ -313,9 +313,10 @@ impl<K: KvStore> KvStoreChain<K> {
             }
             // TODO: Check overflow
             let mut size_diff = 0;
-            let new_acc = zk::MpnAccount {
+            let mut new_acc = zk::MpnAccount {
                 address: deposit.zk_address.0.decompress(),
                 nonce: dst.nonce,
+                balance: dst.balance,
                 tokens: dst.tokens.clone(),
             };
             new_acc
@@ -367,9 +368,10 @@ impl<K: KvStore> KvStoreChain<K> {
             }
 
             let mut size_diff = 0;
-            let new_acc = zk::MpnAccount {
+            let mut new_acc = zk::MpnAccount {
                 address: src.address.clone(),
                 tokens: src.tokens.clone(),
+                balance: src.balance,
                 nonce: src.nonce + 1,
             };
             if let Some((tok_id, balance)) = new_acc.tokens.get_mut(&withdraw.zk_token_index) {
@@ -381,12 +383,8 @@ impl<K: KvStore> KvStoreChain<K> {
             } else {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
-            if let Some((tok_id, balance)) = new_acc.tokens.get_mut(&withdraw.zk_fee_index) {
-                if *tok_id == TokenId::Ziesha && *balance >= withdraw.payment.fee {
-                    *balance -= withdraw.payment.fee;
-                } else {
-                    return Err(BlockchainError::InvalidMpnTransaction);
-                }
+            if new_acc.balance >= withdraw.payment.fee {
+                new_acc.balance -= withdraw.payment.fee;
             } else {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
@@ -454,34 +452,43 @@ impl<K: KvStore> KvStoreChain<K> {
             if !tx.verify(&jubjub::PublicKey(src.address.compress())) {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
-            if src.balance < tx.fee + tx.amount {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
+
             let mut size_diff = 0;
-            let new_src_acc = zk::MpnAccount {
+            let mut new_src_acc = zk::MpnAccount {
                 address: src.address.clone(),
                 tokens: src.tokens.clone(),
+                balance: src.balance,
                 nonce: src.nonce + 1,
             };
-            let new_dst_acc = zk::MpnAccount {
+            let mut new_dst_acc = zk::MpnAccount {
                 address: tx.dst_pub_key.0.decompress(),
                 tokens: dst.tokens.clone(),
+                balance: dst.balance,
                 nonce: dst.nonce,
             };
-            if let Some((tok_id, balance)) = new_src_acc.tokens.get_mut(&tx.src_token_index) {
-                if *tok_id == TokenId::Ziesha && *balance >= withdraw.payment.fee {
-                    *balance -= withdraw.payment.fee;
+            let src_token_balance_mut = new_src_acc.tokens.get_mut(&tx.src_token_index);
+            let dst_token_balance_mut = new_dst_acc.tokens.get_mut(&tx.dst_token_index);
+            if let Some(((src_tok, src_bal), (dst_tok, dst_bal))) =
+                src_token_balance_mut.zip(dst_token_balance_mut)
+            {
+                if *src_tok == *dst_tok {
+                    if *src_bal >= tx.amount {
+                        *src_bal -= tx.amount;
+                        *dst_bal += tx.amount;
+                    } else {
+                        return Err(BlockchainError::InvalidMpnTransaction);
+                    }
                 } else {
                     return Err(BlockchainError::InvalidMpnTransaction);
                 }
             } else {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
-            new_acc
-                .tokens
-                .entry(deposit.zk_token_index)
-                .or_insert((deposit.payment.token, 0.into()))
-                .1 += deposit.payment.amount;
+            if new_src_acc.balance >= tx.fee {
+                new_src_acc.balance -= tx.fee;
+            } else {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
 
             zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
                 &mut chain.database,

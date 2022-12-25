@@ -647,7 +647,7 @@ async fn main() -> Result<(), NodeError> {
                     TokenId::Ziesha
                 };
                 let tx_builder = TxBuilder::new(&wallet.seed());
-                let index = index.unwrap_or_else(|| rng.gen()) & 0x3FFFFFFF;
+                let account_index = index.unwrap_or_else(|| rng.gen()) & 0x3FFFFFFF;
                 let (req_loop, client) = BazukaClient::connect(
                     tx_builder.get_priv_key(),
                     conf.random_node(),
@@ -662,7 +662,7 @@ async fn main() -> Result<(), NodeError> {
                             .account
                             .nonce;
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let mpn_addr =MpnAddress{index,pub_key:tx_builder.get_zk_address()};
+                        let mpn_addr =MpnAddress{account_index,token_index:0,pub_key:tx_builder.get_zk_address()};
                         let pay =
                             tx_builder.deposit_mpn(mpn_contract_id, mpn_addr.clone(), new_nonce, tkn, initial, fee);
                         wallet.add_mpn_index(index);
