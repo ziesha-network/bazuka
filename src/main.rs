@@ -126,6 +126,8 @@ enum WalletOptions {
         #[structopt(long)]
         to: MpnAddress,
         #[structopt(long)]
+        token: Option<usize>,
+        #[structopt(long)]
         amount: Money,
         #[structopt(long, default_value = "0")]
         fee: Money,
@@ -665,7 +667,7 @@ async fn main() -> Result<(), NodeError> {
                         let mpn_addr =MpnAddress{account_index,token_index:0,pub_key:tx_builder.get_zk_address()};
                         let pay =
                             tx_builder.deposit_mpn(mpn_contract_id, mpn_addr.clone(), new_nonce, tkn, initial, fee);
-                        wallet.add_mpn_index(index);
+                        wallet.add_mpn_index(account_index);
                         wallet.add_deposit(pay.clone());
                         wallet.save(wallet_path).unwrap();
                         println!("{:#?}", client.transact_contract_deposit(pay).await?);
@@ -824,6 +826,15 @@ async fn main() -> Result<(), NodeError> {
                 fee,
             } => {
                 let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tkn = if let Some(token) = token {
+                    if token >= wallet.get_tokens().len() {
+                        panic!("Wrong token selected!");
+                    } else {
+                        wallet.get_tokens()[token]
+                    }
+                } else {
+                    TokenId::Ziesha
+                };
                 let tx_builder = TxBuilder::new(&wallet.seed());
                 let (req_loop, client) = BazukaClient::connect(
                     tx_builder.get_priv_key(),

@@ -23,6 +23,17 @@ pub struct MpnAccount {
     pub tokens: HashMap<u32, (TokenId, Money)>,
 }
 
+impl MpnAccount {
+    pub fn find_token_index(&self, token_id: TokenId) -> Option<u32> {
+        for (ind, (tkn, _)) in self.tokens.iter() {
+            if *tkn == token_id {
+                return Some(*ind);
+            }
+        }
+        None
+    }
+}
+
 // Amount is passed by default
 lazy_static! {
     pub static ref MPN_DEPOSIT_STATE_MODEL: ZkStateModel = ZkStateModel::Struct {
