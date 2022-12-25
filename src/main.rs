@@ -79,6 +79,8 @@ enum WalletOptions {
     NewAccount {
         #[structopt(long)]
         index: Option<u32>,
+        #[structopt(long)]
+        token: Option<usize>,
         #[structopt(long, default_value = "0")]
         initial: Money,
         #[structopt(long, default_value = "0")]
@@ -89,6 +91,8 @@ enum WalletOptions {
         #[structopt(long)]
         to: MpnAddress,
         #[structopt(long)]
+        token: Option<usize>,
+        #[structopt(long)]
         amount: Money,
         #[structopt(long, default_value = "0")]
         fee: Money,
@@ -97,6 +101,8 @@ enum WalletOptions {
     Withdraw {
         #[structopt(long)]
         from: u32,
+        #[structopt(long)]
+        token: Option<usize>,
         #[structopt(long)]
         amount: Money,
         #[structopt(long, default_value = "0")]
@@ -626,10 +632,20 @@ async fn main() -> Result<(), NodeError> {
             WalletOptions::NewAccount {
                 index,
                 initial,
+                token,
                 fee,
             } => {
                 let mut rng = rand::thread_rng();
                 let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tkn = if let Some(token) = token {
+                    if token >= wallet.get_tokens().len() {
+                        panic!("Wrong token selected!");
+                    } else {
+                        wallet.get_tokens()[token]
+                    }
+                } else {
+                    TokenId::Ziesha
+                };
                 let tx_builder = TxBuilder::new(&wallet.seed());
                 let index = index.unwrap_or_else(|| rng.gen()) & 0x3FFFFFFF;
                 let (req_loop, client) = BazukaClient::connect(
@@ -648,7 +664,7 @@ async fn main() -> Result<(), NodeError> {
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
                         let mpn_addr =MpnAddress{index,pub_key:tx_builder.get_zk_address()};
                         let pay =
-                            tx_builder.deposit_mpn(mpn_contract_id, mpn_addr.clone(), new_nonce, initial, fee);
+                            tx_builder.deposit_mpn(mpn_contract_id, mpn_addr.clone(), new_nonce, tkn, initial, fee);
                         wallet.add_mpn_index(index);
                         wallet.add_deposit(pay.clone());
                         wallet.save(wallet_path).unwrap();
@@ -661,8 +677,22 @@ async fn main() -> Result<(), NodeError> {
                 )
                 .unwrap();
             }
-            WalletOptions::Deposit { to, amount, fee } => {
+            WalletOptions::Deposit {
+                to,
+                amount,
+                token,
+                fee,
+            } => {
                 let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tkn = if let Some(token) = token {
+                    if token >= wallet.get_tokens().len() {
+                        panic!("Wrong token selected!");
+                    } else {
+                        wallet.get_tokens()[token]
+                    }
+                } else {
+                    TokenId::Ziesha
+                };
                 let tx_builder = TxBuilder::new(&wallet.seed());
                 let (req_loop, client) = BazukaClient::connect(
                     tx_builder.get_priv_key(),
@@ -678,8 +708,14 @@ async fn main() -> Result<(), NodeError> {
                             .account
                             .nonce;
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let pay =
-                            tx_builder.deposit_mpn(mpn_contract_id, to, new_nonce, amount, fee);
+                        let pay = tx_builder.deposit_mpn(
+                            mpn_contract_id,
+                            to,
+                            new_nonce,
+                            tkn,
+                            amount,
+                            fee,
+                        );
                         wallet.add_deposit(pay.clone());
                         wallet.save(wallet_path).unwrap();
                         println!("{:#?}", client.transact_contract_deposit(pay).await?);
@@ -689,8 +725,22 @@ async fn main() -> Result<(), NodeError> {
                 )
                 .unwrap();
             }
-            WalletOptions::Withdraw { from, amount, fee } => {
+            WalletOptions::Withdraw {
+                from,
+                amount,
+                token,
+                fee,
+            } => {
                 let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tkn = if let Some(token) = token {
+                    if token >= wallet.get_tokens().len() {
+                        panic!("Wrong token selected!");
+                    } else {
+                        wallet.get_tokens()[token]
+                    }
+                } else {
+                    TokenId::Ziesha
+                };
                 let tx_builder = TxBuilder::new(&wallet.seed());
                 let (req_loop, client) = BazukaClient::connect(
                     tx_builder.get_priv_key(),
@@ -702,8 +752,14 @@ async fn main() -> Result<(), NodeError> {
                     async move {
                         let curr_nonce = client.get_mpn_account(from).await?.account.nonce;
                         let new_nonce = wallet.new_z_nonce(from).unwrap_or(curr_nonce);
-                        let pay =
-                            tx_builder.withdraw_mpn(mpn_contract_id, from, new_nonce, amount, fee);
+                        let pay = tx_builder.withdraw_mpn(
+                            mpn_contract_id,
+                            from,
+                            new_nonce,
+                            tkn,
+                            amount,
+                            fee,
+                        );
                         wallet.add_withdraw(pay.clone());
                         wallet.save(wallet_path).unwrap();
                         println!("{:#?}", client.transact_contract_withdraw(pay).await?);

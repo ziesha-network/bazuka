@@ -8,12 +8,13 @@ use crate::zk::{
     ZkSingleInputVerifierKey, ZkStateModel, ZkVerifierKey,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerMpnAccount {
     pub nonce: u64,
     pub address: String,
-    pub balance: u64,
+    pub tokens: HashMap<u32, (String, u64)>,
 }
 
 impl From<&MpnAccount> for ExplorerMpnAccount {
@@ -21,7 +22,11 @@ impl From<&MpnAccount> for ExplorerMpnAccount {
         Self {
             nonce: obj.nonce,
             address: PublicKey(obj.address.compress()).to_string(),
-            balance: obj.balance.into(),
+            tokens: obj
+                .tokens
+                .iter()
+                .map(|(k, (tkn, amnt))| (*k, (tkn.to_string(), (*amnt).into())))
+                .collect(),
         }
     }
 }

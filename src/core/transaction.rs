@@ -87,6 +87,7 @@ pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
     pub deposit_circuit_id: u32,
     pub calldata: ZkScalar,
     pub src: S::Pub,
+    pub token: TokenId,
     pub amount: Money, // Amount sent from src to contract
     pub fee: Money,    // Executor fee, paid by src
 
@@ -100,6 +101,7 @@ pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
     pub withdraw_circuit_id: u32,
     pub calldata: ZkScalar,
     pub dst: S::Pub,
+    pub token: TokenId,
     pub amount: Money, // Amount sent from contract to dst
     pub fee: Money,    // Executor fee, paid by contract
 }
@@ -108,6 +110,7 @@ pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
 pub struct MpnDeposit<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub zk_address_index: u32,
     pub zk_address: ZS::Pub,
+    pub zk_token_index: u32,
     pub payment: ContractDeposit<H, S>,
 }
 
@@ -115,6 +118,8 @@ pub struct MpnDeposit<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
 pub struct MpnWithdraw<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub zk_address_index: u32,
     pub zk_address: ZS::Pub,
+    pub zk_token_index: u32,
+    pub zk_fee_index: u32,
     pub zk_nonce: u64,
     pub zk_sig: ZS::Sig,
     pub payment: ContractWithdraw<H, S>,

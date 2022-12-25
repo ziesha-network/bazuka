@@ -205,6 +205,8 @@ impl TxBuilder {
         contract_id: ContractId,
         to: MpnAddress,
         nonce: u32,
+        token_index: u32,
+        token: TokenId,
         amount: Money,
         fee: Money,
     ) -> MpnDeposit {
@@ -221,6 +223,7 @@ impl TxBuilder {
             ))
             .unwrap();
         let mut tx = ContractDeposit {
+            token,
             src: self.private_key.clone().into(),
             contract_id,
             deposit_circuit_id: 0,
@@ -235,6 +238,7 @@ impl TxBuilder {
         MpnDeposit {
             zk_address_index: to.index,
             zk_address: to.pub_key,
+            zk_token_index: token_index,
             payment: tx,
         }
     }
@@ -245,10 +249,14 @@ impl TxBuilder {
         contract_id: ContractId,
         zk_address_index: u32,
         nonce: u64,
+        token_index: u32,
+        token: TokenId,
         amount: Money,
+        fee_index: u32,
         fee: Money,
     ) -> MpnWithdraw {
         let mut tx = ContractWithdraw {
+            token,
             dst: self.private_key.clone().into(),
             contract_id,
             withdraw_circuit_id: 0,
@@ -291,6 +299,8 @@ impl TxBuilder {
         MpnWithdraw {
             zk_address_index,
             zk_address: self.get_zk_address(),
+            zk_token_index: token_index,
+            zk_fee_index: fee_index,
             zk_nonce: nonce,
             zk_sig: sig,
             payment: tx,

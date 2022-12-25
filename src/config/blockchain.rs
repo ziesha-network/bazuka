@@ -14,6 +14,7 @@ use crate::wallet::TxBuilder;
 
 const MPN_LOG4_ACCOUNT_CAPACITY: u8 = 15;
 const MPN_LOG4_PAYMENT_CAPACITY: u8 = 3;
+const MPN_LOG4_TOKEN_CAPACITY: u8 = 3;
 
 const TESTNET_HEIGHT_LIMIT: u64 = 12000;
 
@@ -34,7 +35,15 @@ fn get_mpn_contract() -> TransactionAndDelta {
                 zk::ZkStateModel::Scalar, // Nonce
                 zk::ZkStateModel::Scalar, // Pub-key X
                 zk::ZkStateModel::Scalar, // Pub-key Y
-                zk::ZkStateModel::Scalar, // Balance
+                zk::ZkStateModel::List {
+                    log4_size: MPN_LOG4_TOKEN_CAPACITY,
+                    item_type: Box::new(zk::ZkStateModel::Struct {
+                        field_types: vec![
+                            zk::ZkStateModel::Scalar, // Token-Id
+                            zk::ZkStateModel::Scalar, // Balance
+                        ],
+                    }),
+                },
             ],
         }),
     };

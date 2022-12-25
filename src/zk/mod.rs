@@ -1,4 +1,4 @@
-use crate::core::{hash::Hash, Hasher, Money, ZkHasher as ZkMainHasher};
+use crate::core::{hash::Hash, Hasher, Money, TokenId, ZkHasher as ZkMainHasher};
 use crate::crypto::{jubjub, ZkSignatureScheme};
 
 use ff::{Field, PrimeField};
@@ -19,7 +19,7 @@ pub mod poseidon;
 pub struct MpnAccount {
     pub nonce: u64,
     pub address: jubjub::PointAffine,
-    pub balance: Money,
+    pub tokens: HashMap<u32, (TokenId, Money)>,
 }
 
 // Amount is passed by default
@@ -456,7 +456,10 @@ pub struct ZkSingleInputVerifierKey {
 pub struct MpnTransaction {
     pub nonce: u64,
     pub src_index: u32,
+    pub src_token_index: u32,
+    pub src_fee_index: u32,
     pub dst_index: u32,
+    pub dst_token_index: u32,
     pub dst_pub_key: jubjub::PublicKey,
     pub amount: Money,
     pub fee: Money,
