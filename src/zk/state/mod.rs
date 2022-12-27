@@ -112,7 +112,17 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             let tok_is_zero: bool = tok.is_zero().into();
             let bal_is_zero: bool = bal.is_zero().into();
             if !tok_is_zero || !bal_is_zero {
-                tokens.insert(i, (TokenId::Custom(tok), bal.try_into()?));
+                tokens.insert(
+                    i,
+                    (
+                        if tok_is_zero {
+                            TokenId::Ziesha
+                        } else {
+                            TokenId::Custom(tok)
+                        },
+                        bal.try_into()?,
+                    ),
+                );
             }
         }
         Ok(MpnAccount {
