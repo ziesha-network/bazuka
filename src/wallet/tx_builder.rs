@@ -126,6 +126,7 @@ impl TxBuilder {
         &self,
         from_index: u64,
         from_token_index: u64,
+        from_fee_token_index: u64,
         to: MpnAddress,
         amount: Money,
         fee: Money,
@@ -135,6 +136,7 @@ impl TxBuilder {
             nonce,
             src_token_index: from_token_index,
             src_index: from_index,
+            src_fee_token_index: from_fee_token_index,
             dst_index: to.account_index,
             dst_pub_key: to.pub_key,
             dst_token_index: to.token_index as u64,
@@ -254,6 +256,7 @@ impl TxBuilder {
         token_index: u64,
         token: TokenId,
         amount: Money,
+        fee_token_index: u64,
         fee: Money,
     ) -> MpnWithdraw {
         let mut tx = ContractWithdraw {
@@ -301,6 +304,7 @@ impl TxBuilder {
             zk_address_index,
             zk_address: self.get_zk_address(),
             zk_token_index: token_index,
+            zk_fee_token_index: fee_token_index,
             zk_nonce: nonce,
             zk_sig: sig,
             payment: tx,

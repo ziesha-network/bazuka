@@ -35,7 +35,6 @@ fn get_mpn_contract() -> TransactionAndDelta {
                 zk::ZkStateModel::Scalar, // Nonce
                 zk::ZkStateModel::Scalar, // Pub-key X
                 zk::ZkStateModel::Scalar, // Pub-key Y
-                zk::ZkStateModel::Scalar, // Ziesha balance
                 zk::ZkStateModel::List {
                     log4_size: MPN_LOG4_TOKEN_CAPACITY,
                     item_type: Box::new(zk::ZkStateModel::Struct {

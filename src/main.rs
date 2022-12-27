@@ -453,7 +453,11 @@ async fn main() -> Result<(), NodeError> {
                     let rollback_validity_check = fork.db().pairs("".into()).unwrap().is_empty();
                     let mut sum_mpn: Money = 0.into();
                     for mpn_acc in chain.get_mpn_accounts(0, 10000).unwrap() {
-                        sum_mpn += mpn_acc.1.balance;
+                        for (tkn_id, bal) in mpn_acc.1.tokens.values() {
+                            if *tkn_id == TokenId::Ziesha {
+                                sum_mpn += *bal;
+                            }
+                        }
                     }
                     let mpn_contract_balance_check = sum_mpn
                         == chain
@@ -759,6 +763,12 @@ async fn main() -> Result<(), NodeError> {
                         } else {
                             panic!("Token not found in your account!");
                         };
+                        let fee_token_index =
+                            if let Some(ind) = acc.find_token_index(TokenId::Ziesha) {
+                                ind
+                            } else {
+                                panic!("Token not found in your account!");
+                            };
                         let new_nonce = wallet.new_z_nonce(from).unwrap_or(acc.nonce);
                         let pay = tx_builder.withdraw_mpn(
                             mpn_contract_id,
@@ -767,6 +777,7 @@ async fn main() -> Result<(), NodeError> {
                             token_index,
                             tkn,
                             amount,
+                            fee_token_index,
                             fee,
                         );
                         wallet.add_withdraw(pay.clone());
@@ -858,10 +869,17 @@ async fn main() -> Result<(), NodeError> {
                         } else {
                             panic!("Token not found in your account!");
                         };
+                        let fee_token_index =
+                            if let Some(ind) = acc.find_token_index(TokenId::Ziesha) {
+                                ind
+                            } else {
+                                panic!("Token not found in your account!");
+                            };
                         let new_nonce = wallet.new_z_nonce(from_index).unwrap_or(acc.nonce);
                         let tx = tx_builder.create_mpn_transaction(
                             from_index,
                             token_index,
+                            fee_token_index,
                             to,
                             amount,
                             fee,
@@ -946,7 +964,6 @@ async fn main() -> Result<(), NodeError> {
                                 if !resp.address.is_on_curve() {
                                     println!("\tWaiting to be created...")
                                 } else {
-                                    println!("\tZiesha Balance: {}", resp.balance);
                                     for (id, (_, bal)) in resp.tokens.iter() {
                                         println!("Token #{} Balance: {}", id, bal);
                                         println!(

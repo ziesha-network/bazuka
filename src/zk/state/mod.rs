@@ -94,7 +94,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         mpn_contract_id: ContractId,
         index: u64,
     ) -> Result<MpnAccount, StateManagerError> {
-        let cells = (0..4)
+        let cells = (0..3)
             .map(|i| Self::get_data(db, mpn_contract_id, &ZkDataLocator(vec![index, i as u64])))
             .collect::<Result<Vec<ZkScalar>, StateManagerError>>()?;
         let mut tokens = HashMap::new();
@@ -102,12 +102,12 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             let tok = Self::get_data(
                 db,
                 mpn_contract_id,
-                &ZkDataLocator(vec![index, 4, i as u64, 0]),
+                &ZkDataLocator(vec![index, 3, i as u64, 0]),
             )?;
             let bal = Self::get_data(
                 db,
                 mpn_contract_id,
-                &ZkDataLocator(vec![index, 4, i as u64, 1]),
+                &ZkDataLocator(vec![index, 3, i as u64, 1]),
             )?;
             let tok_is_zero: bool = tok.is_zero().into();
             let bal_is_zero: bool = bal.is_zero().into();
@@ -118,7 +118,6 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         Ok(MpnAccount {
             nonce: cells[0].try_into()?,
             address: jubjub::PointAffine(cells[1], cells[2]),
-            balance: cells[3].try_into()?,
             tokens,
         })
     }
@@ -153,12 +152,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         acc: MpnAccount,
         size_diff: &mut u64,
     ) -> Result<(), StateManagerError> {
-        let vals = [
-            acc.nonce.into(),
-            acc.address.0,
-            acc.address.1,
-            acc.balance.into(),
-        ];
+        let vals = [acc.nonce.into(), acc.address.0, acc.address.1];
         vals.into_iter()
             .enumerate()
             .map(|(i, val)| {

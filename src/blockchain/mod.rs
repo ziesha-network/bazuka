@@ -326,7 +326,6 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut new_acc = zk::MpnAccount {
                 address: deposit.zk_address.0.decompress(),
                 nonce: dst.nonce,
-                balance: dst.balance,
                 tokens: dst.tokens.clone(),
             };
             new_acc
@@ -381,7 +380,6 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut new_acc = zk::MpnAccount {
                 address: src.address.clone(),
                 tokens: src.tokens.clone(),
-                balance: src.balance,
                 nonce: src.nonce + 1,
             };
             if let Some((tok_id, balance)) = new_acc.tokens.get_mut(&withdraw.zk_token_index) {
@@ -393,8 +391,12 @@ impl<K: KvStore> KvStoreChain<K> {
             } else {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
-            if new_acc.balance >= withdraw.payment.fee {
-                new_acc.balance -= withdraw.payment.fee;
+            if let Some((tok_id, balance)) = new_acc.tokens.get_mut(&withdraw.zk_fee_token_index) {
+                if *tok_id == TokenId::Ziesha && *balance >= withdraw.payment.fee {
+                    *balance -= withdraw.payment.fee;
+                } else {
+                    return Err(BlockchainError::InvalidMpnTransaction);
+                }
             } else {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
@@ -477,13 +479,11 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut new_src_acc = zk::MpnAccount {
                 address: src.address.clone(),
                 tokens: src.tokens.clone(),
-                balance: src.balance,
                 nonce: src.nonce + 1,
             };
             let mut new_dst_acc = zk::MpnAccount {
                 address: tx.dst_pub_key.0.decompress(),
                 tokens: dst.tokens.clone(),
-                balance: dst.balance,
                 nonce: dst.nonce,
             };
             let src_token_balance_mut = new_src_acc.tokens.get_mut(&tx.src_token_index);
@@ -504,8 +504,12 @@ impl<K: KvStore> KvStoreChain<K> {
             } else {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
-            if new_src_acc.balance >= tx.fee {
-                new_src_acc.balance -= tx.fee;
+            if let Some((tok_id, balance)) = new_src_acc.tokens.get_mut(&tx.src_fee_token_index) {
+                if *tok_id == TokenId::Ziesha && *balance >= tx.fee {
+                    *balance -= tx.fee;
+                } else {
+                    return Err(BlockchainError::InvalidMpnTransaction);
+                }
             } else {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }

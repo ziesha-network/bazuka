@@ -19,7 +19,6 @@ pub mod poseidon;
 pub struct MpnAccount {
     pub nonce: u64,
     pub address: jubjub::PointAffine,
-    pub balance: Money,
     pub tokens: HashMap<u64, (TokenId, Money)>,
 }
 
@@ -469,6 +468,7 @@ pub struct MpnTransaction {
     pub nonce: u64,
     pub src_index: u64,
     pub src_token_index: u64,
+    pub src_fee_token_index: u64,
     pub dst_index: u64,
     pub dst_token_index: u64,
     pub dst_pub_key: jubjub::PublicKey,
