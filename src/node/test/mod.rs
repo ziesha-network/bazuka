@@ -4,7 +4,7 @@ mod simulation;
 use simulation::*;
 
 use crate::config::blockchain;
-use crate::core::{ContractId, Money, TransactionAndDelta, ZkHasher};
+use crate::core::{ContractId, Money, TokenId, TransactionAndDelta, ZkHasher};
 use crate::zk;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -218,7 +218,7 @@ fn sample_contract_call() -> TransactionAndDelta {
     let updater = TxBuilder::new(&Vec::from("ABC"));
 
     let cid =
-        ContractId::from_str("9f899282c6e06f8bc3677a90457a8f42c956b8e3f55e64b7ceea890e201c718e")
+        ContractId::from_str("086f926f80d5b000cf4ba91b00c6633c9667b175bc57a16616fcad504b8928a6")
             .unwrap();
     let state_model = zk::ZkStateModel::List {
         item_type: Box::new(zk::ZkStateModel::Scalar),
@@ -244,6 +244,7 @@ fn sample_contract_call() -> TransactionAndDelta {
         state_delta.clone(),
         state_model.compress::<ZkHasher>(&full_state.data).unwrap(),
         zk::ZkProof::Dummy(true),
+        TokenId::Ziesha,
         Money(0),
         Money(0),
         1,
