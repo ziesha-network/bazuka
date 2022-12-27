@@ -670,7 +670,7 @@ async fn main() -> Result<(), NodeError> {
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
                         let mpn_addr =MpnAddress{account_index,pub_key:tx_builder.get_zk_address()};
                         let pay =
-                            tx_builder.deposit_mpn(mpn_contract_id, mpn_addr.clone(), 0, new_nonce, tkn, initial, fee);
+                            tx_builder.deposit_mpn(mpn_contract_id, mpn_addr.clone(), 0, new_nonce, tkn, initial, TokenId::Ziesha,fee);
                         wallet.add_mpn_index(account_index);
                         wallet.add_deposit(pay.clone());
                         wallet.save(wallet_path).unwrap();
@@ -727,6 +727,7 @@ async fn main() -> Result<(), NodeError> {
                             new_nonce,
                             tkn,
                             amount,
+                            TokenId::Ziesha,
                             fee,
                         );
                         wallet.add_deposit(pay.clone());
@@ -785,6 +786,7 @@ async fn main() -> Result<(), NodeError> {
                             tkn,
                             amount,
                             fee_token_index,
+                            TokenId::Ziesha,
                             fee,
                         );
                         wallet.add_withdraw(pay.clone());
@@ -892,10 +894,12 @@ async fn main() -> Result<(), NodeError> {
                         let tx = tx_builder.create_mpn_transaction(
                             from_index,
                             token_index,
-                            fee_token_index,
                             to,
                             to_token_index,
+                            tkn,
                             amount,
+                            fee_token_index,
+                            TokenId::Ziesha,
                             fee,
                             new_nonce,
                         );

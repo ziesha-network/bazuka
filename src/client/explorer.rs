@@ -267,6 +267,7 @@ pub enum ExplorerContractUpdate {
         function_id: u32,
         next_state: ExplorerCompressedState,
         proof: ExplorerZkProof,
+        fee_token: String,
         fee: u64,
     },
 }
@@ -300,9 +301,11 @@ impl From<&ContractUpdate> for ExplorerContractUpdate {
                 function_id,
                 next_state,
                 proof,
+                fee_token,
                 fee,
             } => Self::FunctionCall {
                 function_id: *function_id,
+                fee_token: fee_token.to_string(),
                 fee: (*fee).into(),
                 next_state: next_state.into(),
                 proof: proof.into(),

@@ -3,7 +3,7 @@ use super::hash::Hash;
 use super::Money;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
 use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkProof, ZkScalar};
-
+use ff::Field;
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -41,9 +41,32 @@ pub enum TokenId {
     Ziesha,
     Custom(ZkScalar),
 }
+impl Default for TokenId {
+    fn default() -> Self {
+        Self::Ziesha
+    }
+}
 impl TokenId {
     pub fn new<H: Hash, S: SignatureScheme>(tx: &Transaction<H, S>) -> Self {
         Self::Custom(crate::zk::hash_to_scalar(&bincode::serialize(&tx).unwrap()))
+    }
+}
+
+impl From<ZkScalar> for TokenId {
+    fn from(val: ZkScalar) -> Self {
+        if val == ZkScalar::ONE {
+            Self::Ziesha
+        } else {
+            Self::Custom(val)
+        }
+    }
+}
+impl Into<ZkScalar> for TokenId {
+    fn into(self) -> ZkScalar {
+        match self {
+            TokenId::Ziesha => ZkScalar::ONE,
+            TokenId::Custom(id) => id,
+        }
     }
 }
 
@@ -89,7 +112,8 @@ pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
     pub src: S::Pub,
     pub token: TokenId,
     pub amount: Money, // Amount sent from src to contract
-    pub fee: Money,    // Executor fee, paid by src
+    pub fee_token: TokenId,
+    pub fee: Money, // Executor fee, paid by src
 
     pub nonce: u32,
     pub sig: Option<S::Sig>,
@@ -103,7 +127,8 @@ pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
     pub dst: S::Pub,
     pub token: TokenId,
     pub amount: Money, // Amount sent from contract to dst
-    pub fee: Money,    // Executor fee, paid by contract
+    pub fee_token: TokenId,
+    pub fee: Money, // Executor fee, paid by contract
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -173,6 +198,7 @@ pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
         function_id: u32,
         next_state: ZkCompressedState,
         proof: ZkProof,
+        fee_token: TokenId,
         fee: Money, // Executor fee
     },
 }

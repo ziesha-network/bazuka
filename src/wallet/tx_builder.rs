@@ -126,18 +126,22 @@ impl TxBuilder {
         &self,
         from_index: u64,
         from_token_index: u64,
-        from_fee_token_index: u64,
         to: MpnAddress,
         to_token_index: u64,
+        to_token: TokenId,
         amount: Money,
+        fee_token_index: u64,
+        fee_token: TokenId,
         fee: Money,
         nonce: u64,
     ) -> zk::MpnTransaction {
         let mut tx = zk::MpnTransaction {
             nonce,
+            token: to_token,
+            fee_token: fee_token,
             src_token_index: from_token_index,
             src_index: from_index,
-            src_fee_token_index: from_fee_token_index,
+            src_fee_token_index: fee_token_index,
             dst_index: to.account_index,
             dst_pub_key: to.pub_key,
             dst_token_index: to_token_index,
@@ -177,6 +181,7 @@ impl TxBuilder {
         state_delta: zk::ZkDeltaPairs,
         next_state: zk::ZkCompressedState,
         proof: zk::ZkProof,
+        exec_fee_token: TokenId,
         exec_fee: Money,
         miner_fee: Money,
         nonce: u32,
@@ -190,6 +195,7 @@ impl TxBuilder {
                     function_id,
                     next_state,
                     proof,
+                    fee_token: exec_fee_token,
                     fee: exec_fee,
                 }],
             },
@@ -214,6 +220,7 @@ impl TxBuilder {
         nonce: u32,
         token: TokenId,
         amount: Money,
+        fee_token: TokenId,
         fee: Money,
     ) -> MpnDeposit {
         let mut calldata_builder =
@@ -236,6 +243,7 @@ impl TxBuilder {
             calldata: calldata_builder.compress().unwrap().state_hash,
             nonce,
             amount,
+            fee_token,
             fee,
             sig: None,
         };
@@ -259,6 +267,7 @@ impl TxBuilder {
         token: TokenId,
         amount: Money,
         fee_token_index: u64,
+        fee_token: TokenId,
         fee: Money,
     ) -> MpnWithdraw {
         let mut tx = ContractWithdraw {
@@ -269,6 +278,7 @@ impl TxBuilder {
             calldata: zk::ZkScalar::default(),
             amount,
             fee,
+            fee_token,
         };
         let fingerprint: zk::ZkScalar =
             crate::zk::hash_to_scalar(&bincode::serialize(&tx).unwrap());

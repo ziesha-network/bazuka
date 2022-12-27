@@ -110,19 +110,8 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                 &ZkDataLocator(vec![index, 3, i as u64, 1]),
             )?;
             let tok_is_zero: bool = tok.is_zero().into();
-            let bal_is_zero: bool = bal.is_zero().into();
-            if !tok_is_zero || !bal_is_zero {
-                tokens.insert(
-                    i,
-                    (
-                        if tok_is_zero {
-                            TokenId::Ziesha
-                        } else {
-                            TokenId::Custom(tok)
-                        },
-                        bal.try_into()?,
-                    ),
-                );
+            if !tok_is_zero {
+                tokens.insert(i, (tok.into(), bal.try_into()?));
             }
         }
         Ok(MpnAccount {
@@ -180,11 +169,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                 db,
                 mpn_contract_id,
                 ZkDataLocator(vec![index, 3, *ind as u64, 0]),
-                if let TokenId::Custom(tkn) = tkn {
-                    *tkn
-                } else {
-                    ZkScalar::ZERO
-                },
+                (*tkn).into(),
                 size_diff,
             )?;
             Self::set_data(
