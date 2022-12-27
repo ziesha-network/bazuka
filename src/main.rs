@@ -743,6 +743,7 @@ async fn main() -> Result<(), NodeError> {
                 } else {
                     TokenId::Ziesha
                 };
+
                 let tx_builder = TxBuilder::new(&wallet.seed());
                 let (req_loop, client) = BazukaClient::connect(
                     tx_builder.get_priv_key(),
@@ -752,12 +753,18 @@ async fn main() -> Result<(), NodeError> {
                 );
                 try_join!(
                     async move {
-                        let curr_nonce = client.get_mpn_account(from).await?.account.nonce;
-                        let new_nonce = wallet.new_z_nonce(from).unwrap_or(curr_nonce);
+                        let acc = client.get_mpn_account(from).await?.account;
+                        let token_index = if let Some(ind) = acc.find_token_index(tkn) {
+                            ind
+                        } else {
+                            panic!("Token not found in your account!");
+                        };
+                        let new_nonce = wallet.new_z_nonce(from).unwrap_or(acc.nonce);
                         let pay = tx_builder.withdraw_mpn(
                             mpn_contract_id,
                             from,
                             new_nonce,
+                            token_index,
                             tkn,
                             amount,
                             fee,
@@ -821,6 +828,7 @@ async fn main() -> Result<(), NodeError> {
             }
             WalletOptions::Zsend {
                 from_index,
+                token,
                 to,
                 amount,
                 fee,
@@ -844,10 +852,21 @@ async fn main() -> Result<(), NodeError> {
                 );
                 try_join!(
                     async move {
-                        let curr_nonce = client.get_mpn_account(from_index).await?.account.nonce;
-                        let new_nonce = wallet.new_z_nonce(from_index).unwrap_or(curr_nonce);
-                        let tx = tx_builder
-                            .create_mpn_transaction(from_index, to, amount, fee, new_nonce);
+                        let acc = client.get_mpn_account(from_index).await?.account;
+                        let token_index = if let Some(ind) = acc.find_token_index(tkn) {
+                            ind
+                        } else {
+                            panic!("Token not found in your account!");
+                        };
+                        let new_nonce = wallet.new_z_nonce(from_index).unwrap_or(acc.nonce);
+                        let tx = tx_builder.create_mpn_transaction(
+                            from_index,
+                            token_index,
+                            to,
+                            amount,
+                            fee,
+                            new_nonce,
+                        );
                         wallet.add_zsend(tx.clone());
                         wallet.save(wallet_path).unwrap();
                         println!("{:#?}", client.zero_transact(tx).await?);
@@ -927,16 +946,20 @@ async fn main() -> Result<(), NodeError> {
                                 if !resp.address.is_on_curve() {
                                     println!("\tWaiting to be created...")
                                 } else {
-                                    println!("\tBalance: {}", resp.balance);
-                                    println!(
-                                        "\tAddress: {}",
-                                        MpnAddress {
-                                            pub_key: bazuka::crypto::jubjub::PublicKey(
-                                                resp.address.compress()
-                                            ),
-                                            index: ind
-                                        }
-                                    );
+                                    println!("\tZiesha Balance: {}", resp.balance);
+                                    for (id, (_, bal)) in resp.tokens.iter() {
+                                        println!("Token #{} Balance: {}", id, bal);
+                                        println!(
+                                            "\tAddress: {}",
+                                            MpnAddress {
+                                                pub_key: bazuka::crypto::jubjub::PublicKey(
+                                                    resp.address.compress()
+                                                ),
+                                                account_index: ind,
+                                                token_index: *id as u8,
+                                            }
+                                        );
+                                    }
                                 }
                             } else {
                                 println!("\tNode not available!");
