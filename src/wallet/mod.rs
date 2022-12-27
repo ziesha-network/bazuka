@@ -28,7 +28,7 @@ pub struct Wallet {
     mnemonic: Mnemonic,
     pub tokens: Vec<TokenId>,
     pub chain_sourced_txs: Vec<ChainSourcedTx>,
-    pub mpn_sourced_txs: HashMap<u32, Vec<MpnSourcedTx>>,
+    pub mpn_sourced_txs: HashMap<u64, Vec<MpnSourcedTx>>,
 }
 
 impl Wallet {
@@ -50,10 +50,10 @@ impl Wallet {
     pub fn get_tokens(&self) -> &[TokenId] {
         &self.tokens
     }
-    pub fn mpn_indices(&self) -> Vec<u32> {
+    pub fn mpn_indices(&self) -> Vec<u64> {
         self.mpn_sourced_txs.keys().cloned().collect()
     }
-    pub fn add_mpn_index(&mut self, index: u32) {
+    pub fn add_mpn_index(&mut self, index: u64) {
         self.mpn_sourced_txs.insert(index, Vec::new());
     }
     pub fn reset(&mut self) {
@@ -88,7 +88,7 @@ impl Wallet {
             .max()
             .map(|n| n + 1)
     }
-    pub fn new_z_nonce(&self, index: u32) -> Option<u64> {
+    pub fn new_z_nonce(&self, index: u64) -> Option<u64> {
         if let Some(Some(n)) = self
             .mpn_sourced_txs
             .get(&index)

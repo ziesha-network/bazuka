@@ -46,7 +46,7 @@ pub struct GetAccountResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMpnAccountRequest {
-    pub index: u32,
+    pub index: u64,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -62,7 +62,7 @@ pub struct GetExplorerMpnAccountsRequest {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetExplorerMpnAccountsResponse {
-    pub accounts: HashMap<u32, ExplorerMpnAccount>,
+    pub accounts: HashMap<u64, ExplorerMpnAccount>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

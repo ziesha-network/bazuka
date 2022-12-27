@@ -82,7 +82,7 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
     pub fn prove(
         &self,
         tree_loc: ZkDataLocator,
-        ind: u32,
+        ind: u64,
     ) -> Result<Vec<[ZkScalar; 3]>, StateManagerError> {
         KvStoreStateManager::<H>::prove(&self.db, self.contract_id, tree_loc, ind)
     }
@@ -92,22 +92,22 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     pub fn get_mpn_account<K: KvStore>(
         db: &K,
         mpn_contract_id: ContractId,
-        index: u32,
+        index: u64,
     ) -> Result<MpnAccount, StateManagerError> {
         let cells = (0..4)
-            .map(|i| Self::get_data(db, mpn_contract_id, &ZkDataLocator(vec![index, i as u32])))
+            .map(|i| Self::get_data(db, mpn_contract_id, &ZkDataLocator(vec![index, i as u64])))
             .collect::<Result<Vec<ZkScalar>, StateManagerError>>()?;
         let mut tokens = HashMap::new();
         for i in 0..64 {
             let tok = Self::get_data(
                 db,
                 mpn_contract_id,
-                &ZkDataLocator(vec![index, 4, i as u32, 0]),
+                &ZkDataLocator(vec![index, 4, i as u64, 0]),
             )?;
             let bal = Self::get_data(
                 db,
                 mpn_contract_id,
-                &ZkDataLocator(vec![index, 4, i as u32, 1]),
+                &ZkDataLocator(vec![index, 4, i as u64, 1]),
             )?;
             let tok_is_zero: bool = tok.is_zero().into();
             let bal_is_zero: bool = bal.is_zero().into();
@@ -128,7 +128,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         mpn_contract_id: ContractId,
         page: usize,
         page_size: usize,
-    ) -> Result<Vec<(u32, MpnAccount)>, StateManagerError> {
+    ) -> Result<Vec<(u64, MpnAccount)>, StateManagerError> {
         let mut indices = Vec::new();
         for (k, _) in db.pairs(keys::local_scalar_value_prefix(&mpn_contract_id).into())? {
             let loc = ZkDataLocator::from_str(k.0.split('-').nth(3).unwrap())?;
@@ -149,9 +149,9 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     pub fn set_mpn_account<K: KvStore>(
         db: &mut K,
         mpn_contract_id: ContractId,
-        index: u32,
+        index: u64,
         acc: MpnAccount,
-        size_diff: &mut u32,
+        size_diff: &mut u64,
     ) -> Result<(), StateManagerError> {
         let vals = [
             acc.nonce.into(),
@@ -165,7 +165,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                 Self::set_data(
                     db,
                     mpn_contract_id,
-                    ZkDataLocator(vec![index, i as u32]),
+                    ZkDataLocator(vec![index, i as u64]),
                     val,
                     size_diff,
                 )
@@ -175,7 +175,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             Self::set_data(
                 db,
                 mpn_contract_id,
-                ZkDataLocator(vec![index, 3, *ind as u32, 0]),
+                ZkDataLocator(vec![index, 3, *ind as u64, 0]),
                 if let TokenId::Custom(tkn) = tkn {
                     *tkn
                 } else {
@@ -186,7 +186,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             Self::set_data(
                 db,
                 mpn_contract_id,
-                ZkDataLocator(vec![index, 3, *ind as u32, 1]),
+                ZkDataLocator(vec![index, 3, *ind as u64, 1]),
                 ZkScalar::from(*bal),
                 size_diff,
             )?;
@@ -218,7 +218,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         db: &K,
         id: ContractId,
         tree_loc: ZkDataLocator,
-        mut curr_ind: u32,
+        mut curr_ind: u64,
     ) -> Result<Vec<[ZkScalar; 3]>, StateManagerError> {
         let loc_type = Self::type_of(db, id)?.locate(&tree_loc)?;
         if let ZkStateModel::List {
@@ -237,7 +237,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                 for leaf_index in start..start + 4 {
                     if leaf_index != curr_ind {
                         proof_part[i] = if layer == log4_size - 1 {
-                            Self::get_data(db, id, &tree_loc.index(leaf_index as u32))?
+                            Self::get_data(db, id, &tree_loc.index(leaf_index as u64))?
                         } else {
                             match db.get(keys::local_tree_aux(
                                 &id,
@@ -491,7 +491,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         id: ContractId,
         mut locator: ZkDataLocator,
         mut value: ZkScalar,
-        size_diff: &mut u32,
+        size_diff: &mut u64,
     ) -> Result<ZkScalar, StateManagerError> {
         let contract_type = Self::type_of(db, id)?;
         let mut ops = Vec::new();
@@ -533,7 +533,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                                 value
                             } else if layer == log4_size - 1 {
                                 let mut full_loc = locator.clone();
-                                full_loc.0.push(leaf_index as u32);
+                                full_loc.0.push(leaf_index as u64);
                                 Self::get_data(db, id, &full_loc)?
                             } else {
                                 match db.get(keys::local_tree_aux(
@@ -567,11 +567,11 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                 ZkStateModel::Struct { field_types } => {
                     let mut dats = Vec::new();
                     for field_index in 0..field_types.len() {
-                        dats.push(if field_index as u32 == curr_loc {
+                        dats.push(if field_index as u64 == curr_loc {
                             value
                         } else {
                             let mut full_loc = locator.clone();
-                            full_loc.0.push(field_index as u32);
+                            full_loc.0.push(field_index as u64);
                             Self::get_data(db, id, &full_loc)?
                         });
                     }

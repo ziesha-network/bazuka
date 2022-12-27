@@ -77,7 +77,7 @@ pub fn local_root(contract_id: &ContractId) -> StringKey {
 pub fn local_tree_aux(
     contract_id: &ContractId,
     tree_loc: &ZkDataLocator,
-    aux_id: u32,
+    aux_id: u64,
 ) -> StringKey {
     format!("{}-{}-T-{}", local_prefix(contract_id), tree_loc, aux_id).into()
 }

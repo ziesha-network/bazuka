@@ -78,7 +78,7 @@ enum WalletOptions {
     /// Creates a new MPN-account
     NewAccount {
         #[structopt(long)]
-        index: Option<u32>,
+        index: Option<u64>,
         #[structopt(long)]
         token: Option<usize>,
         #[structopt(long, default_value = "0")]
@@ -100,7 +100,7 @@ enum WalletOptions {
     /// Withdraw funds from the MPN-contract
     Withdraw {
         #[structopt(long)]
-        from: u32,
+        from: u64,
         #[structopt(long)]
         token: Option<usize>,
         #[structopt(long)]
@@ -122,7 +122,7 @@ enum WalletOptions {
     /// Send funds through a zero-transaction
     Zsend {
         #[structopt(long)]
-        from_index: u32,
+        from_index: u64,
         #[structopt(long)]
         to: MpnAddress,
         #[structopt(long)]

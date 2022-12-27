@@ -14,7 +14,7 @@ use std::collections::HashMap;
 pub struct ExplorerMpnAccount {
     pub nonce: u64,
     pub address: String,
-    pub tokens: HashMap<u32, (String, u64)>,
+    pub tokens: HashMap<u64, (String, u64)>,
 }
 
 impl From<&MpnAccount> for ExplorerMpnAccount {

@@ -4,7 +4,7 @@ use thiserror::Error;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct MpnAddress<ZS: ZkSignatureScheme> {
-    pub account_index: u32,
+    pub account_index: u64,
     pub token_index: u8,
     pub pub_key: ZS::Pub,
 }
@@ -19,7 +19,7 @@ impl<ZS: ZkSignatureScheme> std::fmt::Display for MpnAddress<ZS> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{:02x}{:08x}{}",
+            "{:02x}{:16x}{}",
             self.token_index, self.account_index, self.pub_key
         )?;
         Ok(())
@@ -29,20 +29,20 @@ impl<ZS: ZkSignatureScheme> std::fmt::Display for MpnAddress<ZS> {
 impl<ZS: ZkSignatureScheme> FromStr for MpnAddress<ZS> {
     type Err = ParseMpnAddressError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() != 76 {
+        if s.len() != 84 {
             return Err(ParseMpnAddressError::Invalid);
         }
         let token_index =
             u8::from_str_radix(&s[..2], 16).map_err(|_| ParseMpnAddressError::Invalid)?;
         let account_index =
-            u32::from_str_radix(&s[2..10], 16).map_err(|_| ParseMpnAddressError::Invalid)?;
+            u64::from_str_radix(&s[2..18], 16).map_err(|_| ParseMpnAddressError::Invalid)?;
         if token_index >= 64 {
             return Err(ParseMpnAddressError::Invalid);
         }
         if account_index > 0x3FFFFFFF {
             return Err(ParseMpnAddressError::Invalid);
         }
-        let pub_key: ZS::Pub = s[10..].parse().map_err(|_| ParseMpnAddressError::Invalid)?;
+        let pub_key: ZS::Pub = s[18..].parse().map_err(|_| ParseMpnAddressError::Invalid)?;
         Ok(Self {
             account_index,
             token_index,

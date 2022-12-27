@@ -20,11 +20,11 @@ pub struct MpnAccount {
     pub nonce: u64,
     pub address: jubjub::PointAffine,
     pub balance: Money,
-    pub tokens: HashMap<u32, (TokenId, Money)>,
+    pub tokens: HashMap<u64, (TokenId, Money)>,
 }
 
 impl MpnAccount {
-    pub fn find_token_index(&self, token_id: TokenId) -> Option<u32> {
+    pub fn find_token_index(&self, token_id: TokenId) -> Option<u64> {
         for (ind, (tkn, _)) in self.tokens.iter() {
             if *tkn == token_id {
                 return Some(*ind);
@@ -318,10 +318,10 @@ impl ZkStateModel {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Hash)]
-pub struct ZkDataLocator(pub Vec<u32>);
+pub struct ZkDataLocator(pub Vec<u64>);
 
 impl ZkDataLocator {
-    pub fn index(&self, ind: u32) -> ZkDataLocator {
+    pub fn index(&self, ind: u64) -> ZkDataLocator {
         let mut result = self.clone();
         result.0.push(ind);
         result
@@ -354,8 +354,8 @@ impl std::str::FromStr for ZkDataLocator {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self(
             s.split('_')
-                .map(|s| u32::from_str_radix(s, 16))
-                .collect::<Result<Vec<u32>, _>>()
+                .map(|s| u64::from_str_radix(s, 16))
+                .collect::<Result<Vec<u64>, _>>()
                 .map_err(|_| ParseZkDataLocatorError::Invalid)?,
         ))
     }
@@ -425,11 +425,11 @@ impl ZkState {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 pub struct ZkCompressedState {
     pub state_hash: ZkScalar,
-    pub state_size: u32,
+    pub state_size: u64,
 }
 
 impl ZkCompressedState {
-    pub fn new(state_hash: ZkScalar, state_size: u32) -> Self {
+    pub fn new(state_hash: ZkScalar, state_size: u64) -> Self {
         Self {
             state_hash,
             state_size,
@@ -441,7 +441,7 @@ impl ZkCompressedState {
             state_size: 0,
         }
     }
-    pub fn size(&self) -> u32 {
+    pub fn size(&self) -> u64 {
         self.state_size
     }
 }
@@ -467,10 +467,10 @@ pub struct ZkSingleInputVerifierKey {
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct MpnTransaction {
     pub nonce: u64,
-    pub src_index: u32,
-    pub src_token_index: u32,
-    pub dst_index: u32,
-    pub dst_token_index: u32,
+    pub src_index: u64,
+    pub src_token_index: u64,
+    pub dst_index: u64,
+    pub dst_token_index: u64,
     pub dst_pub_key: jubjub::PublicKey,
     pub amount: Money,
     pub fee: Money,

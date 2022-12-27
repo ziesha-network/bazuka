@@ -124,8 +124,8 @@ impl TxBuilder {
     }
     pub fn create_mpn_transaction(
         &self,
-        from_index: u32,
-        from_token_index: u32,
+        from_index: u64,
+        from_token_index: u64,
         to: MpnAddress,
         amount: Money,
         fee: Money,
@@ -137,7 +137,7 @@ impl TxBuilder {
             src_index: from_index,
             dst_index: to.account_index,
             dst_pub_key: to.pub_key,
-            dst_token_index: to.token_index as u32,
+            dst_token_index: to.token_index as u64,
             amount,
             fee,
             sig: Default::default(),
@@ -240,7 +240,7 @@ impl TxBuilder {
         MpnDeposit {
             zk_address_index: to.account_index,
             zk_address: to.pub_key,
-            zk_token_index: to.token_index as u32,
+            zk_token_index: to.token_index as u64,
             payment: tx,
         }
     }
@@ -249,9 +249,9 @@ impl TxBuilder {
     pub fn withdraw_mpn(
         &self,
         contract_id: ContractId,
-        zk_address_index: u32,
+        zk_address_index: u64,
         nonce: u64,
-        token_index: u32,
+        token_index: u64,
         token: TokenId,
         amount: Money,
         fee: Money,

@@ -100,12 +100,12 @@ pub trait Blockchain {
         token_id: TokenId,
     ) -> Result<Money, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
-    fn get_mpn_account(&self, index: u32) -> Result<zk::MpnAccount, BlockchainError>;
+    fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError>;
     fn get_mpn_accounts(
         &self,
         page: usize,
         page_size: usize,
-    ) -> Result<Vec<(u32, zk::MpnAccount)>, BlockchainError>;
+    ) -> Result<Vec<(u64, zk::MpnAccount)>, BlockchainError>;
 
     fn get_contract_account(
         &self,
@@ -724,15 +724,15 @@ impl<K: KvStore> KvStoreChain<K> {
                                     state_builder.batch_set(&zk::ZkDeltaPairs(
                                         [
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 0]),
+                                                zk::ZkDataLocator(vec![i as u64, 0]),
                                                 Some(zk::ZkScalar::from(1)),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 1]),
+                                                zk::ZkDataLocator(vec![i as u64, 1]),
                                                 Some(zk::ZkScalar::from(deposit.amount)),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 2]),
+                                                zk::ZkDataLocator(vec![i as u64, 2]),
                                                 Some(deposit.calldata),
                                             ),
                                         ]
@@ -784,21 +784,21 @@ impl<K: KvStore> KvStoreChain<K> {
                                     state_builder.batch_set(&zk::ZkDeltaPairs(
                                         [
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 0]),
+                                                zk::ZkDataLocator(vec![i as u64, 0]),
                                                 Some(zk::ZkScalar::from(1)),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 1]),
+                                                zk::ZkDataLocator(vec![i as u64, 1]),
                                                 Some(zk::ZkScalar::from(
                                                     withdraw.amount + withdraw.fee,
                                                 )),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 2]),
+                                                zk::ZkDataLocator(vec![i as u64, 2]),
                                                 Some(fingerprint),
                                             ),
                                             (
-                                                zk::ZkDataLocator(vec![i as u32, 3]),
+                                                zk::ZkDataLocator(vec![i as u64, 3]),
                                                 Some(withdraw.calldata),
                                             ),
                                         ]
@@ -1318,7 +1318,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
 
-    fn get_mpn_account(&self, index: u32) -> Result<zk::MpnAccount, BlockchainError> {
+    fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError> {
         Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_account(
             &self.database,
             self.config.mpn_contract_id,
@@ -1330,7 +1330,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self,
         page: usize,
         page_size: usize,
-    ) -> Result<Vec<(u32, zk::MpnAccount)>, BlockchainError> {
+    ) -> Result<Vec<(u64, zk::MpnAccount)>, BlockchainError> {
         Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_accounts(
             &self.database,
             self.config.mpn_contract_id,
