@@ -668,9 +668,9 @@ async fn main() -> Result<(), NodeError> {
                             .account
                             .nonce;
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let mpn_addr =MpnAddress{account_index,token_index:0,pub_key:tx_builder.get_zk_address()};
+                        let mpn_addr =MpnAddress{account_index,pub_key:tx_builder.get_zk_address()};
                         let pay =
-                            tx_builder.deposit_mpn(mpn_contract_id, mpn_addr.clone(), new_nonce, tkn, initial, fee);
+                            tx_builder.deposit_mpn(mpn_contract_id, mpn_addr.clone(), 0, new_nonce, tkn, initial, fee);
                         wallet.add_mpn_index(account_index);
                         wallet.add_deposit(pay.clone());
                         wallet.save(wallet_path).unwrap();
@@ -713,10 +713,17 @@ async fn main() -> Result<(), NodeError> {
                             .await?
                             .account
                             .nonce;
+                        let dst_acc = client.get_mpn_account(to.account_index).await?.account;
+                        let to_token_index = if let Some(ind) = dst_acc.find_token_index(tkn) {
+                            ind
+                        } else {
+                            panic!("Token not found in your account!");
+                        };
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
                         let pay = tx_builder.deposit_mpn(
                             mpn_contract_id,
                             to,
+                            to_token_index,
                             new_nonce,
                             tkn,
                             amount,
@@ -864,6 +871,12 @@ async fn main() -> Result<(), NodeError> {
                 try_join!(
                     async move {
                         let acc = client.get_mpn_account(from_index).await?.account;
+                        let dst_acc = client.get_mpn_account(to.account_index).await?.account;
+                        let to_token_index = if let Some(ind) = dst_acc.find_token_index(tkn) {
+                            ind
+                        } else {
+                            panic!("Token not found in your account!");
+                        };
                         let token_index = if let Some(ind) = acc.find_token_index(tkn) {
                             ind
                         } else {
@@ -881,6 +894,7 @@ async fn main() -> Result<(), NodeError> {
                             token_index,
                             fee_token_index,
                             to,
+                            to_token_index,
                             amount,
                             fee,
                             new_nonce,
@@ -964,18 +978,17 @@ async fn main() -> Result<(), NodeError> {
                                 if !resp.address.is_on_curve() {
                                     println!("\tWaiting to be created...")
                                 } else {
+                                    println!(
+                                        "\tAddress: {}",
+                                        MpnAddress {
+                                            pub_key: bazuka::crypto::jubjub::PublicKey(
+                                                resp.address.compress()
+                                            ),
+                                            account_index: ind
+                                        }
+                                    );
                                     for (id, (_, bal)) in resp.tokens.iter() {
                                         println!("Token #{} Balance: {}", id, bal);
-                                        println!(
-                                            "\tAddress: {}",
-                                            MpnAddress {
-                                                pub_key: bazuka::crypto::jubjub::PublicKey(
-                                                    resp.address.compress()
-                                                ),
-                                                account_index: ind,
-                                                token_index: *id as u8,
-                                            }
-                                        );
                                     }
                                 }
                             } else {

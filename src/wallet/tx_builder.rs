@@ -128,6 +128,7 @@ impl TxBuilder {
         from_token_index: u64,
         from_fee_token_index: u64,
         to: MpnAddress,
+        to_token_index: u64,
         amount: Money,
         fee: Money,
         nonce: u64,
@@ -139,7 +140,7 @@ impl TxBuilder {
             src_fee_token_index: from_fee_token_index,
             dst_index: to.account_index,
             dst_pub_key: to.pub_key,
-            dst_token_index: to.token_index as u64,
+            dst_token_index: to_token_index,
             amount,
             fee,
             sig: Default::default(),
@@ -209,6 +210,7 @@ impl TxBuilder {
         &self,
         contract_id: ContractId,
         to: MpnAddress,
+        to_token_index: u64,
         nonce: u32,
         token: TokenId,
         amount: Money,
@@ -242,7 +244,7 @@ impl TxBuilder {
         MpnDeposit {
             zk_address_index: to.account_index,
             zk_address: to.pub_key,
-            zk_token_index: to.token_index as u64,
+            zk_token_index: to_token_index,
             payment: tx,
         }
     }
