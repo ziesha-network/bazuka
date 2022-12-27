@@ -250,14 +250,20 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut addr_account = chain.get_account(Address::PublicKey(deposit.src.clone()))?;
             let mut addr_balance =
                 chain.get_balance(Address::PublicKey(deposit.src.clone()), deposit.token)?;
+            let mut addr_ziesha_balance =
+                chain.get_balance(Address::PublicKey(deposit.src.clone()), TokenId::Ziesha)?;
             if deposit.nonce != addr_account.nonce + 1 {
                 return Err(BlockchainError::InvalidTransactionNonce);
             }
             addr_account.nonce += 1;
-            if addr_balance < deposit.amount + deposit.fee {
+            if addr_balance < deposit.amount {
                 return Err(BlockchainError::BalanceInsufficient);
             }
-            addr_balance -= deposit.amount + deposit.fee;
+            if addr_ziesha_balance < deposit.fee {
+                return Err(BlockchainError::BalanceInsufficient);
+            }
+            addr_ziesha_balance -= deposit.fee;
+            addr_balance -= deposit.amount;
             contract_balance += deposit.amount;
 
             chain.database.update(&[WriteOp::Put(
@@ -271,6 +277,10 @@ impl<K: KvStore> KvStoreChain<K> {
             chain.database.update(&[WriteOp::Put(
                 keys::account_balance(&Address::PublicKey(deposit.src.clone()), deposit.token),
                 addr_balance.into(),
+            )])?;
+            chain.database.update(&[WriteOp::Put(
+                keys::account_balance(&Address::PublicKey(deposit.src.clone()), TokenId::Ziesha),
+                addr_ziesha_balance.into(),
             )])?;
             chain.database.update(&[WriteOp::Put(
                 keys::contract_balance(&deposit.contract_id, deposit.token),
@@ -406,19 +416,29 @@ impl<K: KvStore> KvStoreChain<K> {
         let (ops, _) = self.isolated(|chain| {
             let mut contract_balance =
                 chain.get_contract_balance(withdraw.contract_id, withdraw.token)?;
+            let mut contract_ziesha_balance =
+                chain.get_contract_balance(withdraw.contract_id, TokenId::Ziesha)?;
 
             let mut addr_balance =
                 chain.get_balance(Address::PublicKey(withdraw.dst.clone()), withdraw.token)?;
 
-            if contract_balance < withdraw.amount + withdraw.fee {
+            if contract_balance < withdraw.amount {
                 return Err(BlockchainError::ContractBalanceInsufficient);
             }
-            contract_balance -= withdraw.amount + withdraw.fee;
+            if contract_ziesha_balance < withdraw.fee {
+                return Err(BlockchainError::ContractBalanceInsufficient);
+            }
+            contract_ziesha_balance -= withdraw.fee;
+            contract_balance -= withdraw.amount;
             addr_balance += withdraw.amount;
 
             chain.database.update(&[WriteOp::Put(
                 keys::contract_balance(&withdraw.contract_id, withdraw.token),
                 contract_balance.clone().into(),
+            )])?;
+            chain.database.update(&[WriteOp::Put(
+                keys::contract_balance(&withdraw.contract_id, TokenId::Ziesha),
+                contract_ziesha_balance.clone().into(),
             )])?;
             chain.database.update(&[WriteOp::Put(
                 keys::account_balance(&Address::PublicKey(withdraw.dst.clone()), withdraw.token),
