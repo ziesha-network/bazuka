@@ -1,3 +1,4 @@
+use crate::config::blockchain::MPN_LOG4_TOKEN_CAPACITY;
 use crate::core::{hash::Hash, Hasher, Money, TokenId, ZkHasher as ZkMainHasher};
 use crate::crypto::{jubjub, ZkSignatureScheme};
 
@@ -23,6 +24,30 @@ pub struct MpnAccount {
 }
 
 impl MpnAccount {
+    pub fn tokens_hash<H: ZkHasher>(&self) -> ZkScalar {
+        let state_model = ZkStateModel::List {
+            log4_size: MPN_LOG4_TOKEN_CAPACITY,
+            item_type: Box::new(ZkStateModel::Struct {
+                field_types: vec![
+                    ZkStateModel::Scalar, // Token-Id
+                    ZkStateModel::Scalar, // Balance
+                ],
+            }),
+        };
+        let mut state_builder = ZkStateBuilder::<H>::new(state_model);
+        for (i, (tok, bal)) in self.tokens.iter() {
+            state_builder
+                .batch_set(&ZkDeltaPairs(
+                    [
+                        (ZkDataLocator(vec![*i as u64, 0]), Some((*tok).into())),
+                        (ZkDataLocator(vec![*i as u64, 1]), Some((*bal).into())),
+                    ]
+                    .into(),
+                ))
+                .unwrap();
+        }
+        state_builder.compress().unwrap().state_hash
+    }
     pub fn find_token_index(&self, token_id: TokenId) -> Option<u64> {
         for (ind, (tkn, _)) in self.tokens.iter() {
             if *tkn == token_id {
