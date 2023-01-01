@@ -38,12 +38,13 @@ impl<H: Hash> std::fmt::Display for ContractId<H> {
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy, Hash, Eq)]
 pub enum TokenId {
+    Null,
     Ziesha,
     Custom(ZkScalar),
 }
 impl Default for TokenId {
     fn default() -> Self {
-        Self::Ziesha
+        Self::Null
     }
 }
 impl TokenId {
@@ -54,7 +55,9 @@ impl TokenId {
 
 impl From<ZkScalar> for TokenId {
     fn from(val: ZkScalar) -> Self {
-        if val == ZkScalar::ONE {
+        if val == ZkScalar::ZERO {
+            Self::Null
+        } else if val == ZkScalar::ONE {
             Self::Ziesha
         } else {
             Self::Custom(val)
@@ -64,6 +67,7 @@ impl From<ZkScalar> for TokenId {
 impl Into<ZkScalar> for TokenId {
     fn into(self) -> ZkScalar {
         match self {
+            TokenId::Null => ZkScalar::ZERO,
             TokenId::Ziesha => ZkScalar::ONE,
             TokenId::Custom(id) => id,
         }
@@ -73,6 +77,9 @@ impl Into<ZkScalar> for TokenId {
 impl std::fmt::Display for TokenId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            TokenId::Null => {
+                write!(f, "Null")
+            }
             TokenId::Ziesha => {
                 write!(f, "Ziesha")
             }
