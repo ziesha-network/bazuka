@@ -5,7 +5,7 @@ use crate::core::ContractId;
 use crate::crypto::jubjub;
 use crate::db::{keys, KvStore, KvStoreError, RamKvStore, WriteOp};
 use ff::Field;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 #[derive(Error, Debug)]
@@ -97,8 +97,15 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         let cells = (0..3)
             .map(|i| Self::get_data(db, mpn_contract_id, &ZkDataLocator(vec![index, i as u64])))
             .collect::<Result<Vec<ZkScalar>, StateManagerError>>()?;
+        let mut token_indices = HashSet::new();
+        for (k, _) in db.pairs(
+            keys::local_value(&mpn_contract_id, &ZkDataLocator(vec![index, 3]), false).into(),
+        )? {
+            let loc = ZkDataLocator::from_str(k.0.split('-').nth(3).unwrap())?;
+            token_indices.insert(loc.0[2]);
+        }
         let mut tokens = HashMap::new();
-        for i in 0..64 {
+        for i in token_indices {
             let tok = Self::get_data(
                 db,
                 mpn_contract_id,
