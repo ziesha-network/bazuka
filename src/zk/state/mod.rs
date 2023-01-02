@@ -101,8 +101,10 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         for (k, _) in db.pairs(
             keys::local_value(&mpn_contract_id, &ZkDataLocator(vec![index, 3]), false).into(),
         )? {
-            let loc = ZkDataLocator::from_str(k.0.split('-').nth(3).unwrap())?;
-            token_indices.insert(loc.0[2]);
+            let loc = ZkDataLocator::from_str(k.0.split('-').nth(2).unwrap())?;
+            if loc.0.len() == 4 {
+                token_indices.insert(loc.0[2]);
+            }
         }
         let mut tokens = HashMap::new();
         for i in token_indices {
