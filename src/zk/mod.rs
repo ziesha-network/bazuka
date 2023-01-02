@@ -1,4 +1,3 @@
-use crate::config::blockchain::MPN_LOG4_TOKEN_CAPACITY;
 use crate::core::{hash::Hash, Hasher, Money, TokenId, ZkHasher as ZkMainHasher};
 use crate::crypto::{jubjub, ZkSignatureScheme};
 
@@ -24,9 +23,9 @@ pub struct MpnAccount {
 }
 
 impl MpnAccount {
-    pub fn tokens_hash<H: ZkHasher>(&self) -> ZkScalar {
+    pub fn tokens_hash<H: ZkHasher>(&self, log4_token_capacity: u8) -> ZkScalar {
         let state_model = ZkStateModel::List {
-            log4_size: MPN_LOG4_TOKEN_CAPACITY,
+            log4_size: log4_token_capacity,
             item_type: Box::new(ZkStateModel::Struct {
                 field_types: vec![
                     ZkStateModel::Scalar, // Token-Id
