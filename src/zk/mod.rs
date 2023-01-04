@@ -526,12 +526,12 @@ impl MpnTransaction {
     }
     pub fn hash(&self) -> ZkScalar {
         ZkMainHasher::hash(&[
-            self.token.into(),
-            self.fee_token.into(),
             ZkScalar::from(self.nonce),
             ZkScalar::from(self.src_index as u64),
             ZkScalar::from(self.dst_index as u64),
+            self.token.into(),
             ZkScalar::from(self.amount.0),
+            self.fee_token.into(),
             ZkScalar::from(self.fee.0),
         ])
     }
