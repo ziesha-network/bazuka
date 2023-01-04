@@ -99,9 +99,9 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             .collect::<Result<Vec<ZkScalar>, StateManagerError>>()?;
         let mut token_indices = HashSet::new();
         for (k, _) in db.pairs(
-            keys::local_value(&mpn_contract_id, &ZkDataLocator(vec![index, 3]), false).into(),
+            keys::local_value(&mpn_contract_id, &ZkDataLocator(vec![index, 3]), true).into(),
         )? {
-            let loc = ZkDataLocator::from_str(k.0.split('-').nth(2).unwrap())?;
+            let loc = ZkDataLocator::from_str(k.0.split('-').nth(3).unwrap())?;
             if loc.0.len() == 4 {
                 token_indices.insert(loc.0[2]);
             }
