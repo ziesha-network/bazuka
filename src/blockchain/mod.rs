@@ -830,14 +830,18 @@ impl<K: KvStore> KvStoreChain<K> {
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u64, 3]),
-                                                Some(zk::ZkScalar::from(withdraw.fee)),
+                                                Some(withdraw.fee_token.into()),
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u64, 4]),
-                                                Some(fingerprint),
+                                                Some(zk::ZkScalar::from(withdraw.fee)),
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u64, 5]),
+                                                Some(fingerprint),
+                                            ),
+                                            (
+                                                zk::ZkDataLocator(vec![i as u64, 6]),
                                                 Some(withdraw.calldata),
                                             ),
                                         ]
