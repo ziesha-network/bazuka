@@ -714,10 +714,14 @@ async fn main() -> Result<(), NodeError> {
                             .account
                             .nonce;
                         let dst_acc = client.get_mpn_account(to.account_index).await?.account;
-                        let to_token_index = if let Some(ind) = dst_acc.find_token_index(tkn) {
+                        let to_token_index = if let Some(ind) = dst_acc.find_token_index(
+                            config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                            tkn,
+                            true,
+                        ) {
                             ind
                         } else {
-                            panic!("Token not found in your account!");
+                            panic!("Cannot find empty token slot in your MPN account!");
                         };
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
                         let pay = tx_builder.deposit_mpn(
@@ -766,17 +770,24 @@ async fn main() -> Result<(), NodeError> {
                 try_join!(
                     async move {
                         let acc = client.get_mpn_account(from).await?.account;
-                        let token_index = if let Some(ind) = acc.find_token_index(tkn) {
+                        let token_index = if let Some(ind) = acc.find_token_index(
+                            config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                            tkn,
+                            false,
+                        ) {
                             ind
                         } else {
                             panic!("Token not found in your account!");
                         };
-                        let fee_token_index =
-                            if let Some(ind) = acc.find_token_index(TokenId::Ziesha) {
-                                ind
-                            } else {
-                                panic!("Token not found in your account!");
-                            };
+                        let fee_token_index = if let Some(ind) = acc.find_token_index(
+                            config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                            TokenId::Ziesha,
+                            false,
+                        ) {
+                            ind
+                        } else {
+                            panic!("Token not found in your account!");
+                        };
                         let new_nonce = wallet.new_z_nonce(from).unwrap_or(acc.nonce);
                         let pay = tx_builder.withdraw_mpn(
                             mpn_contract_id,
@@ -874,22 +885,33 @@ async fn main() -> Result<(), NodeError> {
                     async move {
                         let acc = client.get_mpn_account(from_index).await?.account;
                         let dst_acc = client.get_mpn_account(to.account_index).await?.account;
-                        let to_token_index = if let Some(ind) = dst_acc.find_token_index(tkn) {
+                        let to_token_index = if let Some(ind) = dst_acc.find_token_index(
+                            config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                            tkn,
+                            true,
+                        ) {
                             ind
                         } else {
                             panic!("Token not found in your account!");
                         };
-                        let token_index = if let Some(ind) = acc.find_token_index(tkn) {
+                        let token_index = if let Some(ind) = acc.find_token_index(
+                            config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                            tkn,
+                            false,
+                        ) {
                             ind
                         } else {
                             panic!("Token not found in your account!");
                         };
-                        let fee_token_index =
-                            if let Some(ind) = acc.find_token_index(TokenId::Ziesha) {
-                                ind
-                            } else {
-                                panic!("Token not found in your account!");
-                            };
+                        let fee_token_index = if let Some(ind) = acc.find_token_index(
+                            config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                            TokenId::Ziesha,
+                            false,
+                        ) {
+                            ind
+                        } else {
+                            panic!("Token not found in your account!");
+                        };
                         let new_nonce = wallet.new_z_nonce(from_index).unwrap_or(acc.nonce);
                         let tx = tx_builder.create_mpn_transaction(
                             from_index,

@@ -47,10 +47,22 @@ impl MpnAccount {
         }
         state_builder.compress().unwrap().state_hash
     }
-    pub fn find_token_index(&self, token_id: TokenId) -> Option<u64> {
+    pub fn find_token_index(
+        &self,
+        log4_token_capacity: u8,
+        token_id: TokenId,
+        empty_allowed: bool,
+    ) -> Option<u64> {
         for (ind, (tkn, _)) in self.tokens.iter() {
             if *tkn == token_id {
                 return Some(*ind);
+            }
+        }
+        if empty_allowed {
+            for ind in 0..1 << (2 * log4_token_capacity) {
+                if !self.tokens.contains_key(&ind) {
+                    return Some(ind);
+                }
             }
         }
         None
