@@ -1,6 +1,7 @@
 mod error;
 pub use error::*;
 
+use crate::consensus::pow::Difficulty;
 use crate::core::{
     hash::Hash, Account, Address, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
     ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnDeposit, MpnSourcedTx,
@@ -19,8 +20,6 @@ use rayon::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
-
-use crate::consensus::pow::Difficulty;
 
 #[derive(Clone)]
 pub struct BlockchainConfig {
@@ -355,6 +354,9 @@ impl<K: KvStore> KvStoreChain<K> {
             if withdraw.zk_address_index > 0x3FFFFFFF {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
+            if withdraw.zk_token_index >= 64 {
+                return Err(BlockchainError::InvalidMpnTransaction);
+            }
             if withdraw.zk_nonce != src.nonce {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
@@ -369,8 +371,7 @@ impl<K: KvStore> KvStoreChain<K> {
             if withdraw.payment.calldata != calldata {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
-            let fingerprint: zk::ZkScalar =
-                crate::zk::hash_to_scalar(&bincode::serialize(&withdraw.payment).unwrap());
+            let fingerprint: zk::ZkScalar = withdraw.payment.fingerprint();
             let msg =
                 CoreZkHasher::hash(&[fingerprint, zk::ZkScalar::from(withdraw.zk_nonce as u64)]);
             if !crate::core::ZkSigner::verify(&withdraw.zk_address, msg, &withdraw.zk_sig) {
@@ -1725,13 +1726,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 match &tx {
                     ChainSourcedTx::TransactionAndDelta(tx_delta) => {
                         if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
-                            log::info!("Rejecting transaction: {:?} {}", tx, e);
+                            log::info!("Rejecting transaction: {}", e);
                             mempool.remove(&tx);
                         }
                     }
                     ChainSourcedTx::MpnDeposit(mpn_deposit) => {
                         if let Err(e) = chain.apply_mpn_deposit(&mpn_deposit) {
-                            log::info!("Rejecting transaction: {:?} {}", tx, e);
+                            log::info!("Rejecting mpn-deposit: {}", e);
                             mempool.remove(&tx);
                         }
                     }
@@ -1752,12 +1753,14 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             for tx in txs {
                 match &tx {
                     MpnSourcedTx::MpnTransaction(mpn_tx) => {
-                        if chain.apply_zero_tx(&mpn_tx).is_err() {
+                        if let Err(e) = chain.apply_zero_tx(&mpn_tx) {
+                            log::info!("Rejecting mpn-transaction: {}", e);
                             mempool.remove(&tx);
                         }
                     }
                     MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
-                        if chain.apply_mpn_withdraw(&mpn_withdraw).is_err() {
+                        if let Err(e) = chain.apply_mpn_withdraw(&mpn_withdraw) {
+                            log::info!("Rejecting mpn-withdraw: {}", e);
                             mempool.remove(&tx);
                         }
                     }

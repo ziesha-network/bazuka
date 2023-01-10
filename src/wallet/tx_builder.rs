@@ -280,11 +280,9 @@ impl TxBuilder {
             fee,
             fee_token,
         };
-        let fingerprint: zk::ZkScalar =
-            crate::zk::hash_to_scalar(&bincode::serialize(&tx).unwrap());
         let sig = ZkSigner::sign(
             &self.zk_private_key,
-            crate::core::ZkHasher::hash(&[fingerprint, zk::ZkScalar::from(nonce as u64)]),
+            crate::core::ZkHasher::hash(&[tx.fingerprint(), zk::ZkScalar::from(nonce as u64)]),
         );
         let mut calldata_builder =
             zk::ZkStateBuilder::<crate::core::ZkHasher>::new(zk::MPN_WITHDRAW_STATE_MODEL.clone());
