@@ -242,46 +242,58 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InvalidContractPaymentSignature);
             }
 
-            let contract_account = chain.get_contract_account(deposit.contract_id)?;
-            let mut contract_balance =
-                chain.get_contract_balance(deposit.contract_id, deposit.token)?;
-
-            // TODO: Handle the case where fee and amount are coming from same acc
             let mut addr_account = chain.get_account(Address::PublicKey(deposit.src.clone()))?;
-            let mut addr_balance =
-                chain.get_balance(Address::PublicKey(deposit.src.clone()), deposit.token)?;
-            let mut addr_fee_balance =
-                chain.get_balance(Address::PublicKey(deposit.src.clone()), deposit.fee_token)?;
             if deposit.nonce != addr_account.nonce + 1 {
                 return Err(BlockchainError::InvalidTransactionNonce);
             }
             addr_account.nonce += 1;
-            if addr_balance < deposit.amount {
-                return Err(BlockchainError::BalanceInsufficient);
-            }
-            if addr_fee_balance < deposit.fee {
-                return Err(BlockchainError::BalanceInsufficient);
-            }
-            addr_fee_balance -= deposit.fee;
-            addr_balance -= deposit.amount;
-            contract_balance += deposit.amount;
-
-            chain.database.update(&[WriteOp::Put(
-                keys::contract_account(&deposit.contract_id),
-                contract_account.clone().into(),
-            )])?;
             chain.database.update(&[WriteOp::Put(
                 keys::account(&Address::PublicKey(deposit.src.clone())),
                 addr_account.into(),
             )])?;
-            chain.database.update(&[WriteOp::Put(
-                keys::account_balance(&Address::PublicKey(deposit.src.clone()), deposit.token),
-                addr_balance.into(),
-            )])?;
-            chain.database.update(&[WriteOp::Put(
-                keys::account_balance(&Address::PublicKey(deposit.src.clone()), deposit.fee_token),
-                addr_fee_balance.into(),
-            )])?;
+
+            if deposit.token == deposit.fee_token {
+                let mut addr_balance =
+                    chain.get_balance(Address::PublicKey(deposit.src.clone()), deposit.token)?;
+
+                if addr_balance < deposit.amount + deposit.fee {
+                    return Err(BlockchainError::BalanceInsufficient);
+                }
+                addr_balance -= deposit.amount + deposit.fee;
+                chain.database.update(&[WriteOp::Put(
+                    keys::account_balance(&Address::PublicKey(deposit.src.clone()), deposit.token),
+                    addr_balance.into(),
+                )])?;
+            } else {
+                let mut addr_balance =
+                    chain.get_balance(Address::PublicKey(deposit.src.clone()), deposit.token)?;
+                let mut addr_fee_balance = chain
+                    .get_balance(Address::PublicKey(deposit.src.clone()), deposit.fee_token)?;
+
+                if addr_balance < deposit.amount {
+                    return Err(BlockchainError::BalanceInsufficient);
+                }
+                if addr_fee_balance < deposit.fee {
+                    return Err(BlockchainError::BalanceInsufficient);
+                }
+                addr_fee_balance -= deposit.fee;
+                addr_balance -= deposit.amount;
+                chain.database.update(&[WriteOp::Put(
+                    keys::account_balance(&Address::PublicKey(deposit.src.clone()), deposit.token),
+                    addr_balance.into(),
+                )])?;
+                chain.database.update(&[WriteOp::Put(
+                    keys::account_balance(
+                        &Address::PublicKey(deposit.src.clone()),
+                        deposit.fee_token,
+                    ),
+                    addr_fee_balance.into(),
+                )])?;
+            }
+
+            let mut contract_balance =
+                chain.get_contract_balance(deposit.contract_id, deposit.token)?;
+            contract_balance += deposit.amount;
             chain.database.update(&[WriteOp::Put(
                 keys::contract_balance(&deposit.contract_id, deposit.token),
                 contract_balance.into(),
