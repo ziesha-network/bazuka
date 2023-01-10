@@ -313,19 +313,12 @@ impl<K: KvStore> KvStoreChain<K> {
                 zk::ZkScalar::from(deposit.zk_address.decompress().0),
                 zk::ZkScalar::from(deposit.zk_address.decompress().1),
             ]);
-            if deposit.payment.calldata != calldata {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if deposit.zk_token_index >= 64 {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if deposit.zk_address_index > 0x3FFFFFFF {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if !deposit.zk_address.is_on_curve() {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if dst.address.is_on_curve() && dst.address != deposit.zk_address.decompress() {
+            if deposit.payment.calldata != calldata
+                || deposit.zk_token_index >= 64
+                || deposit.zk_address_index > 0x3FFFFFFF
+                || !deposit.zk_address.is_on_curve()
+                || (dst.address.is_on_curve() && dst.address != deposit.zk_address.decompress())
+            {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
             if let Some((tok_id, _)) = dst.tokens.get(&deposit.zk_token_index) {
@@ -363,15 +356,6 @@ impl<K: KvStore> KvStoreChain<K> {
         let (ops, _) = self.isolated(|chain| {
             chain.apply_withdraw(&withdraw.payment)?;
             let src = chain.get_mpn_account(withdraw.zk_address_index)?;
-            if withdraw.zk_address_index > 0x3FFFFFFF {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if withdraw.zk_token_index >= 64 {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if withdraw.zk_nonce != src.nonce {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
             let calldata = CoreZkHasher::hash(&[
                 zk::ZkScalar::from(withdraw.zk_address.decompress().0),
                 zk::ZkScalar::from(withdraw.zk_address.decompress().1),
@@ -380,13 +364,16 @@ impl<K: KvStore> KvStoreChain<K> {
                 zk::ZkScalar::from(withdraw.zk_sig.r.1),
                 zk::ZkScalar::from(withdraw.zk_sig.s),
             ]);
-            if withdraw.payment.calldata != calldata {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            let fingerprint: zk::ZkScalar = withdraw.payment.fingerprint();
-            let msg =
-                CoreZkHasher::hash(&[fingerprint, zk::ZkScalar::from(withdraw.zk_nonce as u64)]);
-            if !crate::core::ZkSigner::verify(&withdraw.zk_address, msg, &withdraw.zk_sig) {
+            let msg = CoreZkHasher::hash(&[
+                withdraw.payment.fingerprint(),
+                zk::ZkScalar::from(withdraw.zk_nonce as u64),
+            ]);
+            if withdraw.zk_address_index > 0x3FFFFFFF
+                || withdraw.zk_token_index >= 64
+                || withdraw.zk_nonce != src.nonce
+                || withdraw.payment.calldata != calldata
+                || !crate::core::ZkSigner::verify(&withdraw.zk_address, msg, &withdraw.zk_sig)
+            {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
 
@@ -430,36 +417,50 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn apply_withdraw(&mut self, withdraw: &ContractWithdraw) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
-            let mut contract_balance =
-                chain.get_contract_balance(withdraw.contract_id, withdraw.token)?;
-            let mut contract_fee_balance =
-                chain.get_contract_balance(withdraw.contract_id, withdraw.fee_token)?;
+            if withdraw.token == withdraw.fee_token {
+                let mut contract_balance =
+                    chain.get_contract_balance(withdraw.contract_id, withdraw.token)?;
+
+                if contract_balance < withdraw.amount + withdraw.fee {
+                    return Err(BlockchainError::ContractBalanceInsufficient);
+                }
+                contract_balance -= withdraw.amount + withdraw.fee;
+                chain.database.update(&[WriteOp::Put(
+                    keys::contract_balance(&withdraw.contract_id, withdraw.token),
+                    contract_balance.clone().into(),
+                )])?;
+            } else {
+                let mut contract_balance =
+                    chain.get_contract_balance(withdraw.contract_id, withdraw.token)?;
+                let mut contract_fee_balance =
+                    chain.get_contract_balance(withdraw.contract_id, withdraw.fee_token)?;
+
+                if contract_balance < withdraw.amount {
+                    return Err(BlockchainError::ContractBalanceInsufficient);
+                }
+                if contract_fee_balance < withdraw.fee {
+                    return Err(BlockchainError::ContractBalanceInsufficient);
+                }
+                contract_fee_balance -= withdraw.fee;
+                contract_balance -= withdraw.amount;
+                chain.database.update(&[WriteOp::Put(
+                    keys::contract_balance(&withdraw.contract_id, withdraw.token),
+                    contract_balance.clone().into(),
+                )])?;
+                chain.database.update(&[WriteOp::Put(
+                    keys::contract_balance(&withdraw.contract_id, withdraw.fee_token),
+                    contract_fee_balance.clone().into(),
+                )])?;
+            }
 
             let mut addr_balance =
                 chain.get_balance(Address::PublicKey(withdraw.dst.clone()), withdraw.token)?;
-
-            if contract_balance < withdraw.amount {
-                return Err(BlockchainError::ContractBalanceInsufficient);
-            }
-            if contract_fee_balance < withdraw.fee {
-                return Err(BlockchainError::ContractBalanceInsufficient);
-            }
-            contract_fee_balance -= withdraw.fee;
-            contract_balance -= withdraw.amount;
             addr_balance += withdraw.amount;
-
-            chain.database.update(&[WriteOp::Put(
-                keys::contract_balance(&withdraw.contract_id, withdraw.token),
-                contract_balance.clone().into(),
-            )])?;
-            chain.database.update(&[WriteOp::Put(
-                keys::contract_balance(&withdraw.contract_id, withdraw.fee_token),
-                contract_fee_balance.clone().into(),
-            )])?;
             chain.database.update(&[WriteOp::Put(
                 keys::account_balance(&Address::PublicKey(withdraw.dst.clone()), withdraw.token),
                 addr_balance.into(),
             )])?;
+
             Ok(())
         })?;
         self.database.update(&ops)?;
@@ -470,22 +471,14 @@ impl<K: KvStore> KvStoreChain<K> {
         let (ops, _) = self.isolated(|chain| {
             let src = chain.get_mpn_account(tx.src_index)?;
             let dst = chain.get_mpn_account(tx.dst_index)?;
-            if tx.src_index > 0x3FFFFFFF || tx.dst_index > 0x3FFFFFFF {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if tx.src_index == tx.dst_index {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if !tx.dst_pub_key.is_on_curve() {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if dst.address.is_on_curve() && dst.address != tx.dst_pub_key.decompress() {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if tx.nonce != src.nonce {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if !tx.verify(&jubjub::PublicKey(src.address.compress())) {
+            if tx.src_index > 0x3FFFFFFF
+                || tx.dst_index > 0x3FFFFFFF
+                || tx.src_index == tx.dst_index
+                || !tx.dst_pub_key.is_on_curve()
+                || (dst.address.is_on_curve() && dst.address != tx.dst_pub_key.decompress())
+                || tx.nonce != src.nonce
+                || !tx.verify(&jubjub::PublicKey(src.address.compress()))
+            {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
 
