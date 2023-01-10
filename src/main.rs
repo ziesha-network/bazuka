@@ -21,6 +21,7 @@ use {
     colored::Colorize,
     rand::Rng,
     serde::{Deserialize, Serialize},
+    std::collections::HashMap,
     std::net::SocketAddr,
     std::path::{Path, PathBuf},
     structopt::StructOpt,
@@ -947,12 +948,6 @@ async fn main() -> Result<(), NodeError> {
                 let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
                 let tx_builder = TxBuilder::new(&wallet.seed());
 
-                println!(
-                    "{} {}",
-                    "Wallet address:".bright_yellow(),
-                    tx_builder.get_address()
-                );
-
                 let (req_loop, client) = BazukaClient::connect(
                     tx_builder.get_priv_key(),
                     conf.random_node(),
@@ -962,50 +957,64 @@ async fn main() -> Result<(), NodeError> {
                 try_join!(
                     async move {
                         let acc = client.get_account(tx_builder.get_address()).await;
-                        let mut token_balances = Vec::new();
-                        for (ind, tkn) in wallet.get_tokens().iter().enumerate() {
-                            if let Ok(balance) =
+                        let mut token_balances = HashMap::new();
+                        let mut token_indices = HashMap::new();
+                        for (i, tkn) in wallet.get_tokens().iter().enumerate() {
+                            token_indices.insert(*tkn, i);
+                            if let Ok(inf) =
                                 client.get_balance(tx_builder.get_address(), *tkn).await
                             {
-                                token_balances.push((ind, tkn, balance));
+                                token_balances.insert(*tkn, inf);
                             }
                         }
 
                         let curr_nonce = wallet.new_r_nonce().map(|n| n - 1);
                         println!();
-                        println!("{}", "Main chain balances\n---------".bright_yellow());
+                        println!("{}", "Main-chain\n---------".bright_green());
+                        println!(
+                            "{}\t{}",
+                            "Address:".bright_yellow(),
+                            tx_builder.get_address()
+                        );
                         if let Ok(resp) = acc {
-                            for (ind, id, inf) in token_balances {
-                                println!(
-                                    "#{} {}: {}{}",
-                                    ind,
-                                    inf.name,
-                                    inf.balance,
-                                    if *id == TokenId::Ziesha {
-                                        bazuka::config::SYMBOL.to_string()
-                                    } else {
-                                        format!(" {}", inf.symbol)
-                                    }
-                                );
+                            for (i, id) in wallet.get_tokens().iter().enumerate() {
+                                if let Some(inf) = token_balances.get(&id) {
+                                    println!(
+                                        "{}\t{}{}",
+                                        format!("#{} <{}>:", i, inf.name).bright_yellow(),
+                                        inf.balance,
+                                        if *id == TokenId::Ziesha {
+                                            bazuka::config::SYMBOL.to_string()
+                                        } else {
+                                            format!(" {}", inf.symbol)
+                                        }
+                                    );
+                                } else {
+                                    println!("{}\t{}", format!("#{}:", i).bright_yellow(), "N/A");
+                                }
                             }
                             if let Some(nonce) = curr_nonce {
                                 println!("(Pending transactions: {})", nonce - resp.account.nonce);
                             }
                         } else {
-                            println!("Node not available!");
+                            println!("{} {}", "Error:".bright_red(), "Node not available!");
                         }
 
                         println!();
-                        println!("{}", "MPN Accounts\n---------".bright_yellow());
-                        for ind in wallet.mpn_indices() {
+
+                        for (i, ind) in wallet.mpn_indices().into_iter().enumerate() {
+                            println!(
+                                "{}",
+                                format!("MPN Account #{}\n---------", i).bright_green()
+                            );
                             let resp = client.get_mpn_account(ind).await.map(|resp| resp.account);
-                            println!("{}", format!("#{}:", ind).bright_yellow());
                             if let Ok(resp) = resp {
                                 if !resp.address.is_on_curve() {
-                                    println!("\tWaiting to be created...")
+                                    println!("Waiting to be created...")
                                 } else {
                                     println!(
-                                        "\tAddress: {}",
+                                        "{}\t{}",
+                                        "Address:".bright_yellow(),
                                         MpnAddress {
                                             pub_key: bazuka::crypto::jubjub::PublicKey(
                                                 resp.address.compress()
@@ -1013,13 +1022,27 @@ async fn main() -> Result<(), NodeError> {
                                             account_index: ind
                                         }
                                     );
-                                    for (id, (_, bal)) in resp.tokens.iter() {
-                                        println!("Token #{} Balance: {}", id, bal);
+                                    for (_, (tkn, bal)) in resp.tokens.iter() {
+                                        if let Some(inf) = token_balances.get(tkn) {
+                                            let token_index = token_indices[tkn];
+                                            println!(
+                                                "{}\t{}{}",
+                                                format!("#{} <{}>:", token_index, inf.name)
+                                                    .bright_yellow(),
+                                                bal,
+                                                if *tkn == TokenId::Ziesha {
+                                                    bazuka::config::SYMBOL.to_string()
+                                                } else {
+                                                    format!(" {}", inf.symbol)
+                                                }
+                                            );
+                                        }
                                     }
                                 }
                             } else {
-                                println!("\tNode not available!");
+                                println!("{} {}", "Error:".bright_red(), "Node not available!");
                             }
+                            println!();
                         }
                         Ok::<(), NodeError>(())
                     },

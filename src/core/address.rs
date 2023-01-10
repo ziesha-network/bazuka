@@ -16,7 +16,7 @@ pub enum ParseMpnAddressError {
 
 impl<ZS: ZkSignatureScheme> std::fmt::Display for MpnAddress<ZS> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{:16x}{}", self.account_index, self.pub_key)?;
+        write!(f, "{:016x}{}", self.account_index, self.pub_key)?;
         Ok(())
     }
 }
