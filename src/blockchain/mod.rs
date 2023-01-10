@@ -489,10 +489,11 @@ impl<K: KvStore> KvStoreChain<K> {
                 nonce: dst.nonce,
             };
             let src_token_balance_mut = new_src_acc.tokens.get_mut(&tx.src_token_index);
-            let dst_token_balance_mut = new_dst_acc.tokens.get_mut(&tx.dst_token_index);
-            if let Some(((src_tok, src_bal), (dst_tok, dst_bal))) =
-                src_token_balance_mut.zip(dst_token_balance_mut)
-            {
+            if let Some((src_tok, src_bal)) = src_token_balance_mut {
+                let (dst_tok, dst_bal) = new_dst_acc
+                    .tokens
+                    .entry(tx.dst_token_index)
+                    .or_insert((src_tok.clone(), 0.into()));
                 if *src_tok == *dst_tok && *src_tok == tx.token {
                     if *src_bal >= tx.amount {
                         *src_bal -= tx.amount;
