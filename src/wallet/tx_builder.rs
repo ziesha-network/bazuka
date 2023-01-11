@@ -269,10 +269,11 @@ impl TxBuilder {
         fee_token_index: u64,
         fee_token: TokenId,
         fee: Money,
+        to: <Signer as SignatureScheme>::Pub,
     ) -> MpnWithdraw {
         let mut tx = ContractWithdraw {
             token,
-            dst: self.private_key.clone().into(),
+            dst: to,
             contract_id,
             withdraw_circuit_id: 0,
             calldata: zk::ZkScalar::default(),
