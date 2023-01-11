@@ -926,7 +926,7 @@ async fn main() -> Result<(), NodeError> {
                                         if *id == TokenId::Ziesha {
                                             bazuka::config::SYMBOL.to_string()
                                         } else {
-                                            format!(" {}", inf.symbol)
+                                            format!(" {} (Token-Id: {})", inf.symbol, id)
                                         }
                                     );
                                 } else {
