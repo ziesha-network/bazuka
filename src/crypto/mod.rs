@@ -14,6 +14,8 @@ pub trait SignatureScheme: Clone + Serialize {
     type Pub: Clone
         + Debug
         + PartialEq
+        + Eq
+        + std::hash::Hash
         + Serialize
         + DeserializeOwned
         + FromStr

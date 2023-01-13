@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use thiserror::Error;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash)]
 pub struct Ed25519<H: Hash>(std::marker::PhantomData<H>);
 
 pub struct PrivateKey(pub ed25519_dalek::Keypair);
@@ -18,8 +18,23 @@ impl Clone for PrivateKey {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PublicKey(pub ed25519_dalek::PublicKey);
+impl PartialEq<PublicKey> for PublicKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_bytes() == other.0.to_bytes()
+    }
+}
+impl Eq for PublicKey {}
+impl std::hash::Hash for PublicKey {
+    fn hash<Hasher>(&self, state: &mut Hasher)
+    where
+        Hasher: std::hash::Hasher,
+    {
+        state.write(&self.0.to_bytes());
+        state.finish();
+    }
+}
 
 impl From<PrivateKey> for PublicKey {
     fn from(priv_key: PrivateKey) -> Self {
