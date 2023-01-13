@@ -13,7 +13,7 @@ use thiserror::Error;
 mod curve;
 pub use curve::*;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash)]
 pub struct JubJub<H: ZkHasher>(std::marker::PhantomData<H>);
 
 #[derive(Error, Debug)]
@@ -29,7 +29,7 @@ pub struct PrivateKey {
     pub scalar: ZkScalar,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default, Eq, Hash)]
 pub struct PublicKey(pub PointCompressed);
 
 impl From<PrivateKey> for PublicKey {

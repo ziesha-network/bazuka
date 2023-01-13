@@ -27,7 +27,15 @@ pub trait SignatureScheme: Clone + Serialize {
 }
 
 pub trait ZkSignatureScheme: Clone + Serialize {
-    type Pub: Clone + Debug + PartialEq + Serialize + DeserializeOwned + FromStr + Display;
+    type Pub: Clone
+        + Debug
+        + PartialEq
+        + Eq
+        + std::hash::Hash
+        + Serialize
+        + DeserializeOwned
+        + FromStr
+        + Display;
     type Priv: Clone;
     type Sig: Clone + Debug + PartialEq + Serialize + DeserializeOwned;
     fn generate_keys(seed: &[u8]) -> (Self::Pub, Self::Priv);

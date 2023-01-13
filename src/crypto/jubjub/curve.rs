@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::zk::ZkScalar;
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default, Eq, Hash)]
 pub struct PointCompressed(pub ZkScalar, pub bool);
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
