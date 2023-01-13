@@ -225,7 +225,7 @@ impl TxBuilder {
     ) -> MpnDeposit {
         let mut calldata_builder =
             zk::ZkStateBuilder::<crate::core::ZkHasher>::new(zk::MPN_DEPOSIT_STATE_MODEL.clone());
-        let pk = self.get_zk_address().0.decompress();
+        let pk = to.pub_key.0.decompress();
         calldata_builder
             .batch_set(&zk::ZkDeltaPairs(
                 [
