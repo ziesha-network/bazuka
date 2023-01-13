@@ -2,7 +2,7 @@ use crate::crypto::{SignatureScheme, ZkSignatureScheme};
 use std::str::FromStr;
 use thiserror::Error;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MpnAddress<ZS: ZkSignatureScheme> {
     pub account_index: u64,
     pub pub_key: ZS::Pub,
