@@ -51,7 +51,9 @@ impl Wallet {
         &self.tokens
     }
     pub fn mpn_indices(&self) -> Vec<u64> {
-        self.mpn_sourced_txs.keys().cloned().collect()
+        let mut inds = self.mpn_sourced_txs.keys().cloned().collect::<Vec<_>>();
+        inds.sort();
+        inds
     }
     pub fn add_mpn_index(&mut self, index: u64) {
         self.mpn_sourced_txs.insert(index, Vec::new());

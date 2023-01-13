@@ -8,6 +8,9 @@ mod transaction;
 use crate::crypto;
 use crate::zk;
 
+use std::str::FromStr;
+use thiserror::Error;
+
 pub use money::Money;
 
 pub type Hasher = hash::Sha3Hasher;
@@ -28,6 +31,7 @@ pub type ContractUpdate = transaction::ContractUpdate<Hasher, Signer>;
 pub type ContractDeposit = transaction::ContractDeposit<Hasher, Signer>;
 pub type ContractWithdraw = transaction::ContractWithdraw<Hasher, Signer>;
 pub type MpnAddress = address::MpnAddress<ZkSigner>;
+pub type ParseMpnAddressError = address::ParseMpnAddressError;
 pub type MpnDeposit = transaction::MpnDeposit<Hasher, Signer, ZkSigner>;
 pub type MpnWithdraw = transaction::MpnWithdraw<Hasher, Signer, ZkSigner>;
 pub type MpnTransaction = zk::MpnTransaction;
@@ -42,6 +46,40 @@ pub type ProofOfWork = header::ProofOfWork;
 pub type ContractId = transaction::ContractId<Hasher>;
 
 pub type TransactionAndDelta = transaction::TransactionAndDelta<Hasher, Signer>;
+
+#[derive(Error, Debug)]
+pub enum ParseZieshaAddressError {
+    #[error("ziesha address invalid")]
+    Invalid,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub enum ZieshaAddress {
+    ChainAddress(Address),
+    MpnAddress(MpnAddress),
+}
+
+impl std::fmt::Display for ZieshaAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::ChainAddress(addr) => write!(f, "{}", addr),
+            Self::MpnAddress(addr) => write!(f, "{}", addr),
+        }
+    }
+}
+
+impl FromStr for ZieshaAddress {
+    type Err = ParseZieshaAddressError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Ok::<Address, ParseAddressError>(addr) = s.parse() {
+            Ok(Self::ChainAddress(addr))
+        } else if let Ok::<MpnAddress, ParseMpnAddressError>(addr) = s.parse() {
+            Ok(Self::MpnAddress(addr))
+        } else {
+            Err(Self::Err::Invalid)
+        }
+    }
+}
 
 // Transactions initiated from chain accounts
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]

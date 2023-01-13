@@ -16,11 +16,12 @@ use {
 use {
     bazuka::client::{BazukaClient, NodeError, PeerAddress},
     bazuka::config,
-    bazuka::core::{ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId},
+    bazuka::core::{ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId, ZieshaAddress},
     bazuka::wallet::{TxBuilder, Wallet},
     colored::Colorize,
     rand::Rng,
     serde::{Deserialize, Serialize},
+    std::collections::HashMap,
     std::net::SocketAddr,
     std::path::{Path, PathBuf},
     structopt::StructOpt,
@@ -86,45 +87,12 @@ enum WalletOptions {
         #[structopt(long, default_value = "0")]
         fee: Money,
     },
-    /// Deposit funds to a the MPN-contract
-    Deposit {
+    /// Send money
+    Send {
         #[structopt(long)]
-        to: MpnAddress,
+        from: ZieshaAddress,
         #[structopt(long)]
-        token: Option<usize>,
-        #[structopt(long)]
-        amount: Money,
-        #[structopt(long, default_value = "0")]
-        fee: Money,
-    },
-    /// Withdraw funds from the MPN-contract
-    Withdraw {
-        #[structopt(long)]
-        from: u64,
-        #[structopt(long)]
-        token: Option<usize>,
-        #[structopt(long)]
-        amount: Money,
-        #[structopt(long, default_value = "0")]
-        fee: Money,
-    },
-    /// Send funds through a regular-transaction
-    Rsend {
-        #[structopt(long)]
-        to: String,
-        #[structopt(long)]
-        token: Option<usize>,
-        #[structopt(long)]
-        amount: Money,
-        #[structopt(long, default_value = "0")]
-        fee: Money,
-    },
-    /// Send funds through a zero-transaction
-    Zsend {
-        #[structopt(long)]
-        from_index: u64,
-        #[structopt(long)]
-        to: MpnAddress,
+        to: ZieshaAddress,
         #[structopt(long)]
         token: Option<usize>,
         #[structopt(long)]
@@ -683,177 +651,21 @@ async fn main() -> Result<(), NodeError> {
                 )
                 .unwrap();
             }
-            WalletOptions::Deposit {
-                to,
-                amount,
-                token,
-                fee,
-            } => {
-                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-                let tkn = if let Some(token) = token {
-                    if token >= wallet.get_tokens().len() {
-                        panic!("Wrong token selected!");
-                    } else {
-                        wallet.get_tokens()[token]
-                    }
-                } else {
-                    TokenId::Ziesha
-                };
-                let tx_builder = TxBuilder::new(&wallet.seed());
-                let (req_loop, client) = BazukaClient::connect(
-                    tx_builder.get_priv_key(),
-                    conf.random_node(),
-                    conf.network,
-                    None,
-                );
-                try_join!(
-                    async move {
-                        let curr_nonce = client
-                            .get_account(tx_builder.get_address())
-                            .await?
-                            .account
-                            .nonce;
-                        let dst_acc = client.get_mpn_account(to.account_index).await?.account;
-                        let to_token_index = if let Some(ind) = dst_acc.find_token_index(tkn) {
-                            ind
-                        } else {
-                            panic!("Token not found in your account!");
-                        };
-                        let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let pay = tx_builder.deposit_mpn(
-                            mpn_contract_id,
-                            to,
-                            to_token_index,
-                            new_nonce,
-                            tkn,
-                            amount,
-                            TokenId::Ziesha,
-                            fee,
-                        );
-                        wallet.add_deposit(pay.clone());
-                        wallet.save(wallet_path).unwrap();
-                        println!("{:#?}", client.transact_contract_deposit(pay).await?);
-                        Ok::<(), NodeError>(())
-                    },
-                    req_loop
-                )
-                .unwrap();
-            }
-            WalletOptions::Withdraw {
+            WalletOptions::Send {
                 from,
-                amount,
-                token,
-                fee,
-            } => {
-                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-                let tkn = if let Some(token) = token {
-                    if token >= wallet.get_tokens().len() {
-                        panic!("Wrong token selected!");
-                    } else {
-                        wallet.get_tokens()[token]
-                    }
-                } else {
-                    TokenId::Ziesha
-                };
-
-                let tx_builder = TxBuilder::new(&wallet.seed());
-                let (req_loop, client) = BazukaClient::connect(
-                    tx_builder.get_priv_key(),
-                    conf.random_node(),
-                    conf.network,
-                    None,
-                );
-                try_join!(
-                    async move {
-                        let acc = client.get_mpn_account(from).await?.account;
-                        let token_index = if let Some(ind) = acc.find_token_index(tkn) {
-                            ind
-                        } else {
-                            panic!("Token not found in your account!");
-                        };
-                        let fee_token_index =
-                            if let Some(ind) = acc.find_token_index(TokenId::Ziesha) {
-                                ind
-                            } else {
-                                panic!("Token not found in your account!");
-                            };
-                        let new_nonce = wallet.new_z_nonce(from).unwrap_or(acc.nonce);
-                        let pay = tx_builder.withdraw_mpn(
-                            mpn_contract_id,
-                            from,
-                            new_nonce,
-                            token_index,
-                            tkn,
-                            amount,
-                            fee_token_index,
-                            TokenId::Ziesha,
-                            fee,
-                        );
-                        wallet.add_withdraw(pay.clone());
-                        wallet.save(wallet_path).unwrap();
-                        println!("{:#?}", client.transact_contract_withdraw(pay).await?);
-                        Ok::<(), NodeError>(())
-                    },
-                    req_loop
-                )
-                .unwrap();
-            }
-            WalletOptions::Rsend {
-                to,
-                token,
-                amount,
-                fee,
-            } => {
-                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-                let tx_builder = TxBuilder::new(&wallet.seed());
-                let (req_loop, client) = BazukaClient::connect(
-                    tx_builder.get_priv_key(),
-                    conf.random_node(),
-                    conf.network,
-                    None,
-                );
-                let tkn = if let Some(token) = token {
-                    if token >= wallet.get_tokens().len() {
-                        panic!("Wrong token selected!");
-                    } else {
-                        wallet.get_tokens()[token]
-                    }
-                } else {
-                    TokenId::Ziesha
-                };
-
-                try_join!(
-                    async move {
-                        let curr_nonce = client
-                            .get_account(tx_builder.get_address())
-                            .await?
-                            .account
-                            .nonce;
-                        let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let tx = tx_builder.create_token_transaction(
-                            to.parse().unwrap(),
-                            tkn,
-                            amount,
-                            fee,
-                            new_nonce,
-                        );
-                        wallet.add_rsend(tx.clone());
-                        wallet.save(wallet_path).unwrap();
-                        println!("{:#?}", client.transact(tx).await?);
-                        Ok::<(), NodeError>(())
-                    },
-                    req_loop
-                )
-                .unwrap();
-            }
-            WalletOptions::Zsend {
-                from_index,
-                token,
                 to,
                 amount,
                 fee,
+                token,
             } => {
                 let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tx_builder = TxBuilder::new(&wallet.seed());
+                let (req_loop, client) = BazukaClient::connect(
+                    tx_builder.get_priv_key(),
+                    conf.random_node(),
+                    conf.network,
+                    None,
+                );
                 let tkn = if let Some(token) = token {
                     if token >= wallet.get_tokens().len() {
                         panic!("Wrong token selected!");
@@ -863,54 +675,205 @@ async fn main() -> Result<(), NodeError> {
                 } else {
                     TokenId::Ziesha
                 };
-                let tx_builder = TxBuilder::new(&wallet.seed());
-                let (req_loop, client) = BazukaClient::connect(
-                    tx_builder.get_priv_key(),
-                    conf.random_node(),
-                    conf.network,
-                    None,
-                );
-                try_join!(
-                    async move {
-                        let acc = client.get_mpn_account(from_index).await?.account;
-                        let dst_acc = client.get_mpn_account(to.account_index).await?.account;
-                        let to_token_index = if let Some(ind) = dst_acc.find_token_index(tkn) {
-                            ind
-                        } else {
-                            panic!("Token not found in your account!");
-                        };
-                        let token_index = if let Some(ind) = acc.find_token_index(tkn) {
-                            ind
-                        } else {
-                            panic!("Token not found in your account!");
-                        };
-                        let fee_token_index =
-                            if let Some(ind) = acc.find_token_index(TokenId::Ziesha) {
-                                ind
-                            } else {
-                                panic!("Token not found in your account!");
-                            };
-                        let new_nonce = wallet.new_z_nonce(from_index).unwrap_or(acc.nonce);
-                        let tx = tx_builder.create_mpn_transaction(
-                            from_index,
-                            token_index,
-                            to,
-                            to_token_index,
-                            tkn,
-                            amount,
-                            fee_token_index,
-                            TokenId::Ziesha,
-                            fee,
-                            new_nonce,
-                        );
-                        wallet.add_zsend(tx.clone());
-                        wallet.save(wallet_path).unwrap();
-                        println!("{:#?}", client.zero_transact(tx).await?);
-                        Ok::<(), NodeError>(())
-                    },
-                    req_loop
-                )
-                .unwrap();
+                match from {
+                    ZieshaAddress::ChainAddress(from) => {
+                        if tx_builder.get_address() != from {
+                            panic!("Source address doesn't exist in your wallet!");
+                        }
+                        match to {
+                            ZieshaAddress::ChainAddress(to) => {
+                                try_join!(
+                                    async move {
+                                        let curr_nonce = client
+                                            .get_account(tx_builder.get_address())
+                                            .await?
+                                            .account
+                                            .nonce;
+                                        let new_nonce =
+                                            wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
+                                        let tx = tx_builder.create_token_transaction(
+                                            to, tkn, amount, fee, new_nonce,
+                                        );
+                                        wallet.add_rsend(tx.clone());
+                                        wallet.save(wallet_path).unwrap();
+                                        println!("{:#?}", client.transact(tx).await?);
+                                        Ok::<(), NodeError>(())
+                                    },
+                                    req_loop
+                                )
+                                .unwrap();
+                            }
+                            ZieshaAddress::MpnAddress(to) => {
+                                try_join!(
+                                    async move {
+                                        let curr_nonce = client
+                                            .get_account(tx_builder.get_address())
+                                            .await?
+                                            .account
+                                            .nonce;
+                                        let dst_acc =
+                                            client.get_mpn_account(to.account_index).await?.account;
+                                        let to_token_index = if let Some(ind) = dst_acc
+                                            .find_token_index(
+                                                config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                                                tkn,
+                                                true,
+                                            ) {
+                                            ind
+                                        } else {
+                                            panic!(
+                                                "Cannot find empty token slot in your MPN account!"
+                                            );
+                                        };
+                                        let new_nonce =
+                                            wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
+                                        let pay = tx_builder.deposit_mpn(
+                                            mpn_contract_id,
+                                            to,
+                                            to_token_index,
+                                            new_nonce,
+                                            tkn,
+                                            amount,
+                                            TokenId::Ziesha,
+                                            fee,
+                                        );
+                                        wallet.add_deposit(pay.clone());
+                                        wallet.save(wallet_path).unwrap();
+                                        println!(
+                                            "{:#?}",
+                                            client.transact_contract_deposit(pay).await?
+                                        );
+                                        Ok::<(), NodeError>(())
+                                    },
+                                    req_loop
+                                )
+                                .unwrap();
+                            }
+                        }
+                    }
+                    ZieshaAddress::MpnAddress(from) => {
+                        if tx_builder.get_zk_address() != from.pub_key {
+                            panic!("Source address doesn't exist in your wallet!");
+                        }
+                        match to {
+                            ZieshaAddress::ChainAddress(to) => {
+                                try_join!(
+                                    async move {
+                                        let acc = client
+                                            .get_mpn_account(from.account_index)
+                                            .await?
+                                            .account;
+                                        let token_index = if let Some(ind) = acc.find_token_index(
+                                            config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                                            tkn,
+                                            false,
+                                        ) {
+                                            ind
+                                        } else {
+                                            panic!("Token not found in your account!");
+                                        };
+                                        let fee_token_index = if let Some(ind) = acc
+                                            .find_token_index(
+                                                config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                                                TokenId::Ziesha,
+                                                false,
+                                            ) {
+                                            ind
+                                        } else {
+                                            panic!("Token not found in your account!");
+                                        };
+                                        let new_nonce = wallet
+                                            .new_z_nonce(from.account_index)
+                                            .unwrap_or(acc.nonce);
+                                        let pay = tx_builder.withdraw_mpn(
+                                            mpn_contract_id,
+                                            from.account_index,
+                                            new_nonce,
+                                            token_index,
+                                            tkn,
+                                            amount,
+                                            fee_token_index,
+                                            TokenId::Ziesha,
+                                            fee,
+                                            to.to_string().parse().unwrap(), // TODO: WTH :D
+                                        );
+                                        wallet.add_withdraw(pay.clone());
+                                        wallet.save(wallet_path).unwrap();
+                                        println!(
+                                            "{:#?}",
+                                            client.transact_contract_withdraw(pay).await?
+                                        );
+                                        Ok::<(), NodeError>(())
+                                    },
+                                    req_loop
+                                )
+                                .unwrap();
+                            }
+                            ZieshaAddress::MpnAddress(to) => {
+                                try_join!(
+                                    async move {
+                                        let acc = client
+                                            .get_mpn_account(from.account_index)
+                                            .await?
+                                            .account;
+                                        let dst_acc =
+                                            client.get_mpn_account(to.account_index).await?.account;
+                                        let to_token_index = if let Some(ind) = dst_acc
+                                            .find_token_index(
+                                                config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                                                tkn,
+                                                true,
+                                            ) {
+                                            ind
+                                        } else {
+                                            panic!("Token not found in your account!");
+                                        };
+                                        let token_index = if let Some(ind) = acc.find_token_index(
+                                            config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                                            tkn,
+                                            false,
+                                        ) {
+                                            ind
+                                        } else {
+                                            panic!("Token not found in your account!");
+                                        };
+                                        let fee_token_index = if let Some(ind) = acc
+                                            .find_token_index(
+                                                config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
+                                                TokenId::Ziesha,
+                                                false,
+                                            ) {
+                                            ind
+                                        } else {
+                                            panic!("Token not found in your account!");
+                                        };
+                                        let new_nonce = wallet
+                                            .new_z_nonce(from.account_index)
+                                            .unwrap_or(acc.nonce);
+                                        let tx = tx_builder.create_mpn_transaction(
+                                            from.account_index,
+                                            token_index,
+                                            to,
+                                            to_token_index,
+                                            tkn,
+                                            amount,
+                                            fee_token_index,
+                                            TokenId::Ziesha,
+                                            fee,
+                                            new_nonce,
+                                        );
+                                        wallet.add_zsend(tx.clone());
+                                        wallet.save(wallet_path).unwrap();
+                                        println!("{:#?}", client.zero_transact(tx).await?);
+                                        Ok::<(), NodeError>(())
+                                    },
+                                    req_loop
+                                )
+                                .unwrap();
+                            }
+                        }
+                    }
+                }
             }
             WalletOptions::Reset {} => {
                 let mut wallet = wallet.expect("Bazuka is not initialized!");
@@ -925,12 +888,6 @@ async fn main() -> Result<(), NodeError> {
                 let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
                 let tx_builder = TxBuilder::new(&wallet.seed());
 
-                println!(
-                    "{} {}",
-                    "Wallet address:".bright_yellow(),
-                    tx_builder.get_address()
-                );
-
                 let (req_loop, client) = BazukaClient::connect(
                     tx_builder.get_priv_key(),
                     conf.random_node(),
@@ -940,50 +897,64 @@ async fn main() -> Result<(), NodeError> {
                 try_join!(
                     async move {
                         let acc = client.get_account(tx_builder.get_address()).await;
-                        let mut token_balances = Vec::new();
-                        for (ind, tkn) in wallet.get_tokens().iter().enumerate() {
-                            if let Ok(balance) =
+                        let mut token_balances = HashMap::new();
+                        let mut token_indices = HashMap::new();
+                        for (i, tkn) in wallet.get_tokens().iter().enumerate() {
+                            token_indices.insert(*tkn, i);
+                            if let Ok(inf) =
                                 client.get_balance(tx_builder.get_address(), *tkn).await
                             {
-                                token_balances.push((ind, tkn, balance));
+                                token_balances.insert(*tkn, inf);
                             }
                         }
 
                         let curr_nonce = wallet.new_r_nonce().map(|n| n - 1);
                         println!();
-                        println!("{}", "Main chain balances\n---------".bright_yellow());
+                        println!("{}", "Main-chain\n---------".bright_green());
+                        println!(
+                            "{}\t{}",
+                            "Address:".bright_yellow(),
+                            tx_builder.get_address()
+                        );
                         if let Ok(resp) = acc {
-                            for (ind, id, inf) in token_balances {
-                                println!(
-                                    "#{} {}: {}{}",
-                                    ind,
-                                    inf.name,
-                                    inf.balance,
-                                    if *id == TokenId::Ziesha {
-                                        bazuka::config::SYMBOL.to_string()
-                                    } else {
-                                        format!(" {}", inf.symbol)
-                                    }
-                                );
+                            for (i, id) in wallet.get_tokens().iter().enumerate() {
+                                if let Some(inf) = token_balances.get(&id) {
+                                    println!(
+                                        "{}\t{}{}",
+                                        format!("#{} <{}>:", i, inf.name).bright_yellow(),
+                                        inf.balance,
+                                        if *id == TokenId::Ziesha {
+                                            bazuka::config::SYMBOL.to_string()
+                                        } else {
+                                            format!(" {} (Token-Id: {})", inf.symbol, id)
+                                        }
+                                    );
+                                } else {
+                                    println!("{}\t{}", format!("#{}:", i).bright_yellow(), "N/A");
+                                }
                             }
                             if let Some(nonce) = curr_nonce {
                                 println!("(Pending transactions: {})", nonce - resp.account.nonce);
                             }
                         } else {
-                            println!("Node not available!");
+                            println!("{} {}", "Error:".bright_red(), "Node not available!");
                         }
 
                         println!();
-                        println!("{}", "MPN Accounts\n---------".bright_yellow());
-                        for ind in wallet.mpn_indices() {
+
+                        for (i, ind) in wallet.mpn_indices().into_iter().enumerate() {
+                            println!(
+                                "{}",
+                                format!("MPN Account #{}\n---------", i).bright_green()
+                            );
                             let resp = client.get_mpn_account(ind).await.map(|resp| resp.account);
-                            println!("{}", format!("#{}:", ind).bright_yellow());
                             if let Ok(resp) = resp {
                                 if !resp.address.is_on_curve() {
-                                    println!("\tWaiting to be created...")
+                                    println!("Waiting to be created...")
                                 } else {
                                     println!(
-                                        "\tAddress: {}",
+                                        "{}\t{}",
+                                        "Address:".bright_yellow(),
                                         MpnAddress {
                                             pub_key: bazuka::crypto::jubjub::PublicKey(
                                                 resp.address.compress()
@@ -991,13 +962,27 @@ async fn main() -> Result<(), NodeError> {
                                             account_index: ind
                                         }
                                     );
-                                    for (id, (_, bal)) in resp.tokens.iter() {
-                                        println!("Token #{} Balance: {}", id, bal);
+                                    for (_, (tkn, bal)) in resp.tokens.iter() {
+                                        if let Some(inf) = token_balances.get(tkn) {
+                                            let token_index = token_indices[tkn];
+                                            println!(
+                                                "{}\t{}{}",
+                                                format!("#{} <{}>:", token_index, inf.name)
+                                                    .bright_yellow(),
+                                                bal,
+                                                if *tkn == TokenId::Ziesha {
+                                                    bazuka::config::SYMBOL.to_string()
+                                                } else {
+                                                    format!(" {}", inf.symbol)
+                                                }
+                                            );
+                                        }
                                     }
                                 }
                             } else {
-                                println!("\tNode not available!");
+                                println!("{} {}", "Error:".bright_red(), "Node not available!");
                             }
+                            println!();
                         }
                         Ok::<(), NodeError>(())
                     },

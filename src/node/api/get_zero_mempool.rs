@@ -1,7 +1,8 @@
 use super::messages::{GetZeroMempoolRequest, GetZeroMempoolResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
-use crate::core::{ChainSourcedTx, MpnSourcedTx};
+use crate::core::{Address, ChainSourcedTx, MpnSourcedTx};
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -17,11 +18,29 @@ pub async fn get_zero_mempool<B: Blockchain>(
         let mut updates = Vec::new();
         let mut deposits = Vec::new();
         let mut withdraws = Vec::new();
-        for tx in context.mempool.chain_sourced.keys() {
-            if let ChainSourcedTx::MpnDeposit(mpn_dep) = tx {
-                deposits.push(mpn_dep.clone());
+
+        let mut has_tx_delta_before_mpn = HashSet::new();
+        let mut chain_sourced_sorted = context.mempool.chain_sourced.keys().collect::<Vec<_>>();
+        chain_sourced_sorted.sort_unstable_by_key(|t| t.nonce());
+        for tx in chain_sourced_sorted {
+            match tx {
+                ChainSourcedTx::MpnDeposit(mpn_dep) => {
+                    if !has_tx_delta_before_mpn
+                        .contains(&Address::PublicKey(mpn_dep.payment.src.clone()))
+                    {
+                        deposits.push(mpn_dep.clone());
+                    }
+                }
+                ChainSourcedTx::TransactionAndDelta(tx_delta) => {
+                    // Make sure there are no regular transactions before any MpnDeposit
+                    // Since MPN-update transaction comes first, processing any regular
+                    // transaction could invalidate MPN-update (Because of the invalid nonce)
+                    // TODO: Is there a better solution?
+                    has_tx_delta_before_mpn.insert(tx_delta.tx.src.clone());
+                }
             }
         }
+
         for tx in context.mempool.mpn_sourced.keys() {
             match tx {
                 MpnSourcedTx::MpnTransaction(mpn_tx) => {
