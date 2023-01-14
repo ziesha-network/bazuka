@@ -934,7 +934,12 @@ async fn main() -> Result<(), NodeError> {
                                 }
                             }
                             if let Some(nonce) = curr_nonce {
-                                println!("(Pending transactions: {})", nonce - resp.account.nonce);
+                                if nonce > resp.account.nonce {
+                                    println!(
+                                        "(Pending transactions: {})",
+                                        nonce - resp.account.nonce
+                                    );
+                                }
                             }
                         } else {
                             println!("{} {}", "Error:".bright_red(), "Node not available!");
@@ -981,7 +986,9 @@ async fn main() -> Result<(), NodeError> {
                                     }
                                 }
                                 if let Some(nonce) = curr_z_nonce {
-                                    println!("(Pending transactions: {})", nonce - resp.nonce);
+                                    if nonce > resp.nonce {
+                                        println!("(Pending transactions: {})", nonce - resp.nonce);
+                                    }
                                 }
                             } else {
                                 println!("{} {}", "Error:".bright_red(), "Node not available!");
