@@ -949,6 +949,7 @@ async fn main() -> Result<(), NodeError> {
                             );
                             let resp = client.get_mpn_account(ind).await.map(|resp| resp.account);
                             if let Ok(resp) = resp {
+                                let curr_z_nonce = wallet.new_z_nonce(ind);
                                 if !resp.address.is_on_curve() {
                                     println!("Waiting to be created...")
                                 } else {
@@ -978,6 +979,9 @@ async fn main() -> Result<(), NodeError> {
                                             );
                                         }
                                     }
+                                }
+                                if let Some(nonce) = curr_z_nonce {
+                                    println!("(Pending transactions: {})", nonce - resp.nonce);
                                 }
                             } else {
                                 println!("{} {}", "Error:".bright_red(), "Node not available!");
