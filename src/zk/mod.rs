@@ -517,6 +517,10 @@ pub struct MpnTransaction {
     pub sig: jubjub::Signature,
 }
 
+pub fn mpn_account_index_by_pub_key(pub_key: &jubjub::PublicKey) -> u64 {
+    pub_key.0.decompress().0 .0[0] & 0x3FFFFFFF
+}
+
 impl Eq for MpnTransaction {}
 
 impl PartialEq for MpnTransaction {
