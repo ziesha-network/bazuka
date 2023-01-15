@@ -158,7 +158,6 @@ pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct MpnDeposit<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
-    pub zk_address_index: u64,
     pub zk_address: ZS::Pub,
     pub zk_token_index: u64,
     pub payment: ContractDeposit<H, S>,
@@ -166,7 +165,6 @@ pub struct MpnDeposit<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct MpnWithdraw<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
-    pub zk_address_index: u64,
     pub zk_address: ZS::Pub,
     pub zk_token_index: u64,
     pub zk_fee_token_index: u64,

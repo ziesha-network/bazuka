@@ -505,9 +505,7 @@ pub struct ZkSingleInputVerifierKey {
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct MpnTransaction {
     pub nonce: u64,
-    pub src_index: u64,
     pub src_pub_key: jubjub::PublicKey,
-    pub dst_index: u64,
     pub dst_pub_key: jubjub::PublicKey,
 
     pub src_token_index: u64,
@@ -534,6 +532,9 @@ impl std::hash::Hash for MpnTransaction {
 }
 
 impl MpnTransaction {
+    pub fn src_index(&self) -> u64 {
+        
+    }
     pub fn verify(&self) -> bool {
         jubjub::JubJub::<ZkMainHasher>::verify(&self.src_pub_key, self.hash(), &self.sig)
     }
