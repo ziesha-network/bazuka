@@ -899,6 +899,9 @@ impl<K: KvStore> KvStoreChain<K> {
 
                                 let mut cont_balance =
                                     chain.get_contract_balance(*contract_id, fee.token_id)?;
+                                if cont_balance < fee.amount {
+                                    return Err(BlockchainError::BalanceInsufficient);
+                                }
                                 cont_balance -= fee.amount;
                                 chain.database.update(&[WriteOp::Put(
                                     keys::contract_balance(contract_id, fee.token_id),
