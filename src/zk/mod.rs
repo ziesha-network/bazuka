@@ -19,7 +19,7 @@ pub mod poseidon;
 pub struct MpnAccount {
     pub nonce: u64,
     pub address: jubjub::PointAffine,
-    pub tokens: HashMap<u64, (TokenId, Amount)>,
+    pub tokens: HashMap<u64, Money>,
 }
 
 impl MpnAccount {
@@ -34,12 +34,15 @@ impl MpnAccount {
             }),
         };
         let mut state_builder = ZkStateBuilder::<H>::new(state_model);
-        for (i, (tok, bal)) in self.tokens.iter() {
+        for (i, money) in self.tokens.iter() {
             state_builder
                 .batch_set(&ZkDeltaPairs(
                     [
-                        (ZkDataLocator(vec![*i as u64, 0]), Some((*tok).into())),
-                        (ZkDataLocator(vec![*i as u64, 1]), Some((*bal).into())),
+                        (
+                            ZkDataLocator(vec![*i as u64, 0]),
+                            Some(money.token_id.into()),
+                        ),
+                        (ZkDataLocator(vec![*i as u64, 1]), Some(money.amount.into())),
                     ]
                     .into(),
                 ))
@@ -53,8 +56,8 @@ impl MpnAccount {
         token_id: TokenId,
         empty_allowed: bool,
     ) -> Option<u64> {
-        for (ind, (tkn, _)) in self.tokens.iter() {
-            if *tkn == token_id {
+        for (ind, money) in self.tokens.iter() {
+            if money.token_id == token_id {
                 return Some(*ind);
             }
         }

@@ -29,7 +29,7 @@ impl From<Money> for ExplorerMoney {
 pub struct ExplorerMpnAccount {
     pub nonce: u64,
     pub address: String,
-    pub tokens: HashMap<u64, (String, u64)>,
+    pub tokens: HashMap<u64, ExplorerMoney>,
 }
 
 impl From<&MpnAccount> for ExplorerMpnAccount {
@@ -40,7 +40,7 @@ impl From<&MpnAccount> for ExplorerMpnAccount {
             tokens: obj
                 .tokens
                 .iter()
-                .map(|(k, (tkn, amnt))| (*k, (tkn.to_string(), (*amnt).into())))
+                .map(|(k, money)| (*k, (*money).into()))
                 .collect(),
         }
     }

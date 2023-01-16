@@ -333,8 +333,8 @@ impl<K: KvStore> KvStoreChain<K> {
             {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
-            if let Some((tok_id, _)) = dst.tokens.get(&deposit.zk_token_index) {
-                if *tok_id != deposit.payment.amount.token_id {
+            if let Some(money) = dst.tokens.get(&deposit.zk_token_index) {
+                if money.token_id != deposit.payment.amount.token_id {
                     return Err(BlockchainError::InvalidMpnTransaction);
                 }
             }
@@ -348,8 +348,8 @@ impl<K: KvStore> KvStoreChain<K> {
             new_acc
                 .tokens
                 .entry(deposit.zk_token_index)
-                .or_insert((deposit.payment.amount.token_id, 0.into()))
-                .1 += deposit.payment.amount.amount;
+                .or_insert(Money::new(deposit.payment.amount.token_id, 0))
+                .amount += deposit.payment.amount.amount;
 
             zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
                 &mut chain.database,
@@ -395,22 +395,22 @@ impl<K: KvStore> KvStoreChain<K> {
                 tokens: src.tokens.clone(),
                 nonce: src.nonce + 1,
             };
-            if let Some((tok_id, balance)) = new_acc.tokens.get_mut(&withdraw.zk_token_index) {
-                if *tok_id == withdraw.payment.amount.token_id
-                    && *balance >= withdraw.payment.amount.amount
+            if let Some(money) = new_acc.tokens.get_mut(&withdraw.zk_token_index) {
+                if money.token_id == withdraw.payment.amount.token_id
+                    && money.amount >= withdraw.payment.amount.amount
                 {
-                    *balance -= withdraw.payment.amount.amount;
+                    money.amount -= withdraw.payment.amount.amount;
                 } else {
                     return Err(BlockchainError::InvalidMpnTransaction);
                 }
             } else {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
-            if let Some((tok_id, balance)) = new_acc.tokens.get_mut(&withdraw.zk_fee_token_index) {
-                if *tok_id == withdraw.payment.fee.token_id
-                    && *balance >= withdraw.payment.fee.amount
+            if let Some(money) = new_acc.tokens.get_mut(&withdraw.zk_fee_token_index) {
+                if money.token_id == withdraw.payment.fee.token_id
+                    && money.amount >= withdraw.payment.fee.amount
                 {
-                    *balance -= withdraw.payment.fee.amount;
+                    money.amount -= withdraw.payment.fee.amount;
                 } else {
                     return Err(BlockchainError::InvalidMpnTransaction);
                 }
@@ -515,15 +515,17 @@ impl<K: KvStore> KvStoreChain<K> {
                 nonce: dst.nonce,
             };
             let src_token_balance_mut = new_src_acc.tokens.get_mut(&tx.src_token_index);
-            if let Some((src_tok, src_bal)) = src_token_balance_mut {
-                let (dst_tok, dst_bal) = new_dst_acc
+            if let Some(src_money) = src_token_balance_mut {
+                let dst_money = new_dst_acc
                     .tokens
                     .entry(tx.dst_token_index)
-                    .or_insert((src_tok.clone(), 0.into()));
-                if *src_tok == *dst_tok && *src_tok == tx.amount.token_id {
-                    if *src_bal >= tx.amount.amount {
-                        *src_bal -= tx.amount.amount;
-                        *dst_bal += tx.amount.amount;
+                    .or_insert(Money::new(src_money.token_id, 0));
+                if src_money.token_id == dst_money.token_id
+                    && src_money.token_id == tx.amount.token_id
+                {
+                    if src_money.amount >= tx.amount.amount {
+                        src_money.amount -= tx.amount.amount;
+                        dst_money.amount += tx.amount.amount;
                     } else {
                         return Err(BlockchainError::InvalidMpnTransaction);
                     }
@@ -533,9 +535,9 @@ impl<K: KvStore> KvStoreChain<K> {
             } else {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
-            if let Some((tok_id, balance)) = new_src_acc.tokens.get_mut(&tx.src_fee_token_index) {
-                if *tok_id == tx.fee.token_id && *balance >= tx.fee.amount {
-                    *balance -= tx.fee.amount;
+            if let Some(money) = new_src_acc.tokens.get_mut(&tx.src_fee_token_index) {
+                if money.token_id == tx.fee.token_id && money.amount >= tx.fee.amount {
+                    money.amount -= tx.fee.amount;
                 } else {
                     return Err(BlockchainError::InvalidMpnTransaction);
                 }

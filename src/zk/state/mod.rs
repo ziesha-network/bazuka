@@ -120,7 +120,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             )?;
             let tok_is_zero: bool = tok.is_zero().into();
             if !tok_is_zero {
-                tokens.insert(i, (tok.into(), bal.try_into()?));
+                tokens.insert(i, Money::new(tok.into(), bal.try_into()?));
             }
         }
         Ok(MpnAccount {
@@ -173,19 +173,19 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                 )
             })
             .collect::<Result<Vec<ZkScalar>, StateManagerError>>()?;
-        for (ind, (tkn, bal)) in acc.tokens.iter() {
+        for (ind, money) in acc.tokens.iter() {
             Self::set_data(
                 db,
                 mpn_contract_id,
                 ZkDataLocator(vec![index, 3, *ind as u64, 0]),
-                (*tkn).into(),
+                money.token_id.into(),
                 size_diff,
             )?;
             Self::set_data(
                 db,
                 mpn_contract_id,
                 ZkDataLocator(vec![index, 3, *ind as u64, 1]),
-                ZkScalar::from(*bal),
+                ZkScalar::from(money.amount),
                 size_diff,
             )?;
         }

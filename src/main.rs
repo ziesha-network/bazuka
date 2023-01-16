@@ -423,9 +423,9 @@ async fn main() -> Result<(), NodeError> {
                     let rollback_validity_check = fork.db().pairs("".into()).unwrap().is_empty();
                     let mut sum_mpn: Amount = 0.into();
                     for mpn_acc in chain.get_mpn_accounts(0, 10000).unwrap() {
-                        for (tkn_id, bal) in mpn_acc.1.tokens.values() {
-                            if *tkn_id == TokenId::Ziesha {
-                                sum_mpn += *bal;
+                        for money in mpn_acc.1.tokens.values() {
+                            if money.token_id == TokenId::Ziesha {
+                                sum_mpn += money.amount;
                             }
                         }
                     }
@@ -994,15 +994,15 @@ async fn main() -> Result<(), NodeError> {
                                             account_index: ind
                                         }
                                     );
-                                    for (_, (tkn, bal)) in resp.tokens.iter() {
-                                        if let Some(inf) = token_balances.get(tkn) {
-                                            let token_index = token_indices[tkn];
+                                    for (_, money) in resp.tokens.iter() {
+                                        if let Some(inf) = token_balances.get(&money.token_id) {
+                                            let token_index = token_indices[&money.token_id];
                                             println!(
                                                 "{}\t{}{}",
                                                 format!("#{} <{}>:", token_index, inf.name)
                                                     .bright_yellow(),
-                                                bal,
-                                                if *tkn == TokenId::Ziesha {
+                                                money.amount,
+                                                if money.token_id == TokenId::Ziesha {
                                                     bazuka::config::SYMBOL.to_string()
                                                 } else {
                                                     format!(" {}", inf.symbol)
