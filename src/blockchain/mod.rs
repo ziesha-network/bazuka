@@ -1602,6 +1602,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         );
 
         let mut txs = vec![Transaction {
+            memo: String::new(),
             src: Address::Treasury,
             data: TransactionData::RegularSend {
                 entries: vec![RegularSendEntry {

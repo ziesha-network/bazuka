@@ -50,15 +50,17 @@ impl TxBuilder {
     }
     pub fn create_transaction(
         &self,
+        memo: String,
         dst: Address,
         amount: Money,
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
-        self.create_multi_transaction(vec![RegularSendEntry { dst, amount }], fee, nonce)
+        self.create_multi_transaction(memo, vec![RegularSendEntry { dst, amount }], fee, nonce)
     }
     pub fn create_token(
         &self,
+        memo: String,
         name: String,
         symbol: String,
         supply: Amount,
@@ -68,6 +70,7 @@ impl TxBuilder {
         nonce: u32,
     ) -> (TransactionAndDelta, TokenId) {
         let mut tx = Transaction {
+            memo,
             src: self.get_address(),
             data: TransactionData::CreateToken {
                 token: Token {
@@ -95,11 +98,13 @@ impl TxBuilder {
     }
     pub fn create_multi_transaction(
         &self,
+        memo: String,
         entries: Vec<RegularSendEntry>,
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
         let mut tx = Transaction {
+            memo,
             src: self.get_address(),
             data: TransactionData::RegularSend { entries },
             nonce,
@@ -140,12 +145,14 @@ impl TxBuilder {
     }
     pub fn create_contract(
         &self,
+        memo: String,
         contract: zk::ZkContract,
         initial_state: zk::ZkDataPairs,
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
         let mut tx = Transaction {
+            memo,
             src: self.get_address(),
             data: TransactionData::CreateContract { contract },
             nonce,
@@ -162,6 +169,7 @@ impl TxBuilder {
     #[allow(clippy::too_many_arguments)]
     pub fn call_function(
         &self,
+        memo: String,
         contract_id: ContractId,
         function_id: u32,
         state_delta: zk::ZkDeltaPairs,
@@ -173,6 +181,7 @@ impl TxBuilder {
     ) -> TransactionAndDelta {
         let (_, sk) = Signer::generate_keys(&self.seed);
         let mut tx = Transaction {
+            memo,
             src: self.get_address(),
             data: TransactionData::UpdateContract {
                 contract_id,
@@ -198,6 +207,7 @@ impl TxBuilder {
     #[allow(clippy::too_many_arguments)]
     pub fn deposit_mpn(
         &self,
+        memo: String,
         contract_id: ContractId,
         to: MpnAddress,
         to_token_index: u64,
@@ -218,6 +228,7 @@ impl TxBuilder {
             ))
             .unwrap();
         let mut tx = ContractDeposit {
+            memo,
             src: self.private_key.clone().into(),
             contract_id,
             deposit_circuit_id: 0,
@@ -240,6 +251,7 @@ impl TxBuilder {
     #[allow(clippy::too_many_arguments)]
     pub fn withdraw_mpn(
         &self,
+        memo: String,
         contract_id: ContractId,
         zk_address_index: u64,
         nonce: u64,
@@ -250,6 +262,7 @@ impl TxBuilder {
         to: <Signer as SignatureScheme>::Pub,
     ) -> MpnWithdraw {
         let mut tx = ContractWithdraw {
+            memo,
             dst: to,
             contract_id,
             withdraw_circuit_id: 0,

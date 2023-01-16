@@ -17,6 +17,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
     };
 
     let tx = alice.create_contract(
+        "".into(),
         zk::ZkContract {
             state_model: state_model.clone(),
             initial_state: state_model.compress::<CoreZkHasher>(&full_state.data)?,
@@ -50,7 +51,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
     let alice = TxBuilder::new(&Vec::from("ABC"));
     let cid =
-        ContractId::from_str("a705217d848ee0ec8f4b2462133ab222e7b16a7714ae7483ac3fc83f4a991e9f")
+        ContractId::from_str("528faa2f6876ce23f91fc76b0bb0ae8c62ad458f6747ac55a88235b63abd85fd")
             .unwrap();
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
@@ -77,6 +78,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     full_state_with_delta.push_delta(&state_delta);
 
     let tx = alice.call_function(
+        "".into(),
         cid,
         0,
         state_delta.clone(),
@@ -214,6 +216,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.apply_tx(
             &alice
                 .call_function(
+                    "".into(),
                     cid,
                     0,
                     state_delta.clone(),
@@ -233,6 +236,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.apply_tx(
             &alice
                 .call_function(
+                    "".into(),
                     ContractId::from_str(
                         "0000000000000000000000000000000000000000000000000000000000000000"
                     )
@@ -255,6 +259,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.apply_tx(
             &alice
                 .call_function(
+                    "".into(),
                     cid,
                     1,
                     state_delta.clone(),
@@ -274,6 +279,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         chain.apply_tx(
             &alice
                 .call_function(
+                    "".into(),
                     cid,
                     0,
                     state_delta,

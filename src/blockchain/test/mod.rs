@@ -419,12 +419,14 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
             1,
             &[
                 alice.create_transaction(
+                    "".into(),
                     miner.get_address(),
                     Money::ziesha(100),
                     Money::ziesha(0),
                     1,
                 ),
                 alice.create_transaction(
+                    "".into(),
                     miner.get_address(),
                     Money::ziesha(200),
                     Money::ziesha(0),
@@ -441,12 +443,14 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
             1,
             &[
                 alice.create_transaction(
+                    "".into(),
                     miner.get_address(),
                     Money::ziesha(200),
                     Money::ziesha(0),
                     1,
                 ),
                 alice.create_transaction(
+                    "".into(),
                     miner.get_address(),
                     Money::ziesha(100),
                     Money::ziesha(0),
@@ -508,6 +512,7 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     );
 
     let tx = alice.create_transaction(
+        "".into(),
         bob.get_address(),
         Money::ziesha(2700),
         Money::ziesha(300),
@@ -549,6 +554,7 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     );
 
     let tx2 = alice.create_transaction(
+        "".into(),
         bob.get_address(),
         Money::ziesha(2700),
         Money::ziesha(300),
@@ -593,6 +599,7 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
     );
 
     let tx = alice.create_transaction(
+        "".into(),
         bob.get_address(),
         Money::ziesha(9701),
         Money::ziesha(300),
@@ -633,6 +640,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
 
     // Create unsigned signed tx
     let unsigned_tx = Transaction {
+        memo: "".into(),
         src: alice.get_address(),
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
@@ -684,6 +692,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     // Create unsigned tx
     let (_, sk) = Signer::generate_keys(&Vec::from("ABC"));
     let mut tx = Transaction {
+        memo: "".into(),
         src: alice.get_address(),
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
@@ -750,6 +759,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .draft_block(
                 1,
                 &[alice.create_transaction(
+                    "".into(),
                     bob.get_address(),
                     Money::ziesha(2700),
                     Money::ziesha(300),
@@ -777,6 +787,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .draft_block(
                 1,
                 &[bob.create_transaction(
+                    "".into(),
                     alice.get_address(),
                     Money::ziesha(2600),
                     Money::ziesha(200),
@@ -804,6 +815,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .draft_block(
                 2,
                 &[bob.create_transaction(
+                    "".into(),
                     alice.get_address(),
                     Money::ziesha(2600),
                     Money::ziesha(100),
@@ -831,6 +843,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .draft_block(
                 3,
                 &[alice.create_transaction(
+                    "".into(),
                     alice.get_address(),
                     Money::ziesha(100),
                     Money::ziesha(200),
@@ -858,6 +871,7 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             .draft_block(
                 4,
                 &[alice.create_transaction(
+                    "".into(),
                     alice.get_address(),
                     Money::ziesha(20000),
                     Money::ziesha(9400),
@@ -915,6 +929,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.header.proof_of_work.target = Difficulty(0x0000ffff);
     conf.genesis.block.body.push(Transaction {
+        memo: "".into(),
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
@@ -930,6 +945,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     let t1 = wallet1.create_transaction(
+        "".into(),
         wallet2.get_address(),
         Money::ziesha(100),
         Money::ziesha(0),
@@ -981,6 +997,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
 
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body.push(Transaction {
+        memo: "".into(),
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
@@ -996,6 +1013,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     let t_valid = wallet1.create_transaction(
+        "".into(),
         wallet2.get_address(),
         Money::ziesha(200),
         Money::ziesha(0),
@@ -1003,6 +1021,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     );
     let t_invalid_unsigned = TransactionAndDelta {
         tx: Transaction {
+            memo: "".into(),
             src: wallet1.get_address(),
             data: TransactionData::RegularSend {
                 entries: vec![RegularSendEntry {
@@ -1018,6 +1037,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     };
     let t_invalid_from_treasury = TransactionAndDelta {
         tx: Transaction {
+            memo: "".into(),
             src: Address::Treasury,
             data: TransactionData::RegularSend {
                 entries: vec![RegularSendEntry {
@@ -1054,6 +1074,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
 
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body.push(Transaction {
+        memo: "".into(),
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
@@ -1069,12 +1090,14 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     let t1 = wallet1.create_transaction(
+        "".into(),
         wallet2.get_address(),
         Money::ziesha(3000),
         Money::ziesha(0),
         1,
     );
     let t2 = wallet1.create_transaction(
+        "".into(),
         wallet2.get_address(),
         Money::ziesha(4000),
         Money::ziesha(0),
@@ -1110,6 +1133,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
 
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body.push(Transaction {
+        memo: "".into(),
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
@@ -1125,6 +1149,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
 
     let t1 = wallet1.create_transaction(
+        "".into(),
         wallet2.get_address(),
         Money::ziesha(1_000_000),
         Money::ziesha(0),
@@ -1140,6 +1165,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     chain.apply_block(&draft.block, true)?;
 
     let t2 = wallet1.create_transaction(
+        "".into(),
         wallet2.get_address(),
         Money::ziesha(500_000),
         Money::ziesha(0),

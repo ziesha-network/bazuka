@@ -63,6 +63,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
         }],
     };
     let mpn_contract_create_tx = Transaction {
+        memo: "A Payment-Network to rule them all!".into(),
         src: Address::Treasury,
         data: TransactionData::CreateContract {
             contract: mpn_contract,
@@ -115,6 +116,7 @@ fn get_test_mpn_contract() -> TransactionAndDelta {
 
 fn get_ziesha_token_creation_tx() -> Transaction {
     Transaction {
+        memo: "Happy Birthday Ziesha!".into(),
         src: Address::Treasury,
         data: TransactionData::CreateToken {
             token: Token {
@@ -220,6 +222,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;
     let abc = TxBuilder::new(&Vec::from("ABC"));
     conf.genesis.block.body.push(Transaction {
+        memo: "Dummy tx".into(),
         src: Address::Treasury,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {

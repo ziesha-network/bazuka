@@ -66,6 +66,8 @@ enum WalletOptions {
     /// Creates a new token
     NewToken {
         #[structopt(long)]
+        memo: Option<String>,
+        #[structopt(long)]
         name: String,
         #[structopt(long)]
         symbol: String,
@@ -81,6 +83,8 @@ enum WalletOptions {
     /// Creates a new MPN-account
     NewAccount {
         #[structopt(long)]
+        memo: Option<String>,
+        #[structopt(long)]
         index: Option<u64>,
         #[structopt(long)]
         token: Option<usize>,
@@ -91,6 +95,8 @@ enum WalletOptions {
     },
     /// Send money
     Send {
+        #[structopt(long)]
+        memo: Option<String>,
         #[structopt(long)]
         from: ZieshaAddress,
         #[structopt(long)]
@@ -561,6 +567,7 @@ async fn main() -> Result<(), NodeError> {
                 wallet.save(wallet_path).unwrap();
             }
             WalletOptions::NewToken {
+                memo,
                 name,
                 symbol,
                 supply,
@@ -586,6 +593,7 @@ async fn main() -> Result<(), NodeError> {
 
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
                         let (pay, token_id) = tx_builder.create_token(
+                            memo.unwrap_or_default(),
                             name,
                             symbol,
                             supply,
@@ -609,6 +617,7 @@ async fn main() -> Result<(), NodeError> {
                 .unwrap();
             }
             WalletOptions::NewAccount {
+                memo,
                 index,
                 initial,
                 token,
@@ -643,7 +652,7 @@ async fn main() -> Result<(), NodeError> {
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
                         let mpn_addr =MpnAddress{account_index,pub_key:tx_builder.get_zk_address()};
                         let pay =
-                            tx_builder.deposit_mpn(mpn_contract_id, mpn_addr.clone(), 0, new_nonce, Money{amount:initial,token_id:tkn}, Money{amount:fee,token_id:TokenId::Ziesha});
+                            tx_builder.deposit_mpn(memo.unwrap_or_default(),mpn_contract_id, mpn_addr.clone(), 0, new_nonce, Money{amount:initial,token_id:tkn}, Money{amount:fee,token_id:TokenId::Ziesha});
                         wallet.add_mpn_index(account_index);
                         wallet.add_deposit(pay.clone());
                         wallet.save(wallet_path).unwrap();
@@ -657,6 +666,7 @@ async fn main() -> Result<(), NodeError> {
                 .unwrap();
             }
             WalletOptions::Send {
+                memo,
                 from,
                 to,
                 amount,
@@ -697,6 +707,7 @@ async fn main() -> Result<(), NodeError> {
                                         let new_nonce =
                                             wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
                                         let tx = tx_builder.create_transaction(
+                                            memo.unwrap_or_default(),
                                             to,
                                             Money {
                                                 amount,
@@ -742,6 +753,7 @@ async fn main() -> Result<(), NodeError> {
                                         let new_nonce =
                                             wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
                                         let pay = tx_builder.deposit_mpn(
+                                            memo.unwrap_or_default(),
                                             mpn_contract_id,
                                             to,
                                             to_token_index,
@@ -804,6 +816,7 @@ async fn main() -> Result<(), NodeError> {
                                             .new_z_nonce(from.account_index)
                                             .unwrap_or(acc.nonce);
                                         let pay = tx_builder.withdraw_mpn(
+                                            memo.unwrap_or_default(),
                                             mpn_contract_id,
                                             from.account_index,
                                             new_nonce,
@@ -834,6 +847,11 @@ async fn main() -> Result<(), NodeError> {
                             ZieshaAddress::MpnAddress(to) => {
                                 try_join!(
                                     async move {
+                                        if memo.is_some() {
+                                            panic!(
+                                                "Cannot assign a memo to a MPN-to-MPN transaction!"
+                                            );
+                                        }
                                         let acc = client
                                             .get_mpn_account(from.account_index)
                                             .await?

@@ -134,6 +134,7 @@ impl<H: Hash> FromStr for ContractId<H> {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
 pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
+    pub memo: String,
     pub contract_id: ContractId<H>,
     pub deposit_circuit_id: u32,
     pub calldata: ZkScalar,
@@ -146,6 +147,7 @@ pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
 pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
+    pub memo: String,
     pub contract_id: ContractId<H>,
     pub withdraw_circuit_id: u32,
     pub calldata: ZkScalar,
@@ -298,6 +300,7 @@ pub struct Transaction<H: Hash, S: SignatureScheme> {
     pub nonce: u32,
     pub data: TransactionData<H, S>,
     pub fee: Money,
+    pub memo: String,
     pub sig: Signature<S>,
 }
 
