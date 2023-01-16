@@ -16,7 +16,9 @@ use {
 use {
     bazuka::client::{BazukaClient, NodeError, PeerAddress},
     bazuka::config,
-    bazuka::core::{ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId, ZieshaAddress},
+    bazuka::core::{
+        Amount, ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId, ZieshaAddress,
+    },
     bazuka::wallet::{TxBuilder, Wallet},
     colored::Colorize,
     rand::Rng,
@@ -68,13 +70,13 @@ enum WalletOptions {
         #[structopt(long)]
         symbol: String,
         #[structopt(long)]
-        supply: Money,
+        supply: Amount,
         #[structopt(long, default_value = "0")]
         decimals: u8,
         #[structopt(long)]
         mintable: bool,
         #[structopt(long, default_value = "0")]
-        fee: Money,
+        fee: Amount,
     },
     /// Creates a new MPN-account
     NewAccount {
@@ -83,9 +85,9 @@ enum WalletOptions {
         #[structopt(long)]
         token: Option<usize>,
         #[structopt(long, default_value = "0")]
-        initial: Money,
+        initial: Amount,
         #[structopt(long, default_value = "0")]
-        fee: Money,
+        fee: Amount,
     },
     /// Send money
     Send {
@@ -96,9 +98,9 @@ enum WalletOptions {
         #[structopt(long)]
         token: Option<usize>,
         #[structopt(long)]
-        amount: Money,
+        amount: Amount,
         #[structopt(long, default_value = "0")]
-        fee: Money,
+        fee: Amount,
     },
     /// Resets wallet nonces
     Reset {},
@@ -419,7 +421,7 @@ async fn main() -> Result<(), NodeError> {
                         fork.rollback().unwrap();
                     }
                     let rollback_validity_check = fork.db().pairs("".into()).unwrap().is_empty();
-                    let mut sum_mpn: Money = 0.into();
+                    let mut sum_mpn: Amount = 0.into();
                     for mpn_acc in chain.get_mpn_accounts(0, 10000).unwrap() {
                         for (tkn_id, bal) in mpn_acc.1.tokens.values() {
                             if *tkn_id == TokenId::Ziesha {
@@ -432,7 +434,7 @@ async fn main() -> Result<(), NodeError> {
                             .get_contract_balance(mpn_contract_id, TokenId::Ziesha)
                             .unwrap();
                     let currency_in_circulation_check = chain.currency_in_circulation().unwrap()
-                        == Money::from(2000000000000000000);
+                        == Amount::from(2000000000000000000);
                     println!(
                         "Rollback validity check: {}",
                         if rollback_validity_check {
@@ -589,7 +591,10 @@ async fn main() -> Result<(), NodeError> {
                             supply,
                             decimals,
                             mintable.then(|| tx_builder.get_address()),
-                            fee,
+                            Money {
+                                amount: fee,
+                                token_id: TokenId::Ziesha,
+                            },
                             new_nonce,
                         );
                         wallet.add_token(token_id);
@@ -638,7 +643,7 @@ async fn main() -> Result<(), NodeError> {
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
                         let mpn_addr =MpnAddress{account_index,pub_key:tx_builder.get_zk_address()};
                         let pay =
-                            tx_builder.deposit_mpn(mpn_contract_id, mpn_addr.clone(), 0, new_nonce, tkn, initial, TokenId::Ziesha,fee);
+                            tx_builder.deposit_mpn(mpn_contract_id, mpn_addr.clone(), 0, new_nonce, Money{amount:initial,token_id:tkn}, Money{amount:fee,token_id:TokenId::Ziesha});
                         wallet.add_mpn_index(account_index);
                         wallet.add_deposit(pay.clone());
                         wallet.save(wallet_path).unwrap();
@@ -691,8 +696,17 @@ async fn main() -> Result<(), NodeError> {
                                             .nonce;
                                         let new_nonce =
                                             wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                                        let tx = tx_builder.create_token_transaction(
-                                            to, tkn, amount, fee, new_nonce,
+                                        let tx = tx_builder.create_transaction(
+                                            to,
+                                            Money {
+                                                amount,
+                                                token_id: tkn,
+                                            },
+                                            Money {
+                                                amount: fee,
+                                                token_id: TokenId::Ziesha,
+                                            },
+                                            new_nonce,
                                         );
                                         wallet.add_rsend(tx.clone());
                                         wallet.save(wallet_path).unwrap();
@@ -732,10 +746,14 @@ async fn main() -> Result<(), NodeError> {
                                             to,
                                             to_token_index,
                                             new_nonce,
-                                            tkn,
-                                            amount,
-                                            TokenId::Ziesha,
-                                            fee,
+                                            Money {
+                                                amount,
+                                                token_id: tkn,
+                                            },
+                                            Money {
+                                                amount: fee,
+                                                token_id: TokenId::Ziesha,
+                                            },
                                         );
                                         wallet.add_deposit(pay.clone());
                                         wallet.save(wallet_path).unwrap();
@@ -790,11 +808,15 @@ async fn main() -> Result<(), NodeError> {
                                             from.account_index,
                                             new_nonce,
                                             token_index,
-                                            tkn,
-                                            amount,
+                                            Money {
+                                                amount,
+                                                token_id: tkn,
+                                            },
                                             fee_token_index,
-                                            TokenId::Ziesha,
-                                            fee,
+                                            Money {
+                                                amount: fee,
+                                                token_id: TokenId::Ziesha,
+                                            },
                                             to.to_string().parse().unwrap(), // TODO: WTH :D
                                         );
                                         wallet.add_withdraw(pay.clone());
@@ -855,11 +877,15 @@ async fn main() -> Result<(), NodeError> {
                                             token_index,
                                             to,
                                             to_token_index,
-                                            tkn,
-                                            amount,
+                                            Money {
+                                                amount,
+                                                token_id: tkn,
+                                            },
                                             fee_token_index,
-                                            TokenId::Ziesha,
-                                            fee,
+                                            Money {
+                                                amount: fee,
+                                                token_id: TokenId::Ziesha,
+                                            },
                                             new_nonce,
                                         );
                                         wallet.add_zsend(tx.clone());

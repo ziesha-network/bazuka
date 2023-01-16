@@ -25,7 +25,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
             functions: Vec::new(),
         },
         full_state.data.clone(),
-        Money(0),
+        Money::ziesha(0),
         1,
     );
 
@@ -50,7 +50,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
     let alice = TxBuilder::new(&Vec::from("ABC"));
     let cid =
-        ContractId::from_str("086f926f80d5b000cf4ba91b00c6633c9667b175bc57a16616fcad504b8928a6")
+        ContractId::from_str("a705217d848ee0ec8f4b2462133ab222e7b16a7714ae7483ac3fc83f4a991e9f")
             .unwrap();
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
@@ -82,9 +82,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         state_delta.clone(),
         state_model.compress::<CoreZkHasher>(&full_state.data)?,
         zk::ZkProof::Dummy(true),
-        TokenId::Ziesha,
-        Money(0),
-        Money(0),
+        Money::ziesha(0),
+        Money::ziesha(0),
         1,
     );
 
@@ -220,9 +219,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     state_delta.clone(),
                     state_model.compress::<CoreZkHasher>(&full_state.data)?,
                     zk::ZkProof::Dummy(true),
-                    TokenId::Ziesha,
-                    Money(0),
-                    Money(0),
+                    Money::ziesha(0),
+                    Money::ziesha(0),
                     1,
                 )
                 .tx,
@@ -243,9 +241,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     state_delta.clone(),
                     state_model.compress::<CoreZkHasher>(&full_state.data)?,
                     zk::ZkProof::Dummy(true),
-                    TokenId::Ziesha,
-                    Money(0),
-                    Money(0),
+                    Money::ziesha(0),
+                    Money::ziesha(0),
                     2,
                 )
                 .tx,
@@ -263,9 +260,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     state_delta.clone(),
                     state_model.compress::<CoreZkHasher>(&full_state.data)?,
                     zk::ZkProof::Dummy(true),
-                    TokenId::Ziesha,
-                    Money(0),
-                    Money(0),
+                    Money::ziesha(0),
+                    Money::ziesha(0),
                     2,
                 )
                 .tx,
@@ -283,9 +279,8 @@ fn test_contract_update() -> Result<(), BlockchainError> {
                     state_delta,
                     state_model.compress::<CoreZkHasher>(&full_state.data)?,
                     zk::ZkProof::Dummy(false),
-                    TokenId::Ziesha,
-                    Money(0),
-                    Money(0),
+                    Money::ziesha(0),
+                    Money::ziesha(0),
                     2,
                 )
                 .tx,

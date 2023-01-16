@@ -1,6 +1,6 @@
 use super::address::{Address, Signature};
 use super::hash::Hash;
-use super::Money;
+use super::Amount;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
 use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkProof, ZkScalar};
 use ff::Field;
@@ -50,6 +50,27 @@ impl Default for TokenId {
 impl TokenId {
     pub fn new<H: Hash, S: SignatureScheme>(tx: &Transaction<H, S>) -> Self {
         Self::Custom(crate::zk::hash_to_scalar(&bincode::serialize(&tx).unwrap()))
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Money {
+    pub token_id: TokenId,
+    pub amount: Amount,
+}
+
+impl Money {
+    pub fn new(token_id: TokenId, amount: u64) -> Self {
+        Self {
+            token_id,
+            amount: Amount(amount),
+        }
+    }
+    pub fn ziesha(amount: u64) -> Self {
+        Self {
+            token_id: TokenId::Ziesha,
+            amount: Amount(amount),
+        }
     }
 }
 
@@ -117,11 +138,8 @@ pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
     pub deposit_circuit_id: u32,
     pub calldata: ZkScalar,
     pub src: S::Pub,
-    pub token: TokenId,
-    pub amount: Money, // Amount sent from src to contract
-    pub fee_token: TokenId,
-    pub fee: Money, // Executor fee, paid by src
-
+    pub amount: Money,
+    pub fee: Money,
     pub nonce: u32,
     pub sig: Option<S::Sig>,
 }
@@ -132,10 +150,8 @@ pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
     pub withdraw_circuit_id: u32,
     pub calldata: ZkScalar,
     pub dst: S::Pub,
-    pub token: TokenId,
     pub amount: Money, // Amount sent from contract to dst
-    pub fee_token: TokenId,
-    pub fee: Money, // Executor fee, paid by contract
+    pub fee: Money,    // Executor fee, paid by contract
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -205,7 +221,6 @@ pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
         function_id: u32,
         next_state: ZkCompressedState,
         proof: ZkProof,
-        fee_token: TokenId,
         fee: Money, // Executor fee
     },
 }
@@ -213,7 +228,6 @@ pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct RegularSendEntry<S: SignatureScheme> {
     pub dst: Address<S>,
-    pub token: TokenId,
     pub amount: Money,
 }
 
@@ -221,7 +235,7 @@ pub struct RegularSendEntry<S: SignatureScheme> {
 pub struct Token<S: SignatureScheme> {
     pub name: String,
     pub symbol: String,
-    pub supply: Money, // 1u64 in case of a NFT
+    pub supply: Amount, // 1u64 in case of a NFT
     pub decimals: u8,
     pub minter: Option<Address<S>>,
 }
@@ -248,7 +262,7 @@ impl<S: SignatureScheme> Token<S> {
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum TokenUpdate<S: SignatureScheme> {
-    Mint { amount: Money },
+    Mint { amount: Amount },
     ChangeMinter { minter: Address<S> },
 }
 

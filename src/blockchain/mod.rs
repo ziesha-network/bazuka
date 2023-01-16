@@ -3,7 +3,7 @@ pub use error::*;
 
 use crate::consensus::pow::Difficulty;
 use crate::core::{
-    hash::Hash, Account, Address, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
+    hash::Hash, Account, Address, Amount, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
     ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnDeposit, MpnSourcedTx,
     MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Token, TokenId, TokenUpdate,
     Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
@@ -75,7 +75,7 @@ pub enum TxSideEffect {
 }
 
 pub trait Blockchain {
-    fn currency_in_circulation(&self) -> Result<Money, BlockchainError>;
+    fn currency_in_circulation(&self) -> Result<Amount, BlockchainError>;
 
     fn config(&self) -> &BlockchainConfig;
 
@@ -92,12 +92,12 @@ pub trait Blockchain {
 
     fn get_token(&self, token_id: TokenId) -> Result<Option<Token>, BlockchainError>;
 
-    fn get_balance(&self, addr: Address, token_id: TokenId) -> Result<Money, BlockchainError>;
+    fn get_balance(&self, addr: Address, token_id: TokenId) -> Result<Amount, BlockchainError>;
     fn get_contract_balance(
         &self,
         contract_id: ContractId,
         token_id: TokenId,
-    ) -> Result<Money, BlockchainError>;
+    ) -> Result<Amount, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError>;
     fn get_mpn_accounts(
@@ -115,7 +115,7 @@ pub trait Blockchain {
         contract_id: ContractId,
         locator: zk::ZkDataLocator,
     ) -> Result<zk::ZkScalar, BlockchainError>;
-    fn next_reward(&self) -> Result<Money, BlockchainError>;
+    fn next_reward(&self) -> Result<Amount, BlockchainError>;
     fn will_extend(
         &self,
         from: u64,
@@ -252,50 +252,62 @@ impl<K: KvStore> KvStoreChain<K> {
                 addr_account.into(),
             )])?;
 
-            if deposit.token == deposit.fee_token {
-                let mut addr_balance =
-                    chain.get_balance(Address::PublicKey(deposit.src.clone()), deposit.token)?;
+            if deposit.amount.token_id == deposit.fee.token_id {
+                let mut addr_balance = chain.get_balance(
+                    Address::PublicKey(deposit.src.clone()),
+                    deposit.amount.token_id,
+                )?;
 
-                if addr_balance < deposit.amount + deposit.fee {
+                if addr_balance < deposit.amount.amount + deposit.fee.amount {
                     return Err(BlockchainError::BalanceInsufficient);
                 }
-                addr_balance -= deposit.amount + deposit.fee;
+                addr_balance -= deposit.amount.amount + deposit.fee.amount;
                 chain.database.update(&[WriteOp::Put(
-                    keys::account_balance(&Address::PublicKey(deposit.src.clone()), deposit.token),
+                    keys::account_balance(
+                        &Address::PublicKey(deposit.src.clone()),
+                        deposit.amount.token_id,
+                    ),
                     addr_balance.into(),
                 )])?;
             } else {
-                let mut addr_balance =
-                    chain.get_balance(Address::PublicKey(deposit.src.clone()), deposit.token)?;
-                let mut addr_fee_balance = chain
-                    .get_balance(Address::PublicKey(deposit.src.clone()), deposit.fee_token)?;
+                let mut addr_balance = chain.get_balance(
+                    Address::PublicKey(deposit.src.clone()),
+                    deposit.amount.token_id,
+                )?;
+                let mut addr_fee_balance = chain.get_balance(
+                    Address::PublicKey(deposit.src.clone()),
+                    deposit.fee.token_id,
+                )?;
 
-                if addr_balance < deposit.amount {
+                if addr_balance < deposit.amount.amount {
                     return Err(BlockchainError::BalanceInsufficient);
                 }
-                if addr_fee_balance < deposit.fee {
+                if addr_fee_balance < deposit.fee.amount {
                     return Err(BlockchainError::BalanceInsufficient);
                 }
-                addr_fee_balance -= deposit.fee;
-                addr_balance -= deposit.amount;
+                addr_fee_balance -= deposit.fee.amount;
+                addr_balance -= deposit.amount.amount;
                 chain.database.update(&[WriteOp::Put(
-                    keys::account_balance(&Address::PublicKey(deposit.src.clone()), deposit.token),
+                    keys::account_balance(
+                        &Address::PublicKey(deposit.src.clone()),
+                        deposit.amount.token_id,
+                    ),
                     addr_balance.into(),
                 )])?;
                 chain.database.update(&[WriteOp::Put(
                     keys::account_balance(
                         &Address::PublicKey(deposit.src.clone()),
-                        deposit.fee_token,
+                        deposit.fee.token_id,
                     ),
                     addr_fee_balance.into(),
                 )])?;
             }
 
             let mut contract_balance =
-                chain.get_contract_balance(deposit.contract_id, deposit.token)?;
-            contract_balance += deposit.amount;
+                chain.get_contract_balance(deposit.contract_id, deposit.amount.token_id)?;
+            contract_balance += deposit.amount.amount;
             chain.database.update(&[WriteOp::Put(
-                keys::contract_balance(&deposit.contract_id, deposit.token),
+                keys::contract_balance(&deposit.contract_id, deposit.amount.token_id),
                 contract_balance.into(),
             )])?;
             Ok(())
@@ -322,7 +334,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
             if let Some((tok_id, _)) = dst.tokens.get(&deposit.zk_token_index) {
-                if *tok_id != deposit.payment.token {
+                if *tok_id != deposit.payment.amount.token_id {
                     return Err(BlockchainError::InvalidMpnTransaction);
                 }
             }
@@ -336,8 +348,8 @@ impl<K: KvStore> KvStoreChain<K> {
             new_acc
                 .tokens
                 .entry(deposit.zk_token_index)
-                .or_insert((deposit.payment.token, 0.into()))
-                .1 += deposit.payment.amount;
+                .or_insert((deposit.payment.amount.token_id, 0.into()))
+                .1 += deposit.payment.amount.amount;
 
             zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
                 &mut chain.database,
@@ -384,8 +396,10 @@ impl<K: KvStore> KvStoreChain<K> {
                 nonce: src.nonce + 1,
             };
             if let Some((tok_id, balance)) = new_acc.tokens.get_mut(&withdraw.zk_token_index) {
-                if *tok_id == withdraw.payment.token && *balance >= withdraw.payment.amount {
-                    *balance -= withdraw.payment.amount;
+                if *tok_id == withdraw.payment.amount.token_id
+                    && *balance >= withdraw.payment.amount.amount
+                {
+                    *balance -= withdraw.payment.amount.amount;
                 } else {
                     return Err(BlockchainError::InvalidMpnTransaction);
                 }
@@ -393,8 +407,10 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
             if let Some((tok_id, balance)) = new_acc.tokens.get_mut(&withdraw.zk_fee_token_index) {
-                if *tok_id == withdraw.payment.fee_token && *balance >= withdraw.payment.fee {
-                    *balance -= withdraw.payment.fee;
+                if *tok_id == withdraw.payment.fee.token_id
+                    && *balance >= withdraw.payment.fee.amount
+                {
+                    *balance -= withdraw.payment.fee.amount;
                 } else {
                     return Err(BlockchainError::InvalidMpnTransaction);
                 }
@@ -417,47 +433,52 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn apply_withdraw(&mut self, withdraw: &ContractWithdraw) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
-            if withdraw.token == withdraw.fee_token {
+            if withdraw.amount.token_id == withdraw.fee.token_id {
                 let mut contract_balance =
-                    chain.get_contract_balance(withdraw.contract_id, withdraw.token)?;
+                    chain.get_contract_balance(withdraw.contract_id, withdraw.amount.token_id)?;
 
-                if contract_balance < withdraw.amount + withdraw.fee {
+                if contract_balance < withdraw.amount.amount + withdraw.fee.amount {
                     return Err(BlockchainError::ContractBalanceInsufficient);
                 }
-                contract_balance -= withdraw.amount + withdraw.fee;
+                contract_balance -= withdraw.amount.amount + withdraw.fee.amount;
                 chain.database.update(&[WriteOp::Put(
-                    keys::contract_balance(&withdraw.contract_id, withdraw.token),
+                    keys::contract_balance(&withdraw.contract_id, withdraw.amount.token_id),
                     contract_balance.clone().into(),
                 )])?;
             } else {
                 let mut contract_balance =
-                    chain.get_contract_balance(withdraw.contract_id, withdraw.token)?;
+                    chain.get_contract_balance(withdraw.contract_id, withdraw.amount.token_id)?;
                 let mut contract_fee_balance =
-                    chain.get_contract_balance(withdraw.contract_id, withdraw.fee_token)?;
+                    chain.get_contract_balance(withdraw.contract_id, withdraw.fee.token_id)?;
 
-                if contract_balance < withdraw.amount {
+                if contract_balance < withdraw.amount.amount {
                     return Err(BlockchainError::ContractBalanceInsufficient);
                 }
-                if contract_fee_balance < withdraw.fee {
+                if contract_fee_balance < withdraw.fee.amount {
                     return Err(BlockchainError::ContractBalanceInsufficient);
                 }
-                contract_fee_balance -= withdraw.fee;
-                contract_balance -= withdraw.amount;
+                contract_fee_balance -= withdraw.fee.amount;
+                contract_balance -= withdraw.amount.amount;
                 chain.database.update(&[WriteOp::Put(
-                    keys::contract_balance(&withdraw.contract_id, withdraw.token),
+                    keys::contract_balance(&withdraw.contract_id, withdraw.amount.token_id),
                     contract_balance.clone().into(),
                 )])?;
                 chain.database.update(&[WriteOp::Put(
-                    keys::contract_balance(&withdraw.contract_id, withdraw.fee_token),
+                    keys::contract_balance(&withdraw.contract_id, withdraw.fee.token_id),
                     contract_fee_balance.clone().into(),
                 )])?;
             }
 
-            let mut addr_balance =
-                chain.get_balance(Address::PublicKey(withdraw.dst.clone()), withdraw.token)?;
-            addr_balance += withdraw.amount;
+            let mut addr_balance = chain.get_balance(
+                Address::PublicKey(withdraw.dst.clone()),
+                withdraw.amount.token_id,
+            )?;
+            addr_balance += withdraw.amount.amount;
             chain.database.update(&[WriteOp::Put(
-                keys::account_balance(&Address::PublicKey(withdraw.dst.clone()), withdraw.token),
+                keys::account_balance(
+                    &Address::PublicKey(withdraw.dst.clone()),
+                    withdraw.amount.token_id,
+                ),
                 addr_balance.into(),
             )])?;
 
@@ -499,10 +520,10 @@ impl<K: KvStore> KvStoreChain<K> {
                     .tokens
                     .entry(tx.dst_token_index)
                     .or_insert((src_tok.clone(), 0.into()));
-                if *src_tok == *dst_tok && *src_tok == tx.token {
-                    if *src_bal >= tx.amount {
-                        *src_bal -= tx.amount;
-                        *dst_bal += tx.amount;
+                if *src_tok == *dst_tok && *src_tok == tx.amount.token_id {
+                    if *src_bal >= tx.amount.amount {
+                        *src_bal -= tx.amount.amount;
+                        *dst_bal += tx.amount.amount;
                     } else {
                         return Err(BlockchainError::InvalidMpnTransaction);
                     }
@@ -513,8 +534,8 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
             if let Some((tok_id, balance)) = new_src_acc.tokens.get_mut(&tx.src_fee_token_index) {
-                if *tok_id == tx.fee_token && *balance >= tx.fee {
-                    *balance -= tx.fee;
+                if *tok_id == tx.fee.token_id && *balance >= tx.fee.amount {
+                    *balance -= tx.fee.amount;
                 } else {
                     return Err(BlockchainError::InvalidMpnTransaction);
                 }
@@ -554,25 +575,29 @@ impl<K: KvStore> KvStoreChain<K> {
                 return Err(BlockchainError::IllegalTreasuryAccess);
             }
 
+            if tx.fee.token_id != TokenId::Ziesha {
+                return Err(BlockchainError::OnlyZieshaFeesAccepted);
+            }
+
             let mut acc_src = chain.get_account(tx.src.clone())?;
-            let mut acc_bal = chain.get_balance(tx.src.clone().clone(), TokenId::Ziesha)?;
+            let mut acc_bal = chain.get_balance(tx.src.clone().clone(), tx.fee.token_id)?;
 
             if tx.nonce != acc_src.nonce + 1 {
                 return Err(BlockchainError::InvalidTransactionNonce);
             }
 
-            if acc_bal < tx.fee {
+            if acc_bal < tx.fee.amount {
                 return Err(BlockchainError::BalanceInsufficient);
             }
 
-            acc_bal -= tx.fee;
+            acc_bal -= tx.fee.amount;
             acc_src.nonce += 1;
 
             chain
                 .database
                 .update(&[WriteOp::Put(keys::account(&tx.src), acc_src.into())])?;
             chain.database.update(&[WriteOp::Put(
-                keys::account_balance(&tx.src, TokenId::Ziesha),
+                keys::account_balance(&tx.src, tx.fee.token_id),
                 acc_bal.into(),
             )])?;
 
@@ -646,22 +671,24 @@ impl<K: KvStore> KvStoreChain<K> {
                 TransactionData::RegularSend { entries } => {
                     for entry in entries {
                         if entry.dst != tx.src {
-                            let mut src_bal = chain.get_balance(tx.src.clone(), entry.token)?;
+                            let mut src_bal =
+                                chain.get_balance(tx.src.clone(), entry.amount.token_id)?;
 
-                            if src_bal < entry.amount {
+                            if src_bal < entry.amount.amount {
                                 return Err(BlockchainError::BalanceInsufficient);
                             }
-                            src_bal -= entry.amount;
+                            src_bal -= entry.amount.amount;
                             chain.database.update(&[WriteOp::Put(
-                                keys::account_balance(&tx.src, entry.token),
+                                keys::account_balance(&tx.src, entry.amount.token_id),
                                 src_bal.into(),
                             )])?;
 
-                            let mut dst_bal = chain.get_balance(entry.dst.clone(), entry.token)?;
-                            dst_bal += entry.amount;
+                            let mut dst_bal =
+                                chain.get_balance(entry.dst.clone(), entry.amount.token_id)?;
+                            dst_bal += entry.amount.amount;
 
                             chain.database.update(&[WriteOp::Put(
-                                keys::account_balance(&entry.dst, entry.token),
+                                keys::account_balance(&entry.dst, entry.amount.token_id),
                                 dst_bal.into(),
                             )])?;
                         }
@@ -753,7 +780,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                     if Address::PublicKey(deposit.src.clone()) == tx.src {
                                         return Err(BlockchainError::CannotExecuteOwnPayments);
                                     }
-                                    executor_fees.push((deposit.fee_token, deposit.fee));
+                                    executor_fees.push(deposit.fee);
                                     state_builder.batch_set(&zk::ZkDeltaPairs(
                                         [
                                             (
@@ -762,11 +789,11 @@ impl<K: KvStore> KvStoreChain<K> {
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u64, 1]),
-                                                Some(deposit.token.into()),
+                                                Some(deposit.amount.token_id.into()),
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u64, 2]),
-                                                Some(zk::ZkScalar::from(deposit.amount)),
+                                                Some(zk::ZkScalar::from(deposit.amount.amount)),
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u64, 3]),
@@ -820,7 +847,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                     if Address::PublicKey(withdraw.dst.clone()) == tx.src {
                                         return Err(BlockchainError::CannotExecuteOwnPayments);
                                     }
-                                    executor_fees.push((withdraw.fee_token, withdraw.fee));
+                                    executor_fees.push(withdraw.fee);
                                     state_builder.batch_set(&zk::ZkDeltaPairs(
                                         [
                                             (
@@ -829,19 +856,19 @@ impl<K: KvStore> KvStoreChain<K> {
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u64, 1]),
-                                                Some(withdraw.token.into()),
+                                                Some(withdraw.amount.token_id.into()),
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u64, 2]),
-                                                Some(zk::ZkScalar::from(withdraw.amount)),
+                                                Some(zk::ZkScalar::from(withdraw.amount.amount)),
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u64, 3]),
-                                                Some(withdraw.fee_token.into()),
+                                                Some(withdraw.fee.token_id.into()),
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u64, 4]),
-                                                Some(zk::ZkScalar::from(withdraw.fee)),
+                                                Some(zk::ZkScalar::from(withdraw.fee.amount)),
                                             ),
                                             (
                                                 zk::ZkDataLocator(vec![i as u64, 5]),
@@ -864,16 +891,15 @@ impl<K: KvStore> KvStoreChain<K> {
                                 function_id,
                                 next_state,
                                 proof,
-                                fee_token,
                                 fee,
                             } => {
-                                executor_fees.push((*fee_token, *fee));
+                                executor_fees.push(*fee);
 
                                 let mut cont_balance =
-                                    chain.get_contract_balance(*contract_id, *fee_token)?;
-                                cont_balance -= *fee;
+                                    chain.get_contract_balance(*contract_id, fee.token_id)?;
+                                cont_balance -= fee.amount;
                                 chain.database.update(&[WriteOp::Put(
-                                    keys::contract_balance(contract_id, *fee_token),
+                                    keys::contract_balance(contract_id, fee.token_id),
                                     cont_balance.into(),
                                 )])?;
 
@@ -892,10 +918,10 @@ impl<K: KvStore> KvStoreChain<K> {
                                 );
                                 state_builder.batch_set(&zk::ZkDeltaPairs(
                                     [
-                                        (zk::ZkDataLocator(vec![0]), Some((*fee_token).into())),
+                                        (zk::ZkDataLocator(vec![0]), Some(fee.token_id.into())),
                                         (
                                             zk::ZkDataLocator(vec![1]),
-                                            Some(zk::ZkScalar::from(*fee)),
+                                            Some(zk::ZkScalar::from(fee.amount)),
                                         ),
                                     ]
                                     .into(),
@@ -923,11 +949,12 @@ impl<K: KvStore> KvStoreChain<K> {
                         )])?;
                     }
 
-                    for (fee_token, fee) in executor_fees {
-                        let mut acc_bal = chain.get_balance(tx.src.clone().clone(), fee_token)?;
-                        acc_bal += fee;
+                    for fee in executor_fees {
+                        let mut acc_bal =
+                            chain.get_balance(tx.src.clone().clone(), fee.token_id)?;
+                        acc_bal += fee.amount;
                         chain.database.update(&[WriteOp::Put(
-                            keys::account_balance(&tx.src, fee_token),
+                            keys::account_balance(&tx.src, fee.token_id),
                             acc_bal.into(),
                         )])?;
                     }
@@ -951,10 +978,10 @@ impl<K: KvStore> KvStoreChain<K> {
 
             // Fees go to the Treasury account first
             if tx.src != Address::Treasury {
-                let mut treasury_balance = chain.get_balance(Address::Treasury, TokenId::Ziesha)?;
-                treasury_balance += tx.fee;
+                let mut treasury_balance = chain.get_balance(Address::Treasury, tx.fee.token_id)?;
+                treasury_balance += tx.fee.amount;
                 chain.database.update(&[WriteOp::Put(
-                    keys::account_balance(&Address::Treasury, TokenId::Ziesha),
+                    keys::account_balance(&Address::Treasury, tx.fee.token_id),
                     treasury_balance.into(),
                 )])?;
             }
@@ -981,7 +1008,12 @@ impl<K: KvStore> KvStoreChain<K> {
         txs: &[TransactionAndDelta],
         check: bool,
     ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
-        let mut sorted = txs.iter().cloned().collect::<Vec<_>>();
+        let mut sorted = txs
+            .iter()
+            .filter(|t| t.tx.fee.token_id == TokenId::Ziesha)
+            .cloned()
+            .collect::<Vec<_>>();
+        // WARN: Sort will be invalid if not all fees are specified in Ziesha
         sorted.sort_unstable_by_key(|tx| {
             let cost = tx.tx.size();
             let is_mpn = if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
@@ -991,7 +1023,7 @@ impl<K: KvStore> KvStoreChain<K> {
             };
             (
                 is_mpn,
-                Into::<u64>::into(tx.tx.fee) / cost as u64,
+                Into::<u64>::into(tx.tx.fee.amount) / cost as u64,
                 -(tx.tx.nonce as i32),
             )
         });
@@ -1049,10 +1081,11 @@ impl<K: KvStore> KvStoreChain<K> {
 
             // All blocks except genesis block should have a miner reward
             let txs = if !is_genesis {
-                let fee_sum = Money(
+                // WARN: Sum will be invalid if fees are not in Ziesha
+                let fee_sum = Amount(
                     block.body[1..]
                         .iter()
-                        .map(|t| -> u64 { t.fee.into() })
+                        .map(|t| -> u64 { t.fee.amount.into() })
                         .sum(),
                 );
 
@@ -1062,7 +1095,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     .ok_or(BlockchainError::MinerRewardNotFound)?;
 
                 if reward_tx.src != Address::Treasury
-                    || reward_tx.fee != Money(0)
+                    || reward_tx.fee != Money::ziesha(0)
                     || reward_tx.sig != Signature::Unsigned
                 {
                     return Err(BlockchainError::InvalidMinerReward);
@@ -1078,10 +1111,11 @@ impl<K: KvStore> KvStoreChain<K> {
                                 return Err(BlockchainError::AddressNotAllowedToMine);
                             }
                         }
-                        if reward_entry.token != TokenId::Ziesha {
-                            return Err(BlockchainError::InvalidMinerReward);
-                        }
-                        if reward_entry.amount != next_reward + fee_sum {
+                        let expected_reward = Money {
+                            amount: next_reward + fee_sum,
+                            token_id: TokenId::Ziesha,
+                        };
+                        if reward_entry.amount != expected_reward {
                             return Err(BlockchainError::InvalidMinerReward);
                         }
                     }
@@ -1347,7 +1381,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self,
         contract_id: ContractId,
         token_id: TokenId,
-    ) -> Result<Money, BlockchainError> {
+    ) -> Result<Amount, BlockchainError> {
         Ok(
             match self
                 .database
@@ -1366,7 +1400,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
 
-    fn get_balance(&self, addr: Address, token_id: TokenId) -> Result<Money, BlockchainError> {
+    fn get_balance(&self, addr: Address, token_id: TokenId) -> Result<Amount, BlockchainError> {
         Ok(
             match self.database.get(keys::account_balance(&addr, token_id))? {
                 Some(b) => b.try_into()?,
@@ -1532,7 +1566,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }
         Ok(blks)
     }
-    fn next_reward(&self) -> Result<Money, BlockchainError> {
+    fn next_reward(&self) -> Result<Amount, BlockchainError> {
         let supply = self.get_balance(Address::Treasury, TokenId::Ziesha)?;
         Ok(supply / self.config.reward_ratio)
     }
@@ -1554,10 +1588,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let treasury_nonce = self.get_account(Address::Treasury)?.nonce;
 
         let tx_and_deltas = self.select_transactions(mempool, check)?;
-        let fee_sum = Money(
+        // WARN: Sum will be invalid if tx fees are not in Ziesha!
+        let fee_sum = Amount(
             tx_and_deltas
                 .iter()
-                .map(|t| -> u64 { t.tx.fee.into() })
+                .map(|t| -> u64 { t.tx.fee.amount.into() })
                 .sum(),
         );
 
@@ -1566,12 +1601,14 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             data: TransactionData::RegularSend {
                 entries: vec![RegularSendEntry {
                     dst: wallet.get_address(),
-                    token: TokenId::Ziesha,
-                    amount: self.next_reward()? + fee_sum,
+                    amount: Money {
+                        amount: self.next_reward()? + fee_sum,
+                        token_id: TokenId::Ziesha,
+                    },
                 }],
             },
             nonce: treasury_nonce + 1,
-            fee: Money(0),
+            fee: Money::ziesha(0),
             sig: Signature::Unsigned,
         }];
 
@@ -1840,21 +1877,21 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self.config
     }
 
-    fn currency_in_circulation(&self) -> Result<Money, BlockchainError> {
-        let mut money_sum = Money(0);
+    fn currency_in_circulation(&self) -> Result<Amount, BlockchainError> {
+        let mut amount_sum = Amount(0);
         for (k, v) in self.database.pairs("ACB-".into())? {
             if k.0.ends_with("Ziesha") {
-                let bal: Money = v.try_into().unwrap();
-                money_sum += bal;
+                let bal: Amount = v.try_into().unwrap();
+                amount_sum += bal;
             }
         }
         for (k, v) in self.database.pairs("CAB-".into())? {
             if k.0.ends_with("Ziesha") {
-                let bal: Money = v.try_into().unwrap();
-                money_sum += bal;
+                let bal: Amount = v.try_into().unwrap();
+                amount_sum += bal;
             }
         }
-        Ok(money_sum)
+        Ok(amount_sum)
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::core::{
-    Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, ProofOfWork, Token,
+    Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, Money, ProofOfWork, Token,
     TokenUpdate, Transaction, TransactionData,
 };
 use crate::crypto::jubjub::*;
@@ -9,6 +9,21 @@ use crate::zk::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerMoney {
+    pub amount: u64,
+    pub token_id: String,
+}
+
+impl From<Money> for ExplorerMoney {
+    fn from(obj: Money) -> Self {
+        Self {
+            amount: obj.amount.into(),
+            token_id: obj.token_id.to_string(),
+        }
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerMpnAccount {
@@ -175,8 +190,8 @@ pub struct ExplorerContractDeposit {
     pub contract_id: String,
     pub deposit_circuit_id: u32,
     pub src: String,
-    pub amount: u64,
-    pub fee: u64,
+    pub amount: ExplorerMoney,
+    pub fee: ExplorerMoney,
 
     pub nonce: u32,
     pub sig: Option<String>,
@@ -187,8 +202,8 @@ pub struct ExplorerContractWithdraw {
     pub contract_id: String,
     pub withdraw_circuit_id: u32,
     pub dst: String,
-    pub amount: u64,
-    pub fee: u64,
+    pub amount: ExplorerMoney,
+    pub fee: ExplorerMoney,
 }
 
 impl From<&ContractDeposit> for ExplorerContractDeposit {
@@ -267,8 +282,7 @@ pub enum ExplorerContractUpdate {
         function_id: u32,
         next_state: ExplorerCompressedState,
         proof: ExplorerZkProof,
-        fee_token: String,
-        fee: u64,
+        fee: ExplorerMoney,
     },
 }
 
@@ -301,11 +315,9 @@ impl From<&ContractUpdate> for ExplorerContractUpdate {
                 function_id,
                 next_state,
                 proof,
-                fee_token,
                 fee,
             } => Self::FunctionCall {
                 function_id: *function_id,
-                fee_token: fee_token.to_string(),
                 fee: (*fee).into(),
                 next_state: next_state.into(),
                 proof: proof.into(),
@@ -318,7 +330,7 @@ impl From<&ContractUpdate> for ExplorerContractUpdate {
 #[serde(tag = "type")]
 pub enum ExplorerTransactionData {
     RegularSend {
-        entries: Vec<(String, u64)>,
+        entries: Vec<(String, ExplorerMoney)>,
     },
     CreateContract {
         contract: ExplorerContract,
@@ -371,7 +383,7 @@ pub struct ExplorerTransaction {
     pub src: String,
     pub nonce: u32,
     pub data: ExplorerTransactionData,
-    pub fee: u64,
+    pub fee: ExplorerMoney,
     pub sig: String,
 }
 

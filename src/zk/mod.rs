@@ -1,4 +1,4 @@
-use crate::core::{hash::Hash, Hasher, Money, TokenId, ZkHasher as ZkMainHasher};
+use crate::core::{hash::Hash, Amount, Hasher, Money, TokenId, ZkHasher as ZkMainHasher};
 use crate::crypto::{jubjub, ZkSignatureScheme};
 
 use ff::{Field, PrimeField};
@@ -19,7 +19,7 @@ pub mod poseidon;
 pub struct MpnAccount {
     pub nonce: u64,
     pub address: jubjub::PointAffine,
-    pub tokens: HashMap<u64, (TokenId, Money)>,
+    pub tokens: HashMap<u64, (TokenId, Amount)>,
 }
 
 impl MpnAccount {
@@ -223,8 +223,8 @@ impl ZkScalar {
     }
 }
 
-impl From<Money> for ZkScalar {
-    fn from(m: Money) -> Self {
+impl From<Amount> for ZkScalar {
+    fn from(m: Amount) -> Self {
         let as_u64: u64 = m.into();
         Self::from(as_u64)
     }
@@ -244,11 +244,11 @@ impl TryInto<u64> for ZkScalar {
     }
 }
 
-impl TryInto<Money> for ZkScalar {
+impl TryInto<Amount> for ZkScalar {
     type Error = ZkError;
 
-    fn try_into(self) -> Result<Money, Self::Error> {
-        Ok(Money(self.try_into()?))
+    fn try_into(self) -> Result<Amount, Self::Error> {
+        Ok(Amount(self.try_into()?))
     }
 }
 
@@ -502,8 +502,6 @@ pub struct ZkSingleInputVerifierKey {
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct MpnTransaction {
     pub nonce: u64,
-    pub token: TokenId,
-    pub fee_token: TokenId,
     pub src_index: u64,
     pub src_token_index: u64,
     pub src_fee_token_index: u64,
@@ -541,10 +539,10 @@ impl MpnTransaction {
             ZkScalar::from(self.nonce),
             ZkScalar::from(self.src_index as u64),
             ZkScalar::from(self.dst_index as u64),
-            self.token.into(),
-            ZkScalar::from(self.amount.0),
-            self.fee_token.into(),
-            ZkScalar::from(self.fee.0),
+            self.amount.token_id.into(),
+            ZkScalar::from(self.amount.amount),
+            self.fee.token_id.into(),
+            ZkScalar::from(self.fee.amount),
         ])
     }
 }

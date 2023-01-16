@@ -4,8 +4,8 @@ use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
-    Address, Block, ContractId, Header, Money, ProofOfWork, Signature, Token, TokenId, Transaction,
-    TransactionAndDelta, TransactionData, ZkHasher,
+    Address, Amount, Block, ContractId, Header, Money, ProofOfWork, Signature, Token, TokenId,
+    Transaction, TransactionAndDelta, TransactionData, ZkHasher,
 };
 use crate::zk;
 
@@ -68,7 +68,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
             contract: mpn_contract,
         },
         nonce: 2, // MPN contract is created after Ziesha token is created
-        fee: Money(0),
+        fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     };
     TransactionAndDelta {
@@ -120,13 +120,13 @@ fn get_ziesha_token_creation_tx() -> Transaction {
             token: Token {
                 name: "Ziesha".into(),
                 symbol: "ZSH".into(),
-                supply: Money(2_000_000_000_u64 * UNIT),
+                supply: Amount(2_000_000_000_u64 * UNIT),
                 decimals: UNIT_ZEROS,
                 minter: None,
             },
         },
         nonce: 1,
-        fee: Money(0),
+        fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     }
 }
@@ -224,12 +224,11 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: abc.get_address(),
-                token: TokenId::Ziesha,
-                amount: Money(10000),
+                amount: Money::ziesha(10000),
             }],
         },
         nonce: 3,
-        fee: Money(0),
+        fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });
     conf.genesis.patch = ZkBlockchainPatch {

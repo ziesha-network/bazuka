@@ -11,7 +11,8 @@ use crate::zk;
 use std::str::FromStr;
 use thiserror::Error;
 
-pub use money::Money;
+pub use money::Amount;
+pub use transaction::Money;
 
 pub type Hasher = hash::Sha3Hasher;
 pub type Signer = crypto::ed25519::Ed25519<Hasher>;

@@ -1,7 +1,7 @@
 use crate::blockchain::ZkBlockchainPatch;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
-    Account, Block, ChainSourcedTx, ContractId, Header, Money, MpnDeposit, MpnSourcedTx,
+    Account, Amount, Block, ChainSourcedTx, ContractId, Header, MpnDeposit, MpnSourcedTx,
     MpnWithdraw, TransactionAndDelta,
 };
 use crate::zk;
@@ -28,7 +28,7 @@ pub struct GetStatsResponse {
     pub height: u64,
     pub nodes: usize,
     pub power: u128,
-    pub next_reward: Money,
+    pub next_reward: Amount,
     pub timestamp: u32,
     pub version: String,
     pub network: String,
@@ -88,7 +88,7 @@ pub struct Puzzle {
     pub offset: usize,      // From which byte the nonce starts?
     pub size: usize,        // How big is the nonce? (Bytes)
     pub target: Difficulty, // Difficulty target
-    pub reward: Money,      // Puzzle reward
+    pub reward: Amount,     // Puzzle reward
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -248,7 +248,7 @@ pub struct GetBalanceRequest {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetBalanceResponse {
-    pub balance: Money,
+    pub balance: Amount,
     pub name: String,
     pub symbol: String,
 }

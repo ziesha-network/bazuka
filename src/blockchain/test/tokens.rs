@@ -11,19 +11,24 @@ fn test_token_balances() -> Result<(), BlockchainError> {
     let (token_create_tx, token_id) = alice.create_token(
         "My Token".into(),
         "MYT".into(),
-        Money(12345),
+        Amount(12345),
         0,
         Some(alice.get_address()),
-        Money(0),
+        Money::ziesha(0),
         1,
     );
-    assert_eq!(chain.get_balance(alice.get_address(), token_id)?, Money(0));
+    assert_eq!(chain.get_balance(alice.get_address(), token_id)?, Amount(0));
 
     // Cannot spend uncreated token
     assert!(matches!(
         chain.draft_block(
             1,
-            &[alice.create_token_transaction(bob.get_address(), token_id, Money(1), Money(0), 1)],
+            &[alice.create_transaction(
+                bob.get_address(),
+                Money::new(token_id, 1),
+                Money::ziesha(0),
+                1
+            )],
             &miner,
             false,
         ),
@@ -40,18 +45,17 @@ fn test_token_balances() -> Result<(), BlockchainError> {
 
     assert_eq!(
         chain.get_balance(alice.get_address(), token_id)?,
-        Money(12345)
+        Amount(12345)
     );
 
     chain.apply_block(
         &chain
             .draft_block(
                 1,
-                &[alice.create_token_transaction(
+                &[alice.create_transaction(
                     bob.get_address(),
-                    token_id,
-                    Money(20),
-                    Money(0),
+                    Money::new(token_id, 20),
+                    Money::ziesha(0),
                     2,
                 )],
                 &miner,
@@ -64,19 +68,18 @@ fn test_token_balances() -> Result<(), BlockchainError> {
 
     assert_eq!(
         chain.get_balance(alice.get_address(), token_id)?,
-        Money(12325)
+        Amount(12325)
     );
-    assert_eq!(chain.get_balance(bob.get_address(), token_id)?, Money(20));
+    assert_eq!(chain.get_balance(bob.get_address(), token_id)?, Amount(20));
 
     // Check insufficient token balance
     assert!(matches!(
         chain.draft_block(
             1,
-            &[alice.create_token_transaction(
+            &[alice.create_transaction(
                 bob.get_address(),
-                token_id,
-                Money(12326),
-                Money(0),
+                Money::new(token_id, 12326),
+                Money::ziesha(0),
                 3
             )],
             &miner,
@@ -89,11 +92,10 @@ fn test_token_balances() -> Result<(), BlockchainError> {
         &chain
             .draft_block(
                 1,
-                &[alice.create_token_transaction(
+                &[alice.create_transaction(
                     bob.get_address(),
-                    token_id,
-                    Money(12325),
-                    Money(0),
+                    Money::new(token_id, 12325),
+                    Money::ziesha(0),
                     3,
                 )],
                 &miner,
@@ -104,7 +106,7 @@ fn test_token_balances() -> Result<(), BlockchainError> {
         true,
     )?;
 
-    assert_eq!(chain.get_balance(alice.get_address(), token_id)?, Money(0));
+    assert_eq!(chain.get_balance(alice.get_address(), token_id)?, Amount(0));
 
     rollback_till_empty(&mut chain)?;
 

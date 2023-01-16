@@ -102,4 +102,6 @@ pub enum BlockchainError {
     TokenSupplyOverflow,
     #[error("token has an invalid name/symbol")]
     TokenBadNameSymbol,
+    #[error("only ziesha fees are accepted!")]
+    OnlyZieshaFeesAccepted,
 }

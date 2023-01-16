@@ -1,7 +1,7 @@
 use crate::core::{
-    Address, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Money, MpnAddress,
-    MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token, TokenId, Transaction,
-    TransactionAndDelta, TransactionData, ZkSigner,
+    Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Money,
+    MpnAddress, MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token, TokenId,
+    Transaction, TransactionAndDelta, TransactionData, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::ZkSignatureScheme;
@@ -48,16 +48,6 @@ impl TxBuilder {
         let bytes = bincode::serialize(&tx).unwrap();
         tx.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
     }
-    pub fn create_token_transaction(
-        &self,
-        dst: Address,
-        token: TokenId,
-        amount: Money,
-        fee: Money,
-        nonce: u32,
-    ) -> TransactionAndDelta {
-        self.create_multi_transaction(vec![RegularSendEntry { dst, token, amount }], fee, nonce)
-    }
     pub fn create_transaction(
         &self,
         dst: Address,
@@ -65,13 +55,13 @@ impl TxBuilder {
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
-        self.create_token_transaction(dst, TokenId::Ziesha, amount, fee, nonce)
+        self.create_multi_transaction(vec![RegularSendEntry { dst, amount }], fee, nonce)
     }
     pub fn create_token(
         &self,
         name: String,
         symbol: String,
-        supply: Money,
+        supply: Amount,
         decimals: u8,
         minter: Option<Address>,
         fee: Money,
@@ -128,17 +118,13 @@ impl TxBuilder {
         from_token_index: u64,
         to: MpnAddress,
         to_token_index: u64,
-        to_token: TokenId,
         amount: Money,
         fee_token_index: u64,
-        fee_token: TokenId,
         fee: Money,
         nonce: u64,
     ) -> zk::MpnTransaction {
         let mut tx = zk::MpnTransaction {
             nonce,
-            token: to_token,
-            fee_token: fee_token,
             src_token_index: from_token_index,
             src_index: from_index,
             src_fee_token_index: fee_token_index,
@@ -181,7 +167,6 @@ impl TxBuilder {
         state_delta: zk::ZkDeltaPairs,
         next_state: zk::ZkCompressedState,
         proof: zk::ZkProof,
-        exec_fee_token: TokenId,
         exec_fee: Money,
         miner_fee: Money,
         nonce: u32,
@@ -195,7 +180,6 @@ impl TxBuilder {
                     function_id,
                     next_state,
                     proof,
-                    fee_token: exec_fee_token,
                     fee: exec_fee,
                 }],
             },
@@ -218,9 +202,7 @@ impl TxBuilder {
         to: MpnAddress,
         to_token_index: u64,
         nonce: u32,
-        token: TokenId,
         amount: Money,
-        fee_token: TokenId,
         fee: Money,
     ) -> MpnDeposit {
         let mut calldata_builder =
@@ -236,14 +218,12 @@ impl TxBuilder {
             ))
             .unwrap();
         let mut tx = ContractDeposit {
-            token,
             src: self.private_key.clone().into(),
             contract_id,
             deposit_circuit_id: 0,
             calldata: calldata_builder.compress().unwrap().state_hash,
             nonce,
             amount,
-            fee_token,
             fee,
             sig: None,
         };
@@ -264,22 +244,18 @@ impl TxBuilder {
         zk_address_index: u64,
         nonce: u64,
         token_index: u64,
-        token: TokenId,
         amount: Money,
         fee_token_index: u64,
-        fee_token: TokenId,
         fee: Money,
         to: <Signer as SignatureScheme>::Pub,
     ) -> MpnWithdraw {
         let mut tx = ContractWithdraw {
-            token,
             dst: to,
             contract_id,
             withdraw_circuit_id: 0,
             calldata: zk::ZkScalar::default(),
             amount,
             fee,
-            fee_token,
         };
         let sig = ZkSigner::sign(
             &self.zk_private_key,
