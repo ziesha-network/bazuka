@@ -14,7 +14,8 @@ pub async fn log_info<B: Blockchain>(
             ctx.blockchain.get_outdated_contracts()?.len().to_string(),
         ),
         ("Timestamp", ctx.network_timestamp().to_string()),
-        ("Active nodes", ctx.peer_manager.node_count().to_string()),
+        ("Node count", ctx.peer_manager.node_count().to_string()),
+        ("Peer count", ctx.peer_manager.get_peers().len().to_string()),
     ]);
 
     inf.push(("Chain Pool", ctx.mempool.chain_sourced.len().to_string()));
