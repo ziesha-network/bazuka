@@ -1,5 +1,6 @@
 use super::*;
 use crate::common::*;
+use std::time::{Duration, Instant};
 
 pub async fn sync_clock<B: Blockchain>(
     context: &Arc<RwLock<NodeContext<B>>>,
@@ -19,21 +20,38 @@ pub async fn sync_clock<B: Blockchain>(
     drop(ctx);
 
     log::info!("Syncing clocks...");
-    let peer_responses: Vec<(Peer, Result<HandshakeResponse, NodeError>)> =
-        http::group_request(&peer_addresses, |peer| {
-            net.json_post::<HandshakeRequest, HandshakeResponse>(
-                format!("http://{}/peers", peer.address),
-                handshake_req.clone(),
-                Limit::default().size(1 * KB).time(3 * SECOND),
-            )
+    let peer_responses: Vec<(Peer, Result<(HandshakeResponse, Duration), NodeError>)> =
+        http::group_request(&peer_addresses, move |peer| {
+            let handshake_req = handshake_req.clone();
+            let peer = peer.clone();
+            let net = net.clone();
+            async move {
+                let timer = Instant::now();
+                let result = net
+                    .json_post::<HandshakeRequest, HandshakeResponse>(
+                        format!("http://{}/peers", peer.address),
+                        handshake_req,
+                        Limit::default().size(1 * KB).time(1 * SECOND),
+                    )
+                    .await;
+                result.map(|r| (r, timer.elapsed()))
+            }
         })
         .await;
 
     {
         let mut ctx = context.write().await;
-        let timestamps = punish_non_responding(&mut ctx, &peer_responses)
+        let resps = punish_non_responding(&mut ctx, &peer_responses)
             .into_iter()
-            .map(|(_, r)| r.timestamp)
+            .collect::<Vec<_>>();
+        for (p, (resp, ping_time)) in resps.iter() {
+            if *p == resp.peer.address {
+                ctx.peer_manager.add_node(resp.peer.clone(), *ping_time);
+            }
+        }
+        let timestamps = resps
+            .iter()
+            .map(|(_, (resp, _))| resp.timestamp)
             .collect::<Vec<_>>();
         if !timestamps.is_empty() {
             // Set timestamp_offset according to median timestamp of the network
