@@ -380,6 +380,7 @@ impl From<&TransactionData> for ExplorerTransactionData {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerTransaction {
+    pub memo: String,
     pub src: Option<String>,
     pub nonce: u32,
     pub data: ExplorerTransactionData,
@@ -390,6 +391,7 @@ pub struct ExplorerTransaction {
 impl From<&Transaction> for ExplorerTransaction {
     fn from(obj: &Transaction) -> Self {
         Self {
+            memo: obj.memo.clone(),
             src: obj.src.clone().map(|a| a.to_string()),
             nonce: obj.nonce,
             data: (&obj.data).into(),
