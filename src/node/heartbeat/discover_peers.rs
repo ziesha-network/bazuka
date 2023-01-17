@@ -3,7 +3,7 @@ use crate::common::*;
 use std::time::{Duration, Instant};
 
 pub async fn discover_peers<B: Blockchain>(
-    context: &Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
 

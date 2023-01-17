@@ -13,59 +13,39 @@ use crate::blockchain::Blockchain;
 use crate::client::messages::*;
 use crate::utils;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{RwLock, RwLockWriteGuard};
 
-pub async fn heartbeat<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
-) -> Result<(), NodeError> {
-    if let Err(e) = log_info::log_info(&context).await {
-        log::debug!("info log failed {}", e);
-    }
-    if let Err(e) = refresh::refresh(&context).await {
-        log::error!("refresh failed {}", e);
-    }
-
-    // these sets of tasks can be run concurrently as they mix between claiming read/write locks
-    let (sync_peers, disc_peers, sync_clock) = tokio::join!(
-        sync_peers::sync_peers(&context),
-        discover_peers::discover_peers(&context),
-        sync_clock::sync_clock(&context),
-    );
-    if let Err(e) = sync_peers {
-        log::error!("peer sync failed {}", e);
-    }
-    if let Err(e) = disc_peers {
-        log::error!("peer discovery failed {}", e);
-    }
-    if let Err(e) = sync_clock {
-        log::error!("clock sync failed {}", e);
-    }
-    if let Err(e) = sync_blocks::sync_blocks(&context).await {
-        log::error!("block sync failed {}", e);
-    }
-    if let Err(e) = sync_mempool::sync_mempool(&context).await {
-        log::error!("mempool sync failed {}", e)
-    }
-
-    if let Err(e) = sync_state::sync_state(&context).await {
-        log::error!("sync state failed {}", e);
-    }
-    Ok(())
-}
-
-pub async fn heartbeater<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
-) -> Result<(), NodeError> {
-    let mut ticker = tokio::time::interval(context.read().await.opts.heartbeat_interval);
+pub async fn make_loop<
+    B: Blockchain,
+    Fut: futures::Future,
+    F: Fn(&Arc<RwLock<NodeContext<B>>>) -> Fut,
+>(
+    context: &Arc<RwLock<NodeContext<B>>>,
+    func: F,
+    interval: Duration,
+) {
     loop {
         if context.read().await.shutdown {
             break;
         }
-        ticker.tick().await;
-        if let Err(e) = heartbeat(Arc::clone(&context)).await {
-            log::error!("heartbeat failed {}", e);
-        }
+        func(context).await;
+        tokio::time::sleep(interval).await;
     }
+}
+
+pub async fn heartbeater<B: Blockchain>(ctx: Arc<RwLock<NodeContext<B>>>) -> Result<(), NodeError> {
+    let dur = ctx.read().await.opts.heartbeat_interval;
+    tokio::join!(
+        make_loop(&ctx, |ctx| log_info::log_info(ctx.clone()), dur),
+        make_loop(&ctx, |ctx| refresh::refresh(ctx.clone()), dur),
+        make_loop(&ctx, |ctx| sync_peers::sync_peers(ctx.clone()), dur),
+        make_loop(&ctx, |ctx| discover_peers::discover_peers(ctx.clone()), dur),
+        make_loop(&ctx, |ctx| sync_clock::sync_clock(ctx.clone()), dur),
+        make_loop(&ctx, |ctx| sync_blocks::sync_blocks(ctx.clone()), dur),
+        make_loop(&ctx, |ctx| sync_mempool::sync_mempool(ctx.clone()), dur),
+        make_loop(&ctx, |ctx| sync_state::sync_state(ctx.clone()), dur),
+    );
 
     Ok(())
 }

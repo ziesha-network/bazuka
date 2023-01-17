@@ -2,7 +2,7 @@ use super::*;
 use crate::common::*;
 
 pub async fn sync_state<B: Blockchain>(
-    context: &Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let mut ctx = context.write().await;
 

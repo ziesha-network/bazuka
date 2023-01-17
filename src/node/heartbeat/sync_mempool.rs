@@ -3,7 +3,7 @@ use crate::blockchain::TransactionStats;
 use crate::common::*;
 
 pub async fn sync_mempool<B: Blockchain>(
-    context: &Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
 

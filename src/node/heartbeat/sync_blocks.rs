@@ -2,7 +2,7 @@ use super::*;
 use crate::common::*;
 
 pub async fn sync_blocks<B: Blockchain>(
-    context: &Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
     let net = ctx.outgoing.clone();
