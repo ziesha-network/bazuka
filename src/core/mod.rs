@@ -90,6 +90,14 @@ pub enum ChainSourcedTx {
 }
 
 impl ChainSourcedTx {
+    pub fn sender(&self) -> Address {
+        match self {
+            ChainSourcedTx::TransactionAndDelta(tx_delta) => {
+                tx_delta.tx.src.clone().unwrap_or_default()
+            }
+            ChainSourcedTx::MpnDeposit(mpn_deposit) => mpn_deposit.payment.src.clone(),
+        }
+    }
     pub fn nonce(&self) -> u32 {
         match self {
             ChainSourcedTx::TransactionAndDelta(tx_delta) => tx_delta.tx.nonce,
@@ -106,6 +114,18 @@ pub enum MpnSourcedTx {
 }
 
 impl MpnSourcedTx {
+    pub fn sender(&self) -> MpnAddress {
+        match self {
+            MpnSourcedTx::MpnTransaction(mpn_tx) => MpnAddress {
+                pub_key: mpn_tx.src_pub_key.clone(),
+                account_index: mpn_tx.src_index,
+            },
+            MpnSourcedTx::MpnWithdraw(mpn_withdraw) => MpnAddress {
+                pub_key: mpn_withdraw.zk_address.clone(),
+                account_index: mpn_withdraw.zk_address_index,
+            },
+        }
+    }
     pub fn nonce(&self) -> u64 {
         match self {
             MpnSourcedTx::MpnTransaction(mpn_tx) => mpn_tx.nonce,

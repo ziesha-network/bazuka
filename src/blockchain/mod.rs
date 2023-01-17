@@ -8,7 +8,6 @@ use crate::core::{
     MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Token, TokenId, TokenUpdate,
     Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
 };
-use crate::crypto::jubjub;
 use crate::crypto::ZkSignatureScheme;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
 use crate::utils;
@@ -475,10 +474,12 @@ impl<K: KvStore> KvStoreChain<K> {
             if tx.src_index > 0x3FFFFFFF
                 || tx.dst_index > 0x3FFFFFFF
                 || tx.src_index == tx.dst_index
+                || !tx.src_pub_key.is_on_curve()
                 || !tx.dst_pub_key.is_on_curve()
+                || src.address != tx.src_pub_key.decompress()
                 || (dst.address.is_on_curve() && dst.address != tx.dst_pub_key.decompress())
                 || tx.nonce != src.nonce
-                || !tx.verify(&jubjub::PublicKey(src.address.compress()))
+                || !tx.verify()
             {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }

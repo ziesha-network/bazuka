@@ -506,11 +506,14 @@ pub struct ZkSingleInputVerifierKey {
 pub struct MpnTransaction {
     pub nonce: u64,
     pub src_index: u64,
+    pub src_pub_key: jubjub::PublicKey,
+    pub dst_index: u64,
+    pub dst_pub_key: jubjub::PublicKey,
+
     pub src_token_index: u64,
     pub src_fee_token_index: u64,
-    pub dst_index: u64,
     pub dst_token_index: u64,
-    pub dst_pub_key: jubjub::PublicKey,
+
     pub amount: Money,
     pub fee: Money,
     pub sig: jubjub::Signature,
@@ -531,8 +534,8 @@ impl std::hash::Hash for MpnTransaction {
 }
 
 impl MpnTransaction {
-    pub fn verify(&self, addr: &jubjub::PublicKey) -> bool {
-        jubjub::JubJub::<ZkMainHasher>::verify(addr, self.hash(), &self.sig)
+    pub fn verify(&self) -> bool {
+        jubjub::JubJub::<ZkMainHasher>::verify(&self.src_pub_key, self.hash(), &self.sig)
     }
     pub fn sign(&mut self, sk: &jubjub::PrivateKey) {
         self.sig = jubjub::JubJub::<ZkMainHasher>::sign(sk, self.hash());

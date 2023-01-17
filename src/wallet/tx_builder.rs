@@ -127,12 +127,16 @@ impl TxBuilder {
     ) -> zk::MpnTransaction {
         let mut tx = zk::MpnTransaction {
             nonce,
-            src_token_index: from_token_index,
+
             src_index: from_index,
-            src_fee_token_index: fee_token_index,
+            src_pub_key: self.get_zk_address(),
             dst_index: to.account_index,
             dst_pub_key: to.pub_key,
+
+            src_token_index: from_token_index,
+            src_fee_token_index: fee_token_index,
             dst_token_index: to_token_index,
+
             amount,
             fee,
             sig: Default::default(),
