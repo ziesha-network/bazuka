@@ -46,6 +46,7 @@ impl From<PrivateKey> for PublicKey {
 pub struct Signature(pub ed25519_dalek::Signature);
 
 impl<H: Hash> SignatureScheme for Ed25519<H> {
+    type PubParseError = ParsePublicKeyError;
     type Pub = PublicKey;
     type Priv = PrivateKey;
     type Sig = Signature;
@@ -97,6 +98,12 @@ impl FromStr for PublicKey {
             ed25519_dalek::PublicKey::from_bytes(&bytes)
                 .map_err(|_| ParsePublicKeyError::Invalid)?,
         ))
+    }
+}
+
+impl Default for PublicKey {
+    fn default() -> Self {
+        Self(ed25519_dalek::PublicKey::from_bytes(&[0u8; 32]).unwrap())
     }
 }
 

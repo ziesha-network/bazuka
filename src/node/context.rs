@@ -63,7 +63,7 @@ impl<B: Blockchain> NodeContext<B> {
             address,
             height,
             power,
-            pub_key: self.wallet.get_pub_key(),
+            pub_key: self.wallet.get_address(),
             outdated_states,
         }))
     }

@@ -11,6 +11,7 @@ pub mod ed25519;
 pub mod jubjub;
 
 pub trait SignatureScheme: Clone + Serialize {
+    type PubParseError;
     type Pub: Clone
         + Debug
         + PartialEq
@@ -20,7 +21,8 @@ pub trait SignatureScheme: Clone + Serialize {
         + DeserializeOwned
         + FromStr
         + Display
-        + From<Self::Priv>;
+        + From<Self::Priv>
+        + Default; // Default is null pub-key (Treasury address)
     type Priv: Clone;
     type Sig: Clone + Debug + PartialEq + Serialize + DeserializeOwned;
     fn generate_keys(seed: &[u8]) -> (Self::Pub, Self::Priv);

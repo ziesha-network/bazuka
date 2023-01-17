@@ -13,7 +13,7 @@ pub struct TxBuilder {
     seed: Vec<u8>,
     private_key: <Signer as SignatureScheme>::Priv,
     zk_private_key: <ZkSigner as ZkSignatureScheme>::Priv,
-    address: <Signer as SignatureScheme>::Pub,
+    address: Address,
     zk_address: <ZkSigner as ZkSignatureScheme>::Pub,
 }
 
@@ -29,14 +29,11 @@ impl TxBuilder {
             zk_private_key: zk_sk,
         }
     }
-    pub fn get_pub_key(&self) -> <Signer as SignatureScheme>::Pub {
-        self.address.clone()
-    }
     pub fn get_priv_key(&self) -> <Signer as SignatureScheme>::Priv {
         self.private_key.clone()
     }
     pub fn get_address(&self) -> Address {
-        Address::PublicKey(self.address.clone())
+        self.address.clone()
     }
     pub fn get_zk_address(&self) -> <ZkSigner as ZkSignatureScheme>::Pub {
         self.zk_address.clone()
@@ -71,7 +68,7 @@ impl TxBuilder {
     ) -> (TransactionAndDelta, TokenId) {
         let mut tx = Transaction {
             memo,
-            src: self.get_address(),
+            src: Some(self.get_address()),
             data: TransactionData::CreateToken {
                 token: Token {
                     name,
@@ -105,7 +102,7 @@ impl TxBuilder {
     ) -> TransactionAndDelta {
         let mut tx = Transaction {
             memo,
-            src: self.get_address(),
+            src: Some(self.get_address()),
             data: TransactionData::RegularSend { entries },
             nonce,
             fee,
@@ -153,7 +150,7 @@ impl TxBuilder {
     ) -> TransactionAndDelta {
         let mut tx = Transaction {
             memo,
-            src: self.get_address(),
+            src: Some(self.get_address()),
             data: TransactionData::CreateContract { contract },
             nonce,
             fee,
@@ -182,7 +179,7 @@ impl TxBuilder {
         let (_, sk) = Signer::generate_keys(&self.seed);
         let mut tx = Transaction {
             memo,
-            src: self.get_address(),
+            src: Some(self.get_address()),
             data: TransactionData::UpdateContract {
                 contract_id,
                 updates: vec![ContractUpdate::FunctionCall {
@@ -229,7 +226,7 @@ impl TxBuilder {
             .unwrap();
         let mut tx = ContractDeposit {
             memo,
-            src: self.private_key.clone().into(),
+            src: self.get_address(),
             contract_id,
             deposit_circuit_id: 0,
             calldata: calldata_builder.compress().unwrap().state_hash,

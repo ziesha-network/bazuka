@@ -1,4 +1,4 @@
-use super::address::{Address, Signature};
+use super::address::Signature;
 use super::hash::Hash;
 use super::Amount;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
@@ -229,7 +229,7 @@ pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub struct RegularSendEntry<S: SignatureScheme> {
-    pub dst: Address<S>,
+    pub dst: S::Pub,
     pub amount: Money,
 }
 
@@ -239,7 +239,7 @@ pub struct Token<S: SignatureScheme> {
     pub symbol: String,
     pub supply: Amount, // 1u64 in case of a NFT
     pub decimals: u8,
-    pub minter: Option<Address<S>>,
+    pub minter: Option<S::Pub>,
 }
 
 impl<S: SignatureScheme> Token<S> {
@@ -265,7 +265,7 @@ impl<S: SignatureScheme> Token<S> {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
 pub enum TokenUpdate<S: SignatureScheme> {
     Mint { amount: Amount },
-    ChangeMinter { minter: Address<S> },
+    ChangeMinter { minter: S::Pub },
 }
 
 // A transaction could be as simple as sending some funds, or as complicated as
@@ -296,7 +296,7 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
 pub struct Transaction<H: Hash, S: SignatureScheme> {
-    pub src: Address<S>,
+    pub src: Option<S::Pub>, // None is reward treasury!
     pub nonce: u32,
     pub data: TransactionData<H, S>,
     pub fee: Money,
@@ -319,8 +319,8 @@ impl<H: Hash, S: SignatureScheme> Transaction<H, S> {
     }
     pub fn verify_signature(&self) -> bool {
         match &self.src {
-            Address::<S>::Treasury => true,
-            Address::<S>::PublicKey(pk) => match &self.sig {
+            None => true,
+            Some(pk) => match &self.sig {
                 Signature::Unsigned => false,
                 Signature::Signed(sig) => {
                     let mut unsigned = self.clone();

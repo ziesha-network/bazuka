@@ -4,8 +4,8 @@ use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
-    Address, Amount, Block, ContractId, Header, Money, ProofOfWork, Signature, Token, TokenId,
-    Transaction, TransactionAndDelta, TransactionData, ZkHasher,
+    Amount, Block, ContractId, Header, Money, ProofOfWork, Signature, Token, TokenId, Transaction,
+    TransactionAndDelta, TransactionData, ZkHasher,
 };
 use crate::zk;
 
@@ -64,7 +64,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
     };
     let mpn_contract_create_tx = Transaction {
         memo: "A Payment-Network to rule them all!".into(),
-        src: Address::Treasury,
+        src: None,
         data: TransactionData::CreateContract {
             contract: mpn_contract,
         },
@@ -117,7 +117,7 @@ fn get_test_mpn_contract() -> TransactionAndDelta {
 fn get_ziesha_token_creation_tx() -> Transaction {
     Transaction {
         memo: "Happy Birthday Ziesha!".into(),
-        src: Address::Treasury,
+        src: None,
         data: TransactionData::CreateToken {
             token: Token {
                 name: "Ziesha".into(),
@@ -223,7 +223,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     let abc = TxBuilder::new(&Vec::from("ABC"));
     conf.genesis.block.body.push(Transaction {
         memo: "Dummy tx".into(),
-        src: Address::Treasury,
+        src: None,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: abc.get_address(),

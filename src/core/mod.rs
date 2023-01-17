@@ -20,8 +20,8 @@ pub type Signer = crypto::ed25519::Ed25519<Hasher>;
 pub type ZkHasher = crate::zk::PoseidonHasher;
 pub type ZkSigner = crypto::jubjub::JubJub<ZkHasher>;
 
-pub type Address = address::Address<Signer>;
-pub type ParseAddressError = address::ParseAddressError;
+pub type Address = <Signer as crypto::SignatureScheme>::Pub;
+pub type ParseAddressError = <Signer as crypto::SignatureScheme>::PubParseError;
 pub type Account = address::Account;
 pub type Signature = address::Signature<Signer>;
 pub type Transaction = transaction::Transaction<Hasher, Signer>;

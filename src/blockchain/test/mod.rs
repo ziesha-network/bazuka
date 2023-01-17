@@ -1,6 +1,6 @@
 use super::*;
 use crate::config::blockchain;
-use crate::core::{Address, Hasher, Signature, Signer, TransactionData};
+use crate::core::{Hasher, Signature, Signer, TransactionData};
 use crate::crypto::SignatureScheme;
 use crate::db;
 
@@ -641,7 +641,7 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     // Create unsigned signed tx
     let unsigned_tx = Transaction {
         memo: "".into(),
-        src: alice.get_address(),
+        src: Some(alice.get_address()),
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: bob.get_address(),
@@ -693,7 +693,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     let (_, sk) = Signer::generate_keys(&Vec::from("ABC"));
     let mut tx = Transaction {
         memo: "".into(),
-        src: alice.get_address(),
+        src: Some(alice.get_address()),
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: bob.get_address(),
@@ -930,7 +930,7 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     conf.genesis.block.header.proof_of_work.target = Difficulty(0x0000ffff);
     conf.genesis.block.body.push(Transaction {
         memo: "".into(),
-        src: Address::Treasury,
+        src: None,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: wallet1.get_address(),
@@ -998,7 +998,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body.push(Transaction {
         memo: "".into(),
-        src: Address::Treasury,
+        src: None,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: wallet1.get_address(),
@@ -1022,7 +1022,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     let t_invalid_unsigned = TransactionAndDelta {
         tx: Transaction {
             memo: "".into(),
-            src: wallet1.get_address(),
+            src: Some(wallet1.get_address()),
             data: TransactionData::RegularSend {
                 entries: vec![RegularSendEntry {
                     dst: wallet2.get_address(),
@@ -1038,7 +1038,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     let t_invalid_from_treasury = TransactionAndDelta {
         tx: Transaction {
             memo: "".into(),
-            src: Address::Treasury,
+            src: None,
             data: TransactionData::RegularSend {
                 entries: vec![RegularSendEntry {
                     dst: wallet2.get_address(),
@@ -1059,7 +1059,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
     mine_block(&chain, &mut draft)?;
 
     assert_eq!(2, draft.block.body.len());
-    assert_eq!(wallet1.get_address(), draft.block.body[1].src);
+    assert_eq!(Some(wallet1.get_address()), draft.block.body[1].src);
 
     rollback_till_empty(&mut chain)?;
 
@@ -1075,7 +1075,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body.push(Transaction {
         memo: "".into(),
-        src: Address::Treasury,
+        src: None,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: wallet1.get_address(),
@@ -1134,7 +1134,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     let mut conf = blockchain::get_test_blockchain_config();
     conf.genesis.block.body.push(Transaction {
         memo: "".into(),
-        src: Address::Treasury,
+        src: None,
         data: TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: wallet1.get_address(),
