@@ -7,7 +7,7 @@ pub async fn sync_clock<B: Blockchain>(
     let ctx = context.read().await;
 
     let handshake_req = match ctx.get_info()? {
-        Some(peer) => HandshakeRequest::Node(peer),
+        Some(peer) => HandshakeRequest::Node(peer.address),
         None => HandshakeRequest::Client,
     };
 
@@ -15,7 +15,7 @@ pub async fn sync_clock<B: Blockchain>(
 
     let net = ctx.outgoing.clone();
 
-    let peer_addresses = ctx.peer_manager.random_peers(opts.num_peers);
+    let peer_addresses = ctx.peer_manager.get_peers(opts.num_peers);
     drop(ctx);
 
     log::info!("Syncing clocks...");

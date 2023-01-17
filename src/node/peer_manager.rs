@@ -2,10 +2,17 @@ use crate::client::{Peer, PeerAddress};
 use rand::prelude::IteratorRandom;
 use std::collections::HashMap;
 use std::net::IpAddr;
+use std::time::Duration;
 
 struct CandidateDetails {
     address: PeerAddress,
     candidated_since: u32,
+}
+
+#[derive(Clone)]
+struct NodeDetails {
+    peer: Peer,
+    ping_time: Duration,
 }
 
 #[derive(Clone)]
@@ -17,8 +24,8 @@ pub struct PeerManager {
     candidate_remove_threshold: u32,
     self_addr: Option<PeerAddress>,
     candidates: HashMap<IpAddr, CandidateDetails>,
+    nodes: HashMap<IpAddr, NodeDetails>,
     punishments: HashMap<IpAddr, PunishmentDetails>,
-    peers: HashMap<IpAddr, Peer>,
 }
 
 impl PeerManager {
@@ -44,7 +51,7 @@ impl PeerManager {
                 })
                 .collect(),
             punishments: HashMap::new(),
-            peers: HashMap::new(),
+            nodes: HashMap::new(),
         }
     }
 
@@ -71,7 +78,7 @@ impl PeerManager {
     // Punish peer for a certain time
     pub fn punish_ip_for(&mut self, now: u32, ip: IpAddr, secs: u32) {
         self.candidates.remove(&ip);
-        self.peers.remove(&ip);
+        self.nodes.remove(&ip);
         self.punishments.insert(
             ip,
             PunishmentDetails {
@@ -81,8 +88,8 @@ impl PeerManager {
     }
 
     pub fn mark_as_candidate(&mut self, now: u32, addr: &PeerAddress) {
-        if self.peers.contains_key(&addr.ip()) {
-            self.peers.remove(&addr.ip());
+        if self.nodes.contains_key(&addr.ip()) {
+            self.nodes.remove(&addr.ip());
             self.candidates.insert(
                 addr.ip(),
                 CandidateDetails {
@@ -93,8 +100,12 @@ impl PeerManager {
         }
     }
 
-    pub fn get_peers(&self) -> std::collections::hash_map::Values<'_, IpAddr, Peer> {
-        self.peers.values()
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
+
+    pub fn get_nodes(&self) -> impl Iterator<Item = &Peer> {
+        self.nodes.values().map(|n| &n.peer)
     }
 
     pub fn random_candidates(&self, count: usize) -> Vec<PeerAddress> {
@@ -106,11 +117,12 @@ impl PeerManager {
             .collect()
     }
 
-    pub fn random_peers(&self, count: usize) -> Vec<Peer> {
-        self.get_peers()
+    pub fn get_peers(&self, count: usize) -> Vec<Peer> {
+        self.nodes
+            .values()
             .choose_multiple(&mut rand::thread_rng(), count)
             .into_iter()
-            .cloned()
+            .map(|n| n.peer.clone())
             .collect()
     }
 
@@ -118,7 +130,7 @@ impl PeerManager {
         if self.self_addr == Some(addr) {
             return;
         }
-        if !self.peers.contains_key(&addr.ip()) {
+        if !self.nodes.contains_key(&addr.ip()) {
             self.candidates.insert(
                 addr.ip(),
                 CandidateDetails {
@@ -129,11 +141,12 @@ impl PeerManager {
         }
     }
 
-    pub fn add_peer(&mut self, peer: Peer) {
+    pub fn add_node(&mut self, peer: Peer, ping_time: Duration) {
         if self.self_addr == Some(peer.address) {
             return;
         }
         self.candidates.remove(&peer.address.ip());
-        self.peers.insert(peer.address.ip(), peer);
+        self.nodes
+            .insert(peer.address.ip(), NodeDetails { peer, ping_time });
     }
 }

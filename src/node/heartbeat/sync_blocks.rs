@@ -8,7 +8,12 @@ pub async fn sync_blocks<B: Blockchain>(
     let net = ctx.outgoing.clone();
     let opts = ctx.opts.clone();
     let max_block_size = ctx.blockchain.config().max_block_size;
-    let mut sorted_peers = ctx.peer_manager.get_peers().cloned().collect::<Vec<_>>();
+    let mut sorted_peers = ctx
+        .peer_manager
+        .get_peers(opts.num_peers)
+        .iter()
+        .cloned()
+        .collect::<Vec<_>>();
     drop(ctx);
 
     sorted_peers.sort_by_key(|p| p.power);

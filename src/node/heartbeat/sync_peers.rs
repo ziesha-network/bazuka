@@ -11,7 +11,7 @@ pub async fn sync_peers<B: Blockchain>(
     let net = ctx.outgoing.clone();
     let opts = ctx.opts.clone();
 
-    let peer_addresses = ctx.peer_manager.random_peers(opts.num_peers);
+    let peer_addresses = ctx.peer_manager.get_peers(opts.num_peers);
     drop(ctx);
 
     log::info!("Syncing peers...");

@@ -16,7 +16,7 @@ pub async fn get_peers<B: Blockchain>(
             return Ok(GetPeersResponse {
                 peers: context
                     .peer_manager
-                    .get_peers()
+                    .get_nodes()
                     .map(|p| p.address)
                     .collect(),
             });
@@ -26,7 +26,7 @@ pub async fn get_peers<B: Blockchain>(
     Ok(GetPeersResponse {
         peers: context
             .peer_manager
-            .random_peers(num_peers)
+            .get_peers(num_peers)
             .into_iter()
             .map(|p| p.address)
             .collect(),

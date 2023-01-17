@@ -93,7 +93,7 @@ pub struct Puzzle {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum HandshakeRequest {
-    Node(Peer),
+    Node(PeerAddress),
     Client,
 }
 

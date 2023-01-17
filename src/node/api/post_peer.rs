@@ -1,6 +1,7 @@
 use super::messages::{HandshakeRequest, HandshakeResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
+use crate::utils;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -15,11 +16,13 @@ pub async fn post_peer<B: Blockchain>(
         if let Some(client) = client {
             // Requester and proposed peer should have same IP.
             // Prevents attacking and flooding the peer list!
-            if client.ip() != peer.address.ip() {
+            if client.ip() != peer.ip() {
                 return Err(NodeError::HandshakeClientMismatch);
             }
         }
-        context.peer_manager.add_peer(peer);
+        context
+            .peer_manager
+            .add_candidate(utils::local_timestamp(), peer);
     }
 
     Ok(HandshakeResponse {
