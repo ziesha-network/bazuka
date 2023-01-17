@@ -18,7 +18,7 @@ use tokio::sync::{RwLock, RwLockWriteGuard};
 
 pub async fn make_loop<
     B: Blockchain,
-    Fut: futures::Future,
+    Fut: futures::Future<Output = Result<(), NodeError>>,
     F: Fn(&Arc<RwLock<NodeContext<B>>>) -> Fut,
 >(
     context: &Arc<RwLock<NodeContext<B>>>,
@@ -29,7 +29,9 @@ pub async fn make_loop<
         if context.read().await.shutdown {
             break;
         }
-        func(context).await;
+        if let Err(e) = func(context).await {
+            log::error!("Heartbeat error: {}", e);
+        }
         tokio::time::sleep(interval).await;
     }
 }
