@@ -33,9 +33,21 @@ use tokio::sync::RwLock;
 use tokio::try_join;
 
 #[derive(Debug, Clone)]
+pub struct HeartbeatIntervals {
+    pub log_info: Duration,
+    pub refresh: Duration,
+    pub sync_peers: Duration,
+    pub discover_peers: Duration,
+    pub sync_clock: Duration,
+    pub sync_blocks: Duration,
+    pub sync_mempool: Duration,
+    pub sync_state: Duration,
+}
+
+#[derive(Debug, Clone)]
 pub struct NodeOptions {
     pub tx_max_time_alive: Option<u32>,
-    pub heartbeat_interval: Duration,
+    pub heartbeat_intervals: HeartbeatIntervals,
     pub num_peers: usize,
     pub max_blocks_fetch: u64,
     pub outdated_heights_threshold: u32,

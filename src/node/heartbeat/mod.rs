@@ -37,16 +37,40 @@ pub async fn make_loop<
 }
 
 pub async fn heartbeater<B: Blockchain>(ctx: Arc<RwLock<NodeContext<B>>>) -> Result<(), NodeError> {
-    let dur = ctx.read().await.opts.heartbeat_interval;
+    let ints = ctx.read().await.opts.heartbeat_intervals.clone();
     tokio::join!(
-        make_loop(&ctx, |ctx| log_info::log_info(ctx.clone()), dur),
-        make_loop(&ctx, |ctx| refresh::refresh(ctx.clone()), dur),
-        make_loop(&ctx, |ctx| sync_peers::sync_peers(ctx.clone()), dur),
-        make_loop(&ctx, |ctx| discover_peers::discover_peers(ctx.clone()), dur),
-        make_loop(&ctx, |ctx| sync_clock::sync_clock(ctx.clone()), dur),
-        make_loop(&ctx, |ctx| sync_blocks::sync_blocks(ctx.clone()), dur),
-        make_loop(&ctx, |ctx| sync_mempool::sync_mempool(ctx.clone()), dur),
-        make_loop(&ctx, |ctx| sync_state::sync_state(ctx.clone()), dur),
+        make_loop(&ctx, |ctx| log_info::log_info(ctx.clone()), ints.log_info),
+        make_loop(&ctx, |ctx| refresh::refresh(ctx.clone()), ints.refresh),
+        make_loop(
+            &ctx,
+            |ctx| sync_peers::sync_peers(ctx.clone()),
+            ints.sync_peers
+        ),
+        make_loop(
+            &ctx,
+            |ctx| discover_peers::discover_peers(ctx.clone()),
+            ints.discover_peers
+        ),
+        make_loop(
+            &ctx,
+            |ctx| sync_clock::sync_clock(ctx.clone()),
+            ints.sync_clock
+        ),
+        make_loop(
+            &ctx,
+            |ctx| sync_blocks::sync_blocks(ctx.clone()),
+            ints.sync_blocks
+        ),
+        make_loop(
+            &ctx,
+            |ctx| sync_mempool::sync_mempool(ctx.clone()),
+            ints.sync_mempool
+        ),
+        make_loop(
+            &ctx,
+            |ctx| sync_state::sync_state(ctx.clone()),
+            ints.sync_state
+        ),
     );
 
     Ok(())
