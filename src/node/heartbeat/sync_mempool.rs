@@ -8,9 +8,8 @@ pub async fn sync_mempool<B: Blockchain>(
     let ctx = context.read().await;
 
     let net = ctx.outgoing.clone();
-    let opts = ctx.opts.clone();
 
-    let peer_addresses = ctx.peer_manager.get_peers(opts.num_peers);
+    let peer_addresses = ctx.peer_manager.get_peers();
     drop(ctx);
 
     log::info!("Syncing mempools...");

@@ -7,7 +7,6 @@ pub async fn sync_state<B: Blockchain>(
     let mut ctx = context.write().await;
 
     let net = ctx.outgoing.clone();
-    let opts = ctx.opts.clone();
 
     let ts = ctx.local_timestamp();
 
@@ -35,7 +34,7 @@ pub async fn sync_state<B: Blockchain>(
         // Find clients which their height is equal with our height
         let same_height_peers = ctx
             .peer_manager
-            .get_peers(opts.num_peers)
+            .get_peers()
             .iter()
             .filter(|p| p.height == height)
             .cloned()

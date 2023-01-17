@@ -1,6 +1,7 @@
 use super::messages::{GetPeersRequest, GetPeersResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
+use rand::prelude::IteratorRandom;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -26,7 +27,8 @@ pub async fn get_peers<B: Blockchain>(
     Ok(GetPeersResponse {
         peers: context
             .peer_manager
-            .get_peers(num_peers)
+            .get_nodes()
+            .choose_multiple(&mut rand::thread_rng(), num_peers)
             .into_iter()
             .map(|p| p.address)
             .collect(),
