@@ -261,7 +261,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 }
                 addr_balance -= deposit.amount.amount + deposit.fee.amount;
                 chain.database.update(&[WriteOp::Put(
-                    keys::account_balance(&deposit.src.clone(), deposit.amount.token_id),
+                    keys::account_balance(&deposit.src, deposit.amount.token_id),
                     addr_balance.into(),
                 )])?;
             } else {
@@ -279,11 +279,11 @@ impl<K: KvStore> KvStoreChain<K> {
                 addr_fee_balance -= deposit.fee.amount;
                 addr_balance -= deposit.amount.amount;
                 chain.database.update(&[WriteOp::Put(
-                    keys::account_balance(&deposit.src.clone(), deposit.amount.token_id),
+                    keys::account_balance(&deposit.src, deposit.amount.token_id),
                     addr_balance.into(),
                 )])?;
                 chain.database.update(&[WriteOp::Put(
-                    keys::account_balance(&deposit.src.clone(), deposit.fee.token_id),
+                    keys::account_balance(&deposit.src, deposit.fee.token_id),
                     addr_fee_balance.into(),
                 )])?;
             }
@@ -458,7 +458,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 chain.get_balance(withdraw.dst.clone(), withdraw.amount.token_id)?;
             addr_balance += withdraw.amount.amount;
             chain.database.update(&[WriteOp::Put(
-                keys::account_balance(&withdraw.dst.clone(), withdraw.amount.token_id),
+                keys::account_balance(&withdraw.dst, withdraw.amount.token_id),
                 addr_balance.into(),
             )])?;
 
@@ -937,8 +937,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     }
 
                     for fee in executor_fees {
-                        let mut acc_bal =
-                            chain.get_balance(tx_src.clone().clone(), fee.token_id)?;
+                        let mut acc_bal = chain.get_balance(tx_src.clone(), fee.token_id)?;
                         acc_bal += fee.amount;
                         chain.database.update(&[WriteOp::Put(
                             keys::account_balance(&tx_src, fee.token_id),
