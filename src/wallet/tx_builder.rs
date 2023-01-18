@@ -116,7 +116,6 @@ impl TxBuilder {
     }
     pub fn create_mpn_transaction(
         &self,
-        from_index: u64,
         from_token_index: u64,
         to: MpnAddress,
         to_token_index: u64,
@@ -128,9 +127,7 @@ impl TxBuilder {
         let mut tx = zk::MpnTransaction {
             nonce,
 
-            src_index: from_index,
             src_pub_key: self.get_zk_address(),
-            dst_index: to.account_index,
             dst_pub_key: to.pub_key,
 
             src_token_index: from_token_index,
@@ -242,7 +239,6 @@ impl TxBuilder {
         let bytes = bincode::serialize(&tx).unwrap();
         tx.sig = Some(Signer::sign(&self.private_key, &bytes));
         MpnDeposit {
-            zk_address_index: to.account_index,
             zk_address: to.pub_key,
             zk_token_index: to_token_index,
             payment: tx,
@@ -254,7 +250,6 @@ impl TxBuilder {
         &self,
         memo: String,
         contract_id: ContractId,
-        zk_address_index: u64,
         nonce: u64,
         token_index: u64,
         amount: Money,
@@ -302,7 +297,6 @@ impl TxBuilder {
             .unwrap();
         tx.calldata = calldata_builder.compress().unwrap().state_hash;
         MpnWithdraw {
-            zk_address_index,
             zk_address: self.get_zk_address(),
             zk_token_index: token_index,
             zk_fee_token_index: fee_token_index,

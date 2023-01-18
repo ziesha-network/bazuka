@@ -1,5 +1,5 @@
 use crate::core::{hash::Hash, Amount, Hasher, Money, TokenId, ZkHasher as ZkMainHasher};
-use crate::crypto::{jubjub, ZkSignatureScheme};
+use crate::crypto::{jubjub, DeriveMpnAccountIndex, ZkSignatureScheme};
 
 use ff::{Field, PrimeField};
 use num_bigint::BigUint;
@@ -517,10 +517,6 @@ pub struct MpnTransaction {
     pub sig: jubjub::Signature,
 }
 
-pub fn mpn_account_index_by_pub_key(pub_key: &jubjub::PublicKey) -> u64 {
-    pub_key.0.decompress().0 .0[0] & 0x3FFFFFFF
-}
-
 impl Eq for MpnTransaction {}
 
 impl PartialEq for MpnTransaction {
@@ -537,7 +533,10 @@ impl std::hash::Hash for MpnTransaction {
 
 impl MpnTransaction {
     pub fn src_index(&self) -> u64 {
-        
+        self.src_pub_key.mpn_account_index()
+    }
+    pub fn dst_index(&self) -> u64 {
+        self.dst_pub_key.mpn_account_index()
     }
     pub fn verify(&self) -> bool {
         jubjub::JubJub::<ZkMainHasher>::verify(&self.src_pub_key, self.hash(), &self.sig)
@@ -548,8 +547,8 @@ impl MpnTransaction {
     pub fn hash(&self) -> ZkScalar {
         ZkMainHasher::hash(&[
             ZkScalar::from(self.nonce),
-            ZkScalar::from(self.src_index as u64),
-            ZkScalar::from(self.dst_index as u64),
+            ZkScalar::from(self.src_index()),
+            ZkScalar::from(self.dst_index()),
             self.amount.token_id.into(),
             ZkScalar::from(self.amount.amount),
             self.fee.token_id.into(),

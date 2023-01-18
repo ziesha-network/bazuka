@@ -620,7 +620,6 @@ async fn main() -> Result<(), NodeError> {
                 token,
                 fee,
             } => {
-                let mut rng = rand::thread_rng();
                 let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
                 let tkn = if let Some(token) = token {
                     if token >= wallet.get_tokens().len() {
@@ -632,7 +631,6 @@ async fn main() -> Result<(), NodeError> {
                     TokenId::Ziesha
                 };
                 let tx_builder = TxBuilder::new(&wallet.seed());
-                let account_index = rng.gen::<u64>() & 0x3FFFFFFF;
                 let (req_loop, client) = BazukaClient::connect(
                     tx_builder.get_priv_key(),
                     conf.random_node(),
@@ -647,10 +645,10 @@ async fn main() -> Result<(), NodeError> {
                             .account
                             .nonce;
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let mpn_addr =MpnAddress{account_index,pub_key:tx_builder.get_zk_address()};
+                        let mpn_addr =MpnAddress{pub_key:tx_builder.get_zk_address()};
                         let pay =
                             tx_builder.deposit_mpn(memo.unwrap_or_default(),mpn_contract_id, mpn_addr.clone(), 0, new_nonce, Money{amount:initial,token_id:tkn}, Money{amount:fee,token_id:TokenId::Ziesha});
-                        wallet.add_mpn_index(account_index);
+                        wallet.add_mpn_index(mpn_addr.account_index());
                         wallet.add_deposit(pay.clone());
                         wallet.save(wallet_path).unwrap();
                         println!("{:#?}", client.transact_contract_deposit(pay).await?);
@@ -733,8 +731,10 @@ async fn main() -> Result<(), NodeError> {
                                             .await?
                                             .account
                                             .nonce;
-                                        let dst_acc =
-                                            client.get_mpn_account(to.account_index).await?.account;
+                                        let dst_acc = client
+                                            .get_mpn_account(to.account_index())
+                                            .await?
+                                            .account;
                                         let to_token_index = if let Some(ind) = dst_acc
                                             .find_token_index(
                                                 config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
@@ -787,7 +787,7 @@ async fn main() -> Result<(), NodeError> {
                                 try_join!(
                                     async move {
                                         let acc = client
-                                            .get_mpn_account(from.account_index)
+                                            .get_mpn_account(from.account_index())
                                             .await?
                                             .account;
                                         let token_index = if let Some(ind) = acc.find_token_index(
@@ -810,12 +810,11 @@ async fn main() -> Result<(), NodeError> {
                                             panic!("Token not found in your account!");
                                         };
                                         let new_nonce = wallet
-                                            .new_z_nonce(from.account_index)
+                                            .new_z_nonce(from.account_index())
                                             .unwrap_or(acc.nonce);
                                         let pay = tx_builder.withdraw_mpn(
                                             memo.unwrap_or_default(),
                                             mpn_contract_id,
-                                            from.account_index,
                                             new_nonce,
                                             token_index,
                                             Money {
@@ -850,11 +849,13 @@ async fn main() -> Result<(), NodeError> {
                                             );
                                         }
                                         let acc = client
-                                            .get_mpn_account(from.account_index)
+                                            .get_mpn_account(from.account_index())
                                             .await?
                                             .account;
-                                        let dst_acc =
-                                            client.get_mpn_account(to.account_index).await?.account;
+                                        let dst_acc = client
+                                            .get_mpn_account(to.account_index())
+                                            .await?
+                                            .account;
                                         let to_token_index = if let Some(ind) = dst_acc
                                             .find_token_index(
                                                 config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
@@ -885,10 +886,9 @@ async fn main() -> Result<(), NodeError> {
                                             panic!("Token not found in your account!");
                                         };
                                         let new_nonce = wallet
-                                            .new_z_nonce(from.account_index)
+                                            .new_z_nonce(from.account_index())
                                             .unwrap_or(acc.nonce);
                                         let tx = tx_builder.create_mpn_transaction(
-                                            from.account_index,
                                             token_index,
                                             to,
                                             to_token_index,
@@ -1002,7 +1002,6 @@ async fn main() -> Result<(), NodeError> {
                                         "Address:".bright_yellow(),
                                         MpnAddress {
                                             pub_key: tx_builder.get_zk_address(),
-                                            account_index: ind
                                         }
                                     );
                                     println!("Waiting to be created...")
@@ -1020,10 +1019,7 @@ async fn main() -> Result<(), NodeError> {
                                     println!(
                                         "{}\t{}",
                                         "Address:".bright_yellow(),
-                                        MpnAddress {
-                                            pub_key: acc_pk,
-                                            account_index: ind
-                                        }
+                                        MpnAddress { pub_key: acc_pk }
                                     );
                                     for (_, money) in resp.tokens.iter() {
                                         if let Some(inf) = token_balances.get(&money.token_id) {

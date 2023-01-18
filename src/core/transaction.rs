@@ -1,6 +1,7 @@
 use super::address::Signature;
 use super::hash::Hash;
 use super::Amount;
+use crate::crypto::DeriveMpnAccountIndex;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
 use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkProof, ZkScalar};
 use ff::Field;
@@ -171,6 +172,24 @@ pub struct MpnWithdraw<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub zk_nonce: u64,
     pub zk_sig: ZS::Sig,
     pub payment: ContractWithdraw<H, S>,
+}
+
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> MpnDeposit<H, S, ZS>
+where
+    ZS::Pub: DeriveMpnAccountIndex,
+{
+    pub fn zk_address_index(&self) -> u64 {
+        self.zk_address.mpn_account_index()
+    }
+}
+
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> MpnWithdraw<H, S, ZS>
+where
+    ZS::Pub: DeriveMpnAccountIndex,
+{
+    pub fn zk_address_index(&self) -> u64 {
+        self.zk_address.mpn_account_index()
+    }
 }
 
 impl<H: Hash, S: SignatureScheme> ContractDeposit<H, S> {

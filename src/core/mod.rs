@@ -118,11 +118,9 @@ impl MpnSourcedTx {
         match self {
             MpnSourcedTx::MpnTransaction(mpn_tx) => MpnAddress {
                 pub_key: mpn_tx.src_pub_key.clone(),
-                account_index: mpn_tx.src_index,
             },
             MpnSourcedTx::MpnWithdraw(mpn_withdraw) => MpnAddress {
                 pub_key: mpn_withdraw.zk_address.clone(),
-                account_index: mpn_withdraw.zk_address_index,
             },
         }
     }

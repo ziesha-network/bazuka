@@ -73,13 +73,13 @@ impl Wallet {
     }
     pub fn add_withdraw(&mut self, tx: MpnWithdraw) {
         self.mpn_sourced_txs
-            .entry(tx.zk_address_index)
+            .entry(tx.zk_address_index())
             .or_default()
             .push(MpnSourcedTx::MpnWithdraw(tx));
     }
     pub fn add_zsend(&mut self, tx: MpnTransaction) {
         self.mpn_sourced_txs
-            .entry(tx.src_index)
+            .entry(tx.src_index())
             .or_default()
             .push(MpnSourcedTx::MpnTransaction(tx));
     }

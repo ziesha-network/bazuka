@@ -5,7 +5,7 @@ use num_integer::Integer;
 use serde::{Deserialize, Serialize};
 use std::ops::{AddAssign, MulAssign};
 
-use super::ZkSignatureScheme;
+use super::{DeriveMpnAccountIndex, ZkSignatureScheme};
 
 use std::str::FromStr;
 use thiserror::Error;
@@ -31,6 +31,12 @@ pub struct PrivateKey {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default, Eq, Hash)]
 pub struct PublicKey(pub PointCompressed);
+
+impl DeriveMpnAccountIndex for PublicKey {
+    fn mpn_account_index(&self) -> u64 {
+        u64::from_le_bytes(self.0 .0.to_repr().as_ref()[0..4].try_into().unwrap()) & 0x3FFFFFFF
+    }
+}
 
 impl From<PrivateKey> for PublicKey {
     fn from(priv_key: PrivateKey) -> Self {
