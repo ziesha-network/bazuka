@@ -85,8 +85,6 @@ enum WalletOptions {
         #[structopt(long)]
         memo: Option<String>,
         #[structopt(long)]
-        index: Option<u64>,
-        #[structopt(long)]
         token: Option<usize>,
         #[structopt(long, default_value = "0")]
         initial: Amount,
@@ -618,7 +616,6 @@ async fn main() -> Result<(), NodeError> {
             }
             WalletOptions::NewAccount {
                 memo,
-                index,
                 initial,
                 token,
                 fee,
@@ -635,7 +632,7 @@ async fn main() -> Result<(), NodeError> {
                     TokenId::Ziesha
                 };
                 let tx_builder = TxBuilder::new(&wallet.seed());
-                let account_index = index.unwrap_or_else(|| rng.gen()) & 0x3FFFFFFF;
+                let account_index = rng.gen::<u64>() & 0x3FFFFFFF;
                 let (req_loop, client) = BazukaClient::connect(
                     tx_builder.get_priv_key(),
                     conf.random_node(),
