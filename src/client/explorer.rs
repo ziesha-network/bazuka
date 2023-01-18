@@ -187,6 +187,7 @@ impl From<&ZkCompressedState> for ExplorerCompressedState {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerContractDeposit {
+    pub memo: String,
     pub contract_id: String,
     pub deposit_circuit_id: u32,
     pub src: String,
@@ -199,6 +200,7 @@ pub struct ExplorerContractDeposit {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerContractWithdraw {
+    pub memo: String,
     pub contract_id: String,
     pub withdraw_circuit_id: u32,
     pub dst: String,
@@ -209,6 +211,7 @@ pub struct ExplorerContractWithdraw {
 impl From<&ContractDeposit> for ExplorerContractDeposit {
     fn from(obj: &ContractDeposit) -> Self {
         Self {
+            memo: obj.memo.clone(),
             src: obj.src.to_string(),
             contract_id: obj.contract_id.to_string(),
             deposit_circuit_id: obj.deposit_circuit_id.into(),
@@ -223,6 +226,7 @@ impl From<&ContractDeposit> for ExplorerContractDeposit {
 impl From<&ContractWithdraw> for ExplorerContractWithdraw {
     fn from(obj: &ContractWithdraw) -> Self {
         Self {
+            memo: obj.memo.clone(),
             dst: obj.dst.to_string(),
             contract_id: obj.contract_id.to_string(),
             withdraw_circuit_id: obj.withdraw_circuit_id.into(),
