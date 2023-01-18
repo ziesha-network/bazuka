@@ -1000,15 +1000,31 @@ async fn main() -> Result<(), NodeError> {
                             if let Ok(resp) = resp {
                                 let curr_z_nonce = wallet.new_z_nonce(ind);
                                 if !resp.address.is_on_curve() {
-                                    println!("Waiting to be created...")
-                                } else {
                                     println!(
                                         "{}\t{}",
                                         "Address:".bright_yellow(),
                                         MpnAddress {
-                                            pub_key: bazuka::crypto::jubjub::PublicKey(
-                                                resp.address.compress()
-                                            ),
+                                            pub_key: tx_builder.get_zk_address(),
+                                            account_index: ind
+                                        }
+                                    );
+                                    println!("Waiting to be created...")
+                                } else {
+                                    let acc_pk =
+                                        bazuka::crypto::jubjub::PublicKey(resp.address.compress());
+                                    if acc_pk != tx_builder.get_zk_address() {
+                                        println!(
+                                            "{} {}",
+                                            "Error:".bright_red(),
+                                            "Slot acquired by someone else!"
+                                        );
+                                        continue;
+                                    }
+                                    println!(
+                                        "{}\t{}",
+                                        "Address:".bright_yellow(),
+                                        MpnAddress {
+                                            pub_key: acc_pk,
                                             account_index: ind
                                         }
                                     );
