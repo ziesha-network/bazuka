@@ -34,7 +34,7 @@ pub struct PublicKey(pub PointCompressed);
 
 impl DeriveMpnAccountIndex for PublicKey {
     fn mpn_account_index(&self) -> u64 {
-        u64::from_le_bytes(self.0 .0.to_repr().as_ref()[0..4].try_into().unwrap()) & 0x3FFFFFFF
+        u64::from_le_bytes(self.0 .0.to_repr().as_ref()[0..8].try_into().unwrap()) & 0x3FFFFFFF
     }
 }
 
