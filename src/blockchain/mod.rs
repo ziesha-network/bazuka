@@ -38,6 +38,7 @@ pub struct BlockchainConfig {
     pub mpn_num_function_calls: usize,
     pub mpn_num_contract_deposits: usize,
     pub mpn_num_contract_withdraws: usize,
+    pub mpn_log4_account_capacity: u8,
     pub minimum_pow_difficulty: Difficulty,
     pub testnet_height_limit: Option<u64>,
 }
@@ -303,7 +304,8 @@ impl<K: KvStore> KvStoreChain<K> {
     fn apply_mpn_deposit(&mut self, deposit: &MpnDeposit) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
             chain.apply_deposit(&deposit.payment)?;
-            let dst = chain.get_mpn_account(deposit.zk_address_index())?;
+            let dst = chain
+                .get_mpn_account(deposit.zk_address_index(self.config.mpn_log4_account_capacity))?;
 
             let calldata = CoreZkHasher::hash(&[
                 zk::ZkScalar::from(deposit.zk_address.decompress().0),
@@ -311,7 +313,7 @@ impl<K: KvStore> KvStoreChain<K> {
             ]);
             if deposit.payment.calldata != calldata
                 || deposit.zk_token_index >= 64
-                || deposit.zk_address_index() > 0x3FFFFFFF
+                || deposit.zk_address_index(self.config.mpn_log4_account_capacity) > 0x3FFFFFFF
                 || !deposit.zk_address.is_on_curve()
                 || (dst.address.is_on_curve() && dst.address != deposit.zk_address.decompress())
             {
@@ -338,7 +340,7 @@ impl<K: KvStore> KvStoreChain<K> {
             zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
                 &mut chain.database,
                 chain.config.mpn_contract_id,
-                deposit.zk_address_index(),
+                deposit.zk_address_index(self.config.mpn_log4_account_capacity),
                 new_acc,
                 &mut size_diff,
             )?;
@@ -351,7 +353,9 @@ impl<K: KvStore> KvStoreChain<K> {
     fn apply_mpn_withdraw(&mut self, withdraw: &MpnWithdraw) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
             chain.apply_withdraw(&withdraw.payment)?;
-            let src = chain.get_mpn_account(withdraw.zk_address_index())?;
+            let src = chain.get_mpn_account(
+                withdraw.zk_address_index(self.config.mpn_log4_account_capacity),
+            )?;
             let calldata = CoreZkHasher::hash(&[
                 zk::ZkScalar::from(withdraw.zk_address.decompress().0),
                 zk::ZkScalar::from(withdraw.zk_address.decompress().1),
@@ -364,7 +368,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 withdraw.payment.fingerprint(),
                 zk::ZkScalar::from(withdraw.zk_nonce as u64),
             ]);
-            if withdraw.zk_address_index() > 0x3FFFFFFF
+            if withdraw.zk_address_index(self.config.mpn_log4_account_capacity) > 0x3FFFFFFF
                 || withdraw.zk_token_index >= 64
                 || withdraw.zk_nonce != src.nonce
                 || withdraw.payment.calldata != calldata
@@ -405,7 +409,7 @@ impl<K: KvStore> KvStoreChain<K> {
             zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
                 &mut chain.database,
                 chain.config.mpn_contract_id,
-                withdraw.zk_address_index(),
+                withdraw.zk_address_index(self.config.mpn_log4_account_capacity),
                 new_acc,
                 &mut size_diff,
             )?;
@@ -469,11 +473,12 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn apply_zero_tx(&mut self, tx: &zk::MpnTransaction) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
-            let src = chain.get_mpn_account(tx.src_index())?;
-            let dst = chain.get_mpn_account(tx.dst_index())?;
-            if tx.src_index() > 0x3FFFFFFF
-                || tx.dst_index() > 0x3FFFFFFF
-                || tx.src_index() == tx.dst_index()
+            let src = chain.get_mpn_account(tx.src_index(self.config.mpn_log4_account_capacity))?;
+            let dst = chain.get_mpn_account(tx.dst_index(self.config.mpn_log4_account_capacity))?;
+            if tx.src_index(self.config.mpn_log4_account_capacity) > 0x3FFFFFFF
+                || tx.dst_index(self.config.mpn_log4_account_capacity) > 0x3FFFFFFF
+                || tx.src_index(self.config.mpn_log4_account_capacity)
+                    == tx.dst_index(self.config.mpn_log4_account_capacity)
                 || !tx.src_pub_key.is_on_curve()
                 || !tx.dst_pub_key.is_on_curve()
                 || src.address != tx.src_pub_key.decompress()
@@ -529,14 +534,14 @@ impl<K: KvStore> KvStoreChain<K> {
             zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
                 &mut chain.database,
                 chain.config.mpn_contract_id,
-                tx.src_index(),
+                tx.src_index(self.config.mpn_log4_account_capacity),
                 new_src_acc,
                 &mut size_diff,
             )?;
             zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
                 &mut chain.database,
                 chain.config.mpn_contract_id,
-                tx.dst_index(),
+                tx.dst_index(self.config.mpn_log4_account_capacity),
                 new_dst_acc,
                 &mut size_diff,
             )?;

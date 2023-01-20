@@ -14,8 +14,8 @@ impl<ZS: ZkSignatureScheme> MpnAddress<ZS>
 where
     ZS::Pub: DeriveMpnAccountIndex,
 {
-    pub fn account_index(&self) -> u64 {
-        self.pub_key.mpn_account_index()
+    pub fn account_index(&self, mpn_log4_account_capacity: u8) -> u64 {
+        self.pub_key.mpn_account_index(mpn_log4_account_capacity)
     }
 }
 

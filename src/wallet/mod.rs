@@ -2,7 +2,7 @@ mod tx_builder;
 pub use tx_builder::TxBuilder;
 
 use crate::core::{
-    ChainSourcedTx, MpnDeposit, MpnSourcedTx, MpnWithdraw, TokenId, TransactionAndDelta,
+    ChainSourcedTx, MpnAddress, MpnDeposit, MpnSourcedTx, MpnWithdraw, TokenId, TransactionAndDelta,
 };
 use crate::zk::MpnTransaction;
 use bip39::Mnemonic;
@@ -28,7 +28,7 @@ pub struct Wallet {
     mnemonic: Mnemonic,
     pub tokens: Vec<TokenId>,
     pub chain_sourced_txs: Vec<ChainSourcedTx>,
-    pub mpn_sourced_txs: HashMap<u64, Vec<MpnSourcedTx>>,
+    pub mpn_sourced_txs: HashMap<MpnAddress, Vec<MpnSourcedTx>>,
 }
 
 impl Wallet {
@@ -50,13 +50,11 @@ impl Wallet {
     pub fn get_tokens(&self) -> &[TokenId] {
         &self.tokens
     }
-    pub fn mpn_indices(&self) -> Vec<u64> {
-        let mut inds = self.mpn_sourced_txs.keys().cloned().collect::<Vec<_>>();
-        inds.sort();
-        inds
+    pub fn mpn_addresses(&self) -> impl Iterator<Item = &MpnAddress> {
+        self.mpn_sourced_txs.keys()
     }
-    pub fn add_mpn_index(&mut self, index: u64) {
-        self.mpn_sourced_txs.insert(index, Vec::new());
+    pub fn add_mpn_address(&mut self, addr: MpnAddress) {
+        self.mpn_sourced_txs.insert(addr, Vec::new());
     }
     pub fn reset(&mut self) {
         self.chain_sourced_txs = Vec::new();
@@ -73,13 +71,17 @@ impl Wallet {
     }
     pub fn add_withdraw(&mut self, tx: MpnWithdraw) {
         self.mpn_sourced_txs
-            .entry(tx.zk_address_index())
+            .entry(MpnAddress {
+                pub_key: tx.zk_address.clone(),
+            })
             .or_default()
             .push(MpnSourcedTx::MpnWithdraw(tx));
     }
     pub fn add_zsend(&mut self, tx: MpnTransaction) {
         self.mpn_sourced_txs
-            .entry(tx.src_index())
+            .entry(MpnAddress {
+                pub_key: tx.src_pub_key.clone(),
+            })
             .or_default()
             .push(MpnSourcedTx::MpnTransaction(tx));
     }
@@ -90,10 +92,10 @@ impl Wallet {
             .max()
             .map(|n| n + 1)
     }
-    pub fn new_z_nonce(&self, index: u64) -> Option<u64> {
+    pub fn new_z_nonce(&self, addr: &MpnAddress) -> Option<u64> {
         if let Some(Some(n)) = self
             .mpn_sourced_txs
-            .get(&index)
+            .get(addr)
             .map(|it| it.iter().map(|tx| tx.nonce()).max())
         {
             Some(n + 1)

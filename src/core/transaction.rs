@@ -178,8 +178,8 @@ impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> MpnDeposit<H, S, ZS>
 where
     ZS::Pub: DeriveMpnAccountIndex,
 {
-    pub fn zk_address_index(&self) -> u64 {
-        self.zk_address.mpn_account_index()
+    pub fn zk_address_index(&self, log4_account_capacity: u8) -> u64 {
+        self.zk_address.mpn_account_index(log4_account_capacity)
     }
 }
 
@@ -187,8 +187,8 @@ impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> MpnWithdraw<H, S, ZS>
 where
     ZS::Pub: DeriveMpnAccountIndex,
 {
-    pub fn zk_address_index(&self) -> u64 {
-        self.zk_address.mpn_account_index()
+    pub fn zk_address_index(&self, log4_account_capacity: u8) -> u64 {
+        self.zk_address.mpn_account_index(log4_account_capacity)
     }
 }
 

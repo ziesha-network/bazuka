@@ -532,11 +532,11 @@ impl std::hash::Hash for MpnTransaction {
 }
 
 impl MpnTransaction {
-    pub fn src_index(&self) -> u64 {
-        self.src_pub_key.mpn_account_index()
+    pub fn src_index(&self, log4_account_capacity: u8) -> u64 {
+        self.src_pub_key.mpn_account_index(log4_account_capacity)
     }
-    pub fn dst_index(&self) -> u64 {
-        self.dst_pub_key.mpn_account_index()
+    pub fn dst_index(&self, log4_account_capacity: u8) -> u64 {
+        self.dst_pub_key.mpn_account_index(log4_account_capacity)
     }
     pub fn verify(&self) -> bool {
         jubjub::JubJub::<ZkMainHasher>::verify(&self.src_pub_key, self.hash(), &self.sig)
@@ -545,10 +545,11 @@ impl MpnTransaction {
         self.sig = jubjub::JubJub::<ZkMainHasher>::sign(sk, self.hash());
     }
     pub fn hash(&self) -> ZkScalar {
+        let dst_pub_decom = self.dst_pub_key.0.decompress();
         ZkMainHasher::hash(&[
             ZkScalar::from(self.nonce),
-            ZkScalar::from(self.src_index()),
-            ZkScalar::from(self.dst_index()),
+            ZkScalar::from(dst_pub_decom.0),
+            ZkScalar::from(dst_pub_decom.1),
             self.amount.token_id.into(),
             ZkScalar::from(self.amount.amount),
             self.fee.token_id.into(),

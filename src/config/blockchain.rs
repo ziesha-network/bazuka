@@ -194,6 +194,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         mpn_num_function_calls: 1,
         mpn_num_contract_deposits: 1,
         mpn_num_contract_withdraws: 1,
+        mpn_log4_account_capacity: MPN_LOG4_ACCOUNT_CAPACITY,
 
         minimum_pow_difficulty: min_diff,
 

@@ -394,6 +394,8 @@ async fn main() -> Result<(), NodeError> {
     }
 
     let mpn_contract_id = config::blockchain::get_blockchain_config().mpn_contract_id;
+    let mpn_log4_account_capacity =
+        config::blockchain::get_blockchain_config().mpn_log4_account_capacity;
 
     match opts {
         #[cfg(feature = "node")]
@@ -648,7 +650,7 @@ async fn main() -> Result<(), NodeError> {
                         let mpn_addr =MpnAddress{pub_key:tx_builder.get_zk_address()};
                         let pay =
                             tx_builder.deposit_mpn(memo.unwrap_or_default(),mpn_contract_id, mpn_addr.clone(), 0, new_nonce, Money{amount:initial,token_id:tkn}, Money{amount:fee,token_id:TokenId::Ziesha});
-                        wallet.add_mpn_index(mpn_addr.account_index());
+                        wallet.add_mpn_address(mpn_addr.clone());
                         wallet.add_deposit(pay.clone());
                         wallet.save(wallet_path).unwrap();
                         println!("{:#?}", client.transact_contract_deposit(pay).await?);
@@ -732,7 +734,9 @@ async fn main() -> Result<(), NodeError> {
                                             .account
                                             .nonce;
                                         let dst_acc = client
-                                            .get_mpn_account(to.account_index())
+                                            .get_mpn_account(
+                                                to.account_index(mpn_log4_account_capacity),
+                                            )
                                             .await?
                                             .account;
                                         let to_token_index = if let Some(ind) = dst_acc
@@ -787,7 +791,9 @@ async fn main() -> Result<(), NodeError> {
                                 try_join!(
                                     async move {
                                         let acc = client
-                                            .get_mpn_account(from.account_index())
+                                            .get_mpn_account(
+                                                from.account_index(mpn_log4_account_capacity),
+                                            )
                                             .await?
                                             .account;
                                         let token_index = if let Some(ind) = acc.find_token_index(
@@ -809,9 +815,8 @@ async fn main() -> Result<(), NodeError> {
                                         } else {
                                             panic!("Token not found in your account!");
                                         };
-                                        let new_nonce = wallet
-                                            .new_z_nonce(from.account_index())
-                                            .unwrap_or(acc.nonce);
+                                        let new_nonce =
+                                            wallet.new_z_nonce(&from).unwrap_or(acc.nonce);
                                         let pay = tx_builder.withdraw_mpn(
                                             memo.unwrap_or_default(),
                                             mpn_contract_id,
@@ -849,11 +854,15 @@ async fn main() -> Result<(), NodeError> {
                                             );
                                         }
                                         let acc = client
-                                            .get_mpn_account(from.account_index())
+                                            .get_mpn_account(
+                                                from.account_index(mpn_log4_account_capacity),
+                                            )
                                             .await?
                                             .account;
                                         let dst_acc = client
-                                            .get_mpn_account(to.account_index())
+                                            .get_mpn_account(
+                                                to.account_index(mpn_log4_account_capacity),
+                                            )
                                             .await?
                                             .account;
                                         let to_token_index = if let Some(ind) = dst_acc
@@ -885,9 +894,8 @@ async fn main() -> Result<(), NodeError> {
                                         } else {
                                             panic!("Token not found in your account!");
                                         };
-                                        let new_nonce = wallet
-                                            .new_z_nonce(from.account_index())
-                                            .unwrap_or(acc.nonce);
+                                        let new_nonce =
+                                            wallet.new_z_nonce(&from).unwrap_or(acc.nonce);
                                         let tx = tx_builder.create_mpn_transaction(
                                             token_index,
                                             to,
@@ -988,14 +996,17 @@ async fn main() -> Result<(), NodeError> {
 
                         println!();
 
-                        for (i, ind) in wallet.mpn_indices().into_iter().enumerate() {
+                        for (i, addr) in wallet.mpn_addresses().enumerate() {
                             println!(
                                 "{}",
                                 format!("MPN Account #{}\n---------", i).bright_green()
                             );
-                            let resp = client.get_mpn_account(ind).await.map(|resp| resp.account);
+                            let resp = client
+                                .get_mpn_account(addr.account_index(mpn_log4_account_capacity))
+                                .await
+                                .map(|resp| resp.account);
                             if let Ok(resp) = resp {
-                                let curr_z_nonce = wallet.new_z_nonce(ind);
+                                let curr_z_nonce = wallet.new_z_nonce(addr);
                                 if !resp.address.is_on_curve() {
                                     println!(
                                         "{}\t{}",
