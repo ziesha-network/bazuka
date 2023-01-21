@@ -41,7 +41,9 @@ where
 {
     type Err = ParseMpnAddressError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        s.parse().map_err(|_| ParseMpnAddressError::Invalid)
+        Self {
+            pub_key: s.parse().map_err(|_| ParseMpnAddressError::Invalid)?,
+        }
     }
 }
 
