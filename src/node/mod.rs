@@ -271,6 +271,19 @@ async fn node_service<B: Blockchain>(
                     .await?,
                 )?);
             }
+            (Method::POST, "/transact/zero") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::post_mpn_transaction(
+                        Arc::clone(&context),
+                        serde_json::from_slice::<
+                            crate::client::messages::PostJsonMpnTransactionRequest,
+                        >(&body_bytes)?
+                        .try_into()
+                        .unwrap(),
+                    )
+                    .await?,
+                )?);
+            }
             (Method::POST, "/bincode/transact/deposit") => {
                 *response.body_mut() = Body::from(bincode::serialize(
                     &api::post_mpn_deposit(

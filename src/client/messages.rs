@@ -1,11 +1,12 @@
 use crate::blockchain::ZkBlockchainPatch;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
-    Account, Amount, Block, ChainSourcedTx, ContractId, Header, MpnDeposit, MpnSourcedTx,
+    Account, Amount, Block, ChainSourcedTx, ContractId, Header, Money, MpnDeposit, MpnSourcedTx,
     MpnWithdraw, TransactionAndDelta,
 };
 use crate::zk;
 use std::collections::HashMap;
+use thiserror::Error;
 
 use super::{
     explorer::{ExplorerBlock, ExplorerMpnAccount},
@@ -251,4 +252,83 @@ pub struct GetBalanceResponse {
     pub balance: Amount,
     pub name: String,
     pub symbol: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct JsonMpnTransaction {
+    pub nonce: u64,
+    pub src_pub_key: String,
+    pub dst_pub_key: String,
+
+    pub src_token_index: u64,
+    pub src_fee_token_index: u64,
+    pub dst_token_index: u64,
+
+    pub amount_token_id: String,
+    pub amount: Amount,
+    pub fee_token_id: String,
+    pub fee: Amount,
+
+    pub sig: String,
+}
+
+#[derive(Error, Debug)]
+pub enum RequestDataError {
+    #[error("invalid request data")]
+    Invalid,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PostJsonMpnTransactionRequest {
+    pub tx: JsonMpnTransaction,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct PostJsonMpnTransactionResponse {}
+
+impl TryInto<PostMpnTransactionRequest> for PostJsonMpnTransactionRequest {
+    type Error = RequestDataError;
+    fn try_into(self) -> Result<PostMpnTransactionRequest, Self::Error> {
+        Ok(PostMpnTransactionRequest {
+            tx: zk::MpnTransaction {
+                nonce: self.tx.nonce,
+                src_pub_key: self
+                    .tx
+                    .src_pub_key
+                    .parse()
+                    .map_err(|_| Self::Error::Invalid)?,
+                dst_pub_key: self
+                    .tx
+                    .dst_pub_key
+                    .parse()
+                    .map_err(|_| Self::Error::Invalid)?,
+
+                src_token_index: self.tx.src_token_index,
+                src_fee_token_index: self.tx.src_fee_token_index,
+                dst_token_index: self.tx.dst_token_index,
+
+                amount: Money {
+                    token_id: self
+                        .tx
+                        .amount_token_id
+                        .parse()
+                        .map_err(|_| Self::Error::Invalid)?,
+                    amount: self.tx.amount,
+                },
+                fee: Money {
+                    token_id: self
+                        .tx
+                        .fee_token_id
+                        .parse()
+                        .map_err(|_| Self::Error::Invalid)?,
+                    amount: self.tx.fee,
+                },
+
+                sig: bincode::deserialize(
+                    &hex::decode(&self.tx.sig).map_err(|_| Self::Error::Invalid)?,
+                )
+                .map_err(|_| Self::Error::Invalid)?,
+            },
+        })
+    }
 }
