@@ -125,6 +125,16 @@ async fn node_service<B: Blockchain>(
         }
 
         let method = req.method().clone();
+
+        if method == Method::OPTIONS {
+            return Ok(Response::builder()
+                .status(StatusCode::OK)
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Headers", "*")
+                .header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+                .body(Body::default())?);
+        }
+
         let path = req.uri().path().to_string();
         let qs = req.uri().query().unwrap_or("").to_string();
 
@@ -176,15 +186,6 @@ async fn node_service<B: Blockchain>(
         }
 
         match (method, &path[..]) {
-            (Method::OPTIONS, _) => {
-                response = Response::builder()
-                    .status(StatusCode::OK)
-                    .header("Access-Control-Allow-Origin", "*")
-                    .header("Access-Control-Allow-Headers", "*")
-                    .header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-                    .body(Body::default())?;
-            }
-
             // Miner will call this to fetch new PoW work.
             (Method::GET, "/miner/puzzle") => {
                 *response.body_mut() = Body::from(serde_json::to_vec(
