@@ -103,7 +103,9 @@ async fn node_service<B: Blockchain>(
     match async {
         let is_miner = fetch_miner_token(&req)? == context.read().await.miner_token;
 
-        let mut response = Response::new(Body::empty());
+        let mut response = Response::builder()
+            .header("Access-Control-Allow-Origin", "*")
+            .body(Body::default())?;
 
         if let Some(client) = client {
             if !is_miner {
