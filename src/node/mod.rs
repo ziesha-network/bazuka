@@ -278,8 +278,7 @@ async fn node_service<B: Blockchain>(
                         serde_json::from_slice::<
                             crate::client::messages::PostJsonMpnTransactionRequest,
                         >(&body_bytes)?
-                        .try_into()
-                        .unwrap(),
+                        .try_into()?,
                     )
                     .await?,
                 )?);

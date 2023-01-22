@@ -273,8 +273,8 @@ pub struct JsonMpnTransaction {
 }
 
 #[derive(Error, Debug)]
-pub enum RequestDataError {
-    #[error("invalid request data")]
+pub enum InputError {
+    #[error("invalid input")]
     Invalid,
 }
 
@@ -287,7 +287,7 @@ pub struct PostJsonMpnTransactionRequest {
 pub struct PostJsonMpnTransactionResponse {}
 
 impl TryInto<PostMpnTransactionRequest> for PostJsonMpnTransactionRequest {
-    type Error = RequestDataError;
+    type Error = InputError;
     fn try_into(self) -> Result<PostMpnTransactionRequest, Self::Error> {
         Ok(PostMpnTransactionRequest {
             tx: zk::MpnTransaction {

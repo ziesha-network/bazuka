@@ -1,4 +1,4 @@
-use super::messages::{GetStatesRequest, GetStatesResponse};
+use super::messages::{GetStatesRequest, GetStatesResponse, InputError};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
 use crate::core::{hash::Hash, Hasher};
@@ -11,8 +11,8 @@ pub async fn get_states<B: Blockchain>(
 ) -> Result<GetStatesResponse, NodeError> {
     let context = context.read().await;
     let to =
-        <Hasher as Hash>::Output::try_from(hex::decode(req.to).map_err(|_| NodeError::InputError)?)
-            .map_err(|_| NodeError::InputError)?;
+        <Hasher as Hash>::Output::try_from(hex::decode(req.to).map_err(|_| InputError::Invalid)?)
+            .map_err(|_| InputError::Invalid)?;
     let patch = context
         .blockchain
         .generate_state_patch(req.outdated_heights, to)?;

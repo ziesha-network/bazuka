@@ -1,3 +1,4 @@
+use super::messages::InputError;
 use crate::blockchain::BlockchainError;
 use crate::zk::ZkError;
 use thiserror::Error;
@@ -36,8 +37,8 @@ pub enum NodeError {
     TimeoutError(#[from] tokio::time::error::Elapsed),
     #[error("http body size limit error")]
     SizeLimitError,
-    #[error("bad input")]
-    InputError,
+    #[error("bad input: {0}")]
+    InputError(#[from] InputError),
     #[error("signature (authorization) header is invalid")]
     InvalidSignatureHeader,
     #[error("miner-token header is invalid")]
