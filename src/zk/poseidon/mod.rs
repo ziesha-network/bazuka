@@ -8,7 +8,6 @@ use std::ops::MulAssign;
 #[derive(Debug, Clone, PartialEq)]
 struct PoseidonState {
     constants_offset: usize,
-    present_elements: u64,
     elements: Vec<ZkScalar>,
 }
 
@@ -17,7 +16,6 @@ impl PoseidonState {
         let mut elements = elems.to_vec();
         elements.insert(0, ZkScalar::ZERO);
         Self {
-            present_elements: 0u64,
             constants_offset: 0,
             elements,
         }
@@ -26,7 +24,7 @@ impl PoseidonState {
     pub fn hash(&mut self) -> ZkScalar {
         let params = PoseidonParams::for_width(self.elements.len()).unwrap();
 
-        self.elements[0] = ZkScalar::from(self.present_elements);
+        self.elements[0] = ZkScalar::ZERO;
 
         for _ in 0..params.full_rounds / 2 {
             self.full_round(params);
