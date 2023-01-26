@@ -196,6 +196,29 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn next_difficulty(&self) -> Result<Difficulty, BlockchainError> {
         let height = self.get_height()?;
+
+        const HEADER_COUNT: u64 = 720;
+        const THROW_COUNT: u64 = 60;
+        let mut last_header: Option<Header> = None;
+        let mut block_times = Vec::new();
+        for i in height.saturating_sub(HEADER_COUNT)..height {
+            let header = self.get_header(i)?;
+            if let Some(last_header) = &mut last_header {
+                let block_time = header
+                    .proof_of_work
+                    .timestamp
+                    .saturating_sub(last_header.proof_of_work.timestamp);
+                block_times.push(block_time);
+                *last_header = header;
+            } else {
+                last_header = Some(header);
+            }
+        }
+        block_times.sort_unstable();
+        block_times =
+            block_times[THROW_COUNT as usize..(HEADER_COUNT - THROW_COUNT) as usize].to_vec();
+        let avg_block_time = block_times.iter().copied().sum::<u32>() / block_times.len() as u32;
+
         let last_block = self.get_tip()?;
         if height % self.config.difficulty_calc_interval == 0 {
             let prev_block = self.get_header(height - self.config.difficulty_calc_interval)?;
