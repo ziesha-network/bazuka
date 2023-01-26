@@ -120,14 +120,11 @@ async fn route(
 #[derive(Clone)]
 pub enum Action {
     Drop,
-    Delay(Duration),
-    Redirect(u16),
 }
 
 #[derive(Clone)]
 pub enum Endpoint {
     Any,
-    Peer(u16),
 }
 
 #[derive(Clone)]
