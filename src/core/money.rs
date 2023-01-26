@@ -70,9 +70,9 @@ impl FromStr for Amount {
     }
 }
 
-impl Into<u64> for Amount {
-    fn into(self) -> u64 {
-        self.0
+impl From<Amount> for u64 {
+    fn from(a: Amount) -> u64 {
+        a.0
     }
 }
 
