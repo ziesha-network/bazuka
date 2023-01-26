@@ -15,7 +15,7 @@ pub use state::*;
 pub mod groth16;
 pub mod poseidon;
 
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct MpnAccount {
     pub nonce: u64,
     pub address: jubjub::PointAffine,
@@ -211,7 +211,7 @@ impl std::str::FromStr for ZkScalar {
         let mut ret = Self::ZERO.to_repr();
         ret.as_mut().copy_from_slice(&bytes);
         let opt: Option<Self> = Self::from_repr(ret).into();
-        Ok(opt.ok_or(Self::Err::Invalid)?)
+        opt.ok_or(Self::Err::Invalid)
     }
 }
 
@@ -230,6 +230,16 @@ impl From<Amount> for ZkScalar {
     fn from(m: Amount) -> Self {
         let as_u64: u64 = m.into();
         Self::from(as_u64)
+    }
+}
+
+impl From<TokenId> for ZkScalar {
+    fn from(m: TokenId) -> Self {
+        match m {
+            TokenId::Null => Self::ZERO,
+            TokenId::Ziesha => Self::ONE,
+            TokenId::Custom(id) => id,
+        }
     }
 }
 
@@ -261,7 +271,7 @@ pub enum ZkStatePatch {
     Delta(ZkDeltaPairs),
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ZkStateModel {
     // Allocate 1
     Scalar,
@@ -355,7 +365,7 @@ impl ZkStateModel {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct ZkDataLocator(pub Vec<u64>);
 
 impl ZkDataLocator {
@@ -399,12 +409,10 @@ impl std::str::FromStr for ZkDataLocator {
     }
 }
 
-impl Eq for ZkDataLocator {}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ZkDataPairs(pub HashMap<ZkDataLocator, ZkScalar>);
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ZkDeltaPairs(pub HashMap<ZkDataLocator, Option<ZkScalar>>);
 
 impl ZkDataPairs {
@@ -432,7 +440,7 @@ impl ZkHasher for PoseidonHasher {
 }
 
 // Full state of a contract
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ZkState {
     pub data: ZkDataPairs,
     pub rollbacks: Vec<ZkDeltaPairs>,
@@ -460,7 +468,7 @@ impl ZkState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct ZkCompressedState {
     pub state_hash: ZkScalar,
     pub state_size: u64,
@@ -484,20 +492,20 @@ impl ZkCompressedState {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ZkVerifierKey {
     Groth16(Box<groth16::Groth16VerifyingKey>),
     #[cfg(test)]
     Dummy,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ZkMultiInputVerifierKey {
     pub verifier_key: ZkVerifierKey,
     pub log4_payment_capacity: u8,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ZkSingleInputVerifierKey {
     pub verifier_key: ZkVerifierKey,
 }
@@ -548,8 +556,8 @@ impl MpnTransaction {
         let dst_pub_decom = self.dst_pub_key.0.decompress();
         ZkMainHasher::hash(&[
             ZkScalar::from(self.nonce),
-            ZkScalar::from(dst_pub_decom.0),
-            ZkScalar::from(dst_pub_decom.1),
+            dst_pub_decom.0,
+            dst_pub_decom.1,
             self.amount.token_id.into(),
             ZkScalar::from(self.amount.amount),
             self.fee.token_id.into(),
@@ -558,7 +566,7 @@ impl MpnTransaction {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ZkContract {
     pub initial_state: ZkCompressedState, // 32byte
     pub state_model: ZkStateModel,
@@ -567,7 +575,7 @@ pub struct ZkContract {
     pub functions: Vec<ZkSingleInputVerifierKey>,         // Vec<VK> f(prev_state) -> next_state
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ZkProof {
     Groth16(Box<groth16::Groth16Proof>),
     #[cfg(test)]

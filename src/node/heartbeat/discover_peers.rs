@@ -24,7 +24,7 @@ pub async fn discover_peers<B: Blockchain>(
         Result<(HandshakeResponse, Duration), NodeError>,
     )> = http::group_request(&peer_addresses, move |peer| {
         let handshake_req = handshake_req.clone();
-        let peer = peer.clone();
+        let peer = *peer;
         let net = net.clone();
         async move {
             let timer = Instant::now();
@@ -32,7 +32,7 @@ pub async fn discover_peers<B: Blockchain>(
                 .json_post::<HandshakeRequest, HandshakeResponse>(
                     format!("http://{}/peers", peer),
                     handshake_req,
-                    Limit::default().size(1 * KB).time(1 * SECOND),
+                    Limit::default().size(KB).time(SECOND),
                 )
                 .await;
             result.map(|r| (r, timer.elapsed()))

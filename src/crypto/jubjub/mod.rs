@@ -45,7 +45,7 @@ impl From<PrivateKey> for PublicKey {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct Signature {
     pub r: PointAffine,
     pub s: ZkScalar,

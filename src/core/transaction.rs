@@ -86,15 +86,6 @@ impl From<ZkScalar> for TokenId {
         }
     }
 }
-impl Into<ZkScalar> for TokenId {
-    fn into(self) -> ZkScalar {
-        match self {
-            TokenId::Null => ZkScalar::ZERO,
-            TokenId::Ziesha => ZkScalar::ONE,
-            TokenId::Custom(id) => id,
-        }
-    }
-}
 
 impl std::fmt::Display for TokenId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -133,7 +124,7 @@ impl<H: Hash> FromStr for ContractId<H> {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
     pub memo: String,
     pub contract_id: ContractId<H>,
@@ -146,7 +137,7 @@ pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
     pub sig: Option<S::Sig>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
     pub memo: String,
     pub contract_id: ContractId<H>,
@@ -213,13 +204,13 @@ impl<H: Hash, S: SignatureScheme> ContractWithdraw<H, S> {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct ContractAccount {
     pub height: u64,
     pub compressed_state: ZkCompressedState,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
     // Proof for DepositCircuit[circuit_id](curr_state, next_state, hash(entries))
     Deposit {
@@ -244,13 +235,13 @@ pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
     },
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct RegularSendEntry<S: SignatureScheme> {
     pub dst: S::Pub,
     pub amount: Money,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Token<S: SignatureScheme> {
     pub name: String,
     pub symbol: String,
@@ -279,7 +270,7 @@ impl<S: SignatureScheme> Token<S> {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum TokenUpdate<S: SignatureScheme> {
     Mint { amount: Amount },
     ChangeMinter { minter: S::Pub },
@@ -287,7 +278,7 @@ pub enum TokenUpdate<S: SignatureScheme> {
 
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum TransactionData<H: Hash, S: SignatureScheme> {
     RegularSend {
         entries: Vec<RegularSendEntry<S>>,
@@ -311,7 +302,7 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
     },
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Transaction<H: Hash, S: SignatureScheme> {
     pub src: Option<S::Pub>, // None is reward treasury!
     pub nonce: u32,

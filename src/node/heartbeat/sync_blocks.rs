@@ -114,7 +114,7 @@ pub async fn sync_blocks<B: Blockchain>(
                             since: index,
                             count: 1,
                         },
-                        Limit::default().size(1 * KB).time(3 * SECOND),
+                        Limit::default().size(KB).time(3 * SECOND),
                     )
                     .await
                 {

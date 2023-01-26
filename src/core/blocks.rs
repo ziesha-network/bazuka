@@ -7,7 +7,7 @@ use super::hash::Hash;
 use super::header::Header;
 use super::transaction::Transaction;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Block<H: Hash, S: SignatureScheme> {
     pub header: Header<H>,
     pub body: Vec<Transaction<H, S>>,

@@ -56,6 +56,7 @@ impl BazukaConfig {
 }
 
 #[derive(StructOpt)]
+#[allow(clippy::large_enum_variant)]
 #[cfg(feature = "client")]
 enum WalletOptions {
     /// Add a new token to the wallet
@@ -115,6 +116,7 @@ enum WalletOptions {
 }
 
 #[derive(StructOpt)]
+#[allow(clippy::large_enum_variant)]
 #[cfg(feature = "node")]
 enum NodeCliOptions {
     /// Start the node
@@ -129,6 +131,7 @@ enum NodeCliOptions {
 }
 
 #[derive(StructOpt)]
+#[allow(clippy::large_enum_variant)]
 #[cfg(feature = "node")]
 enum ChainCliOptions {
     /// Rollback the blockchain
@@ -140,6 +143,7 @@ enum ChainCliOptions {
 }
 
 #[derive(StructOpt)]
+#[allow(clippy::large_enum_variant)]
 #[cfg(feature = "client")]
 #[structopt(name = "Bazuka!", about = "Node software for Ziesha Network")]
 enum CliOptions {
@@ -967,7 +971,7 @@ async fn main() -> Result<(), NodeError> {
                         );
                         if let Ok(resp) = acc {
                             for (i, id) in wallet.get_tokens().iter().enumerate() {
-                                if let Some(inf) = token_balances.get(&id) {
+                                if let Some(inf) = token_balances.get(id) {
                                     println!(
                                         "{}\t{}{}",
                                         format!("#{} <{}>:", i, inf.name).bright_yellow(),

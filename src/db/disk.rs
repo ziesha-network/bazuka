@@ -35,7 +35,7 @@ impl ReadOnlyLevelDbKvStore {
         options.cache = Some(Cache::new(cache_size));
         Ok(ReadOnlyLevelDbKvStore {
             db: Some(Database::open(&link_dir, options)?),
-            mirror_path: link_dir.into(),
+            mirror_path: link_dir,
         })
     }
     pub fn snapshot(&self) -> LevelDbSnapshot {

@@ -142,7 +142,9 @@ async fn node_service<B: Blockchain>(
 
         log::info!(
             "{} -> {} {}",
-            client.map(|c| c.to_string()).unwrap_or("UNKNOWN".into()),
+            client
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "UNKNOWN".into()),
             method,
             req.uri()
         );
@@ -153,7 +155,7 @@ async fn node_service<B: Blockchain>(
         } else {
             None
         }
-        .unwrap_or("mainnet".into());
+        .unwrap_or_else(|| "mainnet".into());
 
         let body = req.into_body();
 
@@ -392,7 +394,9 @@ async fn node_service<B: Blockchain>(
             }
             log::warn!(
                 "{} -> Error: {}",
-                client.map(|c| c.to_string()).unwrap_or("UNKNOWN".into()),
+                client
+                    .map(|c| c.to_string())
+                    .unwrap_or_else(|| "UNKNOWN".into()),
                 e
             );
             Err(e)
@@ -417,12 +421,12 @@ pub async fn node_create<B: Blockchain>(
     miner_token: Option<String>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
-        miner_token: miner_token,
+        miner_token,
         firewall,
         opts: opts.clone(),
         network: network.into(),
         social_profiles,
-        address: address.clone(),
+        address,
         shutdown: false,
         outgoing: Arc::new(OutgoingSender {
             network: network.into(),

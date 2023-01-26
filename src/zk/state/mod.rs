@@ -63,7 +63,7 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
         }
     }
     pub fn batch_set(&mut self, delta: &ZkDeltaPairs) -> Result<(), StateManagerError> {
-        let height = KvStoreStateManager::<H>::height_of(&mut self.db, self.contract_id)?;
+        let height = KvStoreStateManager::<H>::height_of(&self.db, self.contract_id)?;
         KvStoreStateManager::<H>::update_contract(
             &mut self.db,
             self.contract_id,
@@ -98,9 +98,11 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             .map(|i| Self::get_data(db, mpn_contract_id, &ZkDataLocator(vec![index, i as u64])))
             .collect::<Result<Vec<ZkScalar>, StateManagerError>>()?;
         let mut token_indices = HashSet::new();
-        for (k, _) in db.pairs(
-            keys::local_value(&mpn_contract_id, &ZkDataLocator(vec![index, 3]), true).into(),
-        )? {
+        for (k, _) in db.pairs(keys::local_value(
+            &mpn_contract_id,
+            &ZkDataLocator(vec![index, 3]),
+            true,
+        ))? {
             let loc = ZkDataLocator::from_str(k.0.split('-').nth(3).unwrap())?;
             if loc.0.len() == 4 {
                 token_indices.insert(loc.0[2]);
@@ -409,7 +411,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         let mut rollback_results = Vec::new();
         let mut rollback_ops = Vec::new();
         let mut rollback_fork = fork.mirror();
-        let mut rollback_root = root.clone();
+        let mut rollback_root = root;
 
         for (i, (rollback, expected)) in state
             .rollbacks
@@ -474,7 +476,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             ),
             WriteOp::Put(keys::local_height(&id), target_height.into()),
         ])?;
-        if target_height - 1 >= MAX_ROLLBACKS {
+        if target_height > MAX_ROLLBACKS {
             fork.update(&[WriteOp::Remove(keys::local_rollback_to_height(
                 &id,
                 target_height - 1 - MAX_ROLLBACKS,
@@ -600,7 +602,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         Ok(
             match db.get(keys::local_value(
                 &cid,
-                &locator,
+                locator,
                 sub_type == ZkStateModel::Scalar,
             ))? {
                 Some(b) => b.try_into()?,

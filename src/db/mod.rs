@@ -53,7 +53,7 @@ impl StringKey {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Blob(Vec<u8>);
 
 impl std::fmt::Display for Blob {
@@ -159,7 +159,7 @@ impl From<&str> for StringKey {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum WriteOp {
     Remove(StringKey),
     Put(StringKey, Blob),

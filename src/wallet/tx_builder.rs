@@ -39,7 +39,7 @@ impl TxBuilder {
         self.zk_address.clone()
     }
     pub fn sign(&self, bytes: &[u8]) -> <Signer as SignatureScheme>::Sig {
-        Signer::sign(&self.private_key, &bytes)
+        Signer::sign(&self.private_key, bytes)
     }
     pub fn sign_tx(&self, tx: &mut Transaction) {
         let bytes = bincode::serialize(&tx).unwrap();
@@ -219,8 +219,8 @@ impl TxBuilder {
         calldata_builder
             .batch_set(&zk::ZkDeltaPairs(
                 [
-                    (zk::ZkDataLocator(vec![0]), Some(zk::ZkScalar::from(pk.0))),
-                    (zk::ZkDataLocator(vec![1]), Some(zk::ZkScalar::from(pk.1))),
+                    (zk::ZkDataLocator(vec![0]), Some(pk.0)),
+                    (zk::ZkDataLocator(vec![1]), Some(pk.1)),
                 ]
                 .into(),
             ))
@@ -276,20 +276,14 @@ impl TxBuilder {
         calldata_builder
             .batch_set(&zk::ZkDeltaPairs(
                 [
-                    (zk::ZkDataLocator(vec![0]), Some(zk::ZkScalar::from(pk.0))),
-                    (zk::ZkDataLocator(vec![1]), Some(zk::ZkScalar::from(pk.1))),
+                    (zk::ZkDataLocator(vec![0]), Some(pk.0)),
+                    (zk::ZkDataLocator(vec![1]), Some(pk.1)),
                     (
                         zk::ZkDataLocator(vec![2]),
                         Some(zk::ZkScalar::from(nonce as u64)),
                     ),
-                    (
-                        zk::ZkDataLocator(vec![3]),
-                        Some(zk::ZkScalar::from(sig.r.0)),
-                    ),
-                    (
-                        zk::ZkDataLocator(vec![4]),
-                        Some(zk::ZkScalar::from(sig.r.1)),
-                    ),
+                    (zk::ZkDataLocator(vec![3]), Some(sig.r.0)),
+                    (zk::ZkDataLocator(vec![4]), Some(sig.r.1)),
                     (zk::ZkDataLocator(vec![5]), Some(sig.s)),
                 ]
                 .into(),

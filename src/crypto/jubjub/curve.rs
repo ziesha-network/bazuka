@@ -13,7 +13,7 @@ pub struct PointCompressed(pub ZkScalar, pub bool);
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default, Eq, Hash)]
 pub struct PointAffine(pub ZkScalar, pub ZkScalar);
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PointProjective(pub ZkScalar, pub ZkScalar, pub ZkScalar);
 
 impl AddAssign<&PointAffine> for PointAffine {

@@ -38,10 +38,10 @@ fn read_constants(line: &str) -> Vec<ZkScalar> {
 
 fn parse_params(source: &str) -> PoseidonParams {
     let lines = source.lines().collect::<Vec<_>>();
-    let opts = lines[0].split(",").map(|s| s.trim()).collect::<Vec<_>>();
-    let capacity: usize = opts[1].split("=").collect::<Vec<_>>()[1].parse().unwrap();
-    let full_rounds: usize = opts[4].split("=").collect::<Vec<_>>()[1].parse().unwrap();
-    let partial_rounds: usize = opts[5].split("=").collect::<Vec<_>>()[1].parse().unwrap();
+    let opts = lines[0].split(',').map(|s| s.trim()).collect::<Vec<_>>();
+    let capacity: usize = opts[1].split('=').collect::<Vec<_>>()[1].parse().unwrap();
+    let full_rounds: usize = opts[4].split('=').collect::<Vec<_>>()[1].parse().unwrap();
+    let partial_rounds: usize = opts[5].split('=').collect::<Vec<_>>()[1].parse().unwrap();
     let round_constants = read_constants(lines[3]);
     let mds_constants = read_constants(lines[15])
         .chunks(capacity)

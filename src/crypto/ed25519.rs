@@ -42,7 +42,7 @@ impl From<PrivateKey> for PublicKey {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Signature(pub ed25519_dalek::Signature);
 
 impl<H: Hash> SignatureScheme for Ed25519<H> {

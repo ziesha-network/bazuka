@@ -34,7 +34,7 @@ pub async fn post_miner_solution<B: Blockchain>(
                         block: draft.block.clone(),
                         patch: draft.patch.clone(),
                     },
-                    Limit::default().size(1 * KB).time(3 * SECOND),
+                    Limit::default().size(KB).time(3 * SECOND),
                 )
             })
             .await;

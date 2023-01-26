@@ -19,7 +19,7 @@ pub async fn get_balance<B: Blockchain>(
         balance: context
             .blockchain
             .get_balance(req.address.parse()?, token_id)?,
-        name: tkn.name.clone(),
-        symbol: tkn.symbol.clone(),
+        name: tkn.name,
+        symbol: tkn.symbol,
     })
 }

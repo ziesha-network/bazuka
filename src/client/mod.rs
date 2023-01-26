@@ -44,7 +44,7 @@ impl std::fmt::Display for PeerAddress {
 impl FromStr for PeerAddress {
     type Err = std::net::AddrParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        SocketAddr::from_str(s).map(|s| Self(s))
+        SocketAddr::from_str(s).map(Self)
     }
 }
 

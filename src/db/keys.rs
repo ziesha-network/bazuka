@@ -87,11 +87,11 @@ pub fn local_rollback_to_height(contract_id: &ContractId, height: u64) -> String
 }
 
 pub fn local_scalar_value_prefix(contract_id: &ContractId) -> String {
-    format!("{}-S", local_prefix(contract_id),).into()
+    format!("{}-S", local_prefix(contract_id))
 }
 
 pub fn local_non_scalar_value_prefix(contract_id: &ContractId) -> String {
-    format!("{}", local_prefix(contract_id),).into()
+    local_prefix(contract_id)
 }
 
 pub fn local_value(

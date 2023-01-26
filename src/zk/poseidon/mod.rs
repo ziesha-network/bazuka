@@ -62,9 +62,9 @@ impl PoseidonState {
 
     fn product_mds(&mut self, params: &PoseidonParams) {
         let mut result = vec![ZkScalar::from(0u64); self.elements.len()];
-        for j in 0..self.elements.len() {
+        for (j, res) in result.iter_mut().enumerate() {
             for k in 0..self.elements.len() {
-                result[j] += params.mds_constants[j][k] * self.elements[k];
+                *res += params.mds_constants[j][k] * self.elements[k];
             }
         }
         self.elements.copy_from_slice(&result);

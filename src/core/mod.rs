@@ -107,6 +107,7 @@ impl ChainSourcedTx {
 }
 
 // Transactions initiated from MPN accounts
+#[allow(clippy::large_enum_variant)]
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub enum MpnSourcedTx {
     MpnTransaction(MpnTransaction),

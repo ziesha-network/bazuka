@@ -181,7 +181,7 @@ pub struct ExplorerCompressedState {
 
 impl From<&ZkCompressedState> for ExplorerCompressedState {
     fn from(obj: &ZkCompressedState) -> Self {
-        Self { state: obj.clone() }
+        Self { state: *obj }
     }
 }
 
@@ -214,7 +214,7 @@ impl From<&ContractDeposit> for ExplorerContractDeposit {
             memo: obj.memo.clone(),
             src: obj.src.to_string(),
             contract_id: obj.contract_id.to_string(),
-            deposit_circuit_id: obj.deposit_circuit_id.into(),
+            deposit_circuit_id: obj.deposit_circuit_id,
             nonce: obj.nonce,
             amount: obj.amount.into(),
             fee: obj.fee.into(),
@@ -229,7 +229,7 @@ impl From<&ContractWithdraw> for ExplorerContractWithdraw {
             memo: obj.memo.clone(),
             dst: obj.dst.to_string(),
             contract_id: obj.contract_id.to_string(),
-            withdraw_circuit_id: obj.withdraw_circuit_id.into(),
+            withdraw_circuit_id: obj.withdraw_circuit_id,
             amount: obj.amount.into(),
             fee: obj.fee.into(),
         }
@@ -358,7 +358,7 @@ impl From<&TransactionData> for ExplorerTransactionData {
             TransactionData::RegularSend { entries } => Self::RegularSend {
                 entries: entries
                     .iter()
-                    .map(|e| (e.dst.to_string(), e.amount.clone().into()))
+                    .map(|e| (e.dst.to_string(), e.amount.into()))
                     .collect(),
             },
             TransactionData::CreateContract { contract } => Self::CreateContract {

@@ -11,7 +11,7 @@ pub async fn get_zero_mempool<B: Blockchain>(
     _req: GetZeroMempoolRequest,
 ) -> Result<GetZeroMempoolResponse, NodeError> {
     let mut context = context.write().await;
-    if context.blockchain.get_outdated_heights()?.len() > 0 {
+    if !context.blockchain.get_outdated_heights()?.is_empty() {
         Err(NodeError::StatesOutdated)
     } else {
         context.refresh()?;

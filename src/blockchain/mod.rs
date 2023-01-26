@@ -171,11 +171,10 @@ impl<K: KvStore> KvStoreChain<K> {
         if chain.get_height()? == 0 {
             chain.apply_block(&config.genesis.block, true)?;
             chain.update_states(&config.genesis.patch)?;
-        } else {
-            if config.genesis.block != chain.get_block(0)? {
-                return Err(BlockchainError::DifferentGenesis);
-            }
+        } else if config.genesis.block != chain.get_block(0)? {
+            return Err(BlockchainError::DifferentGenesis);
         }
+
         Ok(chain)
     }
 
@@ -309,8 +308,8 @@ impl<K: KvStore> KvStoreChain<K> {
                 .get_mpn_account(deposit.zk_address_index(self.config.mpn_log4_account_capacity))?;
 
             let calldata = CoreZkHasher::hash(&[
-                zk::ZkScalar::from(deposit.zk_address.decompress().0),
-                zk::ZkScalar::from(deposit.zk_address.decompress().1),
+                deposit.zk_address.decompress().0,
+                deposit.zk_address.decompress().1,
             ]);
             if deposit.payment.calldata != calldata
                 || deposit.zk_token_index >= 64
@@ -330,12 +329,12 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut new_acc = zk::MpnAccount {
                 address: deposit.zk_address.0.decompress(),
                 nonce: dst.nonce,
-                tokens: dst.tokens.clone(),
+                tokens: dst.tokens,
             };
             new_acc
                 .tokens
                 .entry(deposit.zk_token_index)
-                .or_insert(Money::new(deposit.payment.amount.token_id, 0))
+                .or_insert_with(|| Money::new(deposit.payment.amount.token_id, 0))
                 .amount += deposit.payment.amount.amount;
 
             zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
@@ -358,12 +357,12 @@ impl<K: KvStore> KvStoreChain<K> {
                 withdraw.zk_address_index(self.config.mpn_log4_account_capacity),
             )?;
             let calldata = CoreZkHasher::hash(&[
-                zk::ZkScalar::from(withdraw.zk_address.decompress().0),
-                zk::ZkScalar::from(withdraw.zk_address.decompress().1),
+                withdraw.zk_address.decompress().0,
+                withdraw.zk_address.decompress().1,
                 zk::ZkScalar::from(withdraw.zk_nonce),
-                zk::ZkScalar::from(withdraw.zk_sig.r.0),
-                zk::ZkScalar::from(withdraw.zk_sig.r.1),
-                zk::ZkScalar::from(withdraw.zk_sig.s),
+                withdraw.zk_sig.r.0,
+                withdraw.zk_sig.r.1,
+                withdraw.zk_sig.s,
             ]);
             let msg = CoreZkHasher::hash(&[
                 withdraw.payment.fingerprint(),
@@ -380,7 +379,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
             let mut size_diff = 0;
             let mut new_acc = zk::MpnAccount {
-                address: src.address.clone(),
+                address: src.address,
                 tokens: src.tokens.clone(),
                 nonce: src.nonce + 1,
             };
@@ -432,7 +431,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 contract_balance -= withdraw.amount.amount + withdraw.fee.amount;
                 chain.database.update(&[WriteOp::Put(
                     keys::contract_balance(&withdraw.contract_id, withdraw.amount.token_id),
-                    contract_balance.clone().into(),
+                    contract_balance.into(),
                 )])?;
             } else {
                 let mut contract_balance =
@@ -450,11 +449,11 @@ impl<K: KvStore> KvStoreChain<K> {
                 contract_balance -= withdraw.amount.amount;
                 chain.database.update(&[WriteOp::Put(
                     keys::contract_balance(&withdraw.contract_id, withdraw.amount.token_id),
-                    contract_balance.clone().into(),
+                    contract_balance.into(),
                 )])?;
                 chain.database.update(&[WriteOp::Put(
                     keys::contract_balance(&withdraw.contract_id, withdraw.fee.token_id),
-                    contract_fee_balance.clone().into(),
+                    contract_fee_balance.into(),
                 )])?;
             }
 
@@ -492,7 +491,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
             let mut size_diff = 0;
             let mut new_src_acc = zk::MpnAccount {
-                address: src.address.clone(),
+                address: src.address,
                 tokens: src.tokens.clone(),
                 nonce: src.nonce + 1,
             };
@@ -506,7 +505,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 let dst_money = new_dst_acc
                     .tokens
                     .entry(tx.dst_token_index)
-                    .or_insert(Money::new(src_money.token_id, 0));
+                    .or_insert_with(|| Money::new(src_money.token_id, 0));
                 if src_money.token_id == dst_money.token_id
                     && src_money.token_id == tx.amount.token_id
                 {
@@ -637,7 +636,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                         bal += *amount;
                                         token.supply += *amount;
                                         chain.database.update(&[WriteOp::Put(
-                                            keys::token(&token_id),
+                                            keys::token(token_id),
                                             (&token).into(),
                                         )])?;
                                         chain.database.update(&[WriteOp::Put(
@@ -648,7 +647,7 @@ impl<K: KvStore> KvStoreChain<K> {
                                     TokenUpdate::ChangeMinter { minter } => {
                                         token.minter = Some(minter.clone());
                                         chain.database.update(&[WriteOp::Put(
-                                            keys::token(&token_id),
+                                            keys::token(token_id),
                                             (&token).into(),
                                         )])?;
                                     }
@@ -1773,7 +1772,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         }
                     }
                     ChainSourcedTx::MpnDeposit(mpn_deposit) => {
-                        if let Err(e) = chain.apply_mpn_deposit(&mpn_deposit) {
+                        if let Err(e) = chain.apply_mpn_deposit(mpn_deposit) {
                             log::info!("Rejecting mpn-deposit: {}", e);
                             mempool.remove(&tx);
                         }
@@ -1795,13 +1794,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             for tx in txs {
                 match &tx {
                     MpnSourcedTx::MpnTransaction(mpn_tx) => {
-                        if let Err(e) = chain.apply_zero_tx(&mpn_tx) {
+                        if let Err(e) = chain.apply_zero_tx(mpn_tx) {
                             log::info!("Rejecting mpn-transaction: {}", e);
                             mempool.remove(&tx);
                         }
                     }
                     MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
-                        if let Err(e) = chain.apply_mpn_withdraw(&mpn_withdraw) {
+                        if let Err(e) = chain.apply_mpn_withdraw(mpn_withdraw) {
                             log::info!("Rejecting mpn-withdraw: {}", e);
                             mempool.remove(&tx);
                         }

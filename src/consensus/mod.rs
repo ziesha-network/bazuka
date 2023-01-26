@@ -38,7 +38,7 @@ pub mod pow {
         let mut hasher = HASHER.lock().unwrap();
 
         #[cfg(not(test))]
-        hasher.retain(|k, _| k == &key);
+        hasher.retain(|k, _| k == key);
 
         let key = key.to_vec();
         hasher

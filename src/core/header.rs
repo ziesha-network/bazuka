@@ -2,7 +2,7 @@ use crate::consensus::pow::Difficulty;
 
 use super::hash::Hash;
 
-#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
 pub struct ProofOfWork {
     /// when the miner started mining this block
     pub timestamp: u32,
@@ -12,7 +12,7 @@ pub struct ProofOfWork {
     pub nonce: u64,
 }
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
 pub struct Header<H: Hash> {
     /// the parent hash
     pub parent_hash: H::Output,
@@ -23,8 +23,6 @@ pub struct Header<H: Hash> {
     /// aux data for Proof-of-Work consensus
     pub proof_of_work: ProofOfWork,
 }
-
-impl<H: Hash + std::cmp::PartialEq> Eq for Header<H> {}
 
 impl<H: Hash> Header<H> {
     pub fn hash(&self) -> H::Output {
