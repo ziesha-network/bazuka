@@ -41,6 +41,7 @@ pub struct BlockchainConfig {
     pub mpn_log4_account_capacity: u8,
     pub minimum_pow_difficulty: Difficulty,
     pub testnet_height_limit: Option<u64>,
+    pub max_memo_length: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -565,6 +566,10 @@ impl<K: KvStore> KvStoreChain<K> {
 
             if tx.fee.token_id != TokenId::Ziesha {
                 return Err(BlockchainError::OnlyZieshaFeesAccepted);
+            }
+
+            if tx.memo.len() > self.config.max_memo_length {
+                return Err(BlockchainError::MemoTooLong);
             }
 
             let tx_src = tx.src.clone().unwrap_or_default(); // Default is treasury account!

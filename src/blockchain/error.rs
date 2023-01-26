@@ -104,4 +104,6 @@ pub enum BlockchainError {
     TokenBadNameSymbol,
     #[error("only ziesha fees are accepted!")]
     OnlyZieshaFeesAccepted,
+    #[error("transaction memo is too long")]
+    MemoTooLong,
 }

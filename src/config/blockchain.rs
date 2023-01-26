@@ -199,6 +199,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         minimum_pow_difficulty: min_diff,
 
         testnet_height_limit: Some(TESTNET_HEIGHT_LIMIT),
+        max_memo_length: 32,
     }
 }
 
