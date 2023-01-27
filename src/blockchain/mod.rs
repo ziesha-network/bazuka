@@ -1510,6 +1510,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 return Err(BlockchainError::InvalidParentHash);
             }
 
+            if h.proof_of_work.comm_power != last_header.proof_of_work.comm_power + h.power() {
+                return Err(BlockchainError::InvalidCommulativePower);
+            }
+
             timestamps.push(h.proof_of_work.timestamp);
             while timestamps.len() > self.config.median_timestamp_count as usize {
                 timestamps.remove(0);
@@ -1645,6 +1649,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         txs.extend(tx_and_deltas.iter().map(|tp| tp.tx.clone()));
 
+        let target = self.next_difficulty()?;
         let mut blk = Block {
             header: Header {
                 parent_hash: last_header.hash(),
@@ -1652,8 +1657,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 block_root: Default::default(),
                 proof_of_work: ProofOfWork {
                     timestamp,
-                    target: self.next_difficulty()?,
+                    target,
                     nonce: 0,
+                    comm_power: last_header.proof_of_work.comm_power + target.power(),
                 },
             },
             body: txs,

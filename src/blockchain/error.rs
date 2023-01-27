@@ -106,4 +106,6 @@ pub enum BlockchainError {
     OnlyZieshaFeesAccepted,
     #[error("transaction memo is too long")]
     MemoTooLong,
+    #[error("commulative proof-of-work power is invalid!")]
+    InvalidCommulativePower,
 }
