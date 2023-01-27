@@ -136,7 +136,7 @@ fn get_ziesha_token_creation_tx() -> Transaction {
 pub fn get_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
-    let min_diff = Difficulty(0x020fffff);
+    let min_diff = Difficulty(0x02ffffff);
 
     let ziesha_token_creation_tx = get_ziesha_token_creation_tx();
     let ziesha_token_id = TokenId::new(&ziesha_token_creation_tx);
