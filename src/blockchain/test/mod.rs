@@ -148,21 +148,21 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
-        Difficulty(0x00aaaaaa)
+        Difficulty(0x0071c71c)
     );
     chain.extend(4, &[draft.block])?;
     draft = chain.draft_block(300, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
-        Difficulty(0x00aaaaaa)
+        Difficulty(0x004bda12)
     );
     chain.extend(5, &[draft.block])?;
     draft = chain.draft_block(390, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
-        Difficulty(0x00ffffff)
+        Difficulty(0x0046cb88)
     );
     chain.extend(6, &[draft.block])?;
 
@@ -170,21 +170,21 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
-        Difficulty(0x00ffffff)
+        Difficulty(0x0042134c)
     );
     chain.extend(7, &[draft.block])?;
     draft = chain.draft_block(392, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
-        Difficulty(0x00ffffff)
+        Difficulty(0x00506447)
     );
     chain.extend(8, &[draft.block])?;
     draft = chain.draft_block(393, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
-        Difficulty(0x007fffff)
+        Difficulty(0x0061cf56)
     );
     chain.extend(9, &[draft.block])?;
 
@@ -192,21 +192,21 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
-        Difficulty(0x007fffff)
+        Difficulty(0x0092b701)
     );
     chain.extend(10, &[draft.block])?;
     draft = chain.draft_block(2000, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
-        Difficulty(0x007fffff)
+        Difficulty(0x0092b701)
     );
     chain.extend(11, &[draft.block])?;
     draft = chain.draft_block(3000, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
     assert_eq!(
         draft.block.header.proof_of_work.target,
-        Difficulty(0x00fffffe)
+        Difficulty(0x00495b80)
     );
     chain.extend(12, &[draft.block])?;
 
@@ -274,7 +274,7 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
     let mut fork1 = chain.fork_on_ram();
     fork1.apply_block(
         &fork1.draft_block(10, &[], &miner, true)?.unwrap().block,
-        true,
+        false,
     )?;
     assert!(matches!(
         fork1.draft_block(
@@ -295,13 +295,13 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
             )?
             .unwrap()
             .block,
-        true,
+        false,
     )?;
 
     for i in 11..30 {
         fork1.apply_block(
             &fork1.draft_block(i, &[], &miner, true)?.unwrap().block,
-            true,
+            false,
         )?;
     }
 
@@ -319,7 +319,7 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
     ));
     fork1.apply_block(
         &fork1.draft_block(25, &[], &miner, true)?.unwrap().block,
-        true,
+        false,
     )?;
 
     rollback_till_empty(&mut fork1)?;
