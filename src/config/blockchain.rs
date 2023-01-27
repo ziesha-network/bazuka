@@ -150,7 +150,6 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 timestamp: 0,
                 target: min_diff,
                 nonce: 0,
-                comm_power: 0,
             },
         },
         body: vec![ziesha_token_creation_tx, mpn_tx_delta.tx],

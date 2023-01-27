@@ -10,8 +10,6 @@ pub struct ProofOfWork {
     pub target: Difficulty,
     /// arbitrary data
     pub nonce: u64,
-    /// commulative power
-    pub comm_power: u128,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
