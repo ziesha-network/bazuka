@@ -1236,6 +1236,17 @@ impl<K: KvStore> KvStoreChain<K> {
         self.database.update(&ops)?;
         Ok(())
     }
+
+    fn get_power_at(&self, index: u64) -> Result<u128, BlockchainError> {
+        if index >= self.get_height()? {
+            return Err(BlockchainError::BlockNotFound);
+        }
+        Ok(self
+            .database
+            .get(keys::power(index))?
+            .ok_or(BlockchainError::Inconsistency)?
+            .try_into()?)
+    }
 }
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
@@ -1677,14 +1688,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn get_power(&self) -> Result<u128, BlockchainError> {
         let height = self.get_height()?;
-        if height == 0 {
-            Ok(0)
+        if height > 0 {
+            self.get_power_at(height - 1)
         } else {
-            Ok(self
-                .database
-                .get(keys::power(height - 1))?
-                .ok_or(BlockchainError::Inconsistency)?
-                .try_into()?)
+            Ok(0)
         }
     }
 
