@@ -27,7 +27,7 @@ pub struct BlockchainConfig {
     pub reward_ratio: u64,
     pub max_block_size: usize,
     pub max_delta_count: usize,
-    pub block_time: usize,
+    pub block_time: u32,
     pub difficulty_window: u64,
     pub difficulty_lag: u64,
     pub difficulty_cut: u64,
@@ -204,23 +204,14 @@ impl<K: KvStore> KvStoreChain<K> {
         for i in lagged_height.saturating_sub(self.config.difficulty_window)..lagged_height {
             block_times.push(self.get_header(i)?.proof_of_work.timestamp);
         }
-        block_times.sort_unstable();
-        let final_size = self.config.difficulty_window - 2 * self.config.difficulty_cut;
-        if block_times.len() as u64 > final_size {
-            let begin = (block_times.len() as u64 - final_size + 1) / 2;
-            let end = begin + final_size;
-            block_times = block_times[begin as usize..end as usize].to_vec();
-        }
-        let num_blocks = block_times.len() - 1;
-        let time_delta = block_times[num_blocks] - block_times[0];
-        let avg_block_time = time_delta / num_blocks as u32;
         let last_pow = self.get_tip()?.proof_of_work.target;
-        let diff_change =
-            (self.config.block_time as f32 / avg_block_time as f32).clamp(0.5f32, 2f32);
-        let new_diff = rust_randomx::Difficulty::new(last_pow.0).scale(diff_change);
-        Ok(std::cmp::max(
-            crate::consensus::pow::Difficulty(new_diff.to_u32()),
+        Ok(utils::calc_pow_difficulty(
+            &block_times,
+            self.config.block_time,
+            self.config.difficulty_window,
+            self.config.difficulty_cut,
             self.config.minimum_pow_difficulty,
+            last_pow,
         ))
     }
 
@@ -1468,11 +1459,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .try_into()?;
 
         let mut last_header = self.get_header(from - 1)?;
-        let mut last_pow = self
-            .get_header(
-                last_header.number - (last_header.number % self.config.difficulty_calc_interval),
-            )?
-            .proof_of_work;
 
         let mut timestamps = (0..std::cmp::min(from, self.config.median_timestamp_count))
             .map(|i| {
@@ -1481,29 +1467,34 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             })
             .collect::<Result<Vec<u32>, BlockchainError>>()?;
 
-        for h in headers.iter() {
-            if h.number % self.config.difficulty_calc_interval == 0 {
-                if h.proof_of_work.target
-                    != utils::calc_pow_difficulty(
-                        self.config.difficulty_calc_interval,
-                        self.config.block_time,
-                        self.config.minimum_pow_difficulty,
-                        &last_header.proof_of_work,
-                        &last_pow,
-                    )
-                {
-                    return Err(BlockchainError::DifficultyTargetWrong);
-                }
-                last_pow = h.proof_of_work;
-            }
+        let mut diff_timestamps =
+            (from.saturating_sub(self.config.difficulty_window + self.config.difficulty_lag)..from)
+                .map(|i| self.get_header(i).map(|b| b.proof_of_work.timestamp))
+                .collect::<Result<Vec<u32>, BlockchainError>>()?;
 
+        for h in headers.iter() {
+            let expected_target = {
+                if diff_timestamps.len() <= self.config.difficulty_lag as usize {
+                    self.config.minimum_pow_difficulty
+                } else {
+                    utils::calc_pow_difficulty(
+                        &diff_timestamps
+                            [0..diff_timestamps.len() - self.config.difficulty_lag as usize],
+                        self.config.block_time,
+                        self.config.difficulty_window,
+                        self.config.difficulty_cut,
+                        self.config.minimum_pow_difficulty,
+                        last_header.proof_of_work.target,
+                    )
+                }
+            };
             let pow_key = self.pow_key(h.number)?;
 
             if h.proof_of_work.timestamp < utils::median(&timestamps) {
                 return Err(BlockchainError::InvalidTimestamp);
             }
 
-            if last_pow.target != h.proof_of_work.target {
+            if expected_target != h.proof_of_work.target {
                 return Err(BlockchainError::DifficultyTargetWrong);
             }
 
@@ -1522,6 +1513,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             timestamps.push(h.proof_of_work.timestamp);
             while timestamps.len() > self.config.median_timestamp_count as usize {
                 timestamps.remove(0);
+            }
+
+            diff_timestamps.push(h.proof_of_work.timestamp);
+            while diff_timestamps.len()
+                > (self.config.difficulty_window + self.config.difficulty_lag) as usize
+            {
+                diff_timestamps.remove(0);
             }
 
             last_header = h.clone();

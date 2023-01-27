@@ -117,7 +117,9 @@ fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut conf = easy_config();
     conf.block_time = 60;
-    conf.difficulty_calc_interval = 3;
+    conf.difficulty_window = 8;
+    conf.difficulty_cut = 2;
+    conf.difficulty_lag = 1;
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf.clone())?;
 
     let mut draft = chain.draft_block(40, &[], &miner, true)?.unwrap();
@@ -927,7 +929,8 @@ fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
     let wallet2 = TxBuilder::new(&Vec::from("CBA"));
 
     let mut conf = blockchain::get_test_blockchain_config();
-    conf.genesis.block.header.proof_of_work.target = Difficulty(0x0000ffff);
+    conf.minimum_pow_difficulty = Difficulty(0x0000ffff);
+    conf.genesis.block.header.proof_of_work.target = conf.minimum_pow_difficulty;
     conf.genesis.block.body.push(Transaction {
         memo: "".into(),
         src: None,
