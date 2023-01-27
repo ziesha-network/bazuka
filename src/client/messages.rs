@@ -332,3 +332,35 @@ impl TryInto<PostMpnTransactionRequest> for PostJsonMpnTransactionRequest {
         })
     }
 }
+
+impl Into<GetJsonZeroMempoolResponse> for GetZeroMempoolResponse {
+    fn into(self) -> GetJsonZeroMempoolResponse {
+        GetJsonZeroMempoolResponse {
+            updates: self
+                .updates
+                .into_iter()
+                .map(|t| JsonMpnTransaction {
+                    nonce: t.nonce,
+                    src_pub_key: t.src_pub_key.to_string(),
+                    dst_pub_key: t.dst_pub_key.to_string(),
+                    src_token_index: t.src_token_index,
+                    src_fee_token_index: t.src_fee_token_index,
+                    dst_token_index: t.dst_token_index,
+                    amount_token_id: t.amount.token_id.to_string(),
+                    amount: t.amount.amount,
+                    fee_token_id: t.fee.token_id.to_string(),
+                    fee: t.fee.amount,
+                    sig: hex::encode(bincode::serialize(&t.sig).unwrap()),
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetJsonZeroMempoolRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetJsonZeroMempoolResponse {
+    pub updates: Vec<JsonMpnTransaction>,
+}

@@ -11,8 +11,9 @@ mod peer_manager;
 pub mod seeds;
 use crate::blockchain::Blockchain;
 use crate::client::{
-    messages::SocialProfiles, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress,
-    Timestamp, MINER_TOKEN_HEADER, NETWORK_HEADER, SIGNATURE_HEADER,
+    messages::{GetJsonZeroMempoolResponse, SocialProfiles},
+    Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, Timestamp,
+    MINER_TOKEN_HEADER, NETWORK_HEADER, SIGNATURE_HEADER,
 };
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
@@ -347,6 +348,13 @@ async fn node_service<B: Blockchain>(
                     )
                     .await?,
                 )?);
+            }
+            (Method::GET, "/mempool/zero") => {
+                *response.body_mut() = Body::from(serde_json::to_vec(&Into::<
+                    GetJsonZeroMempoolResponse,
+                >::into(
+                    api::get_zero_mempool(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                ))?);
             }
             (Method::GET, "/bincode/mempool/zero") => {
                 *response.body_mut() = Body::from(bincode::serialize(
