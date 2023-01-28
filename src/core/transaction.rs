@@ -280,6 +280,11 @@ pub enum TokenUpdate<S: SignatureScheme> {
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum TransactionData<H: Hash, S: SignatureScheme> {
+    Delegate {
+        amount: Amount,
+        to: S::Pub,
+        reverse: bool,
+    },
     RegularSend {
         entries: Vec<RegularSendEntry<S>>,
     },

@@ -1,3 +1,4 @@
+use crate::core::Amount;
 use crate::crypto::{DeriveMpnAccountIndex, SignatureScheme, ZkSignatureScheme};
 use std::str::FromStr;
 use thiserror::Error;
@@ -56,9 +57,10 @@ pub enum Signature<S: SignatureScheme> {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Account {
     pub nonce: u32,
+    pub stake: Amount,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
-pub struct ZkAccount {
-    pub nonce: u32,
+pub struct Delegate {
+    pub amount: Amount,
 }
