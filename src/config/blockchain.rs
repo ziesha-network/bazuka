@@ -173,9 +173,9 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         max_block_size: MB as usize,
         max_delta_count: 1024, // Only allow max of 1024 ZkScalar cells to be added per block
         block_time: 120,       // Seconds
-        difficulty_window: 720, // Blocks
-        difficulty_lag: 15,    // Blocks
-        difficulty_cut: 60,    // Blocks
+        difficulty_window: 150, // Blocks
+        difficulty_lag: 10,    // Blocks
+        difficulty_cut: 15,    // Blocks
 
         // 0 63 -> BAZUKA BASE KEY
         // 64 2111 -> hash(blk#0)
