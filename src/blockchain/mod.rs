@@ -1527,7 +1527,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         } else {
                             (0, timestamps.len() - 1)
                         };
-                        let time_delta = timestamps[end] - timestamps[begin];
+                        let time_delta = (timestamps[end] - timestamps[begin]).saturating_sub(
+                            (end - begin) as u32 * self.config.mpn_proving_time as u32,
+                        );
                         if time_delta > 0 {
                             let power_delta = diff_powers[end] - diff_powers[begin];
                             std::cmp::max(
