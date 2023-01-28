@@ -116,98 +116,71 @@ fn test_correct_target_calculation() -> Result<(), BlockchainError> {
 fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
     let mut conf = easy_config();
+    conf.minimum_pow_difficulty = Difficulty::from_power(20);
     conf.block_time = 60;
-    conf.difficulty_window = 8;
-    conf.difficulty_cut = 2;
-    conf.difficulty_lag = 1;
+    conf.difficulty_window = 2;
+    conf.difficulty_cut = 0;
+    conf.difficulty_lag = 0;
     let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf.clone())?;
 
-    let mut draft = chain.draft_block(40, &[], &miner, true)?.unwrap();
+    let mut draft = chain.draft_block(30, &[], &miner, true)?.unwrap();
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 20);
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x00ffffff)
-    );
     chain.extend(1, &[draft.block])?;
-    draft = chain.draft_block(80, &[], &miner, true)?.unwrap();
+
+    draft = chain.draft_block(60, &[], &miner, true)?.unwrap();
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 40);
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x00ffffff)
-    );
     chain.extend(2, &[draft.block])?;
+
     draft = chain.draft_block(120, &[], &miner, true)?.unwrap();
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 80);
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x00aaaaaa)
-    );
     chain.extend(3, &[draft.block])?;
 
-    draft = chain.draft_block(210, &[], &miner, true)?.unwrap();
+    draft = chain.draft_block(480, &[], &miner, true)?.unwrap();
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x0071c71c)
-    );
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 80);
     chain.extend(4, &[draft.block])?;
-    draft = chain.draft_block(300, &[], &miner, true)?.unwrap();
+
+    draft = chain.draft_block(540, &[], &miner, true)?.unwrap();
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 20);
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x004bda12)
-    );
     chain.extend(5, &[draft.block])?;
-    draft = chain.draft_block(390, &[], &miner, true)?.unwrap();
+
+    draft = chain.draft_block(590, &[], &miner, true)?.unwrap();
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 20);
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x0046cb88)
-    );
     chain.extend(6, &[draft.block])?;
 
-    draft = chain.draft_block(391, &[], &miner, true)?.unwrap();
+    draft = chain.draft_block(610, &[], &miner, true)?.unwrap();
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 24);
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x0042134c)
-    );
     chain.extend(7, &[draft.block])?;
-    draft = chain.draft_block(392, &[], &miner, true)?.unwrap();
+
+    draft = chain.draft_block(650, &[], &miner, true)?.unwrap();
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 72);
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x00506447)
-    );
     chain.extend(8, &[draft.block])?;
-    draft = chain.draft_block(393, &[], &miner, true)?.unwrap();
+
+    draft = chain.draft_block(900, &[], &miner, true)?.unwrap();
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 108);
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x0061cf56)
-    );
     chain.extend(9, &[draft.block])?;
 
     draft = chain.draft_block(1000, &[], &miner, true)?.unwrap();
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 25);
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x0092b701)
-    );
     chain.extend(10, &[draft.block])?;
+
     draft = chain.draft_block(2000, &[], &miner, true)?.unwrap();
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 20);
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x0092b701)
-    );
     chain.extend(11, &[draft.block])?;
+
     draft = chain.draft_block(3000, &[], &miner, true)?.unwrap();
+    assert_eq!(draft.block.header.proof_of_work.target.power(), 20);
     mine_block(&chain, &mut draft)?;
-    assert_eq!(
-        draft.block.header.proof_of_work.target,
-        Difficulty(0x00495b80)
-    );
     chain.extend(12, &[draft.block])?;
 
     // TODO: Check difficulty overflow (One can't make 0x00ffffff easier)

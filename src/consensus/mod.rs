@@ -10,10 +10,13 @@ pub mod pow {
 
     impl Difficulty {
         pub fn powerf(&self) -> f64 {
-            rust_randomx::Difficulty::new(self.0).power()
+            rust_randomx::Difficulty::new(self.0).powerf()
         }
         pub fn power(&self) -> u128 {
             self.powerf() as u128
+        }
+        pub fn from_power(power: u128) -> Self {
+            Self(rust_randomx::Difficulty::from_power(power).to_u32())
         }
     }
 

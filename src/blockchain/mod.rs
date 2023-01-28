@@ -197,21 +197,40 @@ impl<K: KvStore> KvStoreChain<K> {
     }
 
     fn next_difficulty(&self) -> Result<Difficulty, BlockchainError> {
-        let height = self.get_height()?;
-
-        let lagged_height = height.saturating_sub(self.config.difficulty_lag);
-        let mut block_times = Vec::new();
-        for i in lagged_height.saturating_sub(self.config.difficulty_window)..lagged_height {
-            block_times.push(self.get_header(i)?.proof_of_work.timestamp);
+        let to = self
+            .get_height()?
+            .saturating_sub(self.config.difficulty_lag);
+        let from = to.saturating_sub(self.config.difficulty_window);
+        let headers = (from..to)
+            .map(|i| self.get_header(i))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut timestamps = headers
+            .iter()
+            .map(|h| h.proof_of_work.timestamp)
+            .collect::<Vec<_>>();
+        if timestamps.len() < 2 {
+            return Ok(self.config.minimum_pow_difficulty);
         }
-        let last_pow = self.get_tip()?.proof_of_work.target;
-        Ok(utils::calc_pow_difficulty(
-            &block_times,
-            self.config.block_time,
-            self.config.difficulty_window,
-            self.config.difficulty_cut,
+        timestamps.sort_unstable();
+        let final_size = self.config.difficulty_window - 2 * self.config.difficulty_cut;
+        let (begin, end) = if timestamps.len() as u64 > final_size {
+            let begin = (timestamps.len() as u64 - final_size + 1) / 2;
+            let end = begin + final_size - 1;
+            (begin as usize, end as usize)
+        } else {
+            (0, timestamps.len() - 1)
+        };
+        let time_delta = timestamps[end] - timestamps[begin];
+        if time_delta == 0 {
+            return Ok(self.config.minimum_pow_difficulty);
+        }
+        let power_delta =
+            self.get_power_at(from + end as u64)? - self.get_power_at(from + begin as u64)?;
+        Ok(std::cmp::max(
+            Difficulty::from_power(
+                power_delta * (self.config.block_time as u128) / (time_delta as u128),
+            ),
             self.config.minimum_pow_difficulty,
-            last_pow,
         ))
     }
 
@@ -1480,23 +1499,48 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
         let mut diff_timestamps =
             (from.saturating_sub(self.config.difficulty_window + self.config.difficulty_lag)..from)
-                .map(|i| self.get_header(i).map(|b| b.proof_of_work.timestamp))
+                .map(|i| self.get_header(i).map(|h| h.proof_of_work.timestamp))
                 .collect::<Result<Vec<u32>, BlockchainError>>()?;
+        let mut diff_powers =
+            (from.saturating_sub(self.config.difficulty_window + self.config.difficulty_lag)..from)
+                .map(|i| self.get_power_at(i))
+                .collect::<Result<Vec<u128>, BlockchainError>>()?;
 
         for h in headers.iter() {
             let expected_target = {
                 if diff_timestamps.len() <= self.config.difficulty_lag as usize {
                     self.config.minimum_pow_difficulty
                 } else {
-                    utils::calc_pow_difficulty(
-                        &diff_timestamps
-                            [0..diff_timestamps.len() - self.config.difficulty_lag as usize],
-                        self.config.block_time,
-                        self.config.difficulty_window,
-                        self.config.difficulty_cut,
-                        self.config.minimum_pow_difficulty,
-                        last_header.proof_of_work.target,
-                    )
+                    let mut timestamps = diff_timestamps
+                        [0..diff_timestamps.len() - self.config.difficulty_lag as usize]
+                        .to_vec();
+                    if timestamps.len() >= 2 {
+                        timestamps.sort_unstable();
+                        let final_size =
+                            self.config.difficulty_window - 2 * self.config.difficulty_cut;
+                        let (begin, end) = if timestamps.len() as u64 > final_size {
+                            let begin = (timestamps.len() as u64 - final_size + 1) / 2;
+                            let end = begin + final_size - 1;
+                            (begin as usize, end as usize)
+                        } else {
+                            (0, timestamps.len() - 1)
+                        };
+                        let time_delta = timestamps[end] - timestamps[begin];
+                        if time_delta > 0 {
+                            let power_delta = diff_powers[end] - diff_powers[begin];
+                            std::cmp::max(
+                                Difficulty::from_power(
+                                    power_delta * (self.config.block_time as u128)
+                                        / (time_delta as u128),
+                                ),
+                                self.config.minimum_pow_difficulty,
+                            )
+                        } else {
+                            self.config.minimum_pow_difficulty
+                        }
+                    } else {
+                        self.config.minimum_pow_difficulty
+                    }
                 }
             };
             let pow_key = self.pow_key(h.number)?;
@@ -1526,10 +1570,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 timestamps.remove(0);
             }
 
+            diff_powers.push(new_power + h.power());
             diff_timestamps.push(h.proof_of_work.timestamp);
             while diff_timestamps.len()
                 > (self.config.difficulty_window + self.config.difficulty_lag) as usize
             {
+                diff_powers.remove(0);
                 diff_timestamps.remove(0);
             }
 

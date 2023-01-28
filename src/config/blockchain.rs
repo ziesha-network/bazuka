@@ -136,7 +136,6 @@ fn get_ziesha_token_creation_tx() -> Transaction {
 pub fn get_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
-    let min_diff = Difficulty(0x02ffffff);
 
     let ziesha_token_creation_tx = get_ziesha_token_creation_tx();
     let ziesha_token_id = TokenId::new(&ziesha_token_creation_tx);
@@ -148,7 +147,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             block_root: Default::default(),
             proof_of_work: ProofOfWork {
                 timestamp: 0,
-                target: min_diff,
+                target: Difficulty(0x00ffffff),
                 nonce: 0,
             },
         },
@@ -198,7 +197,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         mpn_num_contract_withdraws: 1,
         mpn_log4_account_capacity: MPN_LOG4_ACCOUNT_CAPACITY,
 
-        minimum_pow_difficulty: min_diff,
+        minimum_pow_difficulty: Difficulty(0x02ffffff),
 
         testnet_height_limit: Some(TESTNET_HEIGHT_LIMIT),
         max_memo_length: 64,
@@ -211,16 +210,13 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
-    let min_diff = Difficulty(0x007fffff);
-
     let mut conf = get_blockchain_config();
     conf.limited_miners = None;
     conf.mpn_num_contract_deposits = 0;
     conf.mpn_num_contract_withdraws = 0;
     conf.mpn_num_function_calls = 0;
     conf.mpn_contract_id = mpn_contract_id;
-    conf.minimum_pow_difficulty = min_diff;
-    conf.genesis.block.header.proof_of_work.target = min_diff;
+    conf.minimum_pow_difficulty = Difficulty(0x007fffff);
     conf.testnet_height_limit = None;
 
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;

@@ -26,7 +26,7 @@ num-integer = "0.1"
 num-traits = "0.2"
 hex = "0.4.3"
 colored = "2.0.0"
-rust-randomx = "0.6.0"
+rust-randomx = "0.7.2"
 bellman = "0.13.0"
 bls12_381 = "0.7.0"
 ed25519-dalek = { version = "1", features = ["serde"] }
