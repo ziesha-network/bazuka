@@ -41,6 +41,7 @@ pub struct BlockchainConfig {
     pub mpn_num_contract_deposits: usize,
     pub mpn_num_contract_withdraws: usize,
     pub mpn_log4_account_capacity: u8,
+    pub mpn_proving_time: u32,
     pub minimum_pow_difficulty: Difficulty,
     pub testnet_height_limit: Option<u64>,
     pub max_memo_length: usize,
@@ -220,7 +221,8 @@ impl<K: KvStore> KvStoreChain<K> {
         } else {
             (0, timestamps.len() - 1)
         };
-        let time_delta = timestamps[end] - timestamps[begin];
+        let time_delta = (timestamps[end] - timestamps[begin])
+            .saturating_sub((end - begin) as u32 * self.config.mpn_proving_time as u32);
         if time_delta == 0 {
             return Ok(self.config.minimum_pow_difficulty);
         }
