@@ -23,6 +23,7 @@ pub type ZkSigner = crypto::jubjub::JubJub<ZkHasher>;
 pub type Address = <Signer as crypto::SignatureScheme>::Pub;
 pub type ParseAddressError = <Signer as crypto::SignatureScheme>::PubParseError;
 pub type Account = address::Account;
+pub type Delegate = address::Delegate;
 pub type Signature = address::Signature<Signer>;
 pub type Transaction = transaction::Transaction<Hasher, Signer>;
 pub type TransactionData = transaction::TransactionData<Hasher, Signer>;

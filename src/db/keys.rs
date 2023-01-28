@@ -34,6 +34,10 @@ pub fn account(address: &Address) -> StringKey {
     format!("ACC-{}", address).into()
 }
 
+pub fn delegate(from: &Address, to: &Address) -> StringKey {
+    format!("DEL-{}-{}", from, to).into()
+}
+
 pub fn account_balance(address: &Address, token_id: TokenId) -> StringKey {
     format!("ACB-{}-{}", address, token_id).into()
 }

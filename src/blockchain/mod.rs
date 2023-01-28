@@ -3,9 +3,9 @@ pub use error::*;
 
 use crate::core::{
     hash::Hash, Account, Address, Amount, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
-    ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnAddress, MpnSourcedTx,
-    ProofOfWork, RegularSendEntry, Signature, Token, TokenId, TokenUpdate, Transaction,
-    TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
+    ContractId, ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, MpnAddress,
+    MpnSourcedTx, ProofOfWork, RegularSendEntry, Signature, Token, TokenId, TokenUpdate,
+    Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
 };
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
 use crate::wallet::TxBuilder;
@@ -402,6 +402,7 @@ pub trait Blockchain {
         contract_id: ContractId,
         token_id: TokenId,
     ) -> Result<Amount, BlockchainError>;
+    fn get_delegate_of(&self, from: Address, to: Address) -> Result<Delegate, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError>;
     fn get_mpn_accounts(
@@ -682,6 +683,40 @@ impl<K: KvStore> KvStoreChain<K> {
             )])?;
 
             match &tx.data {
+                TransactionData::Delegate {
+                    amount,
+                    to,
+                    reverse,
+                } => {
+                    let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
+                    let mut acc_del = chain.get_account(to.clone())?;
+                    let mut del = chain.get_delegate_of(tx_src.clone(), to.clone())?;
+                    if !reverse {
+                        if src_bal < *amount {
+                            return Err(BlockchainError::BalanceInsufficient);
+                        }
+                        src_bal -= *amount;
+                        del.amount += *amount;
+                        acc_del.stake += *amount;
+                    } else {
+                        if del.amount < *amount {
+                            return Err(BlockchainError::BalanceInsufficient);
+                        }
+                        del.amount -= *amount;
+                        acc_del.stake -= *amount;
+                        src_bal += *amount;
+                    }
+                    chain.database.update(&[WriteOp::Put(
+                        keys::account_balance(&tx_src, TokenId::Ziesha),
+                        src_bal.into(),
+                    )])?;
+                    chain
+                        .database
+                        .update(&[WriteOp::Put(keys::account(&to), acc_del.into())])?;
+                    chain
+                        .database
+                        .update(&[WriteOp::Put(keys::delegate(&tx_src, to), del.into())])?;
+                }
                 TransactionData::CreateToken { token } => {
                     let token_id = {
                         let tid = TokenId::new(tx);
@@ -1528,7 +1563,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {
         Ok(match self.database.get(keys::account(&addr))? {
             Some(b) => b.try_into()?,
-            None => Account { nonce: 0 },
+            None => Account {
+                stake: Amount(0),
+                nonce: 0,
+            },
+        })
+    }
+
+    fn get_delegate_of(&self, from: Address, to: Address) -> Result<Delegate, BlockchainError> {
+        Ok(match self.database.get(keys::delegate(&from, &to))? {
+            Some(b) => b.try_into()?,
+            None => Delegate { amount: Amount(0) },
         })
     }
 

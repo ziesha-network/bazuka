@@ -329,6 +329,11 @@ impl From<&ContractUpdate> for ExplorerContractUpdate {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ExplorerTransactionData {
+    Delegate {
+        to: String,
+        amount: u64,
+        reverse: bool,
+    },
     RegularSend {
         entries: Vec<(String, ExplorerMoney)>,
     },
@@ -351,6 +356,15 @@ pub enum ExplorerTransactionData {
 impl From<&TransactionData> for ExplorerTransactionData {
     fn from(obj: &TransactionData) -> Self {
         match obj {
+            TransactionData::Delegate {
+                to,
+                amount,
+                reverse,
+            } => Self::Delegate {
+                to: to.to_string(),
+                amount: (*amount).into(),
+                reverse: *reverse,
+            },
             TransactionData::RegularSend { entries } => Self::RegularSend {
                 entries: entries
                     .iter()
