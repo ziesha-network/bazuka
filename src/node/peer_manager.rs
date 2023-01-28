@@ -26,7 +26,7 @@ pub struct PeerManager {
     candidates: HashMap<IpAddr, CandidateDetails>,
     nodes: HashMap<IpAddr, NodeDetails>,
     punishments: HashMap<IpAddr, PunishmentDetails>,
-    peers: Vec<Peer>,
+    peers: Vec<IpAddr>,
 }
 
 impl PeerManager {
@@ -122,11 +122,19 @@ impl PeerManager {
     pub fn select_peers(&mut self, count: usize) {
         let mut vals = self.nodes.values().cloned().collect::<Vec<_>>();
         vals.sort_unstable_by_key(|d| d.ping_time);
-        self.peers = vals.into_iter().take(count).map(|d| d.peer).collect();
+        self.peers = vals
+            .into_iter()
+            .take(count)
+            .map(|d| d.peer.address.ip())
+            .collect();
     }
 
     pub fn get_peers(&self) -> Vec<Peer> {
-        self.peers.clone()
+        self.peers
+            .iter()
+            .filter_map(|addr| self.nodes.get(addr))
+            .map(|p| p.peer.clone())
+            .collect()
     }
 
     pub fn add_candidate(&mut self, now: u32, addr: PeerAddress) {
