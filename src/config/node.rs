@@ -9,7 +9,7 @@ pub fn get_node_options() -> NodeOptions {
             refresh: Duration::from_secs(10),
             sync_peers: Duration::from_secs(60),
             discover_peers: Duration::from_secs(60),
-            sync_clock: Duration::from_secs(60),
+            sync_clock: Duration::from_secs(10),
             sync_blocks: Duration::from_secs(10),
             sync_mempool: Duration::from_secs(30),
             sync_state: Duration::from_secs(10),
