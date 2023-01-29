@@ -218,7 +218,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.mpn_num_function_calls = 0;
     conf.mpn_proving_time = 0;
     conf.mpn_contract_id = mpn_contract_id;
-    conf.minimum_pow_difficulty = Difficulty(0x007fffff);
+    conf.minimum_pow_difficulty = Difficulty::from_power(500000);
     conf.testnet_height_limit = None;
 
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;
