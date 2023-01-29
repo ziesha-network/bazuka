@@ -198,7 +198,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         mpn_log4_account_capacity: MPN_LOG4_ACCOUNT_CAPACITY,
         mpn_proving_time: 30, // Seconds
 
-        minimum_pow_difficulty: Difficulty(0x02ffffff),
+        minimum_pow_difficulty: Difficulty::from_power(500000),
 
         testnet_height_limit: Some(TESTNET_HEIGHT_LIMIT),
         max_memo_length: 64,
@@ -218,7 +218,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.mpn_num_function_calls = 0;
     conf.mpn_proving_time = 0;
     conf.mpn_contract_id = mpn_contract_id;
-    conf.minimum_pow_difficulty = Difficulty::from_power(500000);
+    conf.minimum_pow_difficulty = Difficulty(0x007fffff);
     conf.testnet_height_limit = None;
 
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;
