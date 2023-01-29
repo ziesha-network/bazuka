@@ -5,7 +5,7 @@ use crate::consensus::pow::Difficulty;
 use crate::core::{
     hash::Hash, Account, Address, Amount, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
     ContractId, ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, MpnDeposit,
-    MpnSourcedTx, MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Token, TokenId,
+    MpnSourcedTx, MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Staker, Token, TokenId,
     TokenUpdate, Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
 };
 use crate::crypto::ZkSignatureScheme;
@@ -194,6 +194,7 @@ pub trait Blockchain {
         token_id: TokenId,
     ) -> Result<Amount, BlockchainError>;
     fn get_delegate_of(&self, from: Address, to: Address) -> Result<Delegate, BlockchainError>;
+    fn get_staker(&self, addr: Address) -> Result<Staker, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError>;
     fn get_mpn_accounts(
@@ -719,7 +720,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     reverse,
                 } => {
                     let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
-                    let mut acc_del = chain.get_account(to.clone())?;
+                    let mut acc_del = chain.get_staker(to.clone())?;
                     let mut del = chain.get_delegate_of(tx_src.clone(), to.clone())?;
                     if !reverse {
                         if src_bal < *amount {
@@ -742,7 +743,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     )])?;
                     chain
                         .database
-                        .update(&[WriteOp::Put(keys::account(&to), acc_del.into())])?;
+                        .update(&[WriteOp::Put(keys::staker(&to), acc_del.into())])?;
                     chain
                         .database
                         .update(&[WriteOp::Put(keys::delegate(&tx_src, to), del.into())])?;
@@ -1578,10 +1579,14 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {
         Ok(match self.database.get(keys::account(&addr))? {
             Some(b) => b.try_into()?,
-            None => Account {
-                stake: Amount(0),
-                nonce: 0,
-            },
+            None => Account { nonce: 0 },
+        })
+    }
+
+    fn get_staker(&self, addr: Address) -> Result<Staker, BlockchainError> {
+        Ok(match self.database.get(keys::staker(&addr))? {
+            Some(b) => b.try_into()?,
+            None => Staker { stake: Amount(0) },
         })
     }
 
