@@ -44,6 +44,8 @@ pub enum BlockchainError {
     InvalidMinerReward,
     #[error("contract not found")]
     ContractNotFound,
+    #[error("staker not found")]
+    StakerNotFound,
     #[error("update function not found in the given contract")]
     ContractFunctionNotFound,
     #[error("Incorrect zero-knowledge proof")]
@@ -90,6 +92,8 @@ pub enum BlockchainError {
     TestnetForcedFork,
     #[error("token already exists")]
     TokenAlreadyExists,
+    #[error("staker already registered")]
+    StakerAlreadyRegistered,
     #[error("token not found")]
     TokenNotFound,
     #[error("token not updatable")]
