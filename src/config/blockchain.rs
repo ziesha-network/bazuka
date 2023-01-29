@@ -13,8 +13,8 @@ use crate::zk;
 use crate::wallet::TxBuilder;
 
 const MPN_LOG4_ACCOUNT_CAPACITY: u8 = 15;
-const MPN_LOG4_PAYMENT_CAPACITY: u8 = 3;
-pub const MPN_LOG4_TOKEN_CAPACITY: u8 = 3;
+const MPN_LOG4_PAYMENT_CAPACITY: u8 = 1;
+pub const MPN_LOG4_TOKEN_CAPACITY: u8 = 1;
 
 const TESTNET_HEIGHT_LIMIT: u64 = 12000;
 
