@@ -8,8 +8,14 @@ pub struct VRF;
 
 pub struct PrivateKey(pub schnorrkel::keys::SecretKey);
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct PublicKey(pub schnorrkel::keys::PublicKey);
+
+impl AsRef<[u8]> for PublicKey {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Signature(pub schnorrkel::Signature);

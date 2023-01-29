@@ -329,6 +329,9 @@ impl From<&ContractUpdate> for ExplorerContractUpdate {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ExplorerTransactionData {
+    RegisterStaker {
+        vrf_pub_key: String,
+    },
     Delegate {
         to: String,
         amount: u64,
@@ -356,6 +359,9 @@ pub enum ExplorerTransactionData {
 impl From<&TransactionData> for ExplorerTransactionData {
     fn from(obj: &TransactionData) -> Self {
         match obj {
+            TransactionData::RegisterStaker { vrf_pub_key } => Self::RegisterStaker {
+                vrf_pub_key: hex::encode(vrf_pub_key.as_ref()),
+            },
             TransactionData::Delegate {
                 to,
                 amount,

@@ -1,5 +1,7 @@
 use crate::core::Amount;
-use crate::crypto::{DeriveMpnAccountIndex, SignatureScheme, ZkSignatureScheme};
+use crate::crypto::{
+    DeriveMpnAccountIndex, SignatureScheme, VerifiableRandomFunction, ZkSignatureScheme,
+};
 use std::str::FromStr;
 use thiserror::Error;
 
@@ -60,7 +62,8 @@ pub struct Account {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
-pub struct Staker {
+pub struct Staker<V: VerifiableRandomFunction> {
+    pub vrf_pub_key: V::Pub,
     pub stake: Amount,
 }
 

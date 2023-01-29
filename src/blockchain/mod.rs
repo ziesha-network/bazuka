@@ -403,7 +403,7 @@ pub trait Blockchain {
         token_id: TokenId,
     ) -> Result<Amount, BlockchainError>;
     fn get_delegate_of(&self, from: Address, to: Address) -> Result<Delegate, BlockchainError>;
-    fn get_staker(&self, addr: Address) -> Result<Staker, BlockchainError>;
+    fn get_staker(&self, addr: Address) -> Result<Option<Staker>, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError>;
     fn get_mpn_accounts(
@@ -684,39 +684,56 @@ impl<K: KvStore> KvStoreChain<K> {
             )])?;
 
             match &tx.data {
+                TransactionData::RegisterStaker { vrf_pub_key } => {
+                    if chain.get_staker(tx_src.clone())?.is_none() {
+                        chain.database.update(&[WriteOp::Put(
+                            keys::staker(&tx_src),
+                            Staker {
+                                stake: Amount(0),
+                                vrf_pub_key: vrf_pub_key.clone(),
+                            }
+                            .into(),
+                        )])?;
+                    } else {
+                        return Err(BlockchainError::StakerAlreadyRegistered);
+                    }
+                }
                 TransactionData::Delegate {
                     amount,
                     to,
                     reverse,
                 } => {
-                    let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
-                    let mut acc_del = chain.get_staker(to.clone())?;
-                    let mut del = chain.get_delegate_of(tx_src.clone(), to.clone())?;
-                    if !reverse {
-                        if src_bal < *amount {
-                            return Err(BlockchainError::BalanceInsufficient);
+                    if let Some(mut acc_del) = chain.get_staker(to.clone())? {
+                        let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
+                        let mut del = chain.get_delegate_of(tx_src.clone(), to.clone())?;
+                        if !reverse {
+                            if src_bal < *amount {
+                                return Err(BlockchainError::BalanceInsufficient);
+                            }
+                            src_bal -= *amount;
+                            del.amount += *amount;
+                            acc_del.stake += *amount;
+                        } else {
+                            if del.amount < *amount {
+                                return Err(BlockchainError::BalanceInsufficient);
+                            }
+                            del.amount -= *amount;
+                            acc_del.stake -= *amount;
+                            src_bal += *amount;
                         }
-                        src_bal -= *amount;
-                        del.amount += *amount;
-                        acc_del.stake += *amount;
+                        chain.database.update(&[WriteOp::Put(
+                            keys::account_balance(&tx_src, TokenId::Ziesha),
+                            src_bal.into(),
+                        )])?;
+                        chain
+                            .database
+                            .update(&[WriteOp::Put(keys::staker(&to), acc_del.into())])?;
+                        chain
+                            .database
+                            .update(&[WriteOp::Put(keys::delegate(&tx_src, to), del.into())])?;
                     } else {
-                        if del.amount < *amount {
-                            return Err(BlockchainError::BalanceInsufficient);
-                        }
-                        del.amount -= *amount;
-                        acc_del.stake -= *amount;
-                        src_bal += *amount;
+                        return Err(BlockchainError::StakerNotFound);
                     }
-                    chain.database.update(&[WriteOp::Put(
-                        keys::account_balance(&tx_src, TokenId::Ziesha),
-                        src_bal.into(),
-                    )])?;
-                    chain
-                        .database
-                        .update(&[WriteOp::Put(keys::staker(&to), acc_del.into())])?;
-                    chain
-                        .database
-                        .update(&[WriteOp::Put(keys::delegate(&tx_src, to), del.into())])?;
                 }
                 TransactionData::CreateToken { token } => {
                     let token_id = {
@@ -1568,10 +1585,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
 
-    fn get_staker(&self, addr: Address) -> Result<Staker, BlockchainError> {
+    fn get_staker(&self, addr: Address) -> Result<Option<Staker>, BlockchainError> {
         Ok(match self.database.get(keys::staker(&addr))? {
-            Some(b) => b.try_into()?,
-            None => Staker { stake: Amount(0) },
+            Some(b) => Some(b.try_into()?),
+            None => None,
         })
     }
 

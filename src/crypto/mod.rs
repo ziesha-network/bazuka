@@ -55,7 +55,14 @@ pub trait ZkSignatureScheme: Clone + Serialize {
 
 pub trait VerifiableRandomFunction: Clone + Serialize {
     type Ctx;
-    type Pub;
+    type Pub: Clone
+        + Debug
+        + PartialEq
+        + Eq
+        + std::hash::Hash
+        + Serialize
+        + DeserializeOwned
+        + AsRef<[u8]>;
     type Priv;
     type Sig;
     fn make_context(bytes: &[u8]) -> Self::Ctx;

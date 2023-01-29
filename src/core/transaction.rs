@@ -2,6 +2,7 @@ use super::address::Signature;
 use super::hash::Hash;
 use super::Amount;
 use crate::crypto::DeriveMpnAccountIndex;
+use crate::crypto::VerifiableRandomFunction;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
 use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkHasher, ZkProof, ZkScalar};
 use ff::Field;
@@ -26,7 +27,7 @@ pub enum ParseTokenIdError {
 }
 
 impl<H: Hash> ContractId<H> {
-    pub fn new<S: SignatureScheme>(tx: &Transaction<H, S>) -> Self {
+    pub fn new<S: SignatureScheme, V: VerifiableRandomFunction>(tx: &Transaction<H, S, V>) -> Self {
         Self(tx.hash())
     }
 }
@@ -49,7 +50,9 @@ impl Default for TokenId {
     }
 }
 impl TokenId {
-    pub fn new<H: Hash, S: SignatureScheme>(tx: &Transaction<H, S>) -> Self {
+    pub fn new<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction>(
+        tx: &Transaction<H, S, V>,
+    ) -> Self {
         Self::Custom(crate::zk::hash_to_scalar(&bincode::serialize(&tx).unwrap()))
     }
 }
@@ -286,7 +289,10 @@ pub enum TokenUpdate<S: SignatureScheme> {
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
-pub enum TransactionData<H: Hash, S: SignatureScheme> {
+pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction> {
+    RegisterStaker {
+        vrf_pub_key: V::Pub,
+    },
     Delegate {
         amount: Amount,
         to: S::Pub,
@@ -315,22 +321,22 @@ pub enum TransactionData<H: Hash, S: SignatureScheme> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Transaction<H: Hash, S: SignatureScheme> {
+pub struct Transaction<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction> {
     pub src: Option<S::Pub>, // None is reward treasury!
     pub nonce: u32,
-    pub data: TransactionData<H, S>,
+    pub data: TransactionData<H, S, V>,
     pub fee: Money,
     pub memo: String,
     pub sig: Signature<S>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub struct TransactionAndDelta<H: Hash, S: SignatureScheme> {
-    pub tx: Transaction<H, S>,
+pub struct TransactionAndDelta<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction> {
+    pub tx: Transaction<H, S, V>,
     pub state_delta: Option<ZkDeltaPairs>,
 }
 
-impl<H: Hash, S: SignatureScheme> Transaction<H, S> {
+impl<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction> Transaction<H, S, V> {
     pub fn size(&self) -> usize {
         bincode::serialize(self).unwrap().len()
     }
