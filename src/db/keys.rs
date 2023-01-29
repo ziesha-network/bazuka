@@ -34,8 +34,12 @@ pub fn account(address: &Address) -> StringKey {
     format!("ACC-{}", address).into()
 }
 
+pub fn staker_prefix() -> String {
+    "STK".into()
+}
+
 pub fn staker(address: &Address) -> StringKey {
-    format!("STK-{}", address).into()
+    format!("{}-{}", staker_prefix(), address).into()
 }
 
 pub fn delegate(from: &Address, to: &Address) -> StringKey {

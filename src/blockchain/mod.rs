@@ -639,6 +639,25 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(())
     }
 
+    fn get_stakers(&self) -> Result<Vec<Staker>, BlockchainError> {
+        let mut stakers = self
+            .database
+            .pairs(keys::staker_prefix().into())?
+            .into_iter()
+            .map(|(k, v)| {
+                || -> Result<(Address, Staker), BlockchainError> {
+                    let pk: Address = k.0[4..]
+                        .parse()
+                        .map_err(|_| BlockchainError::Inconsistency)?;
+                    let v: Staker = v.try_into()?;
+                    Ok((pk, v))
+                }()
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        stakers.sort_unstable_by_key(|(_, v)| v.stake);
+        Ok(stakers.into_iter().map(|(_, v)| v).collect())
+    }
+
     fn apply_tx(
         &mut self,
         tx: &Transaction,
