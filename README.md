@@ -51,12 +51,12 @@ want to mine Ziesha, you will need to install ![zoro](https://github.com/ziesha-
     cargo install --path .
     ```
 
-Now if you want to join the `groth-3` testnet, you first have to initialize your
-node. If you have already initialized bazuka for the Debug Testnet, you first need
+Now if you want to join the `debug` testnet, you first have to initialize your
+node. If you have already initialized bazuka for another network, you first need
 to remove your previous initialization by running:
 
 ```sh
-rm ~/.bazuka.yaml
+rm -rf ~/.bazuka ~/.bazuka-wallet ~/.bazuka.yaml ~/.uzi-pool-history ~/.uzi-pool-miners
 ```
 
 Then initialize:
@@ -74,10 +74,10 @@ Available flags:
  * `--mnemonic <mnemonic>`: If you already have a 12-word mnemonic phrase, you can pass it through this flag. If not provided, a new wallet will be generated for you. Keep the mnemonic word list somewhere safe!
  * `--network <network>`: The network your node will operate on. Default: `mainnet`
 
-Example to initialize a node with 2 bootstrap nodes `23.34.12.45:8765` and `34.56.78.23:8765` on the `groth-3` network:
+Example to initialize a node with 2 bootstrap nodes `23.34.12.45:8765` and `34.56.78.23:8765` on the `debug` network:
 
 ```
-bazuka init --network groth-6 --bootstrap 23.34.12.45:8765 --bootstrap 34.56.78.23:8765
+bazuka init --network debug --bootstrap 23.34.12.45:8765 --bootstrap 34.56.78.23:8765
 ```
 
 After initializing your node you can run it through:
@@ -94,16 +94,4 @@ way to contact you regarding the problems you may have in your node and its stat
 
 `bazuka wallet info` Show your wallet address/balances
 
-`bazuka wallet deposit` Deposit funds to the MPN-contract
-
-`bazuka withdraw` Withdraw funds from the MPN-contract
-
-`bazuka wallet rsend` Send funds through a regular-transaction
-
-`bazuka wallet zsend` Send funds through a zero-transaction
-
-`bazuka init` Initialize node/wallet
-
-`bazuka node start` Start your node
-
-`bazuka node status` Get status of a node
+`bazuka wallet send` Send funds
