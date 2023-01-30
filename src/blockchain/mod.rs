@@ -496,6 +496,7 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(())
     }
 
+    // WARN: Will not check sig!
     fn apply_zero_tx(&mut self, tx: &zk::MpnTransaction) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
             let src = chain.get_mpn_account(tx.src_index(self.config.mpn_log4_account_capacity))?;
@@ -509,7 +510,6 @@ impl<K: KvStore> KvStoreChain<K> {
                 || src.address != tx.src_pub_key.decompress()
                 || (dst.address.is_on_curve() && dst.address != tx.dst_pub_key.decompress())
                 || tx.nonce != src.nonce
-                || !tx.verify()
             {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
@@ -1859,8 +1859,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         self.isolated(|chain| {
             let mut txs: Vec<MpnSourcedTx> = mempool.clone().into_keys().collect();
             txs.sort_unstable_by_key(|t| t.nonce());
-            for tx in txs {
-                match &tx {
+            for tx in txs.iter() {
+                match tx {
                     MpnSourcedTx::MpnTransaction(mpn_tx) => {
                         if let Err(e) = chain.apply_zero_tx(mpn_tx) {
                             log::info!("Rejecting mpn-transaction: {}", e);
@@ -1874,6 +1874,16 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         }
                     }
                 }
+            }
+            for tx in txs
+                .into_par_iter()
+                .filter(|t| match t {
+                    MpnSourcedTx::MpnTransaction(t) => !t.verify(),
+                    _ => false,
+                })
+                .collect::<Vec<_>>()
+            {
+                mempool.remove(&tx);
             }
             Ok(())
         })?;
