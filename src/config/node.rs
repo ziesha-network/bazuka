@@ -5,10 +5,10 @@ pub fn get_node_options() -> NodeOptions {
     NodeOptions {
         tx_max_time_alive: Some(600),
         heartbeat_intervals: HeartbeatIntervals {
-            log_info: Duration::from_secs(1),
+            log_info: Duration::from_secs(5),
             refresh: Duration::from_secs(10),
             sync_peers: Duration::from_secs(60),
-            discover_peers: Duration::from_secs(60),
+            discover_peers: Duration::from_secs(10),
             sync_clock: Duration::from_secs(10),
             sync_blocks: Duration::from_secs(10),
             sync_mempool: Duration::from_secs(30),
