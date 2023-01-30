@@ -9,8 +9,7 @@ pub async fn get_mempool<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     _req: GetMempoolRequest,
 ) -> Result<GetMempoolResponse, NodeError> {
-    let mut context = context.write().await;
-    context.refresh()?;
+    let context = context.read().await;
     let mpn_contract_id = context.blockchain.config().mpn_contract_id;
     Ok(GetMempoolResponse {
         chain_sourced: context

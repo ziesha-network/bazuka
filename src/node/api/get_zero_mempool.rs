@@ -10,11 +10,10 @@ pub async fn get_zero_mempool<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     _req: GetZeroMempoolRequest,
 ) -> Result<GetZeroMempoolResponse, NodeError> {
-    let mut context = context.write().await;
+    let context = context.read().await;
     if !context.blockchain.get_outdated_heights()?.is_empty() {
         Err(NodeError::StatesOutdated)
     } else {
-        context.refresh()?;
         let mut updates = Vec::new();
         let mut deposits = Vec::new();
         let mut withdraws = Vec::new();
