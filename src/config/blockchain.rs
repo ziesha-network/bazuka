@@ -198,7 +198,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         mpn_log4_account_capacity: MPN_LOG4_ACCOUNT_CAPACITY,
         mpn_proving_time: 30, // Seconds
 
-        minimum_pow_difficulty: Difficulty::from_power(500000),
+        minimum_pow_difficulty: Difficulty::from_power(50000000),
 
         testnet_height_limit: Some(TESTNET_HEIGHT_LIMIT),
         max_memo_length: 64,
