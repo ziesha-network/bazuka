@@ -21,9 +21,9 @@ pub fn get_node_options() -> NodeOptions {
         invalid_data_punish: 3600,
         incorrect_power_punish: 3600,
         max_punish: 7200,
-        outdated_heights_threshold: 60,
+        outdated_heights_threshold: 120,
         state_unavailable_ban_time: 30,
-        candidate_remove_threshold: 600,
+        candidate_remove_threshold: 3600,
     }
 }
 

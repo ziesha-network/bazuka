@@ -271,7 +271,7 @@ async fn run_node(
     let bazuka_dir = bazuka_config.db.clone();
 
     // 60 request per minute / 4GB per 15min
-    let firewall = Firewall::new(60, 4 * GB);
+    let firewall = Firewall::new(360, 4 * GB);
 
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
