@@ -14,12 +14,21 @@ pub async fn get_zero_mempool<B: Blockchain>(
     if !context.blockchain.get_outdated_heights()?.is_empty() {
         Err(NodeError::StatesOutdated)
     } else {
+        let mut chain_sourced = context.mempool.chain_sourced.clone();
+        let mut mpn_sourced = context.mempool.mpn_sourced.clone();
+        context
+            .blockchain
+            .cleanup_chain_mempool(&mut chain_sourced)?;
+        context
+            .blockchain
+            .cleanup_mpn_mempool(&mut mpn_sourced, 128)?;
+
         let mut updates = Vec::new();
         let mut deposits = Vec::new();
         let mut withdraws = Vec::new();
 
         let mut has_tx_delta_before_mpn = HashSet::new();
-        let mut chain_sourced_sorted = context.mempool.chain_sourced.keys().collect::<Vec<_>>();
+        let mut chain_sourced_sorted = chain_sourced.keys().collect::<Vec<_>>();
         chain_sourced_sorted.sort_unstable_by_key(|t| t.nonce());
         for tx in chain_sourced_sorted {
             match tx {
@@ -38,7 +47,7 @@ pub async fn get_zero_mempool<B: Blockchain>(
             }
         }
 
-        for tx in context.mempool.mpn_sourced.keys() {
+        for tx in mpn_sourced.keys() {
             match tx {
                 MpnSourcedTx::MpnTransaction(mpn_tx) => {
                     updates.push(mpn_tx.clone());
