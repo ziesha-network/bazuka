@@ -90,6 +90,7 @@ pub trait Blockchain {
     fn cleanup_mpn_mempool(
         &self,
         mempool: &mut HashMap<MpnSourcedTx, TransactionStats>,
+        capacity: usize,
     ) -> Result<(), BlockchainError>;
 
     fn db_checksum(&self) -> Result<String, BlockchainError>;
@@ -1855,35 +1856,44 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn cleanup_mpn_mempool(
         &self,
         mempool: &mut HashMap<MpnSourcedTx, TransactionStats>,
+        capacity: usize,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             let mut txs: Vec<MpnSourcedTx> = mempool.clone().into_keys().collect();
             txs.sort_unstable_by_key(|t| t.nonce());
+            let mut new_mempool = HashMap::new();
             for tx in txs.iter() {
+                if new_mempool.len() >= capacity {
+                    break;
+                }
                 match tx {
                     MpnSourcedTx::MpnTransaction(mpn_tx) => {
                         if let Err(e) = chain.apply_zero_tx(mpn_tx) {
                             log::info!("Rejecting mpn-transaction: {}", e);
-                            mempool.remove(&tx);
+                        } else {
+                            new_mempool.insert(tx.clone(), mempool[tx].clone());
                         }
                     }
                     MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
                         if let Err(e) = chain.apply_mpn_withdraw(mpn_withdraw) {
                             log::info!("Rejecting mpn-withdraw: {}", e);
-                            mempool.remove(&tx);
+                        } else {
+                            new_mempool.insert(tx.clone(), mempool[tx].clone());
                         }
                     }
                 }
             }
-            for tx in txs
+            *mempool = new_mempool;
+            for (t, _) in mempool
+                .clone()
                 .into_par_iter()
-                .filter(|t| match t {
+                .filter(|(t, _)| match t {
                     MpnSourcedTx::MpnTransaction(t) => !t.verify(),
                     _ => false,
                 })
                 .collect::<Vec<_>>()
             {
-                mempool.remove(&tx);
+                mempool.remove(&t);
             }
             Ok(())
         })?;
