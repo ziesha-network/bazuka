@@ -239,6 +239,11 @@ async fn node_service<B: Blockchain>(
                     &api::get_peers(client, Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
                 )?);
             }
+            (Method::GET, "/token") => {
+                *response.body_mut() = Body::from(serde_json::to_vec(
+                    &api::get_token(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                )?);
+            }
             (Method::POST, "/peers") => {
                 *response.body_mut() = Body::from(serde_json::to_vec(
                     &api::post_peer(

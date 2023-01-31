@@ -2,7 +2,7 @@ use crate::blockchain::ZkBlockchainPatch;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
     Account, Amount, Block, ChainSourcedTx, ContractId, Header, Money, MpnDeposit, MpnSourcedTx,
-    MpnWithdraw, TransactionAndDelta,
+    MpnWithdraw, Token, TransactionAndDelta,
 };
 use crate::zk;
 use std::collections::HashMap;
@@ -363,4 +363,14 @@ pub struct GetJsonZeroMempoolRequest {}
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetJsonZeroMempoolResponse {
     pub updates: Vec<JsonMpnTransaction>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetTokenInfoRequest {
+    pub token_id: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetTokenInfoResponse {
+    pub token: Token,
 }

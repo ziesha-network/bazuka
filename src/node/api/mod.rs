@@ -48,3 +48,5 @@ mod get_debug_data;
 pub use get_debug_data::*;
 mod get_balance;
 pub use get_balance::*;
+mod get_token;
+pub use get_token::*;
