@@ -21,7 +21,7 @@ pub async fn get_zero_mempool<B: Blockchain>(
             .cleanup_chain_mempool(&mut chain_sourced)?;
         context
             .blockchain
-            .cleanup_mpn_mempool(&mut mpn_sourced, 128)?;
+            .cleanup_mpn_mempool(&mut mpn_sourced, 256)?;
 
         let mut updates = Vec::new();
         let mut deposits = Vec::new();
