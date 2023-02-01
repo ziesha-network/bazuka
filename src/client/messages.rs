@@ -333,12 +333,19 @@ impl TryInto<PostMpnTransactionRequest> for PostJsonMpnTransactionRequest {
     }
 }
 
-impl Into<GetJsonZeroMempoolResponse> for GetZeroMempoolResponse {
-    fn into(self) -> GetJsonZeroMempoolResponse {
-        GetJsonZeroMempoolResponse {
+impl Into<GetJsonMempoolResponse> for GetMempoolResponse {
+    fn into(self) -> GetJsonMempoolResponse {
+        GetJsonMempoolResponse {
             updates: self
-                .updates
+                .mpn_sourced
                 .into_iter()
+                .filter_map(|t| {
+                    if let MpnSourcedTx::MpnTransaction(tx) = t {
+                        Some(tx)
+                    } else {
+                        None
+                    }
+                })
                 .map(|t| JsonMpnTransaction {
                     nonce: t.nonce,
                     src_pub_key: t.src_pub_key.to_string(),
@@ -358,10 +365,10 @@ impl Into<GetJsonZeroMempoolResponse> for GetZeroMempoolResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetJsonZeroMempoolRequest {}
+pub struct GetJsonMempoolRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetJsonZeroMempoolResponse {
+pub struct GetJsonMempoolResponse {
     pub updates: Vec<JsonMpnTransaction>,
 }
 

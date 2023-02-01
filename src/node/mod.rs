@@ -11,7 +11,7 @@ mod peer_manager;
 pub mod seeds;
 use crate::blockchain::Blockchain;
 use crate::client::{
-    messages::{GetJsonZeroMempoolResponse, SocialProfiles},
+    messages::{GetJsonMempoolResponse, SocialProfiles},
     Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, Timestamp,
     MINER_TOKEN_HEADER, NETWORK_HEADER, SIGNATURE_HEADER,
 };
@@ -354,21 +354,24 @@ async fn node_service<B: Blockchain>(
                     .await?,
                 )?);
             }
-            (Method::GET, "/mempool/zero") => {
-                *response.body_mut() = Body::from(serde_json::to_vec(&Into::<
-                    GetJsonZeroMempoolResponse,
-                >::into(
-                    api::get_zero_mempool(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
-                ))?);
-            }
             (Method::GET, "/bincode/mempool/zero") => {
-                *response.body_mut() = Body::from(bincode::serialize(
-                    &api::get_zero_mempool(
-                        Arc::clone(&context),
-                        bincode::deserialize(&body_bytes)?,
-                    )
-                    .await?,
-                )?);
+                if is_local {
+                    *response.body_mut() = Body::from(bincode::serialize(
+                        &api::get_zero_mempool(
+                            Arc::clone(&context),
+                            bincode::deserialize(&body_bytes)?,
+                        )
+                        .await?,
+                    )?);
+                } else {
+                    *response.status_mut() = StatusCode::FORBIDDEN;
+                }
+            }
+            (Method::GET, "/mempool") => {
+                *response.body_mut() =
+                    Body::from(serde_json::to_vec(&Into::<GetJsonMempoolResponse>::into(
+                        api::get_mempool(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                    ))?);
             }
             (Method::GET, "/bincode/mempool") => {
                 *response.body_mut() = Body::from(bincode::serialize(
