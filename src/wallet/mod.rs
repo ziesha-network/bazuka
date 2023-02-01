@@ -50,12 +50,6 @@ impl Wallet {
     pub fn get_tokens(&self) -> &[TokenId] {
         &self.tokens
     }
-    pub fn mpn_addresses(&self) -> impl Iterator<Item = &MpnAddress> {
-        self.mpn_sourced_txs.keys()
-    }
-    pub fn add_mpn_address(&mut self, addr: MpnAddress) {
-        self.mpn_sourced_txs.insert(addr, Vec::new());
-    }
     pub fn reset(&mut self) {
         self.chain_sourced_txs = Vec::new();
         self.mpn_sourced_txs.iter_mut().for_each(|(_, v)| {

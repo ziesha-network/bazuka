@@ -81,17 +81,6 @@ enum WalletOptions {
         #[structopt(long, default_value = "0")]
         fee: Amount,
     },
-    /// Creates a new MPN-account
-    NewAccount {
-        #[structopt(long)]
-        memo: Option<String>,
-        #[structopt(long)]
-        token: Option<usize>,
-        #[structopt(long, default_value = "0")]
-        initial: Amount,
-        #[structopt(long, default_value = "0")]
-        fee: Amount,
-    },
     /// Send money
     Send {
         #[structopt(long)]
@@ -620,52 +609,6 @@ async fn main() -> Result<(), NodeError> {
                 )
                 .unwrap();
             }
-            WalletOptions::NewAccount {
-                memo,
-                initial,
-                token,
-                fee,
-            } => {
-                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-                let tkn = if let Some(token) = token {
-                    if token >= wallet.get_tokens().len() {
-                        panic!("Wrong token selected!");
-                    } else {
-                        wallet.get_tokens()[token]
-                    }
-                } else {
-                    TokenId::Ziesha
-                };
-                let tx_builder = TxBuilder::new(&wallet.seed());
-                let (req_loop, client) = BazukaClient::connect(
-                    tx_builder.get_priv_key(),
-                    conf.random_node(),
-                    conf.network,
-                    None,
-                );
-                try_join!(
-                    async move {
-                        let curr_nonce = client
-                            .get_account(tx_builder.get_address())
-                            .await?
-                            .account
-                            .nonce;
-                        let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let mpn_addr =MpnAddress{pub_key:tx_builder.get_zk_address()};
-                        let pay =
-                            tx_builder.deposit_mpn(memo.unwrap_or_default(),mpn_contract_id, mpn_addr.clone(), 0, new_nonce, Money{amount:initial,token_id:tkn}, Money{amount:fee,token_id:TokenId::Ziesha});
-                        wallet.add_mpn_address(mpn_addr.clone());
-                        wallet.add_deposit(pay.clone());
-                        wallet.save(wallet_path).unwrap();
-                        println!("{:#?}", client.transact_contract_deposit(pay).await?);
-                        println!("New MPN-account created! Wait for your account to be confirmed by the network!");
-                        println!("{} {}", "Account address:".bright_yellow(), mpn_addr);
-                        Ok::<(), NodeError>(())
-                    },
-                    req_loop
-                )
-                .unwrap();
-            }
             WalletOptions::Send {
                 memo,
                 from,
@@ -1000,7 +943,11 @@ async fn main() -> Result<(), NodeError> {
 
                         println!();
 
-                        for (i, addr) in wallet.mpn_addresses().enumerate() {
+                        let mpn_address = MpnAddress {
+                            pub_key: tx_builder.get_zk_address(),
+                        };
+
+                        for (i, addr) in [mpn_address].into_iter().enumerate() {
                             println!(
                                 "{}",
                                 format!("MPN Account #{}\n---------", i).bright_green()
@@ -1010,7 +957,7 @@ async fn main() -> Result<(), NodeError> {
                                 .await
                                 .map(|resp| resp.account);
                             if let Ok(resp) = resp {
-                                let curr_z_nonce = wallet.new_z_nonce(addr);
+                                let curr_z_nonce = wallet.new_z_nonce(&addr);
                                 if !resp.address.is_on_curve() {
                                     println!(
                                         "{}\t{}",
@@ -1019,7 +966,7 @@ async fn main() -> Result<(), NodeError> {
                                             pub_key: tx_builder.get_zk_address(),
                                         }
                                     );
-                                    println!("Waiting to be created...")
+                                    println!("Waiting to be activated... (Send some funds to it!)")
                                 } else {
                                     let acc_pk =
                                         bazuka::crypto::jubjub::PublicKey(resp.address.compress());
