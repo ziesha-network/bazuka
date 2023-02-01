@@ -82,11 +82,6 @@ impl<B: Blockchain> NodeContext<B> {
             firewall.refresh(local_ts);
         }
 
-        self.blockchain
-            .cleanup_chain_mempool(&mut self.mempool.chain_sourced)?;
-        self.blockchain
-            .cleanup_mpn_mempool(&mut self.mempool.mpn_sourced, 256)?;
-
         if let Some(max) = self.opts.tx_max_time_alive {
             for (tx, stats) in self.mempool.chain_sourced.clone().into_iter() {
                 if local_ts - stats.first_seen > max {
