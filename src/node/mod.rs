@@ -59,6 +59,7 @@ pub struct NodeOptions {
     pub max_punish: u32,
     pub state_unavailable_ban_time: u32,
     pub candidate_remove_threshold: u32,
+    pub mpn_mempool_capacity: usize,
 }
 
 fn fetch_miner_token(req: &Request<Body>) -> Result<Option<String>, NodeError> {

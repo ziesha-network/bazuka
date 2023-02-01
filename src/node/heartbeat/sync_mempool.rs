@@ -38,7 +38,7 @@ pub async fn sync_mempool<B: Blockchain>(
                     .or_insert(TransactionStats { first_seen: now });
             }
             for tx in mpn_sourced_txs {
-                if ctx.mempool.mpn_sourced.len() >= 256 {
+                if ctx.mempool.mpn_sourced.len() >= ctx.opts.mpn_mempool_capacity {
                     break;
                 }
                 ctx.mempool
