@@ -20,14 +20,16 @@ pub async fn post_block<B: Blockchain>(
         let peer_addresses = context.peer_manager.get_peers();
         drop(context);
 
-        http::group_request(&peer_addresses, |peer| {
-            net.bincode_post::<PostBlockRequest, PostBlockResponse>(
-                format!("http://{}/bincode/blocks", peer.address),
-                req.clone(),
-                Limit::default().size(KB).time(3 * SECOND),
-            )
-        })
-        .await;
+        tokio::task::spawn(async move {
+            http::group_request(&peer_addresses, |peer| {
+                net.bincode_post::<PostBlockRequest, PostBlockResponse>(
+                    format!("http://{}/bincode/blocks", peer.address),
+                    req.clone(),
+                    Limit::default().size(KB).time(3 * SECOND),
+                )
+            })
+            .await;
+        });
     }
     Ok(PostBlockResponse {})
 }
