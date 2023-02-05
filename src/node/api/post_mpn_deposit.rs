@@ -13,7 +13,7 @@ pub async fn post_mpn_deposit<B: Blockchain>(
     let now = context.local_timestamp();
     context.mempool.chain_sourced.insert(
         ChainSourcedTx::MpnDeposit(req.tx),
-        TransactionStats { first_seen: now },
+        TransactionStats::new(now),
     );
     Ok(PostMpnDepositResponse {})
 }

@@ -14,7 +14,7 @@ pub async fn post_mpn_transaction<B: Blockchain>(
     if context.mempool.mpn_sourced.len() < context.opts.mpn_mempool_capacity {
         context.mempool.mpn_sourced.insert(
             MpnSourcedTx::MpnTransaction(req.tx),
-            TransactionStats { first_seen: now },
+            TransactionStats::new(now),
         );
     }
     Ok(PostMpnTransactionResponse {})

@@ -50,6 +50,16 @@ pub struct BlockchainConfig {
 #[derive(Debug, Clone)]
 pub struct TransactionStats {
     pub first_seen: u32,
+    pub rejected: bool,
+}
+
+impl TransactionStats {
+    pub fn new(first_seen: u32) -> Self {
+        Self {
+            first_seen,
+            rejected: false,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

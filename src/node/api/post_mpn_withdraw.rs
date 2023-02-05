@@ -13,7 +13,7 @@ pub async fn post_mpn_withdraw<B: Blockchain>(
     let now = context.local_timestamp();
     context.mempool.mpn_sourced.insert(
         MpnSourcedTx::MpnWithdraw(req.tx),
-        TransactionStats { first_seen: now },
+        TransactionStats::new(now),
     );
     Ok(PostMpnWithdrawResponse {})
 }
