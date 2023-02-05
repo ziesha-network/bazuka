@@ -1217,8 +1217,15 @@ impl<K: KvStore> KvStoreChain<K> {
                 }
             }
 
+            // TODO: Temporary! Just for testnet
+            let func_calls = if curr_height < 3550 {
+                self.config.mpn_num_function_calls
+            } else {
+                10
+            };
+
             if !is_genesis
-                && (num_mpn_function_calls < self.config.mpn_num_function_calls
+                && (num_mpn_function_calls < func_calls
                     || num_mpn_contract_deposits < self.config.mpn_num_contract_deposits
                     || num_mpn_contract_withdraws < self.config.mpn_num_contract_withdraws)
             {
