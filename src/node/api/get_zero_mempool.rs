@@ -20,24 +20,20 @@ pub async fn get_zero_mempool<B: Blockchain>(
         Err(NodeError::StatesOutdated)
     } else {
         let ctx = context.read().await;
-        let mut chain_sourced = ctx.mempool.chain_sourced.clone();
-        let mut mpn_sourced = ctx.mempool.mpn_sourced.clone();
-        ctx.blockchain.cleanup_chain_mempool(&mut chain_sourced)?;
+        let mut mempool = ctx.mempool.clone();
+        ctx.blockchain.cleanup_chain_mempool(&mut mempool)?;
         ctx.blockchain
-            .cleanup_mpn_mempool(&mut mpn_sourced, ctx.opts.mpn_mempool_capacity)?;
+            .cleanup_mpn_mempool(&mut mempool, ctx.opts.mpn_mempool_capacity)?;
         drop(ctx);
 
-        let mut ctx = context.write().await;
-        ctx.mempool.chain_sourced = chain_sourced.clone();
-        ctx.mempool.mpn_sourced = mpn_sourced.clone();
-        drop(ctx);
+        context.write().await.mempool = mempool.clone();
 
         let mut updates = Vec::new();
         let mut deposits = Vec::new();
         let mut withdraws = Vec::new();
 
         let mut has_tx_delta_before_mpn = HashSet::new();
-        let mut chain_sourced_sorted = chain_sourced.keys().collect::<Vec<_>>();
+        let mut chain_sourced_sorted = mempool.chain_sourced.keys().collect::<Vec<_>>();
         chain_sourced_sorted.sort_unstable_by_key(|t| t.nonce());
         for tx in chain_sourced_sorted {
             match tx {
@@ -56,7 +52,7 @@ pub async fn get_zero_mempool<B: Blockchain>(
             }
         }
 
-        for tx in mpn_sourced.keys() {
+        for tx in mempool.mpn_sourced.keys() {
             match tx {
                 MpnSourcedTx::MpnTransaction(mpn_tx) => {
                     updates.push(mpn_tx.clone());

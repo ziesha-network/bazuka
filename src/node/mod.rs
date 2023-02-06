@@ -6,10 +6,9 @@ mod context;
 mod firewall;
 mod heartbeat;
 mod http;
-mod mempool;
 mod peer_manager;
 pub mod seeds;
-use crate::blockchain::Blockchain;
+use crate::blockchain::{Blockchain, Mempool};
 use crate::client::{
     messages::{GetJsonMempoolResponse, SocialProfiles},
     Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, Timestamp,
@@ -23,7 +22,6 @@ use context::NodeContext;
 pub use firewall::Firewall;
 use hyper::body::HttpBody;
 use hyper::{Body, Method, Request, Response, StatusCode};
-use mempool::Mempool;
 use peer_manager::PeerManager;
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};

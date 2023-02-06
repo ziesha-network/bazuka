@@ -1,8 +1,7 @@
 use super::{
-    Firewall, Mempool, NodeError, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerManager,
-    Timestamp,
+    Firewall, NodeError, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerManager, Timestamp,
 };
-use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError};
+use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, Mempool, TransactionValidity};
 use crate::client::messages::SocialProfiles;
 use crate::core::{ChainSourcedTx, Header, TransactionAndDelta};
 use crate::utils;
@@ -84,12 +83,16 @@ impl<B: Blockchain> NodeContext<B> {
 
         if let Some(max) = self.opts.tx_max_time_alive {
             for (tx, stats) in self.mempool.chain_sourced.clone().into_iter() {
-                if local_ts - stats.first_seen > max {
+                if stats.validity != TransactionValidity::Unknown
+                    && local_ts - stats.first_seen > max
+                {
                     self.mempool.chain_sourced.remove(&tx);
                 }
             }
             for (tx, stats) in self.mempool.mpn_sourced.clone().into_iter() {
-                if local_ts - stats.first_seen > max {
+                if stats.validity != TransactionValidity::Unknown
+                    && local_ts - stats.first_seen > max
+                {
                     self.mempool.mpn_sourced.remove(&tx);
                 }
             }

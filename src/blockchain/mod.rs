@@ -20,6 +20,12 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
+#[derive(Clone, Debug, Default)]
+pub struct Mempool {
+    pub chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
+    pub mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
+}
+
 #[derive(Clone)]
 pub struct BlockchainConfig {
     pub limited_miners: Option<HashSet<Address>>,
@@ -102,13 +108,10 @@ pub trait Blockchain {
 
     fn config(&self) -> &BlockchainConfig;
 
-    fn cleanup_chain_mempool(
-        &self,
-        mempool: &mut HashMap<ChainSourcedTx, TransactionStats>,
-    ) -> Result<(), BlockchainError>;
+    fn cleanup_chain_mempool(&self, mempool: &mut Mempool) -> Result<(), BlockchainError>;
     fn cleanup_mpn_mempool(
         &self,
-        mempool: &mut HashMap<MpnSourcedTx, TransactionStats>,
+        mempool: &mut Mempool,
         capacity: usize,
     ) -> Result<(), BlockchainError>;
 
@@ -1840,12 +1843,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn cleanup_chain_mempool(
-        &self,
-        mempool: &mut HashMap<ChainSourcedTx, TransactionStats>,
-    ) -> Result<(), BlockchainError> {
+    fn cleanup_chain_mempool(&self, mempool: &mut Mempool) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             let mut txs: Vec<ChainSourcedTx> = mempool
+                .chain_sourced
                 .clone()
                 .into_iter()
                 .filter_map(|(tx, stats)| {
@@ -1874,6 +1875,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
                             log::info!("Rejecting transaction: {}", e);
                             mempool
+                                .chain_sourced
                                 .get_mut(&tx)
                                 .map(|s| s.validity = TransactionValidity::Invalid);
                         }
@@ -1882,6 +1884,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         if let Err(e) = chain.apply_mpn_deposit(mpn_deposit) {
                             log::info!("Rejecting mpn-deposit: {}", e);
                             mempool
+                                .chain_sourced
                                 .get_mut(&tx)
                                 .map(|s| s.validity = TransactionValidity::Invalid);
                         }
@@ -1895,11 +1898,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn cleanup_mpn_mempool(
         &self,
-        mempool: &mut HashMap<MpnSourcedTx, TransactionStats>,
+        mempool: &mut Mempool,
         capacity: usize,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             let mut txs = mempool
+                .mpn_sourced
                 .clone()
                 .into_iter()
                 .filter(|(_, stats)| stats.validity != TransactionValidity::Invalid)
@@ -1912,7 +1916,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 }
                 match tx {
                     MpnSourcedTx::MpnTransaction(mpn_tx) => {
-                        new_mempool.insert(tx.clone(), mempool[tx].clone());
+                        new_mempool.insert(tx.clone(), mempool.mpn_sourced[tx].clone());
                         if let Err(e) = chain.apply_zero_tx(mpn_tx) {
                             new_mempool
                                 .get_mut(tx)
@@ -1921,7 +1925,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                         }
                     }
                     MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
-                        new_mempool.insert(tx.clone(), mempool[tx].clone());
+                        new_mempool.insert(tx.clone(), mempool.mpn_sourced[tx].clone());
                         if let Err(e) = chain.apply_mpn_withdraw(mpn_withdraw) {
                             new_mempool
                                 .get_mut(tx)
@@ -1931,8 +1935,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     }
                 }
             }
-            *mempool = new_mempool;
+            mempool.mpn_sourced = new_mempool;
             for (t, _) in mempool
+                .mpn_sourced
                 .clone()
                 .into_par_iter()
                 .filter(|(t, _)| match t {
@@ -1941,7 +1946,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 })
                 .collect::<Vec<_>>()
             {
-                mempool.remove(&t);
+                mempool.mpn_sourced.remove(&t);
             }
             Ok(())
         })?;
