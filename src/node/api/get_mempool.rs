@@ -16,20 +16,28 @@ pub async fn get_mempool<B: Blockchain>(
             .mempool
             .chain_sourced
             .clone()
-            .into_keys()
-            .filter(|tx| {
-                // Do not share MPN txs with others! It's a competetion :)
-                if let ChainSourcedTx::TransactionAndDelta(tx) = tx {
-                    if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
-                        contract_id != &mpn_contract_id
-                    } else {
-                        true
-                    }
-                } else {
-                    true
+            .into_iter()
+            .filter_map(|(tx, stats)| {
+                if stats.rejected {
+                    return None;
                 }
+                // Do not share MPN txs with others! It's a competetion :)
+                if let ChainSourcedTx::TransactionAndDelta(tx) = &tx {
+                    if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
+                        if contract_id == &mpn_contract_id {
+                            return None;
+                        }
+                    }
+                }
+                Some(tx)
             })
             .collect(),
-        mpn_sourced: context.mempool.mpn_sourced.clone().into_keys().collect(),
+        mpn_sourced: context
+            .mempool
+            .mpn_sourced
+            .clone()
+            .into_iter()
+            .filter_map(|(tx, stats)| if !stats.rejected { Some(tx) } else { None })
+            .collect(),
     })
 }

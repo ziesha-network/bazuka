@@ -1836,7 +1836,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         mempool: &mut HashMap<ChainSourcedTx, TransactionStats>,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            let mut txs: Vec<ChainSourcedTx> = mempool.clone().into_keys().collect();
+            let mut txs: Vec<ChainSourcedTx> = mempool
+                .clone()
+                .into_iter()
+                .filter_map(|(tx, stats)| if !stats.rejected { Some(tx) } else { None })
+                .collect();
             txs.sort_unstable_by_key(|tx| {
                 let not_mpn = if let ChainSourcedTx::TransactionAndDelta(tx) = tx {
                     if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
@@ -1854,13 +1858,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     ChainSourcedTx::TransactionAndDelta(tx_delta) => {
                         if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
                             log::info!("Rejecting transaction: {}", e);
-                            mempool.remove(&tx);
+                            mempool.get_mut(&tx).map(|s| s.rejected = true);
                         }
                     }
                     ChainSourcedTx::MpnDeposit(mpn_deposit) => {
                         if let Err(e) = chain.apply_mpn_deposit(mpn_deposit) {
                             log::info!("Rejecting mpn-deposit: {}", e);
-                            mempool.remove(&tx);
+                            mempool.get_mut(&tx).map(|s| s.rejected = true);
                         }
                     }
                 }
@@ -1876,7 +1880,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         capacity: usize,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            let mut txs: Vec<MpnSourcedTx> = mempool.clone().into_keys().collect();
+            let mut txs: Vec<MpnSourcedTx> = mempool
+                .clone()
+                .into_iter()
+                .filter_map(|(tx, stats)| if !stats.rejected { Some(tx) } else { None })
+                .collect();
             txs.sort_unstable_by_key(|t| t.nonce());
             let mut new_mempool = HashMap::new();
             for tx in txs.iter() {
@@ -1885,17 +1893,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 }
                 match tx {
                     MpnSourcedTx::MpnTransaction(mpn_tx) => {
+                        new_mempool.insert(tx.clone(), mempool[tx].clone());
                         if let Err(e) = chain.apply_zero_tx(mpn_tx) {
+                            new_mempool.get_mut(tx).map(|s| s.rejected = true);
                             log::info!("Rejecting mpn-transaction: {}", e);
-                        } else {
-                            new_mempool.insert(tx.clone(), mempool[tx].clone());
                         }
                     }
                     MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
+                        new_mempool.insert(tx.clone(), mempool[tx].clone());
                         if let Err(e) = chain.apply_mpn_withdraw(mpn_withdraw) {
+                            new_mempool.get_mut(tx).map(|s| s.rejected = true);
                             log::info!("Rejecting mpn-withdraw: {}", e);
-                        } else {
-                            new_mempool.insert(tx.clone(), mempool[tx].clone());
                         }
                     }
                 }
