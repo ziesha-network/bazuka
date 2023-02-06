@@ -82,18 +82,18 @@ impl<B: Blockchain> NodeContext<B> {
         }
 
         if let Some(max) = self.opts.tx_max_time_alive {
-            for (tx, stats) in self.mempool.chain_sourced.clone().into_iter() {
+            for (tx, stats) in self.mempool.chain_sourced().clone().into_iter() {
                 if stats.validity != TransactionValidity::Unknown
                     && local_ts - stats.first_seen > max
                 {
-                    self.mempool.chain_sourced.remove(&tx);
+                    self.mempool.expire_chain_sourced(&tx);
                 }
             }
-            for (tx, stats) in self.mempool.mpn_sourced.clone().into_iter() {
+            for (tx, stats) in self.mempool.mpn_sourced().clone().into_iter() {
                 if stats.validity != TransactionValidity::Unknown
                     && local_ts - stats.first_seen > max
                 {
-                    self.mempool.mpn_sourced.remove(&tx);
+                    self.mempool.expire_mpn_sourced(&tx);
                 }
             }
         }
@@ -114,7 +114,7 @@ impl<B: Blockchain> NodeContext<B> {
         let ts = self.network_timestamp();
         let raw_txs: Vec<TransactionAndDelta> = self
             .mempool
-            .chain_sourced
+            .chain_sourced()
             .keys()
             .filter_map(|tx| {
                 if let ChainSourcedTx::TransactionAndDelta(tx) = tx {

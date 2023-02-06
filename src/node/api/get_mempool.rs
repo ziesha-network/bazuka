@@ -14,7 +14,7 @@ pub async fn get_mempool<B: Blockchain>(
     Ok(GetMempoolResponse {
         chain_sourced: context
             .mempool
-            .chain_sourced
+            .chain_sourced()
             .clone()
             .into_iter()
             .filter_map(|(tx, stats)| {
@@ -34,7 +34,7 @@ pub async fn get_mempool<B: Blockchain>(
             .collect(),
         mpn_sourced: context
             .mempool
-            .mpn_sourced
+            .mpn_sourced()
             .clone()
             .into_iter()
             .filter_map(|(tx, stats)| {

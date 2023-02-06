@@ -33,18 +33,14 @@ pub async fn sync_mempool<B: Blockchain>(
         for (chained_source_txs, mpn_sourced_txs) in resps {
             for tx in chained_source_txs {
                 ctx.mempool
-                    .chain_sourced
-                    .entry(tx)
-                    .or_insert(TransactionStats::new(false, now));
+                    .add_chain_sourced(tx, TransactionStats::new(false, now));
             }
             for tx in mpn_sourced_txs {
-                if ctx.mempool.mpn_sourced.len() >= ctx.opts.mpn_mempool_capacity {
+                if ctx.mempool.mpn_sourced().len() >= ctx.opts.mpn_mempool_capacity {
                     break;
                 }
                 ctx.mempool
-                    .mpn_sourced
-                    .entry(tx)
-                    .or_insert(TransactionStats::new(false, now));
+                    .add_mpn_sourced(tx, TransactionStats::new(false, now));
             }
         }
     }

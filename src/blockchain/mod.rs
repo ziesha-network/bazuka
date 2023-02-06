@@ -22,8 +22,43 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, Default)]
 pub struct Mempool {
-    pub chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
-    pub mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
+    chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
+    rejected_chain_sourced: HashSet<ChainSourcedTx>,
+    mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
+    rejected_mpn_sourced: HashSet<MpnSourcedTx>,
+}
+
+impl Mempool {
+    pub fn add_chain_sourced(&mut self, tx: ChainSourcedTx, stats: TransactionStats) {
+        if !self.rejected_chain_sourced.contains(&tx) {
+            self.chain_sourced.insert(tx, stats);
+        }
+    }
+    pub fn add_mpn_sourced(&mut self, tx: MpnSourcedTx, stats: TransactionStats) {
+        if !self.rejected_mpn_sourced.contains(&tx) {
+            self.mpn_sourced.insert(tx, stats);
+        }
+    }
+    pub fn reject_chain_sourced(&mut self, tx: &ChainSourcedTx) {
+        self.rejected_chain_sourced.insert(tx.clone());
+        self.chain_sourced.remove(tx);
+    }
+    pub fn reject_mpn_sourced(&mut self, tx: &MpnSourcedTx) {
+        self.rejected_mpn_sourced.insert(tx.clone());
+        self.mpn_sourced.remove(tx);
+    }
+    pub fn expire_chain_sourced(&mut self, tx: &ChainSourcedTx) {
+        self.reject_chain_sourced(tx);
+    }
+    pub fn expire_mpn_sourced(&mut self, tx: &MpnSourcedTx) {
+        self.reject_mpn_sourced(tx);
+    }
+    pub fn chain_sourced(&self) -> &HashMap<ChainSourcedTx, TransactionStats> {
+        &self.chain_sourced
+    }
+    pub fn mpn_sourced(&self) -> &HashMap<MpnSourcedTx, TransactionStats> {
+        &self.mpn_sourced
+    }
 }
 
 #[derive(Clone)]
@@ -1846,7 +1881,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn cleanup_chain_mempool(&self, mempool: &mut Mempool) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             let mut txs: Vec<ChainSourcedTx> = mempool
-                .chain_sourced
+                .chain_sourced()
                 .clone()
                 .into_iter()
                 .filter_map(|(tx, stats)| {
@@ -1874,19 +1909,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     ChainSourcedTx::TransactionAndDelta(tx_delta) => {
                         if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
                             log::info!("Rejecting transaction: {}", e);
-                            mempool
-                                .chain_sourced
-                                .get_mut(&tx)
-                                .map(|s| s.validity = TransactionValidity::Invalid);
+                            mempool.reject_chain_sourced(&tx);
                         }
                     }
                     ChainSourcedTx::MpnDeposit(mpn_deposit) => {
                         if let Err(e) = chain.apply_mpn_deposit(mpn_deposit) {
                             log::info!("Rejecting mpn-deposit: {}", e);
-                            mempool
-                                .chain_sourced
-                                .get_mut(&tx)
-                                .map(|s| s.validity = TransactionValidity::Invalid);
+                            mempool.reject_chain_sourced(&tx);
                         }
                     }
                 }
@@ -1909,33 +1938,22 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 .filter(|(_, stats)| stats.validity != TransactionValidity::Invalid)
                 .collect::<Vec<_>>();
             txs.sort_unstable_by_key(|(tx, stats)| (!stats.is_local, tx.nonce()));
-            let mut new_mempool = HashMap::new();
             for (tx, _) in txs.iter() {
-                if new_mempool.len() >= capacity {
-                    break;
-                }
                 match tx {
                     MpnSourcedTx::MpnTransaction(mpn_tx) => {
-                        new_mempool.insert(tx.clone(), mempool.mpn_sourced[tx].clone());
                         if let Err(e) = chain.apply_zero_tx(mpn_tx) {
-                            new_mempool
-                                .get_mut(tx)
-                                .map(|s| s.validity = TransactionValidity::Invalid);
                             log::info!("Rejecting mpn-transaction: {}", e);
+                            mempool.reject_mpn_sourced(tx);
                         }
                     }
                     MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
-                        new_mempool.insert(tx.clone(), mempool.mpn_sourced[tx].clone());
                         if let Err(e) = chain.apply_mpn_withdraw(mpn_withdraw) {
-                            new_mempool
-                                .get_mut(tx)
-                                .map(|s| s.validity = TransactionValidity::Invalid);
                             log::info!("Rejecting mpn-withdraw: {}", e);
+                            mempool.reject_mpn_sourced(tx);
                         }
                     }
                 }
             }
-            mempool.mpn_sourced = new_mempool;
             for (t, _) in mempool
                 .mpn_sourced
                 .clone()

@@ -14,7 +14,7 @@ pub async fn post_mpn_deposit<B: Blockchain>(
     let mut context = context.write().await;
     let now = context.local_timestamp();
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
-    context.mempool.chain_sourced.insert(
+    context.mempool.add_chain_sourced(
         ChainSourcedTx::MpnDeposit(req.tx),
         TransactionStats::new(is_local, now),
     );

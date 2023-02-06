@@ -33,7 +33,7 @@ pub async fn get_zero_mempool<B: Blockchain>(
         let mut withdraws = Vec::new();
 
         let mut has_tx_delta_before_mpn = HashSet::new();
-        let mut chain_sourced_sorted = mempool.chain_sourced.keys().collect::<Vec<_>>();
+        let mut chain_sourced_sorted = mempool.chain_sourced().keys().collect::<Vec<_>>();
         chain_sourced_sorted.sort_unstable_by_key(|t| t.nonce());
         for tx in chain_sourced_sorted {
             match tx {
@@ -52,7 +52,7 @@ pub async fn get_zero_mempool<B: Blockchain>(
             }
         }
 
-        for tx in mempool.mpn_sourced.keys() {
+        for tx in mempool.mpn_sourced().keys() {
             match tx {
                 MpnSourcedTx::MpnTransaction(mpn_tx) => {
                     updates.push(mpn_tx.clone());

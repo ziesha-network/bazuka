@@ -14,7 +14,7 @@ pub async fn post_mpn_withdraw<B: Blockchain>(
     let mut context = context.write().await;
     let now = context.local_timestamp();
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
-    context.mempool.mpn_sourced.insert(
+    context.mempool.add_mpn_sourced(
         MpnSourcedTx::MpnWithdraw(req.tx),
         TransactionStats::new(is_local, now),
     );
