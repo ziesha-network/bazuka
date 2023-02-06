@@ -35,7 +35,7 @@ pub async fn sync_mempool<B: Blockchain>(
                 ctx.mempool
                     .chain_sourced
                     .entry(tx)
-                    .or_insert(TransactionStats::new(now));
+                    .or_insert(TransactionStats::new(false, now));
             }
             for tx in mpn_sourced_txs {
                 if ctx.mempool.mpn_sourced.len() >= ctx.opts.mpn_mempool_capacity {
@@ -44,7 +44,7 @@ pub async fn sync_mempool<B: Blockchain>(
                 ctx.mempool
                     .mpn_sourced
                     .entry(tx)
-                    .or_insert(TransactionStats::new(now));
+                    .or_insert(TransactionStats::new(false, now));
             }
         }
     }

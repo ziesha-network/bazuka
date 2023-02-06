@@ -58,13 +58,15 @@ pub enum TransactionValidity {
 pub struct TransactionStats {
     pub first_seen: u32,
     pub validity: TransactionValidity,
+    pub is_local: bool,
 }
 
 impl TransactionStats {
-    pub fn new(first_seen: u32) -> Self {
+    pub fn new(is_local: bool, first_seen: u32) -> Self {
         Self {
             first_seen,
             validity: TransactionValidity::Unknown,
+            is_local,
         }
     }
 }
@@ -1897,20 +1899,14 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         capacity: usize,
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            let mut txs: Vec<MpnSourcedTx> = mempool
+            let mut txs = mempool
                 .clone()
                 .into_iter()
-                .filter_map(|(tx, stats)| {
-                    if stats.validity != TransactionValidity::Invalid {
-                        Some(tx)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            txs.sort_unstable_by_key(|t| t.nonce());
+                .filter(|(_, stats)| stats.validity != TransactionValidity::Invalid)
+                .collect::<Vec<_>>();
+            txs.sort_unstable_by_key(|(tx, stats)| (!stats.is_local, tx.nonce()));
             let mut new_mempool = HashMap::new();
-            for tx in txs.iter() {
+            for (tx, _) in txs.iter() {
                 if new_mempool.len() >= capacity {
                     break;
                 }

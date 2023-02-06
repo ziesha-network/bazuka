@@ -267,13 +267,18 @@ async fn node_service<B: Blockchain>(
             }
             (Method::POST, "/bincode/transact") => {
                 *response.body_mut() = Body::from(bincode::serialize(
-                    &api::transact(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
-                        .await?,
+                    &api::transact(
+                        client,
+                        Arc::clone(&context),
+                        bincode::deserialize(&body_bytes)?,
+                    )
+                    .await?,
                 )?);
             }
             (Method::POST, "/bincode/transact/zero") => {
                 *response.body_mut() = Body::from(bincode::serialize(
                     &api::post_mpn_transaction(
+                        client,
                         Arc::clone(&context),
                         bincode::deserialize(&body_bytes)?,
                     )
@@ -283,6 +288,7 @@ async fn node_service<B: Blockchain>(
             (Method::POST, "/transact/zero") => {
                 *response.body_mut() = Body::from(bincode::serialize(
                     &api::post_mpn_transaction(
+                        client,
                         Arc::clone(&context),
                         serde_json::from_slice::<
                             crate::client::messages::PostJsonMpnTransactionRequest,
@@ -295,6 +301,7 @@ async fn node_service<B: Blockchain>(
             (Method::POST, "/bincode/transact/deposit") => {
                 *response.body_mut() = Body::from(bincode::serialize(
                     &api::post_mpn_deposit(
+                        client,
                         Arc::clone(&context),
                         bincode::deserialize(&body_bytes)?,
                     )
@@ -304,6 +311,7 @@ async fn node_service<B: Blockchain>(
             (Method::POST, "/bincode/transact/withdraw") => {
                 *response.body_mut() = Body::from(bincode::serialize(
                     &api::post_mpn_withdraw(
+                        client,
                         Arc::clone(&context),
                         bincode::deserialize(&body_bytes)?,
                     )
