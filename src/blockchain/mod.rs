@@ -23,29 +23,62 @@ use std::collections::{HashMap, HashSet};
 #[derive(Clone, Debug, Default)]
 pub struct Mempool {
     chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
-    rejected_chain_sourced: HashSet<ChainSourcedTx>,
+    rejected_chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
     mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
-    rejected_mpn_sourced: HashSet<MpnSourcedTx>,
+    rejected_mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
 }
 
 impl Mempool {
+    pub fn refresh(
+        &mut self,
+        local_ts: u32,
+        max_time_alive: Option<u32>,
+        max_time_remember: Option<u32>,
+    ) {
+        if let Some(max_time_alive) = max_time_alive {
+            for (tx, stats) in self.chain_sourced.clone().into_iter() {
+                if local_ts - stats.first_seen > max_time_alive {
+                    self.expire_chain_sourced(&tx);
+                }
+            }
+            for (tx, stats) in self.mpn_sourced.clone().into_iter() {
+                if local_ts - stats.first_seen > max_time_alive {
+                    self.expire_mpn_sourced(&tx);
+                }
+            }
+        }
+        if let Some(max_time_remember) = max_time_remember {
+            for (tx, stats) in self.rejected_chain_sourced.clone().into_iter() {
+                if local_ts - stats.first_seen > max_time_remember {
+                    self.rejected_chain_sourced.remove(&tx);
+                }
+            }
+            for (tx, stats) in self.rejected_mpn_sourced.clone().into_iter() {
+                if local_ts - stats.first_seen > max_time_remember {
+                    self.rejected_mpn_sourced.remove(&tx);
+                }
+            }
+        }
+    }
     pub fn add_chain_sourced(&mut self, tx: ChainSourcedTx, stats: TransactionStats) {
-        if !self.rejected_chain_sourced.contains(&tx) {
+        if !self.rejected_chain_sourced.contains_key(&tx) {
             self.chain_sourced.insert(tx, stats);
         }
     }
     pub fn add_mpn_sourced(&mut self, tx: MpnSourcedTx, stats: TransactionStats) {
-        if !self.rejected_mpn_sourced.contains(&tx) {
+        if !self.rejected_mpn_sourced.contains_key(&tx) {
             self.mpn_sourced.insert(tx, stats);
         }
     }
     pub fn reject_chain_sourced(&mut self, tx: &ChainSourcedTx) {
-        self.rejected_chain_sourced.insert(tx.clone());
-        self.chain_sourced.remove(tx);
+        if let Some(stats) = self.chain_sourced.remove(tx) {
+            self.rejected_chain_sourced.insert(tx.clone(), stats);
+        }
     }
     pub fn reject_mpn_sourced(&mut self, tx: &MpnSourcedTx) {
-        self.rejected_mpn_sourced.insert(tx.clone());
-        self.mpn_sourced.remove(tx);
+        if let Some(stats) = self.mpn_sourced.remove(tx) {
+            self.rejected_mpn_sourced.insert(tx.clone(), stats);
+        }
     }
     pub fn expire_chain_sourced(&mut self, tx: &ChainSourcedTx) {
         self.reject_chain_sourced(tx);
@@ -1952,6 +1985,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                             mempool.reject_mpn_sourced(tx);
                         }
                     }
+                }
+            }
+            while mempool.mpn_sourced.len() > capacity {
+                if let Some(tx) = txs.pop() {
+                    mempool.expire_mpn_sourced(&tx.0);
                 }
             }
             for (t, _) in mempool
