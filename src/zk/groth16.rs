@@ -35,6 +35,33 @@ pub struct Groth16Proof {
     c: (Fp, Fp, bool),
 }
 
+impl From<bellman::groth16::VerifyingKey<Bls12>> for Groth16VerifyingKey {
+    fn from(vk: bellman::groth16::VerifyingKey<Bls12>) -> Self {
+        unsafe {
+            Self {
+                alpha_g1: std::mem::transmute::<BellmanG1, (Fp, Fp, bool)>(vk.alpha_g1.clone()),
+                beta_g1: std::mem::transmute::<BellmanG1, (Fp, Fp, bool)>(vk.beta_g1.clone()),
+                beta_g2: std::mem::transmute::<BellmanG2, ((Fp, Fp), (Fp, Fp), bool)>(
+                    vk.beta_g2.clone(),
+                ),
+                gamma_g2: std::mem::transmute::<BellmanG2, ((Fp, Fp), (Fp, Fp), bool)>(
+                    vk.gamma_g2.clone(),
+                ),
+                delta_g1: std::mem::transmute::<BellmanG1, (Fp, Fp, bool)>(vk.delta_g1.clone()),
+                delta_g2: std::mem::transmute::<BellmanG2, ((Fp, Fp), (Fp, Fp), bool)>(
+                    vk.delta_g2.clone(),
+                ),
+                ic: vk
+                    .ic
+                    .iter()
+                    .cloned()
+                    .map(|p| std::mem::transmute::<BellmanG1, (Fp, Fp, bool)>(p))
+                    .collect(),
+            }
+        }
+    }
+}
+
 pub fn groth16_verify(
     vk: &Groth16VerifyingKey,
     prev_height: u64,
