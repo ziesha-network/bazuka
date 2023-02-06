@@ -1,6 +1,6 @@
 use super::messages::{GetMempoolRequest, GetMempoolResponse};
 use super::{NodeContext, NodeError};
-use crate::blockchain::Blockchain;
+use crate::blockchain::{Blockchain, TransactionValidity};
 use crate::core::{ChainSourcedTx, TransactionData};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -18,7 +18,7 @@ pub async fn get_mempool<B: Blockchain>(
             .clone()
             .into_iter()
             .filter_map(|(tx, stats)| {
-                if stats.rejected {
+                if stats.validity != TransactionValidity::Valid {
                     return None;
                 }
                 // Do not share MPN txs with others! It's a competetion :)
@@ -37,7 +37,13 @@ pub async fn get_mempool<B: Blockchain>(
             .mpn_sourced
             .clone()
             .into_iter()
-            .filter_map(|(tx, stats)| if !stats.rejected { Some(tx) } else { None })
+            .filter_map(|(tx, stats)| {
+                if stats.validity == TransactionValidity::Valid {
+                    Some(tx)
+                } else {
+                    None
+                }
+            })
             .collect(),
     })
 }

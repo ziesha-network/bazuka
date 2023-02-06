@@ -47,17 +47,24 @@ pub struct BlockchainConfig {
     pub max_memo_length: usize,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum TransactionValidity {
+    Unknown,
+    Invalid,
+    Valid,
+}
+
 #[derive(Debug, Clone)]
 pub struct TransactionStats {
     pub first_seen: u32,
-    pub rejected: bool,
+    pub validity: TransactionValidity,
 }
 
 impl TransactionStats {
     pub fn new(first_seen: u32) -> Self {
         Self {
             first_seen,
-            rejected: false,
+            validity: TransactionValidity::Unknown,
         }
     }
 }
@@ -1839,7 +1846,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             let mut txs: Vec<ChainSourcedTx> = mempool
                 .clone()
                 .into_iter()
-                .filter_map(|(tx, stats)| if !stats.rejected { Some(tx) } else { None })
+                .filter_map(|(tx, stats)| {
+                    if stats.validity != TransactionValidity::Invalid {
+                        Some(tx)
+                    } else {
+                        None
+                    }
+                })
                 .collect();
             txs.sort_unstable_by_key(|tx| {
                 let not_mpn = if let ChainSourcedTx::TransactionAndDelta(tx) = tx {
@@ -1858,13 +1871,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     ChainSourcedTx::TransactionAndDelta(tx_delta) => {
                         if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
                             log::info!("Rejecting transaction: {}", e);
-                            mempool.get_mut(&tx).map(|s| s.rejected = true);
+                            mempool
+                                .get_mut(&tx)
+                                .map(|s| s.validity = TransactionValidity::Invalid);
                         }
                     }
                     ChainSourcedTx::MpnDeposit(mpn_deposit) => {
                         if let Err(e) = chain.apply_mpn_deposit(mpn_deposit) {
                             log::info!("Rejecting mpn-deposit: {}", e);
-                            mempool.get_mut(&tx).map(|s| s.rejected = true);
+                            mempool
+                                .get_mut(&tx)
+                                .map(|s| s.validity = TransactionValidity::Invalid);
                         }
                     }
                 }
@@ -1883,7 +1900,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             let mut txs: Vec<MpnSourcedTx> = mempool
                 .clone()
                 .into_iter()
-                .filter_map(|(tx, stats)| if !stats.rejected { Some(tx) } else { None })
+                .filter_map(|(tx, stats)| {
+                    if stats.validity != TransactionValidity::Invalid {
+                        Some(tx)
+                    } else {
+                        None
+                    }
+                })
                 .collect();
             txs.sort_unstable_by_key(|t| t.nonce());
             let mut new_mempool = HashMap::new();
@@ -1895,14 +1918,18 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     MpnSourcedTx::MpnTransaction(mpn_tx) => {
                         new_mempool.insert(tx.clone(), mempool[tx].clone());
                         if let Err(e) = chain.apply_zero_tx(mpn_tx) {
-                            new_mempool.get_mut(tx).map(|s| s.rejected = true);
+                            new_mempool
+                                .get_mut(tx)
+                                .map(|s| s.validity = TransactionValidity::Invalid);
                             log::info!("Rejecting mpn-transaction: {}", e);
                         }
                     }
                     MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
                         new_mempool.insert(tx.clone(), mempool[tx].clone());
                         if let Err(e) = chain.apply_mpn_withdraw(mpn_withdraw) {
-                            new_mempool.get_mut(tx).map(|s| s.rejected = true);
+                            new_mempool
+                                .get_mut(tx)
+                                .map(|s| s.validity = TransactionValidity::Invalid);
                             log::info!("Rejecting mpn-withdraw: {}", e);
                         }
                     }
