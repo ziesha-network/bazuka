@@ -37,24 +37,24 @@ impl Mempool {
     ) {
         if let Some(max_time_alive) = max_time_alive {
             for (tx, stats) in self.chain_sourced.clone().into_iter() {
-                if local_ts - stats.first_seen > max_time_alive {
+                if !stats.is_local && local_ts - stats.first_seen > max_time_alive {
                     self.expire_chain_sourced(&tx);
                 }
             }
             for (tx, stats) in self.mpn_sourced.clone().into_iter() {
-                if local_ts - stats.first_seen > max_time_alive {
+                if !stats.is_local && local_ts - stats.first_seen > max_time_alive {
                     self.expire_mpn_sourced(&tx);
                 }
             }
         }
         if let Some(max_time_remember) = max_time_remember {
             for (tx, stats) in self.rejected_chain_sourced.clone().into_iter() {
-                if local_ts - stats.first_seen > max_time_remember {
+                if !stats.is_local && local_ts - stats.first_seen > max_time_remember {
                     self.rejected_chain_sourced.remove(&tx);
                 }
             }
             for (tx, stats) in self.rejected_mpn_sourced.clone().into_iter() {
-                if local_ts - stats.first_seen > max_time_remember {
+                if !stats.is_local && local_ts - stats.first_seen > max_time_remember {
                     self.rejected_mpn_sourced.remove(&tx);
                 }
             }
