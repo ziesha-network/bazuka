@@ -177,7 +177,24 @@ pub enum TxSideEffect {
     Nothing,
 }
 
+// A proof that you are the validator for this block
+#[derive(Debug, Clone)]
+pub struct ValidatorProof {}
+
 pub trait Blockchain {
+    fn validator_set(&self) -> Result<Vec<Address>, BlockchainError>;
+    fn is_validator(
+        &self,
+        timestamp: u32,
+        addr: Address,
+        proof: ValidatorProof,
+    ) -> Result<bool, BlockchainError>;
+    fn validator_status(
+        &self,
+        timestamp: u32,
+        wallet: &TxBuilder,
+    ) -> Result<Option<ValidatorProof>, BlockchainError>;
+
     fn currency_in_circulation(&self) -> Result<Amount, BlockchainError>;
 
     fn config(&self) -> &BlockchainConfig;
@@ -1790,6 +1807,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         wallet: &TxBuilder,
         check: bool,
     ) -> Result<Option<BlockAndPatch>, BlockchainError> {
+        if self.validator_status(timestamp, wallet)?.is_none() {
+            return Ok(None);
+        }
         let height = self.get_height()?;
         let outdated_contracts = self.get_outdated_contracts()?;
 
@@ -2133,6 +2153,47 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             }
         }
         Ok(amount_sum)
+    }
+
+    fn validator_set(&self) -> Result<Vec<Address>, BlockchainError> {
+        Ok([
+            "0xac798dca2e3275b06948c6839b9813697fc2fb60174c79e366f860d844b17202", // Apricot Pool
+            "0x115845ae1e3565a956b329285ae2f28d53e4b67865ad92f0131c46bea76cf858", // CHN Pool
+            "0x078800541138668423cbad38275209481583b8d9fd12bd03d5f859805b054db6", // Starnodes Pool
+            "0x2d5bd425ecdb9c64f098216271ea19bfecc79a8de76a8b402b5260425a9114bc", // Nodn Pool
+            "0x5bbc3a8fd8dc14fe7a93211e3b2f4cca8c198c5c4a64fa1e097251b087759a14", // LazyPenguin Pool
+            "0x9ab51573c41c03d7ab863569df608daecbfe0b2b0da0efe282fd8f68e464ce28", // Making.Cash Pool
+            "0x3d6bc18e6e1c75ae384873d5e866bcc00634d1d172b118d086067f9089c06ff9", // Super Pool
+            "0x8d2fdd62ec6c067789aa694cee59b81f34aa354fcb461acada43e26770f41d36", // Systemd Pool
+        ]
+        .into_iter()
+        .map(|s| s.parse().unwrap())
+        .collect())
+    }
+    fn is_validator(
+        &self,
+        timestamp: u32,
+        addr: Address,
+        _proof: ValidatorProof,
+    ) -> Result<bool, BlockchainError> {
+        let slot_number = (timestamp / 90) as usize;
+        let i = slot_number % self.validator_set()?.len();
+        let winner = self.validator_set()?[i].clone();
+        Ok(addr == winner)
+    }
+    fn validator_status(
+        &self,
+        timestamp: u32,
+        wallet: &TxBuilder,
+    ) -> Result<Option<ValidatorProof>, BlockchainError> {
+        let slot_number = (timestamp / 90) as usize;
+        let i = slot_number % self.validator_set()?.len();
+        let winner = self.validator_set()?[i].clone();
+        Ok(if wallet.get_address() == winner {
+            Some(ValidatorProof {})
+        } else {
+            None
+        })
     }
 }
 
