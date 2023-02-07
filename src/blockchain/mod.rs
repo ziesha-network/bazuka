@@ -596,77 +596,117 @@ impl<K: KvStore> KvStoreChain<K> {
     // WARN: Will not check sig!
     fn apply_zero_tx(&mut self, tx: &zk::MpnTransaction) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
-            let src = chain.get_mpn_account(tx.src_index(self.config.mpn_log4_account_capacity))?;
-            let dst = chain.get_mpn_account(tx.dst_index(self.config.mpn_log4_account_capacity))?;
-            if tx.src_index(self.config.mpn_log4_account_capacity) > 0x3FFFFFFF
-                || tx.dst_index(self.config.mpn_log4_account_capacity) > 0x3FFFFFFF
-                || tx.src_index(self.config.mpn_log4_account_capacity)
-                    == tx.dst_index(self.config.mpn_log4_account_capacity)
-                || !tx.src_pub_key.is_on_curve()
-                || !tx.dst_pub_key.is_on_curve()
-                || src.address != tx.src_pub_key.decompress()
-                || (dst.address.is_on_curve() && dst.address != tx.dst_pub_key.decompress())
-                || tx.nonce != src.nonce
-            {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-
-            let mut size_diff = 0;
-            let mut new_src_acc = zk::MpnAccount {
-                address: src.address,
-                tokens: src.tokens.clone(),
-                nonce: src.nonce + 1,
-            };
-            let mut new_dst_acc = zk::MpnAccount {
-                address: tx.dst_pub_key.0.decompress(),
-                tokens: dst.tokens.clone(),
-                nonce: dst.nonce,
-            };
-            let src_token_balance_mut = new_src_acc.tokens.get_mut(&tx.src_token_index);
-            if let Some(src_money) = src_token_balance_mut {
-                let dst_money = new_dst_acc
-                    .tokens
-                    .entry(tx.dst_token_index)
-                    .or_insert_with(|| Money::new(src_money.token_id, 0));
-                if src_money.token_id == dst_money.token_id
-                    && src_money.token_id == tx.amount.token_id
+            let tx_src_index = tx.src_index(self.config.mpn_log4_account_capacity);
+            let tx_dst_index = tx.dst_index(self.config.mpn_log4_account_capacity);
+            if tx_src_index == tx_dst_index {
+                let src = chain.get_mpn_account(tx_src_index)?;
+                if !tx.src_pub_key.is_on_curve()
+                    || !tx.dst_pub_key.is_on_curve()
+                    || src.address != tx.src_pub_key.decompress()
+                    || tx.nonce != src.nonce
                 {
-                    if src_money.amount >= tx.amount.amount {
-                        src_money.amount -= tx.amount.amount;
-                        dst_money.amount += tx.amount.amount;
+                    return Err(BlockchainError::InvalidMpnTransaction);
+                }
+
+                let mut size_diff = 0;
+                let mut new_src_acc = zk::MpnAccount {
+                    address: src.address,
+                    tokens: src.tokens.clone(),
+                    nonce: src.nonce + 1,
+                };
+                if let Some(src_money) = new_src_acc.tokens.get_mut(&tx.src_token_index) {
+                    if src_money.token_id != tx.amount.token_id {
+                        return Err(BlockchainError::InvalidMpnTransaction);
+                    }
+                } else {
+                    return Err(BlockchainError::InvalidMpnTransaction);
+                }
+                if let Some(money) = new_src_acc.tokens.get_mut(&tx.src_fee_token_index) {
+                    if money.token_id == tx.fee.token_id && money.amount >= tx.fee.amount {
+                        money.amount -= tx.fee.amount;
                     } else {
                         return Err(BlockchainError::InvalidMpnTransaction);
                     }
                 } else {
                     return Err(BlockchainError::InvalidMpnTransaction);
                 }
+
+                zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
+                    &mut chain.database,
+                    chain.config.mpn_contract_id,
+                    tx_src_index,
+                    new_src_acc,
+                    &mut size_diff,
+                )?;
             } else {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if let Some(money) = new_src_acc.tokens.get_mut(&tx.src_fee_token_index) {
-                if money.token_id == tx.fee.token_id && money.amount >= tx.fee.amount {
-                    money.amount -= tx.fee.amount;
+                let src = chain.get_mpn_account(tx_src_index)?;
+                let dst = chain.get_mpn_account(tx_dst_index)?;
+                if !tx.src_pub_key.is_on_curve()
+                    || !tx.dst_pub_key.is_on_curve()
+                    || src.address != tx.src_pub_key.decompress()
+                    || (dst.address.is_on_curve() && dst.address != tx.dst_pub_key.decompress())
+                    || tx.nonce != src.nonce
+                {
+                    return Err(BlockchainError::InvalidMpnTransaction);
+                }
+
+                let mut size_diff = 0;
+                let mut new_src_acc = zk::MpnAccount {
+                    address: src.address,
+                    tokens: src.tokens.clone(),
+                    nonce: src.nonce + 1,
+                };
+                let mut new_dst_acc = zk::MpnAccount {
+                    address: tx.dst_pub_key.0.decompress(),
+                    tokens: dst.tokens.clone(),
+                    nonce: dst.nonce,
+                };
+                let src_token_balance_mut = new_src_acc.tokens.get_mut(&tx.src_token_index);
+                if let Some(src_money) = src_token_balance_mut {
+                    let dst_money = new_dst_acc
+                        .tokens
+                        .entry(tx.dst_token_index)
+                        .or_insert_with(|| Money::new(src_money.token_id, 0));
+                    if src_money.token_id == dst_money.token_id
+                        && src_money.token_id == tx.amount.token_id
+                    {
+                        if src_money.amount >= tx.amount.amount {
+                            src_money.amount -= tx.amount.amount;
+                            dst_money.amount += tx.amount.amount;
+                        } else {
+                            return Err(BlockchainError::InvalidMpnTransaction);
+                        }
+                    } else {
+                        return Err(BlockchainError::InvalidMpnTransaction);
+                    }
                 } else {
                     return Err(BlockchainError::InvalidMpnTransaction);
                 }
-            } else {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
+                if let Some(money) = new_src_acc.tokens.get_mut(&tx.src_fee_token_index) {
+                    if money.token_id == tx.fee.token_id && money.amount >= tx.fee.amount {
+                        money.amount -= tx.fee.amount;
+                    } else {
+                        return Err(BlockchainError::InvalidMpnTransaction);
+                    }
+                } else {
+                    return Err(BlockchainError::InvalidMpnTransaction);
+                }
 
-            zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
-                &mut chain.database,
-                chain.config.mpn_contract_id,
-                tx.src_index(self.config.mpn_log4_account_capacity),
-                new_src_acc,
-                &mut size_diff,
-            )?;
-            zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
-                &mut chain.database,
-                chain.config.mpn_contract_id,
-                tx.dst_index(self.config.mpn_log4_account_capacity),
-                new_dst_acc,
-                &mut size_diff,
-            )?;
+                zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
+                    &mut chain.database,
+                    chain.config.mpn_contract_id,
+                    tx_src_index,
+                    new_src_acc,
+                    &mut size_diff,
+                )?;
+                zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
+                    &mut chain.database,
+                    chain.config.mpn_contract_id,
+                    tx_dst_index,
+                    new_dst_acc,
+                    &mut size_diff,
+                )?;
+            }
             Ok(())
         })?;
         self.database.update(&ops)?;
