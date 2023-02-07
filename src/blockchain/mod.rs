@@ -178,7 +178,7 @@ pub enum TxSideEffect {
 }
 
 // A proof that you are the validator for this block
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ValidatorProof {}
 
 pub trait Blockchain {
@@ -2176,7 +2176,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         addr: Address,
         _proof: ValidatorProof,
     ) -> Result<bool, BlockchainError> {
-        let slot_number = (timestamp / 90) as usize;
+        let slot_number = (timestamp / 180) as usize;
         let i = slot_number % self.validator_set()?.len();
         let winner = self.validator_set()?[i].clone();
         Ok(addr == winner)
@@ -2186,7 +2186,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         timestamp: u32,
         wallet: &TxBuilder,
     ) -> Result<Option<ValidatorProof>, BlockchainError> {
-        let slot_number = (timestamp / 90) as usize;
+        let slot_number = (timestamp / 180) as usize;
         let i = slot_number % self.validator_set()?.len();
         let winner = self.validator_set()?[i].clone();
         Ok(if wallet.get_address() == winner {

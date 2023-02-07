@@ -1,3 +1,4 @@
+use crate::blockchain::ValidatorProof;
 use crate::blockchain::ZkBlockchainPatch;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
@@ -33,6 +34,7 @@ pub struct GetStatsResponse {
     pub timestamp: u32,
     pub version: String,
     pub network: String,
+    pub validator_proof: Option<ValidatorProof>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

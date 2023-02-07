@@ -9,6 +9,7 @@ pub async fn get_stats<B: Blockchain>(
     _req: GetStatsRequest,
 ) -> Result<GetStatsResponse, NodeError> {
     let context = context.read().await;
+    let ts = context.network_timestamp();
     Ok(GetStatsResponse {
         social_profiles: context.social_profiles.clone(),
         address: context.wallet.get_address().to_string(),
@@ -19,5 +20,6 @@ pub async fn get_stats<B: Blockchain>(
         timestamp: context.network_timestamp(),
         version: env!("CARGO_PKG_VERSION").into(),
         network: context.network.clone(),
+        validator_proof: context.blockchain.validator_status(ts, &context.wallet)?,
     })
 }
