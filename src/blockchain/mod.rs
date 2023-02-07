@@ -61,11 +61,17 @@ impl Mempool {
         }
     }
     pub fn add_chain_sourced(&mut self, tx: ChainSourcedTx, stats: TransactionStats) {
+        if stats.is_local {
+            self.rejected_chain_sourced.remove(&tx);
+        }
         if !self.rejected_chain_sourced.contains_key(&tx) {
             self.chain_sourced.insert(tx, stats);
         }
     }
     pub fn add_mpn_sourced(&mut self, tx: MpnSourcedTx, stats: TransactionStats) {
+        if stats.is_local {
+            self.rejected_mpn_sourced.remove(&tx);
+        }
         if !self.rejected_mpn_sourced.contains_key(&tx) {
             self.mpn_sourced.insert(tx, stats);
         }
