@@ -176,26 +176,47 @@ async fn resend_all_wallet_txs(conf: BazukaConfig, wallet: &Wallet) -> Result<()
         conf.network,
         None,
     );
+    let mpn_log4_account_capacity =
+        config::blockchain::get_blockchain_config().mpn_log4_account_capacity;
     try_join!(
         async move {
-            for tx in wallet.chain_sourced_txs.iter() {
-                match tx {
-                    ChainSourcedTx::TransactionAndDelta(tx) => {
-                        client.transact(tx.clone()).await?;
+            let curr_nonce = client
+                .get_account(tx_builder.get_address())
+                .await?
+                .account
+                .nonce;
+            let curr_mpn_nonce = client
+                .get_mpn_account(
+                    MpnAddress {
+                        pub_key: tx_builder.get_zk_address(),
                     }
-                    ChainSourcedTx::MpnDeposit(tx) => {
-                        client.transact_contract_deposit(tx.clone()).await?;
+                    .account_index(mpn_log4_account_capacity),
+                )
+                .await?
+                .account
+                .nonce;
+            for tx in wallet.chain_sourced_txs.iter() {
+                if tx.nonce() >= curr_nonce {
+                    match tx {
+                        ChainSourcedTx::TransactionAndDelta(tx) => {
+                            client.transact(tx.clone()).await?;
+                        }
+                        ChainSourcedTx::MpnDeposit(tx) => {
+                            client.transact_contract_deposit(tx.clone()).await?;
+                        }
                     }
                 }
             }
             for acc in wallet.mpn_sourced_txs.values() {
                 for tx in acc.iter() {
-                    match tx {
-                        MpnSourcedTx::MpnTransaction(tx) => {
-                            client.zero_transact(tx.clone()).await?;
-                        }
-                        MpnSourcedTx::MpnWithdraw(tx) => {
-                            client.transact_contract_withdraw(tx.clone()).await?;
+                    if tx.nonce() >= curr_mpn_nonce {
+                        match tx {
+                            MpnSourcedTx::MpnTransaction(tx) => {
+                                client.zero_transact(tx.clone()).await?;
+                            }
+                            MpnSourcedTx::MpnWithdraw(tx) => {
+                                client.transact_contract_withdraw(tx.clone()).await?;
+                            }
                         }
                     }
                 }
