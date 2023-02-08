@@ -11,7 +11,7 @@ pub async fn sync_blocks<B: Blockchain>(
     let mut sorted_peers = ctx.peer_manager.get_peers();
     drop(ctx);
 
-    sorted_peers.sort_by_key(|p| p.power);
+    sorted_peers.sort_by_key(|p| p.height);
 
     for peer in sorted_peers.iter().rev() {
         if peer.outdated_states > 0 {
@@ -75,13 +75,15 @@ pub async fn sync_blocks<B: Blockchain>(
             // TODO: Check parent hashes
             let ctx = context.read().await;
             for (i, (head, pow_key)) in headers.iter().zip(pow_keys.into_iter()).enumerate() {
-                if head.proof_of_work.target < min_target || !head.meets_target(&pow_key) {
-                    log::warn!("Header doesn't meet min target!");
+                if head.number != start_height + i as u64 {
+                    log::warn!("Bad header number returned!");
                     chain_fail = true;
                     break;
                 }
-                if head.number != start_height + i as u64 {
-                    log::warn!("Bad header number returned!");
+                if head.number < 4675
+                    && (head.proof_of_work.target < min_target || !head.meets_target(&pow_key))
+                {
+                    log::warn!("Header doesn't meet min target!");
                     chain_fail = true;
                     break;
                 }
