@@ -116,6 +116,13 @@ impl<B: Blockchain> NodeContext<B> {
         match self.blockchain.draft_block(ts, &raw_txs, &wallet, true) {
             Ok(draft) => {
                 if let Some(draft) = draft {
+                    {
+                        let _ = self
+                            .blockchain
+                            .extend(draft.block.header.number, &[draft.block.clone()]);
+                        let _ = self.on_update();
+                        let _ = self.blockchain.update_states(&draft.patch.clone());
+                    }
                     let puzzle = Puzzle {
                         key: hex::encode(self.blockchain.pow_key(draft.block.header.number)?),
                         blob: hex::encode(bincode::serialize(&draft.block.header).unwrap()),

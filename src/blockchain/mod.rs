@@ -1650,6 +1650,9 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     ) -> Result<bool, BlockchainError> {
         let current_power = self.get_power()?;
 
+        // WARN: Pelmeni Testnet
+        let check_pow = from < 4675;
+
         if from == 0 {
             return Err(BlockchainError::ExtendFromGenesis);
         } else if from > self.get_height()? {
