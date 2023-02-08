@@ -1,6 +1,5 @@
 use crate::blockchain::ValidatorProof;
 use crate::blockchain::ZkBlockchainPatch;
-use crate::consensus::pow::Difficulty;
 use crate::core::{
     Account, Amount, Block, ChainSourcedTx, ContractId, Header, Money, MpnDeposit, MpnSourcedTx,
     MpnWithdraw, Token, TransactionAndDelta,
@@ -66,32 +65,6 @@ pub struct GetExplorerMpnAccountsRequest {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetExplorerMpnAccountsResponse {
     pub accounts: HashMap<u64, ExplorerMpnAccount>,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct PostMinerSolutionRequest {
-    pub nonce: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct PostMinerSolutionResponse {}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetMinerPuzzleRequest {}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetMinerPuzzleResponse {
-    pub puzzle: Option<Puzzle>,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct Puzzle {
-    pub key: String,        // Puzzle key encoded in hex
-    pub blob: String,       // Blob encoded in hex
-    pub offset: usize,      // From which byte the nonce starts?
-    pub size: usize,        // How big is the nonce? (Bytes)
-    pub target: Difficulty, // Difficulty target
-    pub reward: Amount,     // Puzzle reward
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

@@ -9,10 +9,6 @@ use crate::wallet::TxBuilder;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::client::messages::Puzzle;
-
-pub type BlockPuzzle = (BlockAndPatch, Puzzle);
-
 pub struct NodeContext<B: Blockchain> {
     pub miner_token: Option<String>,
 
@@ -27,7 +23,6 @@ pub struct NodeContext<B: Blockchain> {
     pub wallet: TxBuilder,
     pub peer_manager: PeerManager,
     pub timestamp_offset: i32,
-    pub miner_puzzle: Option<BlockPuzzle>,
 
     pub mempool: Mempool,
 
@@ -92,14 +87,13 @@ impl<B: Blockchain> NodeContext<B> {
     /// Is called whenever chain is extended or rolled back
     pub fn on_update(&mut self) -> Result<(), BlockchainError> {
         self.outdated_since = None;
-        self.miner_puzzle = None;
         Ok(())
     }
 
-    pub fn get_puzzle(
+    pub fn try_produce(
         &mut self,
         wallet: TxBuilder,
-    ) -> Result<Option<BlockPuzzle>, BlockchainError> {
+    ) -> Result<Option<BlockAndPatch>, BlockchainError> {
         let ts = self.network_timestamp();
         let raw_txs: Vec<TransactionAndDelta> = self
             .mempool
@@ -116,22 +110,11 @@ impl<B: Blockchain> NodeContext<B> {
         match self.blockchain.draft_block(ts, &raw_txs, &wallet, true) {
             Ok(draft) => {
                 if let Some(draft) = draft {
-                    {
-                        let _ = self
-                            .blockchain
-                            .extend(draft.block.header.number, &[draft.block.clone()]);
-                        let _ = self.on_update();
-                        let _ = self.blockchain.update_states(&draft.patch.clone());
-                    }
-                    let puzzle = Puzzle {
-                        key: hex::encode(self.blockchain.pow_key(draft.block.header.number)?),
-                        blob: hex::encode(bincode::serialize(&draft.block.header).unwrap()),
-                        offset: 80,
-                        size: 8,
-                        target: draft.block.header.proof_of_work.target,
-                        reward: self.blockchain.next_reward()?,
-                    };
-                    Ok(Some((draft, puzzle)))
+                    self.blockchain
+                        .extend(draft.block.header.number, &[draft.block.clone()])?;
+                    self.on_update()?;
+                    self.blockchain.update_states(&draft.patch.clone())?;
+                    Ok(Some(draft))
                 } else {
                     Ok(None)
                 }

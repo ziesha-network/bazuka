@@ -190,24 +190,6 @@ async fn node_service<B: Blockchain>(
         }
 
         match (method, &path[..]) {
-            // Miner will call this to fetch new PoW work.
-            (Method::GET, "/miner/puzzle") => {
-                *response.body_mut() = Body::from(serde_json::to_vec(
-                    &api::get_miner_puzzle(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
-                )?);
-            }
-
-            // Miner will call this when he has solved the PoW puzzle.
-            (Method::POST, "/miner/solution") => {
-                *response.body_mut() = Body::from(serde_json::to_vec(
-                    &api::post_miner_solution(
-                        Arc::clone(&context),
-                        serde_json::from_slice(&body_bytes)?,
-                    )
-                    .await?,
-                )?);
-            }
-
             (Method::GET, "/stats") => {
                 *response.body_mut() = Body::from(serde_json::to_vec(
                     &api::get_stats(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
@@ -469,8 +451,6 @@ pub async fn node_create<B: Blockchain>(
         timestamp_offset,
         banned_headers: HashMap::new(),
         outdated_since: None,
-
-        miner_puzzle: None,
     }));
 
     let server_future = async {

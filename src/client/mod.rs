@@ -419,47 +419,4 @@ impl BazukaClient {
             )
             .await
     }
-
-    pub async fn get_miner_puzzle(&self) -> Result<GetMinerPuzzleResponse, NodeError> {
-        self.sender
-            .json_get::<GetMinerPuzzleRequest, GetMinerPuzzleResponse>(
-                format!("http://{}/miner/puzzle", self.peer),
-                GetMinerPuzzleRequest {},
-                Limit::default(),
-            )
-            .await
-    }
-
-    pub async fn mine(&self) -> Result<Option<PostMinerSolutionResponse>, NodeError> {
-        if let Some(puzzle) = self.get_miner_puzzle().await?.puzzle {
-            let sol = mine_puzzle(&puzzle);
-            Ok(Some(
-                self.sender
-                    .json_post::<PostMinerSolutionRequest, PostMinerSolutionResponse>(
-                        format!("http://{}/miner/solution", self.peer),
-                        sol,
-                        Limit::default(),
-                    )
-                    .await?,
-            ))
-        } else {
-            Ok(None)
-        }
-    }
-}
-
-fn mine_puzzle(puzzle: &Puzzle) -> PostMinerSolutionRequest {
-    let key = hex::decode(&puzzle.key).unwrap();
-    let mut blob = hex::decode(&puzzle.blob).unwrap();
-    let mut nonce = 0u64;
-    loop {
-        blob[puzzle.offset..puzzle.offset + puzzle.size].copy_from_slice(&nonce.to_le_bytes());
-        if crate::consensus::pow::meets_difficulty(&key, &blob, puzzle.target) {
-            return PostMinerSolutionRequest {
-                nonce: hex::encode(nonce.to_le_bytes()),
-            };
-        }
-
-        nonce += 1;
-    }
 }

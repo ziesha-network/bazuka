@@ -1,6 +1,9 @@
 use super::messages::{TransactRequest, TransactResponse};
-use super::{NodeContext, NodeError};
+use super::{http, NodeContext, NodeError};
 use crate::blockchain::{Blockchain, TransactionStats};
+use crate::client::messages::{PostBlockRequest, PostBlockResponse};
+use crate::client::Limit;
+use crate::common::*;
 use crate::core::ChainSourcedTx;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -20,7 +23,23 @@ pub async fn transact<B: Blockchain>(
     );
     if is_local {
         let wallet = context.wallet.clone();
-        context.get_puzzle(wallet)?; // TODO: Invoke PoS block generation
+        // Invoke PoS block generation
+        if let Some(draft) = context.try_produce(wallet)? {
+            let peer_addresses = context.peer_manager.get_peers();
+            let net = context.outgoing.clone();
+            drop(context);
+            http::group_request(&peer_addresses, |peer| {
+                net.bincode_post::<PostBlockRequest, PostBlockResponse>(
+                    format!("http://{}/bincode/blocks", peer.address),
+                    PostBlockRequest {
+                        block: draft.block.clone(),
+                        patch: draft.patch.clone(),
+                    },
+                    Limit::default().size(KB).time(3 * SECOND),
+                )
+            })
+            .await;
+        }
     }
     Ok(TransactResponse {})
 }
