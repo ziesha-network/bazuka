@@ -135,6 +135,7 @@ pub async fn sync_blocks<B: Blockchain>(
                     (peer_resp.headers[0].clone(), peer_resp.pow_keys[0].clone());
 
                 if peer_header.number > 0
+                    && peer_header.number < 4675
                     && (peer_header.proof_of_work.target < min_target
                         || !peer_header.meets_target(&peer_pow_key))
                 {
