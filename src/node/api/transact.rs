@@ -18,5 +18,9 @@ pub async fn transact<B: Blockchain>(
         ChainSourcedTx::TransactionAndDelta(req.tx_delta),
         TransactionStats::new(is_local, now),
     );
+    if is_local {
+        let wallet = context.wallet.clone();
+        context.get_puzzle(wallet)?; // TODO: Invoke PoS block generation
+    }
     Ok(TransactResponse {})
 }
