@@ -23,7 +23,7 @@ pub async fn sync_blocks<B: Blockchain>(
         loop {
             let ctx = context.read().await;
             let min_target = ctx.blockchain.config().minimum_pow_difficulty;
-            if peer.power <= ctx.blockchain.get_power()? {
+            if peer.height <= ctx.blockchain.get_height()? {
                 return Ok(());
             }
 

@@ -1762,7 +1762,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             new_power += h.power();
         }
 
-        Ok(new_power > current_power)
+        Ok(!check_pow || (new_power > current_power))
     }
     fn extend(&mut self, from: u64, blocks: &[Block]) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
