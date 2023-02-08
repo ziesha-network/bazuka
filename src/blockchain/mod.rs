@@ -1282,6 +1282,17 @@ impl<K: KvStore> KvStoreChain<K> {
                             return Err(BlockchainError::InvalidMinerReward);
                         }
                         let reward_entry = &entries[0];
+
+                        if curr_height >= 4675 {
+                            if !self.is_validator(
+                                block.header.proof_of_work.timestamp,
+                                reward_entry.dst.clone(),
+                                ValidatorProof {},
+                            )? {
+                                return Err(BlockchainError::UnelectedValidator);
+                            }
+                        }
+
                         if let Some(allowed_miners) = &self.config.limited_miners {
                             if !allowed_miners.contains(&reward_entry.dst) {
                                 return Err(BlockchainError::AddressNotAllowedToMine);
@@ -1807,10 +1818,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         wallet: &TxBuilder,
         check: bool,
     ) -> Result<Option<BlockAndPatch>, BlockchainError> {
-        if self.validator_status(timestamp, wallet)?.is_none() {
-            return Ok(None);
-        }
         let height = self.get_height()?;
+
+        if height >= 4675 {
+            if self.validator_status(timestamp, wallet)?.is_none() {
+                return Ok(None);
+            }
+        }
         let outdated_contracts = self.get_outdated_contracts()?;
 
         if !outdated_contracts.is_empty() {
@@ -2163,7 +2177,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             "0x2d5bd425ecdb9c64f098216271ea19bfecc79a8de76a8b402b5260425a9114bc", // Nodn Pool
             "0x5bbc3a8fd8dc14fe7a93211e3b2f4cca8c198c5c4a64fa1e097251b087759a14", // LazyPenguin Pool
             "0x9ab51573c41c03d7ab863569df608daecbfe0b2b0da0efe282fd8f68e464ce28", // Making.Cash Pool
-            "0x3d6bc18e6e1c75ae384873d5e866bcc00634d1d172b118d086067f9089c06ff9", // Super Pool
+            "0xeaac78d4d14d59e727a903f8187fc25020022869e8c61ba9443a86fddc819ae6", // Super One Pool
             "0x8d2fdd62ec6c067789aa694cee59b81f34aa354fcb461acada43e26770f41d36", // Systemd Pool
         ]
         .into_iter()

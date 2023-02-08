@@ -106,4 +106,6 @@ pub enum BlockchainError {
     OnlyZieshaFeesAccepted,
     #[error("transaction memo is too long")]
     MemoTooLong,
+    #[error("Wrong validator has built the block!")]
+    UnelectedValidator,
 }
