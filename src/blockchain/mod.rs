@@ -2174,7 +2174,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn validator_set(&self) -> Result<Vec<Address>, BlockchainError> {
         Ok(if self.get_height()? >= 5000 {
-            &[
+            vec![
                 "0xac798dca2e3275b06948c6839b9813697fc2fb60174c79e366f860d844b17202", // Apricot Pool
                 "0x115845ae1e3565a956b329285ae2f28d53e4b67865ad92f0131c46bea76cf858", // CHN Pool
                 "0x078800541138668423cbad38275209481583b8d9fd12bd03d5f859805b054db6", // Starnodes Pool
@@ -2219,7 +2219,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 "0xe98eb0e4965453f9da5c2b35a7fe88f994a260a27394abc46905ad8df8d85ee7",
             ]
         } else {
-            &[
+            vec![
                 "0xac798dca2e3275b06948c6839b9813697fc2fb60174c79e366f860d844b17202", // Apricot Pool
                 "0x115845ae1e3565a956b329285ae2f28d53e4b67865ad92f0131c46bea76cf858", // CHN Pool
                 "0x078800541138668423cbad38275209481583b8d9fd12bd03d5f859805b054db6", // Starnodes Pool
