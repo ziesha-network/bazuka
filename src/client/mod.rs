@@ -309,6 +309,16 @@ impl BazukaClient {
             .await
     }
 
+    pub async fn get_blocks(&self, since: u64, count: u64) -> Result<GetBlocksResponse, NodeError> {
+        self.sender
+            .bincode_get::<GetBlocksRequest, GetBlocksResponse>(
+                format!("http://{}/bincode/blocks", self.peer),
+                GetBlocksRequest { since, count },
+                Limit::default(),
+            )
+            .await
+    }
+
     pub async fn get_zero_mempool(&self) -> Result<GetZeroMempoolResponse, NodeError> {
         self.sender
             .bincode_get::<GetZeroMempoolRequest, GetZeroMempoolResponse>(
