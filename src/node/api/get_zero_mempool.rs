@@ -20,6 +20,8 @@ pub async fn get_zero_mempool<B: Blockchain>(
         Err(NodeError::StatesOutdated)
     } else {
         let ctx = context.read().await;
+        let height = ctx.blockchain.get_height()?;
+        let reward = ctx.blockchain.next_reward()?;
         let mut mempool = ctx.mempool.clone();
         ctx.blockchain.cleanup_chain_mempool(&mut mempool)?;
         ctx.blockchain
@@ -63,6 +65,8 @@ pub async fn get_zero_mempool<B: Blockchain>(
             }
         }
         Ok(GetZeroMempoolResponse {
+            height,
+            reward,
             updates,
             deposits,
             withdraws,

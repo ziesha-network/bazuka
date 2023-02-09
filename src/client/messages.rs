@@ -177,6 +177,8 @@ pub struct GetZeroMempoolRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetZeroMempoolResponse {
+    pub height: u64,
+    pub reward: Amount,
     pub updates: Vec<zk::MpnTransaction>,
     pub deposits: Vec<MpnDeposit>,
     pub withdraws: Vec<MpnWithdraw>,
