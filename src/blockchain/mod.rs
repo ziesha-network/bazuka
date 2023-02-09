@@ -2173,16 +2173,63 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     fn validator_set(&self) -> Result<Vec<Address>, BlockchainError> {
-        Ok([
-            "0xac798dca2e3275b06948c6839b9813697fc2fb60174c79e366f860d844b17202", // Apricot Pool
-            "0x115845ae1e3565a956b329285ae2f28d53e4b67865ad92f0131c46bea76cf858", // CHN Pool
-            "0x078800541138668423cbad38275209481583b8d9fd12bd03d5f859805b054db6", // Starnodes Pool
-            "0x2d5bd425ecdb9c64f098216271ea19bfecc79a8de76a8b402b5260425a9114bc", // Nodn Pool
-            "0x5bbc3a8fd8dc14fe7a93211e3b2f4cca8c198c5c4a64fa1e097251b087759a14", // LazyPenguin Pool
-            "0x9ab51573c41c03d7ab863569df608daecbfe0b2b0da0efe282fd8f68e464ce28", // Making.Cash Pool
-            "0xeaac78d4d14d59e727a903f8187fc25020022869e8c61ba9443a86fddc819ae6", // Super One Pool
-            "0x8d2fdd62ec6c067789aa694cee59b81f34aa354fcb461acada43e26770f41d36", // Systemd Pool
-        ]
+        Ok(if self.get_height()? >= 5000 {
+            [
+                "0xac798dca2e3275b06948c6839b9813697fc2fb60174c79e366f860d844b17202", // Apricot Pool
+                "0x115845ae1e3565a956b329285ae2f28d53e4b67865ad92f0131c46bea76cf858", // CHN Pool
+                "0x078800541138668423cbad38275209481583b8d9fd12bd03d5f859805b054db6", // Starnodes Pool
+                "0x2d5bd425ecdb9c64f098216271ea19bfecc79a8de76a8b402b5260425a9114bc", // Nodn Pool
+                "0x5bbc3a8fd8dc14fe7a93211e3b2f4cca8c198c5c4a64fa1e097251b087759a14", // LazyPenguin Pool
+                "0x9ab51573c41c03d7ab863569df608daecbfe0b2b0da0efe282fd8f68e464ce28", // Making.Cash Pool
+                "0xeaac78d4d14d59e727a903f8187fc25020022869e8c61ba9443a86fddc819ae6", // Super One Pool
+                "0x8d2fdd62ec6c067789aa694cee59b81f34aa354fcb461acada43e26770f41d36", // Systemd Pool
+                "0xd1350235d42dfd428b592b7badfe1538aec9a3b11393a0f639ff400045255eda",
+                "0xa601420e26c8461ababf6314eed8589e0e6dec04015006e528fdff704e817e12",
+                "0x923f518f4635194f562dbaaed6f6893dbec2b8b1cfddd3cf8c843adff498daf7",
+                "0xa8e819854ec66bb13194f7d202574484d764836a00ce88c79da259898c89debe",
+                "0x159defb2be4ee8bc88592328bd4594e366bdccef75949276d7f94170a97da8b5",
+                "0x311a53d3b84f86ed6367c976be35a6587115786c2ffe33a8c1779b71dfe87f65",
+                "0x6477379d43c0eca965e6567d573eeaf0797a5799cc598bab7e66ac289edb153b",
+                "0x7af5d18274de5d80a9618401cd517f9124a640ca0ff8f4dab38508f24a1438ca",
+                "0xf70f00d0e166c67ac9b4825d65545082f396c3aa3de3a0507f56654e6ab9eba3",
+                "0x632e30fc6bc3017a4a05cd985c04e47be724cb98f7cfc0f31687a4c166fd855a",
+                "0x8f06b23a4598bb2e263ceb5013287138d891752cc725a653827d54251bc6a3f8",
+                "0x5c668535143381256a0beaafb3444c8e34950324f50c589be7880771b6d55dfc",
+                "0xc23d5fa2ec9da01fe80a7a91e31faca358c462e1df6467c9988005755ac5479a",
+                "0x11176f82e7ac98baa95180e40d568bdee21bae1da5add2eae323db69e61d10f6",
+                "0x8ff3c29c476cb0fda1647b05f20b56d22b85b4eb10411e91275668c8ceac8a42",
+                "0xb33fc644b44a04299605ad6f8b16e5e517bf09f2be4bd517dac3660650049df7",
+                "0x478c5c2b67292eff1d1b2cb1f1c9afd16b3789050a1dd6bcd5a46f6b283db68f",
+                "0x5c76767e69f15bacc30c58251690fc075963b04bc08d314fe015cbc0e861f3d7",
+                "0x3458d3b32aac6b23ee5c5be1f523243b0101356f329f68075caf8683cf6bff4d",
+                "0x1e1cfa41c4546684d5bda8c78161cb654d4e45fdd68a207b976ca302bf6b05b6",
+                "0x31f2e519d335be5c941df424bca8fe5943bddd1c2c96e21f52cd5cf9f6058041",
+                "0x7f7fd6bb6497f41cdd262bcd61035fd67db71f94e6bcba92fa7b83edebef0e0f",
+                "0x8d61b4ebdf40c356b51f0413ba33eb3a5cf10978283b79a645f25d12016e8074",
+                "0x6ce694bc947fdcd373848137aee27670451cd21d4804659a2dc939cde3e5e3cf",
+                "0xc4303f8e539efa15dca0436fc60f15836a76a3735bd63bbad5034ff248dd8b47",
+                "0xf2c401817b84497e04d344a3285cea8d114445c93aa7beb6225895fedf4eedd3",
+                "0xfdaf9489a5815679b6aaca7288bca04d01e01c0fe955b2b97985ee5e6b035d0d",
+                "0xe495f73172a08324a2c98be4d56c9f93f5654d5fb22d2b0caab5d6065733b2de",
+                "0x1183ed0046a59b26df9044b3ee3083435585f9198cb1b68ad5a91e4ea56bc4da",
+                "0x737b3e5fd5eab898e7efec141a9605b0c6470a182e35ee55943d344565a872b6",
+                "0x4fdba9a5b2e407a4f310c669366432b306ee1b949f75156fdf52451efe76cb26",
+                "0xae00fbe3cc48152e268d2747a502ac97282fccc2168dc857bbe64f297fb43078",
+                "0xd2ac08bf81505c8ce18e4343f361cd533848c5b567de0e11c4d17d8d067a402b",
+                "0xe98eb0e4965453f9da5c2b35a7fe88f994a260a27394abc46905ad8df8d85ee7",
+            ]
+        } else {
+            [
+                "0xac798dca2e3275b06948c6839b9813697fc2fb60174c79e366f860d844b17202", // Apricot Pool
+                "0x115845ae1e3565a956b329285ae2f28d53e4b67865ad92f0131c46bea76cf858", // CHN Pool
+                "0x078800541138668423cbad38275209481583b8d9fd12bd03d5f859805b054db6", // Starnodes Pool
+                "0x2d5bd425ecdb9c64f098216271ea19bfecc79a8de76a8b402b5260425a9114bc", // Nodn Pool
+                "0x5bbc3a8fd8dc14fe7a93211e3b2f4cca8c198c5c4a64fa1e097251b087759a14", // LazyPenguin Pool
+                "0x9ab51573c41c03d7ab863569df608daecbfe0b2b0da0efe282fd8f68e464ce28", // Making.Cash Pool
+                "0xeaac78d4d14d59e727a903f8187fc25020022869e8c61ba9443a86fddc819ae6", // Super One Pool
+                "0x8d2fdd62ec6c067789aa694cee59b81f34aa354fcb461acada43e26770f41d36", // Systemd Pool
+            ]
+        }
         .into_iter()
         .map(|s| s.parse().unwrap())
         .collect())
