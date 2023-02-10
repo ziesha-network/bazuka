@@ -92,10 +92,11 @@ impl Mempool {
             {
                 return;
             }
-            if tx.verify_signature() {
-                let limit = self.chain_address_limit(tx.sender());
-                let all = self.chain_sourced.entry(tx.sender().clone()).or_default();
-                if is_local || all.len() < limit {
+
+            let limit = self.chain_address_limit(tx.sender());
+            let all = self.chain_sourced.entry(tx.sender().clone()).or_default();
+            if is_local || all.len() < limit {
+                if tx.verify_signature() {
                     all.insert(tx.clone(), TransactionStats::new(is_local, now));
                 }
             }
@@ -114,9 +115,10 @@ impl Mempool {
             {
                 return;
             }
+
+            let limit = self.mpn_address_limit(tx.sender());
+            let all = self.mpn_sourced.entry(tx.sender().clone()).or_default();
             if tx.verify_signature() {
-                let limit = self.mpn_address_limit(tx.sender());
-                let all = self.mpn_sourced.entry(tx.sender().clone()).or_default();
                 if is_local || all.len() < limit {
                     all.insert(tx.clone(), TransactionStats::new(is_local, now));
                 }
@@ -2126,17 +2128,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 if let Some(tx) = txs.pop() {
                     mempool.expire_mpn_sourced(&tx.0);
                 }
-            }
-            let txs = mempool
-                .mpn_sourced()
-                .map(|(t, _)| t.clone())
-                .collect::<Vec<_>>();
-            for t in txs
-                .into_par_iter()
-                .filter(|t| !t.verify_signature())
-                .collect::<Vec<_>>()
-            {
-                mempool.reject_mpn_sourced(&t);
             }
             Ok(())
         })?;
