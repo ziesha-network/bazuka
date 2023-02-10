@@ -1,4 +1,4 @@
-use super::{http, Limit, NodeContext, NodeError};
+use super::{promote_block, NodeContext, NodeError};
 
 use crate::client::messages;
 

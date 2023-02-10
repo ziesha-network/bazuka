@@ -8,12 +8,13 @@ mod heartbeat;
 mod http;
 mod peer_manager;
 pub mod seeds;
-use crate::blockchain::{Blockchain, Mempool};
+use crate::blockchain::{BlockAndPatch, Blockchain, Mempool};
 use crate::client::{
-    messages::{GetJsonMempoolResponse, SocialProfiles},
+    messages::{GetJsonMempoolResponse, PostBlockRequest, PostBlockResponse, SocialProfiles},
     Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, Timestamp,
     MINER_TOKEN_HEADER, NETWORK_HEADER, SIGNATURE_HEADER,
 };
+use crate::common::*;
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::utils::local_timestamp;
@@ -92,6 +93,28 @@ fn fetch_signature(
         return Ok(Some((pub_key, sig)));
     }
     Ok(None)
+}
+
+async fn promote_block<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
+    block_and_patch: BlockAndPatch,
+) {
+    let context = context.read().await;
+    let net = context.outgoing.clone();
+    let peer_addresses = context.peer_manager.get_peers();
+    tokio::task::spawn(async move {
+        http::group_request(&peer_addresses, |peer| {
+            net.bincode_post::<PostBlockRequest, PostBlockResponse>(
+                format!("http://{}/bincode/blocks", peer.address),
+                PostBlockRequest {
+                    block: block_and_patch.block.clone(),
+                    patch: block_and_patch.patch.clone(),
+                },
+                Limit::default().size(KB).time(3 * SECOND),
+            )
+        })
+        .await;
+    });
 }
 
 async fn node_service<B: Blockchain>(

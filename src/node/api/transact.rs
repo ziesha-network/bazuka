@@ -1,9 +1,6 @@
 use super::messages::{TransactRequest, TransactResponse};
-use super::{http, NodeContext, NodeError};
+use super::{promote_block, NodeContext, NodeError};
 use crate::blockchain::{Blockchain, TransactionStats};
-use crate::client::messages::{PostBlockRequest, PostBlockResponse};
-use crate::client::Limit;
-use crate::common::*;
 use crate::core::ChainSourcedTx;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -14,33 +11,19 @@ pub async fn transact<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     req: TransactRequest,
 ) -> Result<TransactResponse, NodeError> {
-    let mut context = context.write().await;
-    let now = context.local_timestamp();
+    let mut ctx = context.write().await;
+    let now = ctx.local_timestamp();
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
-    context.mempool.add_chain_sourced(
+    ctx.mempool.add_chain_sourced(
         ChainSourcedTx::TransactionAndDelta(req.tx_delta),
         TransactionStats::new(is_local, now),
     );
     if is_local {
-        let wallet = context.wallet.clone();
+        let wallet = ctx.wallet.clone();
         // Invoke PoS block generation
-        if let Some(draft) = context.try_produce(wallet)? {
-            let peer_addresses = context.peer_manager.get_peers();
-            let net = context.outgoing.clone();
-            drop(context);
-            tokio::task::spawn(async move {
-                http::group_request(&peer_addresses, |peer| {
-                    net.bincode_post::<PostBlockRequest, PostBlockResponse>(
-                        format!("http://{}/bincode/blocks", peer.address),
-                        PostBlockRequest {
-                            block: draft.block.clone(),
-                            patch: draft.patch.clone(),
-                        },
-                        Limit::default().size(KB).time(3 * SECOND),
-                    )
-                })
-                .await;
-            });
+        if let Some(draft) = ctx.try_produce(wallet)? {
+            drop(ctx);
+            promote_block(context, draft).await;
         }
     }
     Ok(TransactResponse {})
