@@ -1,6 +1,6 @@
 use super::messages::{PostMpnDepositRequest, PostMpnDepositResponse};
 use super::{NodeContext, NodeError};
-use crate::blockchain::{Blockchain, TransactionStats};
+use crate::blockchain::Blockchain;
 use crate::core::ChainSourcedTx;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -14,9 +14,8 @@ pub async fn post_mpn_deposit<B: Blockchain>(
     let mut context = context.write().await;
     let now = context.local_timestamp();
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
-    context.mempool.add_chain_sourced(
-        ChainSourcedTx::MpnDeposit(req.tx),
-        TransactionStats::new(is_local, now),
-    );
+    context
+        .mempool
+        .add_chain_sourced(ChainSourcedTx::MpnDeposit(req.tx), is_local, now);
     Ok(PostMpnDepositResponse {})
 }

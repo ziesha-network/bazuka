@@ -1,6 +1,6 @@
 use super::messages::{TransactRequest, TransactResponse};
 use super::{promote_block, NodeContext, NodeError};
-use crate::blockchain::{Blockchain, TransactionStats};
+use crate::blockchain::Blockchain;
 use crate::core::ChainSourcedTx;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -16,7 +16,8 @@ pub async fn transact<B: Blockchain>(
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
     ctx.mempool.add_chain_sourced(
         ChainSourcedTx::TransactionAndDelta(req.tx_delta),
-        TransactionStats::new(is_local, now),
+        is_local,
+        now,
     );
     if is_local {
         let wallet = ctx.wallet.clone();

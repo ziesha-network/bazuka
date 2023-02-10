@@ -1,5 +1,4 @@
 use super::*;
-use crate::blockchain::TransactionStats;
 use crate::common::*;
 
 pub async fn sync_mempool<B: Blockchain>(
@@ -32,15 +31,13 @@ pub async fn sync_mempool<B: Blockchain>(
             .collect::<Vec<_>>();
         for (chained_source_txs, mpn_sourced_txs) in resps {
             for tx in chained_source_txs {
-                ctx.mempool
-                    .add_chain_sourced(tx, TransactionStats::new(false, now));
+                ctx.mempool.add_chain_sourced(tx, false, now);
             }
             for tx in mpn_sourced_txs {
                 if ctx.mempool.mpn_sourced().len() >= ctx.opts.mpn_mempool_capacity {
                     break;
                 }
-                ctx.mempool
-                    .add_mpn_sourced(tx, TransactionStats::new(false, now));
+                ctx.mempool.add_mpn_sourced(tx, false, now);
             }
         }
     }

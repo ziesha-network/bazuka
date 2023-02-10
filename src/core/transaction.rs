@@ -3,7 +3,7 @@ use super::hash::Hash;
 use super::Amount;
 use crate::crypto::DeriveMpnAccountIndex;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
-use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkProof, ZkScalar};
+use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkHasher, ZkProof, ZkScalar};
 use ff::Field;
 use std::str::FromStr;
 use thiserror::Error;
@@ -180,6 +180,13 @@ where
 {
     pub fn zk_address_index(&self, log4_account_capacity: u8) -> u64 {
         self.zk_address.mpn_account_index(log4_account_capacity)
+    }
+    pub fn verify_signature<ZH: ZkHasher>(&self) -> bool {
+        let msg = ZH::hash(&[
+            self.payment.fingerprint(),
+            ZkScalar::from(self.zk_nonce as u64),
+        ]);
+        ZS::verify(&self.zk_address, msg, &self.zk_sig)
     }
 }
 

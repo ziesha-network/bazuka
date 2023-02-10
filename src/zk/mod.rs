@@ -546,7 +546,7 @@ impl MpnTransaction {
     pub fn dst_index(&self, log4_account_capacity: u8) -> u64 {
         self.dst_pub_key.mpn_account_index(log4_account_capacity)
     }
-    pub fn verify(&self) -> bool {
+    pub fn verify_signature(&self) -> bool {
         jubjub::JubJub::<ZkMainHasher>::verify(&self.src_pub_key, self.hash(), &self.sig)
     }
     pub fn sign(&mut self, sk: &jubjub::PrivateKey) {

@@ -104,6 +104,12 @@ impl ChainSourcedTx {
             ChainSourcedTx::MpnDeposit(mpn_deposit) => mpn_deposit.payment.nonce,
         }
     }
+    pub fn verify_signature(&self) -> bool {
+        match self {
+            ChainSourcedTx::TransactionAndDelta(tx_delta) => tx_delta.tx.verify_signature(),
+            ChainSourcedTx::MpnDeposit(mpn_deposit) => mpn_deposit.payment.verify_signature(),
+        }
+    }
 }
 
 // Transactions initiated from MPN accounts
@@ -129,6 +135,12 @@ impl MpnSourcedTx {
         match self {
             MpnSourcedTx::MpnTransaction(mpn_tx) => mpn_tx.nonce,
             MpnSourcedTx::MpnWithdraw(mpn_withdraw) => mpn_withdraw.zk_nonce,
+        }
+    }
+    pub fn verify_signature(&self) -> bool {
+        match self {
+            MpnSourcedTx::MpnTransaction(mpn_tx) => mpn_tx.verify_signature(),
+            MpnSourcedTx::MpnWithdraw(mpn_withdraw) => mpn_withdraw.verify_signature::<ZkHasher>(),
         }
     }
 }

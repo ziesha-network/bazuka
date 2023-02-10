@@ -4,11 +4,10 @@ pub use error::*;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
     hash::Hash, Account, Address, Amount, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
-    ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnDeposit, MpnSourcedTx,
-    MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Token, TokenId, TokenUpdate,
-    Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
+    ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnAddress, MpnDeposit,
+    MpnSourcedTx, MpnWithdraw, ProofOfWork, RegularSendEntry, Signature, Token, TokenId,
+    TokenUpdate, Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
 };
-use crate::crypto::ZkSignatureScheme;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
 use crate::utils;
 use crate::wallet::TxBuilder;
@@ -22,6 +21,8 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, Default)]
 pub struct Mempool {
+    chain_tx_counter: HashMap<Address, usize>,
+    mpn_tx_counter: HashMap<MpnAddress, usize>,
     chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
     rejected_chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
     mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
@@ -60,30 +61,60 @@ impl Mempool {
             }
         }
     }
-    pub fn add_chain_sourced(&mut self, tx: ChainSourcedTx, stats: TransactionStats) {
-        if stats.is_local {
+    pub fn chain_address_limit(&self, _addr: Address) -> usize {
+        10
+    }
+    pub fn mpn_address_limit(&self, _addr: MpnAddress) -> usize {
+        10
+    }
+    pub fn add_chain_sourced(&mut self, tx: ChainSourcedTx, is_local: bool, now: u32) {
+        if is_local {
             self.rejected_chain_sourced.remove(&tx);
         }
         if !self.rejected_chain_sourced.contains_key(&tx) {
-            self.chain_sourced.insert(tx, stats);
+            if !self.chain_sourced.contains_key(&tx) {
+                if tx.verify_signature() {
+                    let limit = self.chain_address_limit(tx.sender());
+                    let cnt = self.chain_tx_counter.entry(tx.sender()).or_default();
+                    if *cnt < limit {
+                        self.chain_sourced
+                            .insert(tx.clone(), TransactionStats::new(is_local, now));
+                        *cnt += 1;
+                    }
+                }
+            }
         }
     }
-    pub fn add_mpn_sourced(&mut self, tx: MpnSourcedTx, stats: TransactionStats) {
-        if stats.is_local {
+    pub fn add_mpn_sourced(&mut self, tx: MpnSourcedTx, is_local: bool, now: u32) {
+        if is_local {
             self.rejected_mpn_sourced.remove(&tx);
         }
         if !self.rejected_mpn_sourced.contains_key(&tx) {
-            self.mpn_sourced.insert(tx, stats);
+            if !self.mpn_sourced.contains_key(&tx) {
+                if tx.verify_signature() {
+                    let limit = self.mpn_address_limit(tx.sender());
+                    let cnt = self.mpn_tx_counter.entry(tx.sender().clone()).or_default();
+                    if *cnt < limit {
+                        self.mpn_sourced
+                            .insert(tx.clone(), TransactionStats::new(is_local, now));
+                        *cnt += 1;
+                    }
+                }
+            }
         }
     }
     pub fn reject_chain_sourced(&mut self, tx: &ChainSourcedTx) {
         if let Some(stats) = self.chain_sourced.remove(tx) {
             self.rejected_chain_sourced.insert(tx.clone(), stats);
+            let cnt = self.chain_tx_counter.entry(tx.sender()).or_default();
+            *cnt = cnt.saturating_sub(1);
         }
     }
     pub fn reject_mpn_sourced(&mut self, tx: &MpnSourcedTx) {
         if let Some(stats) = self.mpn_sourced.remove(tx) {
             self.rejected_mpn_sourced.insert(tx.clone(), stats);
+            let cnt = self.mpn_tx_counter.entry(tx.sender()).or_default();
+            *cnt = cnt.saturating_sub(1);
         }
     }
     pub fn expire_chain_sourced(&mut self, tx: &ChainSourcedTx) {
@@ -503,15 +534,11 @@ impl<K: KvStore> KvStoreChain<K> {
                 withdraw.zk_sig.r.1,
                 withdraw.zk_sig.s,
             ]);
-            let msg = CoreZkHasher::hash(&[
-                withdraw.payment.fingerprint(),
-                zk::ZkScalar::from(withdraw.zk_nonce as u64),
-            ]);
             if withdraw.zk_address_index(self.config.mpn_log4_account_capacity) > 0x3FFFFFFF
                 || withdraw.zk_token_index >= 64
                 || withdraw.zk_nonce != src.nonce
                 || withdraw.payment.calldata != calldata
-                || !crate::core::ZkSigner::verify(&withdraw.zk_address, msg, &withdraw.zk_sig)
+                || !withdraw.verify_signature::<CoreZkHasher>()
             {
                 return Err(BlockchainError::InvalidMpnTransaction);
             }
@@ -2079,10 +2106,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 .mpn_sourced
                 .clone()
                 .into_par_iter()
-                .filter(|(t, _)| match t {
-                    MpnSourcedTx::MpnTransaction(t) => !t.verify(),
-                    _ => false,
-                })
+                .filter(|(t, _)| !t.verify_signature())
                 .collect::<Vec<_>>()
             {
                 mempool.mpn_sourced.remove(&t);
