@@ -76,7 +76,7 @@ impl Mempool {
                 if tx.verify_signature() {
                     let limit = self.chain_address_limit(tx.sender());
                     let cnt = self.chain_tx_counter.entry(tx.sender()).or_default();
-                    if *cnt < limit {
+                    if is_local || *cnt < limit {
                         self.chain_sourced
                             .insert(tx.clone(), TransactionStats::new(is_local, now));
                         *cnt += 1;
@@ -94,7 +94,7 @@ impl Mempool {
                 if tx.verify_signature() {
                     let limit = self.mpn_address_limit(tx.sender());
                     let cnt = self.mpn_tx_counter.entry(tx.sender().clone()).or_default();
-                    if *cnt < limit {
+                    if is_local || *cnt < limit {
                         self.mpn_sourced
                             .insert(tx.clone(), TransactionStats::new(is_local, now));
                         *cnt += 1;
