@@ -19,8 +19,9 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Mempool {
+    mpn_log4_account_capacity: u8,
     chain_sourced: HashMap<Address, HashMap<ChainSourcedTx, TransactionStats>>,
     rejected_chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
     mpn_sourced: HashMap<MpnAddress, HashMap<MpnSourcedTx, TransactionStats>>,
@@ -28,12 +29,52 @@ pub struct Mempool {
 }
 
 impl Mempool {
-    pub fn refresh(
+    pub fn new(mpn_log4_account_capacity: u8) -> Self {
+        Self {
+            mpn_log4_account_capacity,
+            chain_sourced: Default::default(),
+            rejected_chain_sourced: Default::default(),
+            mpn_sourced: Default::default(),
+            rejected_mpn_sourced: Default::default(),
+        }
+    }
+}
+
+impl Mempool {
+    pub fn refresh<B: Blockchain>(
         &mut self,
+        blockchain: &B,
         local_ts: u32,
         max_time_alive: Option<u32>,
         max_time_remember: Option<u32>,
-    ) {
+    ) -> Result<(), BlockchainError> {
+        let mut mpn_accounts = HashMap::new();
+        let mut chain_accounts = HashMap::new();
+        let mut mpn_txs_to_remove = Vec::new();
+        let mut chain_txs_to_remove = Vec::new();
+        for (tx, _) in self.chain_sourced() {
+            let acc = chain_accounts
+                .entry(tx.sender())
+                .or_insert(blockchain.get_account(tx.sender())?);
+            if tx.nonce() <= acc.nonce {
+                chain_txs_to_remove.push(tx.clone());
+            }
+        }
+        for (tx, _) in self.mpn_sourced() {
+            let acc = mpn_accounts.entry(tx.sender()).or_insert(
+                blockchain
+                    .get_mpn_account(tx.sender().account_index(self.mpn_log4_account_capacity))?,
+            );
+            if tx.nonce() < acc.nonce {
+                mpn_txs_to_remove.push(tx.clone());
+            }
+        }
+        for tx in chain_txs_to_remove {
+            self.reject_chain_sourced(&tx);
+        }
+        for tx in mpn_txs_to_remove {
+            self.reject_mpn_sourced(&tx);
+        }
         if let Some(max_time_alive) = max_time_alive {
             let chain_sourced = self
                 .chain_sourced()
@@ -66,6 +107,7 @@ impl Mempool {
                 }
             }
         }
+        Ok(())
     }
     pub fn chain_address_limit(&self, _addr: Address) -> usize {
         10
