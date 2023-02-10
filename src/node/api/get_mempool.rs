@@ -15,9 +15,7 @@ pub async fn get_mempool<B: Blockchain>(
         chain_sourced: context
             .mempool
             .chain_sourced()
-            .clone()
-            .keys()
-            .filter_map(|tx| {
+            .filter_map(|(tx, _)| {
                 // Do not share MPN txs with others! It's a competetion :)
                 if let ChainSourcedTx::TransactionAndDelta(tx) = &tx {
                     if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
@@ -29,6 +27,11 @@ pub async fn get_mempool<B: Blockchain>(
                 Some(tx.clone())
             })
             .collect(),
-        mpn_sourced: context.mempool.mpn_sourced().keys().cloned().collect(),
+        mpn_sourced: context
+            .mempool
+            .mpn_sourced()
+            .map(|(tx, _)| tx)
+            .cloned()
+            .collect(),
     })
 }

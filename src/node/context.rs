@@ -98,8 +98,7 @@ impl<B: Blockchain> NodeContext<B> {
         let raw_txs: Vec<TransactionAndDelta> = self
             .mempool
             .chain_sourced()
-            .keys()
-            .filter_map(|tx| {
+            .filter_map(|(tx, _)| {
                 if let ChainSourcedTx::TransactionAndDelta(tx) = tx {
                     Some(tx.clone())
                 } else {

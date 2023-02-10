@@ -21,11 +21,9 @@ use std::collections::{HashMap, HashSet};
 
 #[derive(Clone, Debug, Default)]
 pub struct Mempool {
-    chain_tx_counter: HashMap<Address, usize>,
-    mpn_tx_counter: HashMap<MpnAddress, usize>,
-    chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
+    chain_sourced: HashMap<Address, HashMap<ChainSourcedTx, TransactionStats>>,
     rejected_chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
-    mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
+    mpn_sourced: HashMap<MpnAddress, HashMap<MpnSourcedTx, TransactionStats>>,
     rejected_mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
 }
 
@@ -37,12 +35,20 @@ impl Mempool {
         max_time_remember: Option<u32>,
     ) {
         if let Some(max_time_alive) = max_time_alive {
-            for (tx, stats) in self.chain_sourced.clone().into_iter() {
+            let chain_sourced = self
+                .chain_sourced()
+                .map(|(tx, stats)| (tx.clone(), stats.clone()))
+                .collect::<Vec<_>>();
+            let mpn_sourced = self
+                .mpn_sourced()
+                .map(|(tx, stats)| (tx.clone(), stats.clone()))
+                .collect::<Vec<_>>();
+            for (tx, stats) in chain_sourced {
                 if !stats.is_local && local_ts - stats.first_seen > max_time_alive {
                     self.expire_chain_sourced(&tx);
                 }
             }
-            for (tx, stats) in self.mpn_sourced.clone().into_iter() {
+            for (tx, stats) in mpn_sourced {
                 if !stats.is_local && local_ts - stats.first_seen > max_time_alive {
                     self.expire_mpn_sourced(&tx);
                 }
@@ -67,20 +73,30 @@ impl Mempool {
     pub fn mpn_address_limit(&self, _addr: MpnAddress) -> usize {
         10
     }
+    pub fn mpn_sourced_len(&self) -> usize {
+        self.mpn_sourced.values().map(|c| c.len()).sum()
+    }
+    pub fn chain_sourced_len(&self) -> usize {
+        self.chain_sourced.values().map(|c| c.len()).sum()
+    }
     pub fn add_chain_sourced(&mut self, tx: ChainSourcedTx, is_local: bool, now: u32) {
         if is_local {
             self.rejected_chain_sourced.remove(&tx);
         }
         if !self.rejected_chain_sourced.contains_key(&tx) {
-            if !self.chain_sourced.contains_key(&tx) {
-                if tx.verify_signature() {
-                    let limit = self.chain_address_limit(tx.sender());
-                    let cnt = self.chain_tx_counter.entry(tx.sender()).or_default();
-                    if is_local || *cnt < limit {
-                        self.chain_sourced
-                            .insert(tx.clone(), TransactionStats::new(is_local, now));
-                        *cnt += 1;
-                    }
+            if self
+                .chain_sourced
+                .get(&tx.sender())
+                .map(|all| all.contains_key(&tx))
+                .unwrap_or_default()
+            {
+                return;
+            }
+            if tx.verify_signature() {
+                let limit = self.chain_address_limit(tx.sender());
+                let all = self.chain_sourced.entry(tx.sender().clone()).or_default();
+                if is_local || all.len() < limit {
+                    all.insert(tx.clone(), TransactionStats::new(is_local, now));
                 }
             }
         }
@@ -90,31 +106,52 @@ impl Mempool {
             self.rejected_mpn_sourced.remove(&tx);
         }
         if !self.rejected_mpn_sourced.contains_key(&tx) {
-            if !self.mpn_sourced.contains_key(&tx) {
-                if tx.verify_signature() {
-                    let limit = self.mpn_address_limit(tx.sender());
-                    let cnt = self.mpn_tx_counter.entry(tx.sender().clone()).or_default();
-                    if is_local || *cnt < limit {
-                        self.mpn_sourced
-                            .insert(tx.clone(), TransactionStats::new(is_local, now));
-                        *cnt += 1;
-                    }
+            if self
+                .mpn_sourced
+                .get(&tx.sender())
+                .map(|all| all.contains_key(&tx))
+                .unwrap_or_default()
+            {
+                return;
+            }
+            if tx.verify_signature() {
+                let limit = self.mpn_address_limit(tx.sender());
+                let all = self.mpn_sourced.entry(tx.sender().clone()).or_default();
+                if is_local || all.len() < limit {
+                    all.insert(tx.clone(), TransactionStats::new(is_local, now));
                 }
             }
         }
     }
     pub fn reject_chain_sourced(&mut self, tx: &ChainSourcedTx) {
-        if let Some(stats) = self.chain_sourced.remove(tx) {
-            self.rejected_chain_sourced.insert(tx.clone(), stats);
-            let cnt = self.chain_tx_counter.entry(tx.sender()).or_default();
-            *cnt = cnt.saturating_sub(1);
+        if let Some(all) = self.chain_sourced.get_mut(&tx.sender()) {
+            if let Some(stats) = all.remove(tx) {
+                self.rejected_chain_sourced.insert(tx.clone(), stats);
+            }
+        }
+        if self
+            .chain_sourced
+            .get(&tx.sender())
+            .map(|all| all.is_empty())
+            .unwrap_or(true)
+        {
+            self.chain_sourced.remove(&tx.sender());
         }
     }
     pub fn reject_mpn_sourced(&mut self, tx: &MpnSourcedTx) {
-        if let Some(stats) = self.mpn_sourced.remove(tx) {
-            self.rejected_mpn_sourced.insert(tx.clone(), stats);
-            let cnt = self.mpn_tx_counter.entry(tx.sender()).or_default();
-            *cnt = cnt.saturating_sub(1);
+        if let Some(all) = self.mpn_sourced.get_mut(&tx.sender()) {
+            if let Some(stats) = all.remove(tx) {
+                self.rejected_mpn_sourced.insert(tx.clone(), stats);
+            }
+        }
+        if self
+            .mpn_sourced
+            .get(&tx.sender())
+            .clone()
+            .map(|all| all.is_empty())
+            .unwrap_or(true)
+        {
+            self.mpn_sourced.remove(&tx.sender());
         }
     }
     pub fn expire_chain_sourced(&mut self, tx: &ChainSourcedTx) {
@@ -123,11 +160,11 @@ impl Mempool {
     pub fn expire_mpn_sourced(&mut self, tx: &MpnSourcedTx) {
         self.reject_mpn_sourced(tx);
     }
-    pub fn chain_sourced(&self) -> &HashMap<ChainSourcedTx, TransactionStats> {
-        &self.chain_sourced
+    pub fn chain_sourced(&self) -> impl Iterator<Item = (&ChainSourcedTx, &TransactionStats)> {
+        self.chain_sourced.iter().map(|(_, c)| c.iter()).flatten()
     }
-    pub fn mpn_sourced(&self) -> &HashMap<MpnSourcedTx, TransactionStats> {
-        &self.mpn_sourced
+    pub fn mpn_sourced(&self) -> impl Iterator<Item = (&MpnSourcedTx, &TransactionStats)> {
+        self.mpn_sourced.iter().map(|(_, c)| c.iter()).flatten()
     }
 }
 
@@ -2023,18 +2060,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn cleanup_chain_mempool(&self, mempool: &mut Mempool) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
-            let mut txs: Vec<ChainSourcedTx> = mempool
-                .chain_sourced()
-                .clone()
-                .into_iter()
-                .filter_map(|(tx, stats)| {
-                    if stats.validity != TransactionValidity::Invalid {
-                        Some(tx)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
+            let mut txs: Vec<ChainSourcedTx> =
+                mempool.chain_sourced().map(|(tx, _)| tx.clone()).collect();
             txs.sort_unstable_by_key(|tx| {
                 let not_mpn = if let ChainSourcedTx::TransactionAndDelta(tx) = tx {
                     if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
@@ -2075,10 +2102,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     ) -> Result<(), BlockchainError> {
         self.isolated(|chain| {
             let mut txs = mempool
-                .mpn_sourced
-                .clone()
-                .into_iter()
-                .filter(|(_, stats)| stats.validity != TransactionValidity::Invalid)
+                .mpn_sourced()
+                .map(|(t, s)| (t.clone(), s.clone()))
                 .collect::<Vec<_>>();
             txs.sort_unstable_by_key(|(tx, stats)| (!stats.is_local, tx.nonce()));
             for (tx, _) in txs.iter() {
@@ -2097,19 +2122,21 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     }
                 }
             }
-            while mempool.mpn_sourced.len() > capacity {
+            while mempool.mpn_sourced_len() > capacity {
                 if let Some(tx) = txs.pop() {
                     mempool.expire_mpn_sourced(&tx.0);
                 }
             }
-            for (t, _) in mempool
-                .mpn_sourced
-                .clone()
+            let txs = mempool
+                .mpn_sourced()
+                .map(|(t, _)| t.clone())
+                .collect::<Vec<_>>();
+            for t in txs
                 .into_par_iter()
-                .filter(|(t, _)| !t.verify_signature())
+                .filter(|t| !t.verify_signature())
                 .collect::<Vec<_>>()
             {
-                mempool.mpn_sourced.remove(&t);
+                mempool.reject_mpn_sourced(&t);
             }
             Ok(())
         })?;

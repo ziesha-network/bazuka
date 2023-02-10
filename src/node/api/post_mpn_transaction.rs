@@ -14,7 +14,7 @@ pub async fn post_mpn_transaction<B: Blockchain>(
     let mut context = context.write().await;
     let now = context.local_timestamp();
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
-    if is_local || context.mempool.mpn_sourced().len() < context.opts.mpn_mempool_capacity {
+    if is_local || context.mempool.mpn_sourced_len() < context.opts.mpn_mempool_capacity {
         context
             .mempool
             .add_mpn_sourced(MpnSourcedTx::MpnTransaction(req.tx), is_local, now);

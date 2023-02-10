@@ -34,7 +34,7 @@ pub async fn sync_mempool<B: Blockchain>(
                 ctx.mempool.add_chain_sourced(tx, false, now);
             }
             for tx in mpn_sourced_txs {
-                if ctx.mempool.mpn_sourced().len() >= ctx.opts.mpn_mempool_capacity {
+                if ctx.mempool.mpn_sourced_len() >= ctx.opts.mpn_mempool_capacity {
                     break;
                 }
                 ctx.mempool.add_mpn_sourced(tx, false, now);
