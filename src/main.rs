@@ -212,9 +212,17 @@ async fn resend_all_wallet_txs(conf: BazukaConfig, wallet: &Wallet) -> Result<()
                     if tx.nonce() >= curr_mpn_nonce {
                         match tx {
                             MpnSourcedTx::MpnTransaction(tx) => {
+                                println!(
+                                    "Send {} from MPN-account to {} (Nonce: {})",
+                                    tx.amount, tx.dst_pub_key, tx.nonce
+                                );
                                 client.zero_transact(tx.clone()).await?;
                             }
                             MpnSourcedTx::MpnWithdraw(tx) => {
+                                println!(
+                                    "Send {} from MPN-account to {} (Nonce: {})",
+                                    tx.payment.amount, tx.payment.dst, tx.payment.nonce
+                                );
                                 client.transact_contract_withdraw(tx.clone()).await?;
                             }
                         }
