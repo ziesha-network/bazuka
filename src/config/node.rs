@@ -25,6 +25,7 @@ pub fn get_node_options() -> NodeOptions {
         state_unavailable_ban_time: 30,
         candidate_remove_threshold: 3600,
         mpn_mempool_capacity: 2560,
+        max_block_time_difference: 120,
     }
 }
 
@@ -52,5 +53,6 @@ pub fn get_simulator_options() -> NodeOptions {
         state_unavailable_ban_time: 10,
         candidate_remove_threshold: 600,
         mpn_mempool_capacity: 1024,
+        max_block_time_difference: 120,
     }
 }

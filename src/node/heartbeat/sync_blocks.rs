@@ -74,6 +74,8 @@ pub async fn sync_blocks<B: Blockchain>(
 
             // TODO: Check parent hashes
             let ctx = context.read().await;
+            let net_ts = ctx.network_timestamp();
+            let max_ts_diff = ctx.opts.max_block_time_difference;
             for (i, (head, pow_key)) in headers.iter().zip(pow_keys.into_iter()).enumerate() {
                 if head.number != start_height + i as u64 {
                     log::warn!("Bad header number returned!");
@@ -84,6 +86,11 @@ pub async fn sync_blocks<B: Blockchain>(
                     && (head.proof_of_work.target < min_target || !head.meets_target(&pow_key))
                 {
                     log::warn!("Header doesn't meet min target!");
+                    chain_fail = true;
+                    break;
+                }
+                if head.proof_of_work.timestamp.saturating_sub(net_ts) > max_ts_diff {
+                    log::warn!("Block timestamp is way ahead of future!");
                     chain_fail = true;
                     break;
                 }
@@ -145,6 +152,11 @@ pub async fn sync_blocks<B: Blockchain>(
                 }
                 if peer_header.number != index as u64 {
                     log::warn!("Bad header number!");
+                    chain_fail = true;
+                    break;
+                }
+                if peer_header.proof_of_work.timestamp.saturating_sub(net_ts) > max_ts_diff {
+                    log::warn!("Block timestamp is way ahead of future!");
                     chain_fail = true;
                     break;
                 }

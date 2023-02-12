@@ -10,6 +10,16 @@ pub async fn post_block<B: Blockchain>(
 ) -> Result<PostBlockResponse, NodeError> {
     let mut ctx = context.write().await;
     if req.block.header.number == ctx.blockchain.get_height()? {
+        if req
+            .block
+            .header
+            .proof_of_work
+            .timestamp
+            .saturating_sub(ctx.network_timestamp())
+            > ctx.opts.max_block_time_difference
+        {
+            return Err(NodeError::BlockTimestampInFuture);
+        }
         ctx.blockchain
             .extend(req.block.header.number, &[req.block.clone()])?;
         ctx.on_update()?;
