@@ -70,10 +70,14 @@ impl Mempool {
             }
         }
         for tx in chain_txs_to_remove {
-            self.reject_chain_sourced(&tx);
+            self.chain_sourced.entry(tx.sender()).and_modify(|all| {
+                all.remove(&tx);
+            });
         }
         for tx in mpn_txs_to_remove {
-            self.reject_mpn_sourced(&tx);
+            self.mpn_sourced.entry(tx.sender()).and_modify(|all| {
+                all.remove(&tx);
+            });
         }
         if let Some(max_time_alive) = max_time_alive {
             let chain_sourced = self
@@ -167,10 +171,13 @@ impl Mempool {
             }
         }
     }
-    pub fn reject_chain_sourced(&mut self, tx: &ChainSourcedTx) {
+    pub fn reject_chain_sourced(&mut self, tx: &ChainSourcedTx, e: BlockchainError) {
         if let Some(all) = self.chain_sourced.get_mut(&tx.sender()) {
             if let Some(stats) = all.remove(tx) {
-                self.rejected_chain_sourced.insert(tx.clone(), stats);
+                // Nonce issues do not need rejection
+                if let BlockchainError::InvalidTransactionNonce = e {
+                    self.rejected_chain_sourced.insert(tx.clone(), stats);
+                }
             }
         }
         if self
@@ -182,10 +189,13 @@ impl Mempool {
             self.chain_sourced.remove(&tx.sender());
         }
     }
-    pub fn reject_mpn_sourced(&mut self, tx: &MpnSourcedTx) {
+    pub fn reject_mpn_sourced(&mut self, tx: &MpnSourcedTx, e: BlockchainError) {
         if let Some(all) = self.mpn_sourced.get_mut(&tx.sender()) {
             if let Some(stats) = all.remove(tx) {
-                self.rejected_mpn_sourced.insert(tx.clone(), stats);
+                // Nonce issues do not need rejection
+                if let BlockchainError::InvalidTransactionNonce = e {
+                    self.rejected_mpn_sourced.insert(tx.clone(), stats);
+                }
             }
         }
         if self
@@ -607,6 +617,9 @@ impl<K: KvStore> KvStoreChain<K> {
             let src = chain.get_mpn_account(
                 withdraw.zk_address_index(self.config.mpn_log4_account_capacity),
             )?;
+            if withdraw.zk_nonce != src.nonce {
+                return Err(BlockchainError::InvalidTransactionNonce);
+            }
             let calldata = CoreZkHasher::hash(&[
                 withdraw.zk_address.decompress().0,
                 withdraw.zk_address.decompress().1,
@@ -617,7 +630,6 @@ impl<K: KvStore> KvStoreChain<K> {
             ]);
             if withdraw.zk_address_index(self.config.mpn_log4_account_capacity) > 0x3FFFFFFF
                 || withdraw.zk_token_index >= 64
-                || withdraw.zk_nonce != src.nonce
                 || withdraw.payment.calldata != calldata
                 || !withdraw.verify_signature::<CoreZkHasher>()
             {
@@ -2123,13 +2135,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     ChainSourcedTx::TransactionAndDelta(tx_delta) => {
                         if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
                             log::info!("Rejecting transaction: {}", e);
-                            mempool.reject_chain_sourced(&tx);
+                            mempool.reject_chain_sourced(&tx, e);
                         }
                     }
                     ChainSourcedTx::MpnDeposit(mpn_deposit) => {
                         if let Err(e) = chain.apply_mpn_deposit(mpn_deposit) {
                             log::info!("Rejecting mpn-deposit: {}", e);
-                            mempool.reject_chain_sourced(&tx);
+                            mempool.reject_chain_sourced(&tx, e);
                         }
                     }
                 }
@@ -2155,13 +2167,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                     MpnSourcedTx::MpnTransaction(mpn_tx) => {
                         if let Err(e) = chain.apply_zero_tx(mpn_tx) {
                             log::info!("Rejecting mpn-transaction: {}", e);
-                            mempool.reject_mpn_sourced(tx);
+                            mempool.reject_mpn_sourced(tx, e);
                         }
                     }
                     MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
                         if let Err(e) = chain.apply_mpn_withdraw(mpn_withdraw) {
                             log::info!("Rejecting mpn-withdraw: {}", e);
-                            mempool.reject_mpn_sourced(tx);
+                            mempool.reject_mpn_sourced(tx, e);
                         }
                     }
                 }
