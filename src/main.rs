@@ -39,7 +39,6 @@ struct BazukaConfig {
     listen: SocketAddr,
     external: PeerAddress,
     network: String,
-    miner_token: String,
     bootstrap: Vec<PeerAddress>,
     db: PathBuf,
 }
@@ -267,11 +266,6 @@ async fn run_node(
         "Wallet zk address:".bright_yellow(),
         wallet.get_zk_address()
     );
-    println!(
-        "{} {}",
-        "Miner token:".bright_yellow(),
-        bazuka_config.miner_token
-    );
 
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let (out_send, mut out_recv) = mpsc::unbounded_channel::<NodeRequest>();
@@ -301,7 +295,6 @@ async fn run_node(
         inc_recv,
         out_send,
         Some(firewall),
-        Some(bazuka_config.miner_token.clone()),
     );
 
     // Async loop that is responsible for getting incoming HTTP requests through a
@@ -374,16 +367,6 @@ async fn run_node(
     Ok(())
 }
 
-#[cfg(feature = "client")]
-fn generate_miner_token() -> String {
-    use rand::distributions::Alphanumeric;
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(30)
-        .map(char::from)
-        .collect()
-}
-
 #[cfg(not(tarpaulin_include))]
 #[cfg(feature = "client")]
 #[tokio::main]
@@ -399,13 +382,6 @@ async fn main() -> Result<(), NodeError> {
         .ok()
         .map(|f| serde_yaml::from_reader(f).unwrap());
     let wallet = Wallet::open(wallet_path.clone()).unwrap();
-
-    if let Some(ref mut conf) = &mut conf {
-        if conf.miner_token.is_empty() {
-            conf.miner_token = generate_miner_token();
-        }
-        std::fs::write(conf_path.clone(), serde_yaml::to_string(conf).unwrap()).unwrap();
-    }
 
     let mpn_contract_id = config::blockchain::get_blockchain_config().mpn_contract_id;
     let mpn_log4_account_capacity =
@@ -545,13 +521,11 @@ async fn main() -> Result<(), NodeError> {
             }
 
             if conf.is_none() {
-                let miner_token = generate_miner_token();
                 let public_ip = bazuka::client::utils::get_public_ip().await.unwrap();
                 std::fs::write(
                     conf_path,
                     serde_yaml::to_string(&BazukaConfig {
                         network,
-                        miner_token,
                         bootstrap,
                         listen: listen
                             .unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT))),

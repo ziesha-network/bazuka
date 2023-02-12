@@ -59,7 +59,6 @@ fn create_test_node(
                     chan: inc_send,
                     network: "simulator".into(),
                     priv_key: opts.wallet.get_priv_key(),
-                    miner_token: None,
                 }),
             },
             outgoing: out_recv,

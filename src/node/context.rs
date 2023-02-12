@@ -10,8 +10,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 pub struct NodeContext<B: Blockchain> {
-    pub miner_token: Option<String>,
-
     pub firewall: Option<Firewall>,
     pub social_profiles: SocialProfiles,
     pub opts: NodeOptions,
