@@ -110,10 +110,10 @@ impl Mempool {
         Ok(())
     }
     pub fn chain_address_limit(&self, _addr: Address) -> usize {
-        10
+        100
     }
     pub fn mpn_address_limit(&self, _addr: MpnAddress) -> usize {
-        10
+        100
     }
     pub fn mpn_sourced_len(&self) -> usize {
         self.mpn_sourced.values().map(|c| c.len()).sum()
@@ -198,11 +198,11 @@ impl Mempool {
             self.mpn_sourced.remove(&tx.sender());
         }
     }
-    pub fn expire_chain_sourced(&mut self, tx: &ChainSourcedTx) {
-        self.reject_chain_sourced(tx);
+    pub fn expire_chain_sourced(&mut self, _tx: &ChainSourcedTx) {
+        //self.reject_chain_sourced(tx);
     }
-    pub fn expire_mpn_sourced(&mut self, tx: &MpnSourcedTx) {
-        self.reject_mpn_sourced(tx);
+    pub fn expire_mpn_sourced(&mut self, _tx: &MpnSourcedTx) {
+        //self.reject_mpn_sourced(tx);
     }
     pub fn chain_sourced(&self) -> impl Iterator<Item = (&ChainSourcedTx, &TransactionStats)> {
         self.chain_sourced.iter().map(|(_, c)| c.iter()).flatten()
