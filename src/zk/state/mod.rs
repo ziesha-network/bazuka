@@ -500,7 +500,12 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             return Err(StateManagerError::NonScalarLocatorError);
         }
 
-        let prev_is_zero: bool = Self::get_data(db, id, &locator)?.is_zero().into();
+        let prev_data = Self::get_data(db, id, &locator)?;
+        if prev_data == value {
+            return Self::get_data(db, id, &ZkDataLocator(vec![]));
+        }
+
+        let prev_is_zero: bool = prev_data.is_zero().into();
 
         ops.push(if value.is_zero().into() {
             if !prev_is_zero {
