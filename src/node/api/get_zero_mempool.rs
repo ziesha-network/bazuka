@@ -24,8 +24,6 @@ pub async fn get_zero_mempool<B: Blockchain>(
         let reward = ctx.blockchain.next_reward()?;
         let mut mempool = ctx.mempool.clone();
         ctx.blockchain.cleanup_chain_mempool(&mut mempool)?;
-        ctx.blockchain
-            .cleanup_mpn_mempool(&mut mempool, ctx.opts.mpn_mempool_capacity)?;
         drop(ctx);
 
         context.write().await.mempool = mempool.clone();
