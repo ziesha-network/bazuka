@@ -15,6 +15,47 @@ pub use state::*;
 pub mod groth16;
 pub mod poseidon;
 
+use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
+pub struct LruCache<K: std::hash::Hash + Clone, V> {
+    capacity: usize,
+    data: HashMap<K, V>,
+    keys: VecDeque<K>,
+}
+
+impl<K: std::hash::Hash + Clone + Eq + std::fmt::Debug, V: std::fmt::Debug> LruCache<K, V> {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            capacity,
+            data: HashMap::new(),
+            keys: VecDeque::new(),
+        }
+    }
+    pub fn get(&mut self, key: &K) -> Option<&V> {
+        if let Some(v) = self.data.get(key) {
+            self.keys.retain(|k| *k != *key);
+            self.keys.push_back(key.clone());
+            Some(v)
+        } else {
+            None
+        }
+    }
+    pub fn insert(&mut self, key: K, value: V) {
+        if !self.data.contains_key(&key) {
+            self.keys.push_back(key.clone());
+            self.data.insert(key, value);
+            while self.keys.len() > self.capacity {
+                if let Some(k) = self.keys.pop_front() {
+                    self.data.remove(&k);
+                }
+            }
+        } else {
+            self.get(&key);
+            self.data.insert(key, value);
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct MpnAccount {
     pub nonce: u64,
@@ -430,12 +471,25 @@ impl ZkDataPairs {
     }
 }
 
+lazy_static! {
+    pub static ref POSEIDON_CACHE: Arc<Mutex<LruCache<Vec<ZkScalar>, ZkScalar>>> =
+        Arc::new(Mutex::new(LruCache::new(64)));
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, std::hash::Hash)]
 pub struct PoseidonHasher;
 impl ZkHasher for PoseidonHasher {
     const MAX_ARITY: usize = poseidon::MAX_ARITY;
     fn hash(vals: &[ZkScalar]) -> ZkScalar {
-        poseidon::poseidon(vals)
+        let mut h = POSEIDON_CACHE.lock().unwrap();
+        let vals_vec = vals.to_vec();
+        if let Some(v) = h.get(&vals_vec) {
+            *v
+        } else {
+            let v = poseidon::poseidon(vals);
+            h.insert(vals_vec, v);
+            v
+        }
     }
 }
 
