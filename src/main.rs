@@ -101,7 +101,10 @@ enum WalletOptions {
     /// Get info and balances of the wallet
     Info {},
     /// Resend pending transactions
-    ResendPending {},
+    ResendPending {
+        #[structopt(long)]
+        fill_gaps: bool,
+    },
 }
 
 #[derive(StructOpt)]
@@ -168,7 +171,11 @@ enum CliOptions {
 
 #[cfg(feature = "client")]
 #[allow(dead_code)]
-async fn resend_all_wallet_txs(conf: BazukaConfig, wallet: &Wallet) -> Result<(), NodeError> {
+async fn resend_all_wallet_txs(
+    conf: BazukaConfig,
+    wallet: &Wallet,
+    fill_gaps: bool,
+) -> Result<(), NodeError> {
     let tx_builder = TxBuilder::new(&wallet.seed());
     let (req_loop, client) = BazukaClient::connect(
         tx_builder.get_priv_key(),
@@ -185,7 +192,7 @@ async fn resend_all_wallet_txs(conf: BazukaConfig, wallet: &Wallet) -> Result<()
                 .await?
                 .account
                 .nonce;
-            let curr_mpn_nonce = client
+            let mut curr_mpn_nonce = client
                 .get_mpn_account(
                     MpnAddress {
                         pub_key: tx_builder.get_zk_address(),
@@ -210,6 +217,29 @@ async fn resend_all_wallet_txs(conf: BazukaConfig, wallet: &Wallet) -> Result<()
             for acc in wallet.mpn_sourced_txs.values() {
                 for tx in acc.iter() {
                     if tx.nonce() >= curr_mpn_nonce {
+                        if fill_gaps {
+                            while curr_mpn_nonce != tx.nonce() {
+                                let filler = tx_builder.create_mpn_transaction(
+                                    0,
+                                    MpnAddress {
+                                        pub_key: tx_builder.get_zk_address(),
+                                    },
+                                    0,
+                                    Money {
+                                        amount: Amount(0),
+                                        token_id: TokenId::Ziesha,
+                                    },
+                                    0,
+                                    Money {
+                                        amount: Amount(0),
+                                        token_id: TokenId::Ziesha,
+                                    },
+                                    curr_mpn_nonce,
+                                );
+                                client.zero_transact(filler).await?;
+                                curr_mpn_nonce += 1;
+                            }
+                        }
                         match tx {
                             MpnSourcedTx::MpnTransaction(tx) => {
                                 println!(
@@ -905,9 +935,9 @@ async fn main() -> Result<(), NodeError> {
                 wallet.reset();
                 wallet.save(wallet_path).unwrap();
             }
-            WalletOptions::ResendPending {} => {
+            WalletOptions::ResendPending { fill_gaps } => {
                 let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-                resend_all_wallet_txs(conf, &wallet).await?;
+                resend_all_wallet_txs(conf, &wallet, fill_gaps).await?;
             }
             WalletOptions::Info {} => {
                 let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
