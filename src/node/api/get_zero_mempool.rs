@@ -57,13 +57,22 @@ pub async fn get_zero_mempool<B: Blockchain>(
             }
         }
 
-        for (tx, _) in mempool.mpn_sourced() {
-            match tx {
+        let mut has_send_before_withdraw = HashSet::new();
+        let mut mpn_sourced_sorted = mempool
+            .mpn_sourced()
+            .map(|(tx, _)| tx.clone())
+            .collect::<Vec<_>>();
+        mpn_sourced_sorted.sort_unstable_by_key(|t| t.nonce());
+        for tx in mpn_sourced_sorted {
+            match &tx {
                 MpnSourcedTx::MpnTransaction(mpn_tx) => {
                     updates.push(mpn_tx.clone());
+                    has_send_before_withdraw.insert(tx.sender());
                 }
                 MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
-                    withdraws.push(mpn_withdraw.clone());
+                    if !has_send_before_withdraw.contains(&tx.sender()) {
+                        withdraws.push(mpn_withdraw.clone());
+                    }
                 }
             }
         }
