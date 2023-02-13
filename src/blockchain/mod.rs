@@ -170,6 +170,11 @@ impl Mempool {
             let mpn_acc = blockchain
                 .get_mpn_account(tx.sender().account_index(self.mpn_log4_account_capacity))?;
 
+            // Do not accept txs from non-existing accounts
+            if tx.sender().pub_key.0.decompress() != mpn_acc.address {
+                return Ok(());
+            }
+
             // Do not accept old txs in the mempool
             if tx.nonce() < mpn_acc.nonce {
                 return Ok(());
