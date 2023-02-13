@@ -3,7 +3,7 @@ use super::{
 };
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, Mempool};
 use crate::client::messages::SocialProfiles;
-use crate::core::{ChainSourcedTx, Header, TransactionAndDelta};
+use crate::core::{ChainSourcedTx, Header, MpnSourcedTx, TransactionAndDelta};
 use crate::utils;
 use crate::wallet::TxBuilder;
 use std::collections::HashMap;
@@ -76,6 +76,17 @@ impl<B: Blockchain> NodeContext<B> {
             firewall.refresh(local_ts);
         }
 
+        Ok(())
+    }
+
+    pub fn mempool_add_mpn_sourced(
+        &mut self,
+        is_local: bool,
+        tx: MpnSourcedTx,
+    ) -> Result<(), BlockchainError> {
+        let local_ts = self.local_timestamp();
+        self.mempool
+            .add_mpn_sourced(&self.blockchain, tx, is_local, local_ts)?;
         Ok(())
     }
 

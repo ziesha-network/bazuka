@@ -12,10 +12,7 @@ pub async fn post_mpn_transaction<B: Blockchain>(
     req: PostMpnTransactionRequest,
 ) -> Result<PostMpnTransactionResponse, NodeError> {
     let mut context = context.write().await;
-    let now = context.local_timestamp();
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
-    context
-        .mempool
-        .add_mpn_sourced(MpnSourcedTx::MpnTransaction(req.tx), is_local, now);
+    context.mempool_add_mpn_sourced(is_local, MpnSourcedTx::MpnTransaction(req.tx))?;
     Ok(PostMpnTransactionResponse {})
 }

@@ -36,7 +36,7 @@ pub async fn sync_mempool<B: Blockchain>(
                 ctx.mempool.add_chain_sourced(tx, false, now);
             }
             for tx in mpn_sourced_txs {
-                ctx.mempool.add_mpn_sourced(tx, false, now);
+                ctx.mempool_add_mpn_sourced(false, tx)?;
             }
         }
     }

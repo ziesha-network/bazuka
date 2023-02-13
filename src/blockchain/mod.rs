@@ -148,7 +148,13 @@ impl Mempool {
             }
         }
     }
-    pub fn add_mpn_sourced(&mut self, tx: MpnSourcedTx, is_local: bool, now: u32) {
+    pub fn add_mpn_sourced<B: Blockchain>(
+        &mut self,
+        blockchain: &B,
+        tx: MpnSourcedTx,
+        is_local: bool,
+        now: u32,
+    ) -> Result<(), BlockchainError> {
         if is_local {
             self.rejected_mpn_sourced.remove(&tx);
         }
@@ -159,7 +165,14 @@ impl Mempool {
                 .map(|all| all.contains_key(&tx))
                 .unwrap_or_default()
             {
-                return;
+                return Ok(());
+            }
+            let mpn_acc = blockchain
+                .get_mpn_account(tx.sender().account_index(self.mpn_log4_account_capacity))?;
+
+            // Do not accept old txs in the mempool
+            if tx.nonce() < mpn_acc.nonce {
+                return Ok(());
             }
 
             let limit = self.mpn_address_limit(tx.sender());
@@ -170,6 +183,7 @@ impl Mempool {
                 }
             }
         }
+        Ok(())
     }
     pub fn reject_chain_sourced(&mut self, tx: &ChainSourcedTx, e: BlockchainError) {
         if let Some(all) = self.chain_sourced.get_mut(&tx.sender()) {
