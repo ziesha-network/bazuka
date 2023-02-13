@@ -19,12 +19,46 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
+#[derive(Clone, Debug, Default)]
+pub struct AddressMempool {
+    txs: HashMap<u32, (ChainSourcedTx, TransactionStats)>,
+}
+
+impl AddressMempool {
+    fn insert(&mut self, tx: ChainSourcedTx, stats: TransactionStats) {
+        self.txs.insert(tx.nonce(), (tx, stats));
+    }
+    fn remove(&mut self, tx: &ChainSourcedTx) -> Option<TransactionStats> {
+        self.txs.remove(tx.nonce()).1
+    }
+    fn is_empty(&self) -> bool {
+        self.txs.is_empty();
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct MpnAddressMempool {
+    txs: HashMap<u64, (MpnSourcedTx, TransactionStats)>,
+}
+
+impl MpnAddressMempool {
+    fn insert(&mut self, tx: MpnSourcedTx, stats: TransactionStats) {
+        self.txs.insert(tx.nonce(), (tx, stats));
+    }
+    fn remove(&mut self, tx: &MpnSourcedTx) -> Option<TransactionStats> {
+        self.txs.remove(tx.nonce()).1
+    }
+    fn is_empty(&self) -> bool {
+        self.txs.is_empty();
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Mempool {
     mpn_log4_account_capacity: u8,
-    chain_sourced: HashMap<Address, HashMap<ChainSourcedTx, TransactionStats>>,
+    chain_sourced: HashMap<Address, AddressMempool>,
     rejected_chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
-    mpn_sourced: HashMap<MpnAddress, HashMap<MpnSourcedTx, TransactionStats>>,
+    mpn_sourced: HashMap<MpnAddress, MpnAddressMempool>,
     rejected_mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
 }
 
