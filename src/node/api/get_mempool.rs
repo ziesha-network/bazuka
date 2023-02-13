@@ -1,7 +1,7 @@
 use super::messages::{GetMempoolRequest, GetMempoolResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
-use crate::core::{ChainSourcedTx, MpnAddress, TransactionData};
+use crate::core::{ChainSourcedTx, MpnAddress, MpnSourcedTx, TransactionData};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -35,7 +35,18 @@ pub async fn get_mempool<B: Blockchain>(
             .filter(|tx| {
                 mpn_address
                     .as_ref()
-                    .map(|mpn_addr| *mpn_addr == tx.sender())
+                    .map(|mpn_addr| {
+                        *mpn_addr == tx.sender()
+                            || match tx {
+                                MpnSourcedTx::MpnTransaction(mpn_tx) => {
+                                    *mpn_addr
+                                        == MpnAddress {
+                                            pub_key: mpn_tx.dst_pub_key.clone(),
+                                        }
+                                }
+                                _ => false,
+                            }
+                    })
                     .unwrap_or(true)
             })
             .cloned()
