@@ -1,13 +1,14 @@
 use super::messages::{GetMempoolRequest, GetMempoolResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
-use crate::core::{ChainSourcedTx, TransactionData};
+use crate::core::{ChainSourcedTx, MpnAddress, TransactionData};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub async fn get_mempool<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     _req: GetMempoolRequest,
+    mpn_address: Option<MpnAddress>,
 ) -> Result<GetMempoolResponse, NodeError> {
     let context = context.read().await;
     let mpn_contract_id = context.blockchain.config().mpn_contract_id;
@@ -31,6 +32,12 @@ pub async fn get_mempool<B: Blockchain>(
             .mempool
             .mpn_sourced()
             .map(|(tx, _)| tx)
+            .filter(|tx| {
+                mpn_address
+                    .as_ref()
+                    .map(|mpn_addr| *mpn_addr == tx.sender())
+                    .unwrap_or(true)
+            })
             .cloned()
             .collect(),
     })

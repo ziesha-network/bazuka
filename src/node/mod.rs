@@ -10,8 +10,7 @@ mod peer_manager;
 pub mod seeds;
 use crate::blockchain::{BlockAndPatch, Blockchain, Mempool};
 use crate::client::{
-    messages::{GetJsonMempoolResponse, PostBlockRequest, PostBlockResponse, SocialProfiles},
-    Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, Timestamp,
+    messages::*, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, Timestamp,
     MINER_TOKEN_HEADER, NETWORK_HEADER, SIGNATURE_HEADER,
 };
 use crate::common::*;
@@ -381,15 +380,26 @@ async fn node_service<B: Blockchain>(
                 }
             }
             (Method::GET, "/mempool") => {
+                let req: GetJsonMempoolRequest = serde_qs::from_str(&qs)?;
+                let mpn_address = req.mpn_address.parse()?;
                 *response.body_mut() =
                     Body::from(serde_json::to_vec(&Into::<GetJsonMempoolResponse>::into(
-                        api::get_mempool(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                        api::get_mempool(
+                            Arc::clone(&context),
+                            GetMempoolRequest {},
+                            Some(mpn_address),
+                        )
+                        .await?,
                     ))?);
             }
             (Method::GET, "/bincode/mempool") => {
                 *response.body_mut() = Body::from(bincode::serialize(
-                    &api::get_mempool(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
-                        .await?,
+                    &api::get_mempool(
+                        Arc::clone(&context),
+                        bincode::deserialize(&body_bytes)?,
+                        None,
+                    )
+                    .await?,
                 )?);
             }
             _ => {

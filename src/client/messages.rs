@@ -342,7 +342,9 @@ impl Into<GetJsonMempoolResponse> for GetMempoolResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetJsonMempoolRequest {}
+pub struct GetJsonMempoolRequest {
+    pub mpn_address: String,
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetJsonMempoolResponse {
