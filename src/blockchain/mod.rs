@@ -116,9 +116,6 @@ impl Mempool {
     pub fn chain_address_limit(&self, _addr: Address) -> usize {
         100
     }
-    pub fn mpn_address_limit(&self, _addr: MpnAddress) -> usize {
-        1000
-    }
     pub fn mpn_sourced_len(&self) -> usize {
         self.mpn_sourced.values().map(|c| c.len()).sum()
     }
@@ -180,11 +177,24 @@ impl Mempool {
                 return Ok(());
             }
 
-            let limit = self.mpn_address_limit(tx.sender());
-            let all = self.mpn_sourced.entry(tx.sender().clone()).or_default();
-            if tx.verify_signature() {
-                if is_local || all.len() < limit {
-                    all.insert(tx.clone(), TransactionStats::new(is_local, now));
+            // Do not accept txs coming from accounts that their 0th slot has no Ziesha
+            if let Some(money) = mpn_acc.tokens.get(&0) {
+                if money.token_id != TokenId::Ziesha {
+                    return Ok(());
+                }
+
+                // Allow 1tx in mempool per Ziesha
+                // Min: 1 Max: 1000
+                let limit = std::cmp::max(
+                    std::cmp::min(Into::<u64>::into(money.amount) / 1000000000, 1000),
+                    1,
+                ) as usize;
+
+                let all = self.mpn_sourced.entry(tx.sender().clone()).or_default();
+                if tx.verify_signature() {
+                    if is_local || all.len() < limit {
+                        all.insert(tx.clone(), TransactionStats::new(is_local, now));
+                    }
                 }
             }
         }
