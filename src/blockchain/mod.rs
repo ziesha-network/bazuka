@@ -117,7 +117,7 @@ impl Mempool {
         100
     }
     pub fn mpn_address_limit(&self, _addr: MpnAddress) -> usize {
-        100
+        1000
     }
     pub fn mpn_sourced_len(&self) -> usize {
         self.mpn_sourced.values().map(|c| c.len()).sum()
