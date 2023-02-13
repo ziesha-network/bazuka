@@ -76,18 +76,19 @@ impl<B: Blockchain> NodeContext<B> {
             firewall.refresh(local_ts);
         }
 
-        self.mempool.refresh(
-            &self.blockchain,
-            local_ts,
-            self.opts.tx_max_time_alive,
-            self.opts.tx_max_time_alive,
-        )?;
         Ok(())
     }
 
     /// Is called whenever chain is extended or rolled back
     pub fn on_update(&mut self) -> Result<(), BlockchainError> {
         self.outdated_since = None;
+        let local_ts = self.local_timestamp();
+        self.mempool.refresh(
+            &self.blockchain,
+            local_ts,
+            self.opts.tx_max_time_alive,
+            self.opts.tx_max_time_alive,
+        )?;
         Ok(())
     }
 
