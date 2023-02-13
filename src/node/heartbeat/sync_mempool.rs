@@ -7,6 +7,7 @@ pub async fn sync_mempool<B: Blockchain>(
     let ctx = context.read().await;
 
     let net = ctx.outgoing.clone();
+    let opts = ctx.opts.clone();
 
     let peer_addresses = ctx.peer_manager.get_peers();
     drop(ctx);
@@ -32,10 +33,13 @@ pub async fn sync_mempool<B: Blockchain>(
         for (mut chain_sourced_txs, mut mpn_sourced_txs) in resps {
             chain_sourced_txs.sort_unstable_by_key(|t| t.nonce());
             mpn_sourced_txs.sort_unstable_by_key(|t| t.nonce());
-            for tx in chain_sourced_txs {
+            for tx in chain_sourced_txs
+                .into_iter()
+                .take(opts.chain_mempool_max_fetch)
+            {
                 ctx.mempool.add_chain_sourced(tx, false, now);
             }
-            for tx in mpn_sourced_txs {
+            for tx in mpn_sourced_txs.into_iter().take(opts.mpn_mempool_max_fetch) {
                 ctx.mempool_add_mpn_sourced(false, tx)?;
             }
         }

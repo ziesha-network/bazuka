@@ -24,7 +24,8 @@ pub fn get_node_options() -> NodeOptions {
         outdated_heights_threshold: 120,
         state_unavailable_ban_time: 30,
         candidate_remove_threshold: 3600,
-        mpn_mempool_capacity: 2560,
+        chain_mempool_max_fetch: 1000,
+        mpn_mempool_max_fetch: 1000,
         max_block_time_difference: 120,
     }
 }
@@ -52,7 +53,8 @@ pub fn get_simulator_options() -> NodeOptions {
         outdated_heights_threshold: 5,
         state_unavailable_ban_time: 10,
         candidate_remove_threshold: 600,
-        mpn_mempool_capacity: 1024,
+        chain_mempool_max_fetch: 1000,
+        mpn_mempool_max_fetch: 1000,
         max_block_time_difference: 120,
     }
 }
