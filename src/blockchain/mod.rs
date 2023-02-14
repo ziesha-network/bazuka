@@ -17,14 +17,50 @@ use crate::zk::ZkHasher;
 use rayon::prelude::*;
 
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
+
+#[derive(Debug, Clone, Default)]
+pub struct MpnAccountMempool {
+    txs: VecDeque<(MpnSourcedTx, TransactionStats)>,
+}
+
+impl MpnAccountMempool {
+    fn len(&self) -> usize {
+        self.txs.len()
+    }
+    fn first_nonce(&self) -> Option<u64> {
+        self.txs.front().map(|(tx, _)| tx.nonce())
+    }
+    fn last_nonce(&self) -> Option<u64> {
+        self.txs.back().map(|(tx, _)| tx.nonce())
+    }
+    fn applicable(&self, tx: &MpnSourcedTx) -> bool {
+        self.last_nonce()
+            .map(|last_nonce| last_nonce == tx.nonce() + 1)
+            .unwrap_or(true)
+    }
+    fn insert(&mut self, tx: MpnSourcedTx, stats: TransactionStats) {
+        if self.applicable(&tx) {
+            self.txs.push_back((tx, stats));
+        }
+    }
+    fn update_nonce(&mut self, nonce: u64) {
+        while let Some(first_nonce) = self.first_nonce() {
+            if first_nonce < nonce {
+                self.txs.pop_front();
+            } else {
+                break;
+            }
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Mempool {
     mpn_log4_account_capacity: u8,
     chain_sourced: HashMap<Address, HashMap<ChainSourcedTx, TransactionStats>>,
     rejected_chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
-    mpn_sourced: HashMap<MpnAddress, HashMap<MpnSourcedTx, TransactionStats>>,
+    mpn_sourced: HashMap<MpnAddress, MpnAccountMempool>,
     rejected_mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
 }
 
@@ -48,9 +84,7 @@ impl Mempool {
         max_time_alive: Option<u32>,
         max_time_remember: Option<u32>,
     ) -> Result<(), BlockchainError> {
-        let mut mpn_accounts = HashMap::new();
         let mut chain_accounts = HashMap::new();
-        let mut mpn_txs_to_remove = Vec::new();
         let mut chain_txs_to_remove = Vec::new();
         for (tx, _) in self.chain_sourced() {
             let acc = chain_accounts
@@ -60,22 +94,13 @@ impl Mempool {
                 chain_txs_to_remove.push(tx.clone());
             }
         }
-        for (tx, _) in self.mpn_sourced() {
-            let acc = mpn_accounts.entry(tx.sender()).or_insert(
-                blockchain
-                    .get_mpn_account(tx.sender().account_index(self.mpn_log4_account_capacity))?,
-            );
-            if tx.nonce() < acc.nonce {
-                mpn_txs_to_remove.push(tx.clone());
-            }
+        for (addr, mempool) in self.mpn_sourced.iter_mut() {
+            let acc =
+                blockchain.get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?;
+            mempool.update_nonce(acc.nonce);
         }
         for tx in chain_txs_to_remove {
             self.chain_sourced.entry(tx.sender()).and_modify(|all| {
-                all.remove(&tx);
-            });
-        }
-        for tx in mpn_txs_to_remove {
-            self.mpn_sourced.entry(tx.sender()).and_modify(|all| {
                 all.remove(&tx);
             });
         }
@@ -84,18 +109,9 @@ impl Mempool {
                 .chain_sourced()
                 .map(|(tx, stats)| (tx.clone(), stats.clone()))
                 .collect::<Vec<_>>();
-            let mpn_sourced = self
-                .mpn_sourced()
-                .map(|(tx, stats)| (tx.clone(), stats.clone()))
-                .collect::<Vec<_>>();
             for (tx, stats) in chain_sourced {
                 if !stats.is_local && local_ts - stats.first_seen > max_time_alive {
                     self.expire_chain_sourced(&tx);
-                }
-            }
-            for (tx, stats) in mpn_sourced {
-                if !stats.is_local && local_ts - stats.first_seen > max_time_alive {
-                    self.expire_mpn_sourced(&tx);
                 }
             }
         }
@@ -103,11 +119,6 @@ impl Mempool {
             for (tx, stats) in self.rejected_chain_sourced.clone().into_iter() {
                 if !stats.is_local && local_ts - stats.first_seen > max_time_remember {
                     self.rejected_chain_sourced.remove(&tx);
-                }
-            }
-            for (tx, stats) in self.rejected_mpn_sourced.clone().into_iter() {
-                if !stats.is_local && local_ts - stats.first_seen > max_time_remember {
-                    self.rejected_mpn_sourced.remove(&tx);
                 }
             }
         }
@@ -159,7 +170,7 @@ impl Mempool {
             if self
                 .mpn_sourced
                 .get(&tx.sender())
-                .map(|all| all.contains_key(&tx))
+                .map(|all| all.applicable(&tx))
                 .unwrap_or_default()
             {
                 return Ok(());
@@ -218,36 +229,14 @@ impl Mempool {
             self.chain_sourced.remove(&tx.sender());
         }
     }
-    pub fn reject_mpn_sourced(&mut self, tx: &MpnSourcedTx, e: BlockchainError) {
-        if let Some(all) = self.mpn_sourced.get_mut(&tx.sender()) {
-            if let Some(stats) = all.remove(tx) {
-                // Nonce issues do not need rejection
-                if let BlockchainError::InvalidTransactionNonce = e {
-                    self.rejected_mpn_sourced.insert(tx.clone(), stats);
-                }
-            }
-        }
-        if self
-            .mpn_sourced
-            .get(&tx.sender())
-            .clone()
-            .map(|all| all.is_empty())
-            .unwrap_or(true)
-        {
-            self.mpn_sourced.remove(&tx.sender());
-        }
-    }
     pub fn expire_chain_sourced(&mut self, _tx: &ChainSourcedTx) {
         //self.reject_chain_sourced(tx);
-    }
-    pub fn expire_mpn_sourced(&mut self, _tx: &MpnSourcedTx) {
-        //self.reject_mpn_sourced(tx);
     }
     pub fn chain_sourced(&self) -> impl Iterator<Item = (&ChainSourcedTx, &TransactionStats)> {
         self.chain_sourced.iter().map(|(_, c)| c.iter()).flatten()
     }
-    pub fn mpn_sourced(&self) -> impl Iterator<Item = (&MpnSourcedTx, &TransactionStats)> {
-        self.mpn_sourced.iter().map(|(_, c)| c.iter()).flatten()
+    pub fn mpn_sourced(&self) -> impl Iterator<Item = &(MpnSourcedTx, TransactionStats)> {
+        self.mpn_sourced.iter().map(|(_, c)| c.txs.iter()).flatten()
     }
 }
 
