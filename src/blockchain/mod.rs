@@ -57,6 +57,9 @@ impl MpnAccountMempool {
                 break;
             }
         }
+        if self.first_nonce() != Some(account.nonce) {
+            self.txs.clear();
+        }
         self.account = Some(account);
     }
 }
