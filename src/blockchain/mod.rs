@@ -2072,7 +2072,30 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     fn validator_set(&self) -> Result<Vec<Address>, BlockchainError> {
-        Ok(if self.get_height()? >= 5000 {
+        Ok(if self.get_height()? >= 6767 {
+            vec![
+                "0x59b172ea59a292165f1aad656d8dc4c970a8ab3c4b0089aa299e066cd9db3a9d",
+                "0x244dd812173e33c99d24025d57f534fa1d029f4142c94561d95a92a8c1c3437b",
+                "0xfbdc2bf51b3f7fbaacdb8cce79f0e2d8158dc708fce39c09c326db0fcb42b9bf",
+                "0x0145bd0c1f71b5e86289991f7444dc536ec3bff988d26ce119eba245fc052829",
+                "0x0c2686ddd1bc623419d4de144da6e67f3c4ab678598a54e6140162268be033c5",
+                "0x073e9a0d6cd628c1c418cd19e211b2a1500b89aae1d2f30040d8d7da92e7d3ba",
+                "0x679cd2575eb24a98033e1f2f8f0826e3bb396b31117fc4aef0e8d88eec05bb02",
+                "0xfe66743ad2b77b5c5a2b013a8ba3316e4f020a0a8afcd5f6aef1b6da017a215f",
+                "0xe17621e34267237a7f0cdb930ba8111f8bd823f27513e8b8a272f10317157a15",
+                "0xcac39cc534b62fc4007aec0410a2586e6e3a1e766a9953922a8b2b766451d1e8",
+                "0xe8a0e1ce7705ef957477c9dcff717431fb7ce0f63e973a1f93fadb01210d3753",
+                "0xd4b614ec85b019bd3ba0fb5ffa2301edef877319ea5367f9e0dcc12e1b05010e",
+                "0x8a142e94f9f42da430233e2076a9ba1dff508bad22ade0919ae12031b8bbbdc1",
+                "0xffc978eff3dfee31c0561c88027a4b6f3ea6a5cc0fb466e8c8aaa8000bcb5501",
+                "0xe25395cd5d4b3f3b3490f3d9a8b5eb4c441b462ea2302d469be1be91cec54bc7",
+                "0x6059f334576f8ff31d1f597ec11686a3da7b20e850e2c41d51f56a6169498164",
+                "0xffe4c7042b179401c37c914097538974e7da338ca2a3e69080a42bb44d85a2e8",
+                "0x828a5b934710c9fba5e0b7d509eb501cd23fa2a5d2d9d64756c16e6b37ad5538",
+                "0x6b42ae8896177cc7ac1d3cce3998e9381240da096b6abfb3c05ca51542814f75",
+            ]
+        }
+        else if self.get_height()? >= 5000 {
             vec![
                 "0xac798dca2e3275b06948c6839b9813697fc2fb60174c79e366f860d844b17202", // Apricot Pool
                 "0x115845ae1e3565a956b329285ae2f28d53e4b67865ad92f0131c46bea76cf858", // CHN Pool
