@@ -21,6 +21,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Debug, Clone, Default)]
 pub struct MpnAccountMempool {
+    account: Option<zk::MpnAccount>,
     txs: VecDeque<(MpnSourcedTx, TransactionStats)>,
 }
 
@@ -35,23 +36,28 @@ impl MpnAccountMempool {
         self.txs.back().map(|(tx, _)| tx.nonce())
     }
     fn applicable(&self, tx: &MpnSourcedTx) -> bool {
-        self.last_nonce()
-            .map(|last_nonce| last_nonce + 1 == tx.nonce())
-            .unwrap_or(true)
+        if let Some(last_nonce) = self.last_nonce() {
+            tx.nonce() == last_nonce + 1
+        } else if let Some(account) = &self.account {
+            tx.nonce() == account.nonce
+        } else {
+            true
+        }
     }
     fn insert(&mut self, tx: MpnSourcedTx, stats: TransactionStats) {
         if self.applicable(&tx) {
             self.txs.push_back((tx, stats));
         }
     }
-    fn update_nonce(&mut self, nonce: u64) {
+    fn update_account(&mut self, account: zk::MpnAccount) {
         while let Some(first_nonce) = self.first_nonce() {
-            if first_nonce < nonce {
+            if first_nonce < account.nonce {
                 self.txs.pop_front();
             } else {
                 break;
             }
         }
+        self.account = Some(account);
     }
 }
 
@@ -97,7 +103,7 @@ impl Mempool {
         for (addr, mempool) in self.mpn_sourced.iter_mut() {
             let acc =
                 blockchain.get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?;
-            mempool.update_nonce(acc.nonce);
+            mempool.update_account(acc);
         }
         for tx in chain_txs_to_remove {
             self.chain_sourced.entry(tx.sender()).and_modify(|all| {
