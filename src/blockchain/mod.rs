@@ -36,7 +36,7 @@ impl MpnAccountMempool {
     }
     fn applicable(&self, tx: &MpnSourcedTx) -> bool {
         self.last_nonce()
-            .map(|last_nonce| last_nonce == tx.nonce() + 1)
+            .map(|last_nonce| last_nonce + 1 == tx.nonce())
             .unwrap_or(true)
     }
     fn insert(&mut self, tx: MpnSourcedTx, stats: TransactionStats) {
