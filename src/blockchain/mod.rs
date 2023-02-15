@@ -19,12 +19,19 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct MpnAccountMempool {
+    account: zk::MpnAccount,
     txs: VecDeque<(MpnSourcedTx, TransactionStats)>,
 }
 
 impl MpnAccountMempool {
+    fn new(account: zk::MpnAccount) -> Self {
+        Self {
+            account,
+            txs: Default::default(),
+        }
+    }
     fn len(&self) -> usize {
         self.txs.len()
     }
@@ -35,9 +42,11 @@ impl MpnAccountMempool {
         self.txs.back().map(|(tx, _)| tx.nonce())
     }
     fn applicable(&self, tx: &MpnSourcedTx) -> bool {
-        self.last_nonce()
-            .map(|last_nonce| tx.nonce() == last_nonce + 1)
-            .unwrap_or(true)
+        if let Some(last_nonce) = self.last_nonce() {
+            tx.nonce() == last_nonce + 1
+        } else {
+            self.account.nonce == tx.nonce()
+        }
     }
     fn insert(&mut self, tx: MpnSourcedTx, stats: TransactionStats) {
         if self.applicable(&tx) {
@@ -55,6 +64,7 @@ impl MpnAccountMempool {
         if self.first_nonce() != Some(account.nonce) {
             self.txs.clear();
         }
+        self.account = account;
     }
 }
 
@@ -172,7 +182,7 @@ impl Mempool {
                 .get_mut(&tx.sender())
                 .map(|all| {
                     all.update_account(mpn_acc.clone());
-                    all.applicable(&tx)
+                    !all.applicable(&tx)
                 })
                 .unwrap_or_default()
             {
@@ -202,7 +212,10 @@ impl Mempool {
                     1,
                 ) as usize;
 
-                let all = self.mpn_sourced.entry(tx.sender().clone()).or_default();
+                let all = self
+                    .mpn_sourced
+                    .entry(tx.sender().clone())
+                    .or_insert(MpnAccountMempool::new(mpn_acc));
                 if tx.verify_signature() {
                     if is_local || all.len() < limit {
                         all.insert(tx.clone(), TransactionStats::new(is_local, now));
