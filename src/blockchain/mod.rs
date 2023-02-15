@@ -21,7 +21,6 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Debug, Clone, Default)]
 pub struct MpnAccountMempool {
-    account: Option<zk::MpnAccount>,
     txs: VecDeque<(MpnSourcedTx, TransactionStats)>,
 }
 
@@ -36,13 +35,9 @@ impl MpnAccountMempool {
         self.txs.back().map(|(tx, _)| tx.nonce())
     }
     fn applicable(&self, tx: &MpnSourcedTx) -> bool {
-        if let Some(last_nonce) = self.last_nonce() {
-            tx.nonce() == last_nonce + 1
-        } else if let Some(account) = &self.account {
-            tx.nonce() == account.nonce
-        } else {
-            true
-        }
+        self.last_nonce()
+            .map(|last_nonce| tx.nonce() == last_nonce + 1)
+            .unwrap_or(true)
     }
     fn insert(&mut self, tx: MpnSourcedTx, stats: TransactionStats) {
         if self.applicable(&tx) {
@@ -60,7 +55,6 @@ impl MpnAccountMempool {
         if self.first_nonce() != Some(account.nonce) {
             self.txs.clear();
         }
-        self.account = Some(account);
     }
 }
 
@@ -102,11 +96,6 @@ impl Mempool {
             if tx.nonce() <= acc.nonce {
                 chain_txs_to_remove.push(tx.clone());
             }
-        }
-        for (addr, mempool) in self.mpn_sourced.iter_mut() {
-            let acc =
-                blockchain.get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?;
-            mempool.update_account(acc);
         }
         for tx in chain_txs_to_remove {
             self.chain_sourced.entry(tx.sender()).and_modify(|all| {
@@ -176,16 +165,19 @@ impl Mempool {
             self.rejected_mpn_sourced.remove(&tx);
         }
         if !self.rejected_mpn_sourced.contains_key(&tx) {
+            let mpn_acc = blockchain
+                .get_mpn_account(tx.sender().account_index(self.mpn_log4_account_capacity))?;
             if self
                 .mpn_sourced
-                .get(&tx.sender())
-                .map(|all| all.applicable(&tx))
+                .get_mut(&tx.sender())
+                .map(|all| {
+                    all.update_account(mpn_acc.clone());
+                    all.applicable(&tx)
+                })
                 .unwrap_or_default()
             {
                 return Ok(());
             }
-            let mpn_acc = blockchain
-                .get_mpn_account(tx.sender().account_index(self.mpn_log4_account_capacity))?;
 
             // Do not accept txs from non-existing accounts
             if tx.sender().pub_key.0.decompress() != mpn_acc.address {
