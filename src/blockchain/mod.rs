@@ -2073,7 +2073,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn validator_set(&self) -> Result<Vec<Address>, BlockchainError> {
         Ok(if self.get_height()? >= 6767 {
-            vec![
+            let mut vals = vec![
                 "0x59b172ea59a292165f1aad656d8dc4c970a8ab3c4b0089aa299e066cd9db3a9d",
                 "0x244dd812173e33c99d24025d57f534fa1d029f4142c94561d95a92a8c1c3437b",
                 "0xfbdc2bf51b3f7fbaacdb8cce79f0e2d8158dc708fce39c09c326db0fcb42b9bf",
@@ -2093,9 +2093,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 "0xffe4c7042b179401c37c914097538974e7da338ca2a3e69080a42bb44d85a2e8",
                 "0x828a5b934710c9fba5e0b7d509eb501cd23fa2a5d2d9d64756c16e6b37ad5538",
                 "0x6b42ae8896177cc7ac1d3cce3998e9381240da096b6abfb3c05ca51542814f75",
-            ]
-        }
-        else if self.get_height()? >= 5000 {
+            ];
+            if self.get_height()? >= 7200 {
+                vals.push("0x1b217b86f162230ff795331a518f03d5ab65664cdab8650eb10d0261600b5eeb");
+            }
+            vals
+        } else if self.get_height()? >= 5000 {
             vec![
                 "0xac798dca2e3275b06948c6839b9813697fc2fb60174c79e366f860d844b17202", // Apricot Pool
                 "0x115845ae1e3565a956b329285ae2f28d53e4b67865ad92f0131c46bea76cf858", // CHN Pool
@@ -2162,7 +2165,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         addr: Address,
         _proof: ValidatorProof,
     ) -> Result<bool, BlockchainError> {
-        let slot_number = (timestamp / 180) as usize;
+        let block_time = if self.get_height()? >= 7200 { 60 } else { 180 };
+        let slot_number = (timestamp / block_time) as usize;
         let i = slot_number % self.validator_set()?.len();
         let winner = self.validator_set()?[i].clone();
         Ok(addr == winner)
@@ -2172,7 +2176,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         timestamp: u32,
         wallet: &TxBuilder,
     ) -> Result<Option<ValidatorProof>, BlockchainError> {
-        let slot_number = (timestamp / 180) as usize;
+        let block_time = if self.get_height()? >= 7200 { 60 } else { 180 };
+        let slot_number = (timestamp / block_time) as usize;
         let i = slot_number % self.validator_set()?.len();
         let winner = self.validator_set()?[i].clone();
         Ok(if wallet.get_address() == winner {
