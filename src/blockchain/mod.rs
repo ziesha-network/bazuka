@@ -68,10 +68,59 @@ impl MpnAccountMempool {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct AccountMempool {
+    account: Account,
+    txs: VecDeque<(ChainSourcedTx, TransactionStats)>,
+}
+
+impl AccountMempool {
+    fn new(account: Account) -> Self {
+        Self {
+            account,
+            txs: Default::default(),
+        }
+    }
+    fn len(&self) -> usize {
+        self.txs.len()
+    }
+    fn first_nonce(&self) -> Option<u32> {
+        self.txs.front().map(|(tx, _)| tx.nonce())
+    }
+    fn last_nonce(&self) -> Option<u32> {
+        self.txs.back().map(|(tx, _)| tx.nonce())
+    }
+    fn applicable(&self, tx: &ChainSourcedTx) -> bool {
+        if let Some(last_nonce) = self.last_nonce() {
+            tx.nonce() == last_nonce + 1
+        } else {
+            self.account.nonce + 1 == tx.nonce()
+        }
+    }
+    fn insert(&mut self, tx: ChainSourcedTx, stats: TransactionStats) {
+        if self.applicable(&tx) {
+            self.txs.push_back((tx, stats));
+        }
+    }
+    fn update_account(&mut self, account: Account) {
+        while let Some(first_nonce) = self.first_nonce() {
+            if first_nonce <= account.nonce {
+                self.txs.pop_front();
+            } else {
+                break;
+            }
+        }
+        if self.first_nonce() != Some(account.nonce + 1) {
+            self.txs.clear();
+        }
+        self.account = account;
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Mempool {
     mpn_log4_account_capacity: u8,
-    chain_sourced: HashMap<Address, HashMap<ChainSourcedTx, TransactionStats>>,
+    chain_sourced: HashMap<Address, AccountMempool>,
     rejected_chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
     mpn_sourced: HashMap<MpnAddress, MpnAccountMempool>,
     rejected_mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
@@ -90,6 +139,7 @@ impl Mempool {
 }
 
 impl Mempool {
+    #[allow(dead_code)]
     pub fn refresh<B: Blockchain>(
         &mut self,
         blockchain: &B,
@@ -97,39 +147,6 @@ impl Mempool {
         max_time_alive: Option<u32>,
         max_time_remember: Option<u32>,
     ) -> Result<(), BlockchainError> {
-        let mut chain_accounts = HashMap::new();
-        let mut chain_txs_to_remove = Vec::new();
-        for (tx, _) in self.chain_sourced() {
-            let acc = chain_accounts
-                .entry(tx.sender())
-                .or_insert(blockchain.get_account(tx.sender())?);
-            if tx.nonce() <= acc.nonce {
-                chain_txs_to_remove.push(tx.clone());
-            }
-        }
-        for tx in chain_txs_to_remove {
-            self.chain_sourced.entry(tx.sender()).and_modify(|all| {
-                all.remove(&tx);
-            });
-        }
-        if let Some(max_time_alive) = max_time_alive {
-            let chain_sourced = self
-                .chain_sourced()
-                .map(|(tx, stats)| (tx.clone(), stats.clone()))
-                .collect::<Vec<_>>();
-            for (tx, stats) in chain_sourced {
-                if !stats.is_local && local_ts - stats.first_seen > max_time_alive {
-                    self.expire_chain_sourced(&tx);
-                }
-            }
-        }
-        if let Some(max_time_remember) = max_time_remember {
-            for (tx, stats) in self.rejected_chain_sourced.clone().into_iter() {
-                if !stats.is_local && local_ts - stats.first_seen > max_time_remember {
-                    self.rejected_chain_sourced.remove(&tx);
-                }
-            }
-        }
         Ok(())
     }
     pub fn chain_address_limit(&self, _addr: Address) -> usize {
@@ -141,28 +158,55 @@ impl Mempool {
     pub fn chain_sourced_len(&self) -> usize {
         self.chain_sourced.values().map(|c| c.len()).sum()
     }
-    pub fn add_chain_sourced(&mut self, tx: ChainSourcedTx, is_local: bool, now: u32) {
+    pub fn add_chain_sourced<B: Blockchain>(
+        &mut self,
+        blockchain: &B,
+        tx: ChainSourcedTx,
+        is_local: bool,
+        now: u32,
+    ) -> Result<(), BlockchainError> {
         if is_local {
             self.rejected_chain_sourced.remove(&tx);
         }
         if !self.rejected_chain_sourced.contains_key(&tx) {
+            let chain_acc = blockchain.get_account(tx.sender())?;
             if self
                 .chain_sourced
-                .get(&tx.sender())
-                .map(|all| all.contains_key(&tx))
+                .get_mut(&tx.sender())
+                .map(|all| {
+                    all.update_account(chain_acc.clone());
+                    !all.applicable(&tx)
+                })
                 .unwrap_or_default()
             {
-                return;
+                return Ok(());
             }
 
-            let limit = self.chain_address_limit(tx.sender());
-            let all = self.chain_sourced.entry(tx.sender().clone()).or_default();
-            if is_local || all.len() < limit {
-                if tx.verify_signature() {
+            // Do not accept old txs in the mempool
+            if tx.nonce() <= chain_acc.nonce {
+                return Ok(());
+            }
+
+            let ziesha_balance = blockchain.get_balance(tx.sender(), TokenId::Ziesha)?;
+
+            // Allow 1tx in mempool per Ziesha
+            // Min: 1 Max: 1000
+            let limit = std::cmp::max(
+                std::cmp::min(Into::<u64>::into(ziesha_balance) / 1000000000, 1000),
+                1,
+            ) as usize;
+
+            let all = self
+                .chain_sourced
+                .entry(tx.sender().clone())
+                .or_insert(AccountMempool::new(chain_acc));
+            if tx.verify_signature() {
+                if is_local || all.len() < limit {
                     all.insert(tx.clone(), TransactionStats::new(is_local, now));
                 }
             }
         }
+        Ok(())
     }
     pub fn add_mpn_sourced<B: Blockchain>(
         &mut self,
@@ -225,29 +269,11 @@ impl Mempool {
         }
         Ok(())
     }
-    pub fn reject_chain_sourced(&mut self, tx: &ChainSourcedTx, e: BlockchainError) {
-        if let Some(all) = self.chain_sourced.get_mut(&tx.sender()) {
-            if let Some(stats) = all.remove(tx) {
-                // Nonce issues do not need rejection
-                if let BlockchainError::InvalidTransactionNonce = e {
-                    self.rejected_chain_sourced.insert(tx.clone(), stats);
-                }
-            }
-        }
-        if self
-            .chain_sourced
-            .get(&tx.sender())
-            .map(|all| all.is_empty())
-            .unwrap_or(true)
-        {
-            self.chain_sourced.remove(&tx.sender());
-        }
-    }
-    pub fn expire_chain_sourced(&mut self, _tx: &ChainSourcedTx) {
-        //self.reject_chain_sourced(tx);
-    }
-    pub fn chain_sourced(&self) -> impl Iterator<Item = (&ChainSourcedTx, &TransactionStats)> {
-        self.chain_sourced.iter().map(|(_, c)| c.iter()).flatten()
+    pub fn chain_sourced(&self) -> impl Iterator<Item = &(ChainSourcedTx, TransactionStats)> {
+        self.chain_sourced
+            .iter()
+            .map(|(_, c)| c.txs.iter())
+            .flatten()
     }
     pub fn mpn_sourced(&self) -> impl Iterator<Item = &(MpnSourcedTx, TransactionStats)> {
         self.mpn_sourced.iter().map(|(_, c)| c.txs.iter()).flatten()
@@ -352,8 +378,6 @@ pub trait Blockchain {
     fn currency_in_circulation(&self) -> Result<Amount, BlockchainError>;
 
     fn config(&self) -> &BlockchainConfig;
-
-    fn cleanup_chain_mempool(&self, mempool: &mut Mempool) -> Result<(), BlockchainError>;
 
     fn db_checksum(&self) -> Result<String, BlockchainError>;
 
@@ -1954,42 +1978,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(())
     }
 
-    fn cleanup_chain_mempool(&self, mempool: &mut Mempool) -> Result<(), BlockchainError> {
-        self.isolated(|chain| {
-            let mut txs: Vec<ChainSourcedTx> =
-                mempool.chain_sourced().map(|(tx, _)| tx.clone()).collect();
-            txs.sort_unstable_by_key(|tx| {
-                let not_mpn = if let ChainSourcedTx::TransactionAndDelta(tx) = tx {
-                    if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
-                        *contract_id != self.config.mpn_contract_id
-                    } else {
-                        true
-                    }
-                } else {
-                    true
-                };
-                (not_mpn, tx.nonce())
-            });
-            for tx in txs {
-                match &tx {
-                    ChainSourcedTx::TransactionAndDelta(tx_delta) => {
-                        if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
-                            log::info!("Rejecting transaction: {}", e);
-                            mempool.reject_chain_sourced(&tx, e);
-                        }
-                    }
-                    ChainSourcedTx::MpnDeposit(mpn_deposit) => {
-                        if let Err(e) = chain.apply_mpn_deposit(mpn_deposit) {
-                            log::info!("Rejecting mpn-deposit: {}", e);
-                            mempool.reject_chain_sourced(&tx, e);
-                        }
-                    }
-                }
-            }
-            Ok(())
-        })?;
-        Ok(())
-    }
     fn read_state(
         &self,
         contract_id: ContractId,

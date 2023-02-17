@@ -22,11 +22,8 @@ pub async fn get_zero_mempool<B: Blockchain>(
         let ctx = context.read().await;
         let height = ctx.blockchain.get_height()?;
         let reward = ctx.blockchain.next_reward()?;
-        let mut mempool = ctx.mempool.clone();
-        ctx.blockchain.cleanup_chain_mempool(&mut mempool)?;
+        let mempool = ctx.mempool.clone();
         drop(ctx);
-
-        context.write().await.mempool = mempool.clone();
 
         let mut updates = Vec::new();
         let mut deposits = Vec::new();

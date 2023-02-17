@@ -79,6 +79,17 @@ impl<B: Blockchain> NodeContext<B> {
         Ok(())
     }
 
+    pub fn mempool_add_chain_sourced(
+        &mut self,
+        is_local: bool,
+        tx: ChainSourcedTx,
+    ) -> Result<(), BlockchainError> {
+        let local_ts = self.local_timestamp();
+        self.mempool
+            .add_chain_sourced(&self.blockchain, tx, is_local, local_ts)?;
+        Ok(())
+    }
+
     pub fn mempool_add_mpn_sourced(
         &mut self,
         is_local: bool,

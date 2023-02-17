@@ -37,7 +37,7 @@ pub async fn sync_mempool<B: Blockchain>(
                 .into_iter()
                 .take(opts.chain_mempool_max_fetch)
             {
-                ctx.mempool.add_chain_sourced(tx, false, now);
+                ctx.mempool_add_chain_sourced(false, tx);
             }
             for tx in mpn_sourced_txs.into_iter().take(opts.mpn_mempool_max_fetch) {
                 ctx.mempool_add_mpn_sourced(false, tx)?;
