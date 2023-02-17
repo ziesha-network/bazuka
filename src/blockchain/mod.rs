@@ -4,15 +4,14 @@ pub use error::*;
 use crate::consensus::pow::Difficulty;
 use crate::core::{
     hash::Hash, Account, Address, Amount, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
-    ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnAddress, MpnDeposit,
-    MpnSourcedTx, ProofOfWork, RegularSendEntry, Signature, Token, TokenId, TokenUpdate,
-    Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
+    ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnAddress, MpnSourcedTx,
+    ProofOfWork, RegularSendEntry, Signature, Token, TokenId, TokenUpdate, Transaction,
+    TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
 };
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
 use crate::utils;
 use crate::wallet::TxBuilder;
 use crate::zk;
-use crate::zk::ZkHasher;
 
 use rayon::prelude::*;
 
@@ -97,6 +96,18 @@ impl AccountMempool {
             self.account.nonce + 1 == tx.nonce()
         }
     }
+    fn reset(&mut self, nonce: u32) {
+        while let Some(last_nonce) = self.last_nonce() {
+            if last_nonce > nonce {
+                self.txs.pop_back();
+            } else {
+                break;
+            }
+        }
+        if self.last_nonce() != Some(nonce) {
+            self.txs.clear();
+        }
+    }
     fn insert(&mut self, tx: ChainSourcedTx, stats: TransactionStats) {
         if self.applicable(&tx) {
             self.txs.push_back((tx, stats));
@@ -142,10 +153,10 @@ impl Mempool {
     #[allow(dead_code)]
     pub fn refresh<B: Blockchain>(
         &mut self,
-        blockchain: &B,
-        local_ts: u32,
-        max_time_alive: Option<u32>,
-        max_time_remember: Option<u32>,
+        _blockchain: &B,
+        _local_ts: u32,
+        _max_time_alive: Option<u32>,
+        _max_time_remember: Option<u32>,
     ) -> Result<(), BlockchainError> {
         Ok(())
     }
@@ -175,6 +186,9 @@ impl Mempool {
                 .get_mut(&tx.sender())
                 .map(|all| {
                     all.update_account(chain_acc.clone());
+                    if is_local && !all.applicable(&tx) {
+                        all.reset(tx.nonce());
+                    }
                     !all.applicable(&tx)
                 })
                 .unwrap_or_default()
@@ -607,55 +621,6 @@ impl<K: KvStore> KvStoreChain<K> {
                 keys::contract_balance(&deposit.contract_id, deposit.amount.token_id),
                 contract_balance.into(),
             )])?;
-            Ok(())
-        })?;
-        self.database.update(&ops)?;
-        Ok(())
-    }
-
-    fn apply_mpn_deposit(&mut self, deposit: &MpnDeposit) -> Result<(), BlockchainError> {
-        let (ops, _) = self.isolated(|chain| {
-            chain.apply_deposit(&deposit.payment)?;
-            let dst = chain
-                .get_mpn_account(deposit.zk_address_index(self.config.mpn_log4_account_capacity))?;
-
-            let calldata = CoreZkHasher::hash(&[
-                deposit.zk_address.decompress().0,
-                deposit.zk_address.decompress().1,
-            ]);
-            if deposit.payment.calldata != calldata
-                || deposit.zk_token_index >= 64
-                || deposit.zk_address_index(self.config.mpn_log4_account_capacity) > 0x3FFFFFFF
-                || !deposit.zk_address.is_on_curve()
-                || (dst.address.is_on_curve() && dst.address != deposit.zk_address.decompress())
-            {
-                return Err(BlockchainError::InvalidMpnTransaction);
-            }
-            if let Some(money) = dst.tokens.get(&deposit.zk_token_index) {
-                if money.token_id != deposit.payment.amount.token_id {
-                    return Err(BlockchainError::InvalidMpnTransaction);
-                }
-            }
-            // TODO: Check overflow
-            let mut size_diff = 0;
-            let mut new_acc = zk::MpnAccount {
-                address: deposit.zk_address.0.decompress(),
-                nonce: dst.nonce,
-                tokens: dst.tokens,
-            };
-            new_acc
-                .tokens
-                .entry(deposit.zk_token_index)
-                .or_insert_with(|| Money::new(deposit.payment.amount.token_id, 0))
-                .amount += deposit.payment.amount.amount;
-
-            zk::KvStoreStateManager::<CoreZkHasher>::set_mpn_account(
-                &mut chain.database,
-                chain.config.mpn_contract_id,
-                deposit.zk_address_index(self.config.mpn_log4_account_capacity),
-                new_acc,
-                &mut size_diff,
-            )?;
             Ok(())
         })?;
         self.database.update(&ops)?;

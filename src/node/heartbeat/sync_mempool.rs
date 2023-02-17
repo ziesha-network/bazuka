@@ -25,7 +25,6 @@ pub async fn sync_mempool<B: Blockchain>(
 
     {
         let mut ctx = context.write().await;
-        let now = ctx.local_timestamp();
         let resps = punish_non_responding(&mut ctx, &peer_responses)
             .into_iter()
             .map(|(_, r)| (r.chain_sourced, r.mpn_sourced))
@@ -37,7 +36,7 @@ pub async fn sync_mempool<B: Blockchain>(
                 .into_iter()
                 .take(opts.chain_mempool_max_fetch)
             {
-                ctx.mempool_add_chain_sourced(false, tx);
+                ctx.mempool_add_chain_sourced(false, tx)?;
             }
             for tx in mpn_sourced_txs.into_iter().take(opts.mpn_mempool_max_fetch) {
                 ctx.mempool_add_mpn_sourced(false, tx)?;

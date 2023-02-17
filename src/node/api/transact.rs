@@ -12,9 +12,8 @@ pub async fn transact<B: Blockchain>(
     req: TransactRequest,
 ) -> Result<TransactResponse, NodeError> {
     let mut ctx = context.write().await;
-    let now = ctx.local_timestamp();
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
-    ctx.mempool_add_chain_sourced(is_local, ChainSourcedTx::TransactionAndDelta(req.tx_delta));
+    ctx.mempool_add_chain_sourced(is_local, ChainSourcedTx::TransactionAndDelta(req.tx_delta))?;
     if is_local {
         let wallet = ctx.wallet.clone();
         // Invoke PoS block generation
