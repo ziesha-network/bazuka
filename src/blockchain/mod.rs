@@ -1164,21 +1164,38 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut block_sz = 0usize;
             let mut delta_cnt = 0isize;
             for tx in sorted.into_iter().rev() {
-                if let Ok((ops, eff)) = chain.isolated(|chain| chain.apply_tx(&tx.tx, false)) {
-                    let delta_diff = if let TxSideEffect::StateChange { state_change, .. } = eff {
-                        state_change.state.size() as isize - state_change.prev_state.size() as isize
-                    } else {
-                        0
-                    };
-                    let block_diff = tx.tx.size();
-                    if delta_cnt + delta_diff <= chain.config.max_delta_count as isize
-                        && block_sz + block_diff <= chain.config.max_block_size
-                        && tx.tx.verify_signature()
-                    {
-                        delta_cnt += delta_diff;
-                        block_sz += block_diff;
-                        chain.database.update(&ops)?;
-                        result.push(tx);
+                match chain.isolated(|chain| chain.apply_tx(&tx.tx, false)) {
+                    Ok((ops, eff)) => {
+                        let delta_diff = if let TxSideEffect::StateChange { state_change, .. } = eff
+                        {
+                            state_change.state.size() as isize
+                                - state_change.prev_state.size() as isize
+                        } else {
+                            0
+                        };
+                        let block_diff = tx.tx.size();
+                        if delta_cnt + delta_diff <= chain.config.max_delta_count as isize
+                            && block_sz + block_diff <= chain.config.max_block_size
+                            && tx.tx.verify_signature()
+                        {
+                            delta_cnt += delta_diff;
+                            block_sz += block_diff;
+                            chain.database.update(&ops)?;
+                            result.push(tx);
+                        }
+                    }
+                    Err(e) => {
+                        let is_mpn = if let TransactionData::UpdateContract {
+                            contract_id, ..
+                        } = &tx.tx.data
+                        {
+                            *contract_id == self.config.mpn_contract_id
+                        } else {
+                            false
+                        };
+                        if is_mpn {
+                            log::error!("MPN transaction rejected: {}", e);
+                        }
                     }
                 }
             }
