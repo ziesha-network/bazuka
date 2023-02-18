@@ -1330,7 +1330,7 @@ impl<K: KvStore> KvStoreChain<K> {
             } else if curr_height < 7572 {
                 10
             } else {
-                4
+                2
             };
 
             if !is_genesis
