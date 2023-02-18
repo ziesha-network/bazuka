@@ -380,6 +380,10 @@ pub enum TxSideEffect {
 pub struct ValidatorProof {}
 
 pub trait Blockchain {
+    fn cleanup_chain_mempool(
+        &self,
+        txs: &[ChainSourcedTx],
+    ) -> Result<Vec<ChainSourcedTx>, BlockchainError>;
     fn validator_set(&self) -> Result<Vec<Address>, BlockchainError>;
     fn is_validator(
         &self,
@@ -2186,6 +2190,35 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         } else {
             None
         })
+    }
+
+    fn cleanup_chain_mempool(
+        &self,
+        txs: &[ChainSourcedTx],
+    ) -> Result<Vec<ChainSourcedTx>, BlockchainError> {
+        let (_, result) = self.isolated(|chain| {
+            let mut result = Vec::new();
+            for tx in txs.iter() {
+                match &tx {
+                    ChainSourcedTx::TransactionAndDelta(tx_delta) => {
+                        if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
+                            log::info!("Rejecting transaction: {}", e);
+                        } else {
+                            result.push(tx.clone());
+                        }
+                    }
+                    ChainSourcedTx::MpnDeposit(mpn_deposit) => {
+                        if let Err(e) = chain.apply_deposit(&mpn_deposit.payment) {
+                            log::info!("Rejecting mpn-deposit: {}", e);
+                        } else {
+                            result.push(tx.clone());
+                        }
+                    }
+                }
+            }
+            Ok(result)
+        })?;
+        Ok(result)
     }
 }
 

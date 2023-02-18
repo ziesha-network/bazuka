@@ -35,6 +35,11 @@ pub async fn get_zero_mempool<B: Blockchain>(
             .map(|(tx, _)| tx.clone())
             .collect::<Vec<_>>();
         chain_sourced_sorted.sort_unstable_by_key(|t| t.nonce());
+        let ctx = context.read().await;
+        chain_sourced_sorted = ctx
+            .blockchain
+            .cleanup_chain_mempool(&chain_sourced_sorted)?;
+        drop(ctx);
         for tx in chain_sourced_sorted {
             match tx {
                 ChainSourcedTx::MpnDeposit(mpn_dep) => {
