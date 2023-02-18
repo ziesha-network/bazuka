@@ -2119,7 +2119,16 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         _proof: ValidatorProof,
     ) -> Result<bool, BlockchainError> {
         let block_time = if self.get_height()? >= 7200 { 60 } else { 180 };
-        let slot_number = (timestamp / block_time) as usize;
+        let mut slot_number = (timestamp / block_time) as usize;
+        if self.get_height()? >= 7572 {
+            if slot_number % 2 == 0 {
+                return Ok(addr
+                    == "0x41a7cf1f401669022204accfb7c71b270c6f621caf983f1afd488cca79b993f3"
+                        .parse()
+                        .unwrap());
+            }
+            slot_number /= 2;
+        }
         let i = slot_number % self.validator_set()?.len();
         let winner = self.validator_set()?[i].clone();
         Ok(addr == winner)
@@ -2130,7 +2139,23 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         wallet: &TxBuilder,
     ) -> Result<Option<ValidatorProof>, BlockchainError> {
         let block_time = if self.get_height()? >= 7200 { 60 } else { 180 };
-        let slot_number = (timestamp / block_time) as usize;
+        let mut slot_number = (timestamp / block_time) as usize;
+        if self.get_height()? >= 7572 {
+            if slot_number % 2 == 0 {
+                return Ok(
+                    if wallet.get_address()
+                        == "0x41a7cf1f401669022204accfb7c71b270c6f621caf983f1afd488cca79b993f3"
+                            .parse()
+                            .unwrap()
+                    {
+                        Some(ValidatorProof {})
+                    } else {
+                        None
+                    },
+                );
+            }
+            slot_number /= 2;
+        }
         let i = slot_number % self.validator_set()?.len();
         let winner = self.validator_set()?[i].clone();
         Ok(if wallet.get_address() == winner {
