@@ -97,14 +97,18 @@ impl AccountMempool {
         }
     }
     fn reset(&mut self, nonce: u32) {
+        if nonce == 0 {
+            self.txs.clear();
+            return;
+        }
         while let Some(last_nonce) = self.last_nonce() {
-            if last_nonce > nonce {
+            if last_nonce > nonce - 1 {
                 self.txs.pop_back();
             } else {
                 break;
             }
         }
-        if self.last_nonce() != Some(nonce) {
+        if self.last_nonce() != Some(nonce - 1) {
             self.txs.clear();
         }
     }
