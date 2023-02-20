@@ -17,7 +17,7 @@ pub async fn promote_validator<B: Blockchain>(
         ctx.validator_claim = Some(claim.clone());
         drop(ctx);
         promote_validator_claim(context, claim).await;
-    } else {
+    } else if ctx.validator_claim.is_some() {
         println!("You are not the validator anymore!");
         ctx.validator_claim = None;
     }
