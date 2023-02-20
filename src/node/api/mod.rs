@@ -1,4 +1,4 @@
-use super::{promote_block, promote_validator, NodeContext, NodeError};
+use super::{promote_block, promote_validator_claim, NodeContext, NodeError};
 
 use crate::client::messages;
 

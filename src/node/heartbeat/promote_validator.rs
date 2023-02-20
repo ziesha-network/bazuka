@@ -8,7 +8,9 @@ pub async fn promote_validator<B: Blockchain>(
     if let Some(proof) = ctx.blockchain.validator_status(timestamp, &ctx.wallet)? {
         let node = ctx.address.ok_or(NodeError::ValidatorNotExposed)?;
         let claim = ctx.wallet.claim_validator(timestamp, proof, node);
-        ctx.validator_claim = Some(claim);
+        ctx.validator_claim = Some(claim.clone());
+        drop(ctx);
+        promote_validator_claim(context, claim).await;
     }
     Ok(())
 }

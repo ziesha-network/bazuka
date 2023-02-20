@@ -9,7 +9,7 @@ mod sync_mempool;
 mod sync_peers;
 mod sync_state;
 
-use super::{http, Limit, NodeContext, NodeError, Peer, PeerAddress};
+use super::{http, promote_validator_claim, Limit, NodeContext, NodeError, Peer, PeerAddress};
 use crate::blockchain::Blockchain;
 use crate::client::messages::*;
 use crate::utils;

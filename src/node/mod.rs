@@ -119,7 +119,7 @@ async fn promote_block<B: Blockchain>(
     });
 }
 
-async fn promote_validator<B: Blockchain>(
+async fn promote_validator_claim<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
     validator_claim: ValidatorClaim,
 ) {

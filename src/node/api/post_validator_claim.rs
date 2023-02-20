@@ -1,5 +1,5 @@
 use super::messages::{PostValidatorClaimRequest, PostValidatorClaimResponse};
-use super::{promote_validator, NodeContext, NodeError};
+use super::{promote_validator_claim, NodeContext, NodeError};
 use crate::blockchain::Blockchain;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -20,7 +20,7 @@ pub async fn post_validator_claim<B: Blockchain>(
             ctx.validator_claim = Some(req.validator_claim.clone());
             drop(ctx);
             log::info!("Address {} is the validator!", req.validator_claim.address);
-            promote_validator(context, req.validator_claim).await;
+            promote_validator_claim(context, req.validator_claim).await;
         }
     }
     Ok(PostValidatorClaimResponse {})
