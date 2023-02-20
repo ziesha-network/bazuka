@@ -376,7 +376,7 @@ pub enum TxSideEffect {
 }
 
 // A proof that you are the validator for this block
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ValidatorProof {}
 
 pub trait Blockchain {

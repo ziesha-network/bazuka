@@ -41,6 +41,7 @@ pub struct HeartbeatIntervals {
     pub sync_blocks: Duration,
     pub sync_mempool: Duration,
     pub sync_state: Duration,
+    pub promote_validator: Duration,
 }
 
 #[derive(Debug, Clone)]
@@ -112,6 +113,27 @@ async fn promote_block<B: Blockchain>(
                     patch: block_and_patch.patch.clone(),
                 },
                 Limit::default().size(KB).time(3 * SECOND),
+            )
+        })
+        .await;
+    });
+}
+
+async fn promote_validator<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
+    validator_claim: ValidatorClaim,
+) {
+    let context = context.read().await;
+    let net = context.outgoing.clone();
+    let peer_addresses = context.peer_manager.get_peers();
+    tokio::task::spawn(async move {
+        http::group_request(&peer_addresses, |peer| {
+            net.bincode_post::<PostValidatorClaimRequest, PostValidatorClaimResponse>(
+                format!("http://{}/claim", peer.address),
+                PostValidatorClaimRequest {
+                    validator_claim: validator_claim.clone(),
+                },
+                Limit::default().size(KB).time(1 * SECOND),
             )
         })
         .await;
@@ -403,6 +425,15 @@ async fn node_service<B: Blockchain>(
                     .await?,
                 )?);
             }
+            (Method::POST, "/claim") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::post_validator_claim(
+                        Arc::clone(&context),
+                        bincode::deserialize(&body_bytes)?,
+                    )
+                    .await?,
+                )?);
+            }
             _ => {
                 *response.status_mut() = StatusCode::NOT_FOUND;
             }
@@ -486,6 +517,7 @@ pub async fn node_create<B: Blockchain>(
         timestamp_offset,
         banned_headers: HashMap::new(),
         outdated_since: None,
+        validator_claim: None,
     }));
 
     let server_future = async {

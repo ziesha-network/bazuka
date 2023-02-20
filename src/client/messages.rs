@@ -1,8 +1,8 @@
 use crate::blockchain::ValidatorProof;
 use crate::blockchain::ZkBlockchainPatch;
 use crate::core::{
-    Account, Amount, Block, ChainSourcedTx, ContractId, Header, Money, MpnDeposit, MpnSourcedTx,
-    MpnWithdraw, Token, TransactionAndDelta,
+    Account, Address, Amount, Block, ChainSourcedTx, ContractId, Header, Money, MpnDeposit,
+    MpnSourcedTx, MpnWithdraw, Signature, Token, TransactionAndDelta,
 };
 use crate::zk;
 use std::collections::HashMap;
@@ -360,3 +360,35 @@ pub struct GetTokenInfoRequest {
 pub struct GetTokenInfoResponse {
     pub token: Token,
 }
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ValidatorClaim {
+    pub timestamp: u32,
+    pub address: Address,
+    pub proof: ValidatorProof,
+    pub node: PeerAddress,
+    pub sig: Signature,
+}
+
+impl ValidatorClaim {
+    pub fn verify_signature(&self) -> bool {
+        use crate::crypto::SignatureScheme;
+        match &self.sig {
+            Signature::Unsigned => false,
+            Signature::Signed(sig) => {
+                let mut unsigned = self.clone();
+                unsigned.sig = Signature::Unsigned;
+                let bytes = bincode::serialize(&unsigned).unwrap();
+                crate::core::Signer::verify(&self.address, &bytes, sig)
+            }
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PostValidatorClaimRequest {
+    pub validator_claim: ValidatorClaim,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PostValidatorClaimResponse {}

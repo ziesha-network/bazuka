@@ -1,6 +1,7 @@
 mod log_info;
 
 mod discover_peers;
+mod promote_validator;
 mod refresh;
 mod sync_blocks;
 mod sync_clock;
@@ -70,6 +71,11 @@ pub async fn heartbeater<B: Blockchain>(ctx: Arc<RwLock<NodeContext<B>>>) -> Res
             &ctx,
             |ctx| sync_state::sync_state(ctx.clone()),
             ints.sync_state
+        ),
+        make_loop(
+            &ctx,
+            |ctx| promote_validator::promote_validator(ctx.clone()),
+            ints.promote_validator
         ),
     );
 

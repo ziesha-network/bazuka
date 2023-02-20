@@ -59,4 +59,6 @@ pub enum NodeError {
     RemoteServerError(String),
     #[error("block timestamp is way higher than current network timestamp")]
     BlockTimestampInFuture,
+    #[error("your validator is not exposed on the internet")]
+    ValidatorNotExposed,
 }

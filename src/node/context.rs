@@ -2,7 +2,7 @@ use super::{
     Firewall, NodeError, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerManager, Timestamp,
 };
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, Mempool};
-use crate::client::messages::SocialProfiles;
+use crate::client::messages::{SocialProfiles, ValidatorClaim};
 use crate::core::{ChainSourcedTx, Header, MpnSourcedTx, TransactionAndDelta};
 use crate::utils;
 use crate::wallet::TxBuilder;
@@ -23,6 +23,7 @@ pub struct NodeContext<B: Blockchain> {
     pub wallet: TxBuilder,
     pub peer_manager: PeerManager,
     pub timestamp_offset: i32,
+    pub validator_claim: Option<ValidatorClaim>,
 
     pub mempool: Mempool,
 

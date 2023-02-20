@@ -1,3 +1,6 @@
+use crate::blockchain::ValidatorProof;
+use crate::client::messages::ValidatorClaim;
+use crate::client::PeerAddress;
 use crate::core::{
     Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Money,
     MpnAddress, MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token, TokenId,
@@ -44,6 +47,23 @@ impl TxBuilder {
     pub fn sign_tx(&self, tx: &mut Transaction) {
         let bytes = bincode::serialize(&tx).unwrap();
         tx.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
+    }
+    pub fn claim_validator(
+        &self,
+        timestamp: u32,
+        proof: ValidatorProof,
+        node: PeerAddress,
+    ) -> ValidatorClaim {
+        let mut claim = ValidatorClaim {
+            timestamp,
+            address: self.get_address(),
+            proof,
+            node,
+            sig: Signature::Unsigned,
+        };
+        let bytes = bincode::serialize(&claim).unwrap();
+        claim.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
+        claim
     }
     pub fn create_transaction(
         &self,

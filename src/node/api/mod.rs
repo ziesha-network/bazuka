@@ -1,4 +1,4 @@
-use super::{promote_block, NodeContext, NodeError};
+use super::{promote_block, promote_validator, NodeContext, NodeError};
 
 use crate::client::messages;
 
@@ -46,3 +46,5 @@ mod get_balance;
 pub use get_balance::*;
 mod get_token;
 pub use get_token::*;
+mod post_validator_claim;
+pub use post_validator_claim::*;
