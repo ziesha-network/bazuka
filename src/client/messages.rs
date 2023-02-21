@@ -34,6 +34,7 @@ pub struct GetStatsResponse {
     pub version: String,
     pub network: String,
     pub validator_proof: Option<ValidatorProof>,
+    pub validator_claim: Option<ValidatorClaim>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
