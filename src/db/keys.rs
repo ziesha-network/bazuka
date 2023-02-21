@@ -18,10 +18,6 @@ pub fn header(index: u64) -> StringKey {
     format!("HDR-{:010}", index).into()
 }
 
-pub fn power(index: u64) -> StringKey {
-    format!("POW-{:010}", index).into()
-}
-
 pub fn rollback(index: u64) -> StringKey {
     format!("RLK-{:010}", index).into()
 }

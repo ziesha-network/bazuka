@@ -22,14 +22,13 @@ pub async fn sync_blocks<B: Blockchain>(
         let mut chain_fail = false;
         loop {
             let ctx = context.read().await;
-            let min_target = ctx.blockchain.config().minimum_pow_difficulty;
             if peer.height <= ctx.blockchain.get_height()? {
                 return Ok(());
             }
 
             println!(
-                "Syncing blocks with: {} (Peer power: {})",
-                peer.address, peer.power
+                "Syncing blocks with: {} (Peer height: {})",
+                peer.address, peer.height
             );
 
             let local_height = ctx.blockchain.get_height()?;
@@ -58,34 +57,20 @@ pub async fn sync_blocks<B: Blockchain>(
                 break;
             };
 
-            let (mut headers, pow_keys) = (resp.headers, resp.pow_keys);
+            let mut headers = resp.headers;
 
-            if headers.is_empty() || pow_keys.is_empty() {
+            if headers.is_empty() {
                 log::warn!("Peer returned no headers!");
                 chain_fail = true;
                 break;
             }
-
-            if headers.len() != pow_keys.len() {
-                log::warn!("PoW keys are not provided along headers!");
-                chain_fail = true;
-                break;
-            }
-
             // TODO: Check parent hashes
             let ctx = context.read().await;
             let net_ts = ctx.network_timestamp();
             let max_ts_diff = ctx.opts.max_block_time_difference;
-            for (i, (head, pow_key)) in headers.iter().zip(pow_keys.into_iter()).enumerate() {
+            for (i, head) in headers.iter().enumerate() {
                 if head.number != start_height + i as u64 {
                     log::warn!("Bad header number returned!");
-                    chain_fail = true;
-                    break;
-                }
-                if head.number < 4675
-                    && (head.proof_of_work.target < min_target || !head.meets_target(&pow_key))
-                {
-                    log::warn!("Header doesn't meet min target!");
                     chain_fail = true;
                     break;
                 }
@@ -132,24 +117,14 @@ pub async fn sync_blocks<B: Blockchain>(
                     net_fail = true;
                     break;
                 };
-                if peer_resp.headers.is_empty() || peer_resp.pow_keys.is_empty() {
+                if peer_resp.headers.is_empty() {
                     log::warn!("Peer is not providing claimed headers!");
                     chain_fail = true;
                     break;
                 }
 
-                let (peer_header, peer_pow_key) =
-                    (peer_resp.headers[0].clone(), peer_resp.pow_keys[0].clone());
+                let peer_header = peer_resp.headers[0].clone();
 
-                if peer_header.number > 0
-                    && peer_header.number < 4675
-                    && (peer_header.proof_of_work.target < min_target
-                        || !peer_header.meets_target(&peer_pow_key))
-                {
-                    log::warn!("Header doesn't meet min target!");
-                    chain_fail = true;
-                    break;
-                }
                 if peer_header.number != index as u64 {
                     log::warn!("Bad header number!");
                     chain_fail = true;
@@ -253,7 +228,7 @@ pub async fn sync_blocks<B: Blockchain>(
         if chain_fail {
             context.write().await.punish_bad_behavior(
                 peer.address,
-                opts.incorrect_power_punish,
+                opts.incorrect_chain_punish,
                 "Cannot sync blocks!",
             );
         } else if net_fail {

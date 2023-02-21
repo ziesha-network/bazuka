@@ -28,7 +28,6 @@ pub struct GetStatsResponse {
     pub address: String,
     pub height: u64,
     pub nodes: usize,
-    pub power: u128,
     pub next_reward: Amount,
     pub timestamp: u32,
     pub version: String,
@@ -148,7 +147,6 @@ pub struct GetHeadersRequest {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetHeadersResponse {
     pub headers: Vec<Header>,
-    pub pow_keys: Vec<Vec<u8>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -393,3 +391,11 @@ pub struct PostValidatorClaimRequest {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostValidatorClaimResponse {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GenerateBlockRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GenerateBlockResponse {
+    pub success: bool,
+}

@@ -7,14 +7,6 @@ use crate::db;
 mod contract;
 mod tokens;
 
-fn easy_config() -> BlockchainConfig {
-    let mut conf = blockchain::get_test_blockchain_config();
-    conf.genesis.block.header.proof_of_work.target = Difficulty(0x00ffffff);
-    conf.minimum_pow_difficulty = Difficulty(0x00ffffff);
-
-    conf
-}
-
 fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), BlockchainError> {
     while b.get_height()? > 0 {
         assert_eq!(circulated_money(b)?, Amount(2000000000000000000));
@@ -49,7 +41,10 @@ fn circulated_money<K: KvStore>(b: &KvStoreChain<K>) -> Result<Amount, Blockchai
 #[test]
 fn test_get_header_and_get_block() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(
+        db::RamKvStore::new(),
+        blockchain::get_test_blockchain_config(),
+    )?;
 
     let new_block = chain.draft_block(60, &[], &miner, true)?.unwrap().block;
     chain.extend(1, &[new_block.clone()])?;
@@ -91,158 +86,12 @@ fn test_get_header_and_get_block() -> Result<(), BlockchainError> {
 }
 
 #[test]
-fn test_correct_target_calculation() -> Result<(), BlockchainError> {
+fn test_timestamp_increasing() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
-
-    chain.apply_block(
-        &chain.draft_block(60, &[], &miner, true)?.unwrap().block,
-        true,
+    let mut chain = KvStoreChain::new(
+        db::RamKvStore::new(),
+        blockchain::get_test_blockchain_config(),
     )?;
-
-    let mut wrong_pow = chain.draft_block(120, &[], &miner, true)?.unwrap();
-    wrong_pow.block.header.proof_of_work.target = Difficulty(0x01ffffff);
-    assert!(matches!(
-        chain.apply_block(&wrong_pow.block, true),
-        Err(BlockchainError::DifficultyTargetWrong)
-    ));
-
-    // TODO: Add more blocks to check correct difficulty recalculation
-
-    Ok(())
-}
-
-#[test]
-fn test_difficulty_target_recalculation() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(&Vec::from("MINER"));
-    let mut conf = easy_config();
-    conf.minimum_pow_difficulty = Difficulty::from_power(20);
-    conf.block_time = 60;
-    conf.difficulty_window = 2;
-    conf.difficulty_cut = 0;
-    conf.difficulty_lag = 0;
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf.clone())?;
-
-    let mut draft = chain.draft_block(30, &[], &miner, true)?.unwrap();
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 20);
-    mine_block(&chain, &mut draft)?;
-    chain.extend(1, &[draft.block])?;
-
-    draft = chain.draft_block(60, &[], &miner, true)?.unwrap();
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 40);
-    mine_block(&chain, &mut draft)?;
-    chain.extend(2, &[draft.block])?;
-
-    draft = chain.draft_block(120, &[], &miner, true)?.unwrap();
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 80);
-    mine_block(&chain, &mut draft)?;
-    chain.extend(3, &[draft.block])?;
-
-    draft = chain.draft_block(480, &[], &miner, true)?.unwrap();
-    mine_block(&chain, &mut draft)?;
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 80);
-    chain.extend(4, &[draft.block])?;
-
-    draft = chain.draft_block(540, &[], &miner, true)?.unwrap();
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 20);
-    mine_block(&chain, &mut draft)?;
-    chain.extend(5, &[draft.block])?;
-
-    draft = chain.draft_block(590, &[], &miner, true)?.unwrap();
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 20);
-    mine_block(&chain, &mut draft)?;
-    chain.extend(6, &[draft.block])?;
-
-    draft = chain.draft_block(610, &[], &miner, true)?.unwrap();
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 24);
-    mine_block(&chain, &mut draft)?;
-    chain.extend(7, &[draft.block])?;
-
-    draft = chain.draft_block(650, &[], &miner, true)?.unwrap();
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 72);
-    mine_block(&chain, &mut draft)?;
-    chain.extend(8, &[draft.block])?;
-
-    draft = chain.draft_block(900, &[], &miner, true)?.unwrap();
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 108);
-    mine_block(&chain, &mut draft)?;
-    chain.extend(9, &[draft.block])?;
-
-    draft = chain.draft_block(1000, &[], &miner, true)?.unwrap();
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 25);
-    mine_block(&chain, &mut draft)?;
-    chain.extend(10, &[draft.block])?;
-
-    draft = chain.draft_block(2000, &[], &miner, true)?.unwrap();
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 20);
-    mine_block(&chain, &mut draft)?;
-    chain.extend(11, &[draft.block])?;
-
-    draft = chain.draft_block(3000, &[], &miner, true)?.unwrap();
-    assert_eq!(draft.block.header.proof_of_work.target.power(), 20);
-    mine_block(&chain, &mut draft)?;
-    chain.extend(12, &[draft.block])?;
-
-    // TODO: Check difficulty overflow (One can't make 0x00ffffff easier)
-
-    let chain2 = KvStoreChain::new(db::RamKvStore::new(), conf)?;
-    let headers = chain.get_headers(1, 100)?;
-    assert!(chain2.will_extend(1, &headers, true)?);
-
-    for i in 0..headers.len() {
-        let mut broken_headers = headers.clone();
-        broken_headers[i].proof_of_work.target = Difficulty(0x00aabbcc);
-        assert!(matches!(
-            chain2.will_extend(1, &broken_headers, true),
-            Err(BlockchainError::DifficultyTargetWrong)
-        ));
-    }
-
-    rollback_till_empty(&mut chain)?;
-
-    Ok(())
-}
-
-#[test]
-fn test_pow_key_correctness() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(&Vec::from("MINER"));
-    let mut conf = easy_config();
-    conf.pow_key_change_delay = 4;
-    conf.pow_key_change_interval = 8;
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
-
-    for i in 0..25 {
-        let mut draft = chain.draft_block(i * 60, &[], &miner, true)?.unwrap();
-        mine_block(&chain, &mut draft)?;
-        chain.apply_block(&draft.block, true)?;
-        chain.update_states(&draft.patch)?;
-        let pow_key = chain.pow_key(i as u64)?;
-        if i < 4 {
-            assert_eq!(
-                pow_key,
-                vec![66, 65, 90, 85, 75, 65, 32, 66, 65, 83, 69, 32, 75, 69, 89]
-            );
-        } else if i < 12 {
-            let block0_hash = chain.get_block(0)?.header.hash();
-            assert_eq!(pow_key, block0_hash);
-        } else if i < 20 {
-            let block8_hash = chain.get_block(8)?.header.hash();
-            assert_eq!(pow_key, block8_hash);
-        } else {
-            let block16_hash = chain.get_block(16)?.header.hash();
-            assert_eq!(pow_key, block16_hash);
-        }
-    }
-
-    rollback_till_empty(&mut chain)?;
-
-    Ok(())
-}
-
-#[test]
-fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(&Vec::from("MINER"));
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
 
     let mut fork1 = chain.fork_on_ram();
     fork1.apply_block(
@@ -278,20 +127,12 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
         )?;
     }
 
-    // 10 last timestamps are: 29 28 27 26 25 24 23 22 21 20
-    // Median is: 25
-    // 24 should fail. 25 should be fine.
     assert!(matches!(
-        fork1.draft_block(
-            24, // 24 < 25
-            &[],
-            &miner,
-            true,
-        ),
+        fork1.draft_block(28, &[], &miner, true,),
         Err(BlockchainError::InvalidTimestamp)
     ));
     fork1.apply_block(
-        &fork1.draft_block(25, &[], &miner, true)?.unwrap().block,
+        &fork1.draft_block(29, &[], &miner, true)?.unwrap().block,
         false,
     )?;
 
@@ -305,7 +146,10 @@ fn test_median_timestamp_correctness_check() -> Result<(), BlockchainError> {
 #[test]
 fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(
+        db::RamKvStore::new(),
+        blockchain::get_test_blockchain_config(),
+    )?;
     let mut fork1 = chain.fork_on_ram();
     let blk1 = fork1.draft_block(0, &[], &miner, true)?.unwrap();
     fork1.extend(1, &[blk1.block.clone()])?;
@@ -346,7 +190,10 @@ fn test_block_number_correctness_check() -> Result<(), BlockchainError> {
 #[test]
 fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(
+        db::RamKvStore::new(),
+        blockchain::get_test_blockchain_config(),
+    )?;
     let mut fork1 = chain.fork_on_ram();
     let blk1 = fork1.draft_block(0, &[], &miner, true)?.unwrap();
     fork1.extend(1, &[blk1.block.clone()])?;
@@ -388,7 +235,10 @@ fn test_parent_hash_correctness_check() -> Result<(), BlockchainError> {
 fn test_merkle_root_check() -> Result<(), BlockchainError> {
     let alice = TxBuilder::new(&Vec::from("ABC"));
     let miner = TxBuilder::new(&Vec::from("MINER"));
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(
+        db::RamKvStore::new(),
+        blockchain::get_test_blockchain_config(),
+    )?;
     let blk1 = chain
         .draft_block(
             1,
@@ -474,7 +324,10 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     let alice = TxBuilder::new(&Vec::from("ABC"));
     let bob = TxBuilder::new(&Vec::from("CBA"));
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(
+        db::RamKvStore::new(),
+        blockchain::get_test_blockchain_config(),
+    )?;
 
     // Alice: 10000 Bob: 0
     assert_eq!(
@@ -561,7 +414,10 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
     let alice = TxBuilder::new(&Vec::from("ABC"));
     let bob = TxBuilder::new(&Vec::from("CBA"));
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(
+        db::RamKvStore::new(),
+        blockchain::get_test_blockchain_config(),
+    )?;
 
     // Alice: 10000 Bob: 0
     assert_eq!(
@@ -611,7 +467,10 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
     let alice = TxBuilder::new(&Vec::from("ABC"));
     let bob = TxBuilder::new(&Vec::from("CBA"));
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(
+        db::RamKvStore::new(),
+        blockchain::get_test_blockchain_config(),
+    )?;
 
     // Create unsigned signed tx
     let unsigned_tx = Transaction {
@@ -662,7 +521,10 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     let alice = TxBuilder::new(&Vec::from("ABC"));
     let bob = TxBuilder::new(&Vec::from("CBA"));
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(
+        db::RamKvStore::new(),
+        blockchain::get_test_blockchain_config(),
+    )?;
 
     // Create unsigned tx
     let (_, sk) = Signer::generate_keys(&Vec::from("ABC"));
@@ -716,7 +578,10 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
     let alice = TxBuilder::new(&Vec::from("ABC"));
     let bob = TxBuilder::new(&Vec::from("CBA"));
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(
+        db::RamKvStore::new(),
+        blockchain::get_test_blockchain_config(),
+    )?;
 
     // Alice: 10000 Bob: 0
     assert_eq!(
@@ -896,76 +761,6 @@ fn test_genesis_is_not_replaceable() -> Result<(), BlockchainError> {
 }
 
 #[test]
-fn test_chain_should_apply_mined_draft_block() -> Result<(), BlockchainError> {
-    let wallet_miner = TxBuilder::new(&Vec::from("MINER"));
-    let wallet1 = TxBuilder::new(&Vec::from("ABC"));
-    let wallet2 = TxBuilder::new(&Vec::from("CBA"));
-
-    let mut conf = blockchain::get_test_blockchain_config();
-    conf.minimum_pow_difficulty = Difficulty(0x0000ffff);
-    conf.genesis.block.header.proof_of_work.target = conf.minimum_pow_difficulty;
-    conf.genesis.block.body.push(Transaction {
-        memo: "".into(),
-        src: None,
-        data: TransactionData::RegularSend {
-            entries: vec![RegularSendEntry {
-                dst: wallet1.get_address(),
-                amount: Money::ziesha(10_000_000),
-            }],
-        },
-        nonce: 4,
-        fee: Money::ziesha(0),
-        sig: Signature::Unsigned,
-    });
-
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), conf)?;
-
-    let t1 = wallet1.create_transaction(
-        "".into(),
-        wallet2.get_address(),
-        Money::ziesha(100),
-        Money::ziesha(0),
-        1,
-    );
-    let mempool = vec![t1];
-    let mut draft = chain
-        .draft_block(1650000000, &mempool, &wallet_miner, true)?
-        .unwrap();
-
-    assert!(matches!(
-        chain.apply_block(&draft.block, true),
-        Err(BlockchainError::DifficultyTargetUnmet)
-    ));
-
-    mine_block(&chain, &mut draft)?;
-    chain.apply_block(&draft.block, true)?;
-
-    let height = chain.get_height()?;
-    assert_eq!(2, height);
-
-    let last_block = chain.get_block(height - 1)?;
-    let w2_address = wallet2.get_address();
-    assert_eq!(
-        last_block.body[1].data.clone(),
-        TransactionData::RegularSend {
-            entries: vec![RegularSendEntry {
-                dst: w2_address,
-                amount: Money::ziesha(100)
-            }]
-        }
-    );
-
-    let balance = chain.get_balance(wallet2.get_address(), TokenId::Ziesha)?;
-    let account = chain.get_account(wallet2.get_address())?;
-    assert_eq!(Amount(100), balance);
-    assert_eq!(0, account.nonce);
-
-    rollback_till_empty(&mut chain)?;
-
-    Ok(())
-}
-
-#[test]
 fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainError> {
     let wallet_miner = TxBuilder::new(&Vec::from("MINER"));
     let wallet1 = TxBuilder::new(&Vec::from("ABC"));
@@ -1028,11 +823,9 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
         state_delta: None,
     };
     let mempool = vec![t_valid, t_invalid_unsigned, t_invalid_from_treasury];
-    let mut draft = chain
+    let draft = chain
         .draft_block(1650000000, &mempool, &wallet_miner, true)?
         .unwrap();
-
-    mine_block(&chain, &mut draft)?;
 
     assert_eq!(2, draft.block.body.len());
     assert_eq!(Some(wallet1.get_address()), draft.block.body[1].src);
@@ -1085,7 +878,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
         .draft_block(1650000000, &mempool, &wallet_miner, true)?
         .unwrap();
 
-    mine_block(&chain, &mut draft)?;
+    validate_block(&chain, &mut draft)?;
 
     chain.apply_block(&draft.block, true)?;
 
@@ -1136,7 +929,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
         .draft_block(1650000000, &mempool, &wallet_miner, true)?
         .unwrap();
 
-    mine_block(&chain, &mut draft)?;
+    validate_block(&chain, &mut draft)?;
 
     chain.apply_block(&draft.block, true)?;
 
@@ -1153,7 +946,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
         .draft_block(1650000001, &mempool, &wallet_miner, true)?
         .unwrap();
 
-    mine_block(&chain, &mut draft)?;
+    validate_block(&chain, &mut draft)?;
 
     let prev_checksum = chain.database.checksum::<Hasher>()?;
 
@@ -1195,17 +988,9 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     Ok(())
 }
 
-fn mine_block<B: Blockchain>(chain: &B, draft: &mut BlockAndPatch) -> Result<(), BlockchainError> {
-    let pow_key = chain.pow_key(draft.block.header.number)?;
-
-    if draft.block.header.meets_target(pow_key.as_slice()) {
-        return Ok(());
-    }
-
-    draft.block.header.proof_of_work.nonce = 0;
-    while !draft.block.header.meets_target(pow_key.as_slice()) {
-        draft.block.header.proof_of_work.nonce += 1;
-    }
-
+fn validate_block<B: Blockchain>(
+    chain: &B,
+    _draft: &mut BlockAndPatch,
+) -> Result<(), BlockchainError> {
     Ok(())
 }

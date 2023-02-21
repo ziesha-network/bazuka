@@ -48,3 +48,5 @@ mod get_token;
 pub use get_token::*;
 mod post_validator_claim;
 pub use post_validator_claim::*;
+mod generate_block;
+pub use generate_block::*;

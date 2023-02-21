@@ -201,8 +201,8 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
 
         // Now nodes should immediately sync with post_block
         chans[1].mine().await?;
-        assert_eq!(chans[0].stats().await?.height, 51);
         assert_eq!(chans[1].stats().await?.height, 51);
+        assert!(catch_change(|| async { Ok(chans[0].stats().await?.height == 51) }).await?,);
 
         for chan in chans.iter() {
             chan.shutdown().await?;
@@ -366,7 +366,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         assert_eq!(chans[0].outdated_heights().await?.outdated_heights.len(), 0);
         assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 1);
 
-        assert!(chans[1].mine().await?.is_none());
+        assert!(chans[1].mine().await?.success == false);
 
         assert_eq!(
             catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,

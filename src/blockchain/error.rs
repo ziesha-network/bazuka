@@ -32,10 +32,6 @@ pub enum BlockchainError {
     InvalidTransactionNonce,
     #[error("block timestamp is in past")]
     InvalidTimestamp,
-    #[error("unmet difficulty target")]
-    DifficultyTargetUnmet,
-    #[error("wrong difficulty target on blocks")]
-    DifficultyTargetWrong,
     #[error("miner reward not present")]
     MinerRewardNotFound,
     #[error("illegal access to treasury funds")]

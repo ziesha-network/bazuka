@@ -2,7 +2,6 @@ use super::{UNIT, UNIT_ZEROS};
 
 use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
-use crate::consensus::pow::Difficulty;
 use crate::core::{
     Amount, Block, ContractId, Header, Money, ProofOfWork, Signature, Token, TokenId, Transaction,
     TransactionAndDelta, TransactionData, ZkHasher,
@@ -145,11 +144,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             parent_hash: Default::default(),
             number: 0,
             block_root: Default::default(),
-            proof_of_work: ProofOfWork {
-                timestamp: 0,
-                target: Difficulty(0x00ffffff),
-                nonce: 0,
-            },
+            proof_of_work: ProofOfWork { timestamp: 0 },
         },
         body: vec![ziesha_token_creation_tx, mpn_tx_delta.tx],
     };
@@ -173,18 +168,6 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         max_block_size: MB as usize,
         max_delta_count: 1024, // Only allow max of 1024 ZkScalar cells to be added per block
         block_time: 120,       // Seconds
-        difficulty_window: 150, // Blocks
-        difficulty_lag: 10,    // Blocks
-        difficulty_cut: 15,    // Blocks
-
-        // 0 63 -> BAZUKA BASE KEY
-        // 64 2111 -> hash(blk#0)
-        // 2112 4159 -> hash(blk#2048)
-        // 4160 6207 -> hash(blk#4096)
-        // ...
-        pow_base_key: b"BAZUKA BASE KEY",
-        pow_key_change_delay: 64,      // Blocks
-        pow_key_change_interval: 2048, // Blocks
 
         // New block's timestamp should be higher than median
         // timestamp of 10 previous blocks
@@ -197,8 +180,6 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         mpn_num_contract_withdraws: 1,
         mpn_log4_account_capacity: MPN_LOG4_ACCOUNT_CAPACITY,
         mpn_proving_time: 30, // Seconds
-
-        minimum_pow_difficulty: Difficulty::from_power(50000000),
 
         testnet_height_limit: Some(TESTNET_HEIGHT_LIMIT),
         max_memo_length: 64,
@@ -218,7 +199,6 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.mpn_num_function_calls = 0;
     conf.mpn_proving_time = 0;
     conf.mpn_contract_id = mpn_contract_id;
-    conf.minimum_pow_difficulty = Difficulty(0x007fffff);
     conf.testnet_height_limit = None;
 
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;

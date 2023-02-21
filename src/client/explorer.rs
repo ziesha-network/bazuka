@@ -68,16 +68,12 @@ impl From<&Token> for ExplorerToken {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerProofOfWork {
     pub timestamp: u32,
-    pub target: String,
-    pub nonce: u64,
 }
 
 impl From<&ProofOfWork> for ExplorerProofOfWork {
     fn from(obj: &ProofOfWork) -> Self {
         Self {
             timestamp: obj.timestamp,
-            target: obj.target.power().to_string(),
-            nonce: obj.nonce,
         }
     }
 }

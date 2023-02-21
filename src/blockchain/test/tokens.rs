@@ -6,7 +6,10 @@ fn test_token_balances() -> Result<(), BlockchainError> {
     let alice = TxBuilder::new(&Vec::from("ABCD"));
     let bob = TxBuilder::new(&Vec::from("DCBA"));
 
-    let mut chain = KvStoreChain::new(db::RamKvStore::new(), easy_config())?;
+    let mut chain = KvStoreChain::new(
+        db::RamKvStore::new(),
+        blockchain::get_test_blockchain_config(),
+    )?;
 
     let (token_create_tx, token_id) = alice.create_token(
         "".into(),

@@ -53,7 +53,6 @@ pub struct Peer {
     pub address: PeerAddress,
     pub pub_key: ed25519::PublicKey,
     pub height: u64,
-    pub power: u128,
     pub outdated_states: usize,
 }
 
@@ -425,6 +424,16 @@ impl BazukaClient {
             .bincode_post::<PostMpnTransactionRequest, PostMpnTransactionResponse>(
                 format!("http://{}/bincode/transact/zero", self.peer),
                 PostMpnTransactionRequest { tx },
+                Limit::default(),
+            )
+            .await
+    }
+
+    pub async fn mine(&self) -> Result<GenerateBlockResponse, NodeError> {
+        self.sender
+            .bincode_post::<GenerateBlockRequest, GenerateBlockResponse>(
+                format!("http://{}/generate_block", self.peer),
+                GenerateBlockRequest {},
                 Limit::default(),
             )
             .await

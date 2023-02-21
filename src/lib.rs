@@ -5,7 +5,6 @@ pub mod blockchain;
 
 pub mod common;
 pub mod config;
-pub mod consensus;
 pub mod core;
 pub mod crypto;
 pub mod db;

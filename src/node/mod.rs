@@ -54,7 +54,7 @@ pub struct NodeOptions {
     pub default_punish: u32,
     pub no_response_punish: u32,
     pub invalid_data_punish: u32,
-    pub incorrect_power_punish: u32,
+    pub incorrect_chain_punish: u32,
     pub max_punish: u32,
     pub state_unavailable_ban_time: u32,
     pub candidate_remove_threshold: u32,
@@ -236,6 +236,16 @@ async fn node_service<B: Blockchain>(
         }
 
         match (method, &path[..]) {
+            (Method::POST, "/generate_block") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::generate_block(
+                        client,
+                        Arc::clone(&context),
+                        bincode::deserialize(&body_bytes)?,
+                    )
+                    .await?,
+                )?);
+            }
             (Method::GET, "/stats") => {
                 *response.body_mut() = Body::from(serde_json::to_vec(
                     &api::get_stats(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,

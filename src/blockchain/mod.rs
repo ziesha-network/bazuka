@@ -1,7 +1,6 @@
 mod error;
 pub use error::*;
 
-use crate::consensus::pow::Difficulty;
 use crate::core::{
     hash::Hash, Account, Address, Amount, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
     ContractId, ContractUpdate, ContractWithdraw, Hasher, Header, Money, MpnAddress, MpnSourcedTx,
@@ -9,7 +8,6 @@ use crate::core::{
     TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
 };
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
-use crate::utils;
 use crate::wallet::TxBuilder;
 use crate::zk;
 
@@ -306,12 +304,6 @@ pub struct BlockchainConfig {
     pub max_block_size: usize,
     pub max_delta_count: usize,
     pub block_time: u32,
-    pub difficulty_window: u64,
-    pub difficulty_lag: u64,
-    pub difficulty_cut: u64,
-    pub pow_base_key: &'static [u8],
-    pub pow_key_change_delay: u64,
-    pub pow_key_change_interval: u64,
     pub median_timestamp_count: u64,
     pub ziesha_token_id: TokenId,
     pub mpn_contract_id: ContractId,
@@ -320,7 +312,6 @@ pub struct BlockchainConfig {
     pub mpn_num_contract_withdraws: usize,
     pub mpn_log4_account_capacity: u8,
     pub mpn_proving_time: u32,
-    pub minimum_pow_difficulty: Difficulty,
     pub testnet_height_limit: Option<u64>,
     pub max_memo_length: usize,
 }
@@ -433,7 +424,7 @@ pub trait Blockchain {
         &self,
         from: u64,
         headers: &[Header],
-        check_pow: bool,
+        check_validator: bool,
     ) -> Result<bool, BlockchainError>;
     fn extend(&mut self, from: u64, blocks: &[Block]) -> Result<(), BlockchainError>;
     fn rollback(&mut self) -> Result<(), BlockchainError>;
@@ -450,8 +441,6 @@ pub trait Blockchain {
     fn get_blocks(&self, since: u64, count: u64) -> Result<Vec<Block>, BlockchainError>;
     fn get_header(&self, index: u64) -> Result<Header, BlockchainError>;
     fn get_block(&self, index: u64) -> Result<Block, BlockchainError>;
-    fn get_power(&self) -> Result<u128, BlockchainError>;
-    fn pow_key(&self, index: u64) -> Result<Vec<u8>, BlockchainError>;
 
     fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError>;
 
@@ -504,45 +493,6 @@ impl<K: KvStore> KvStoreChain<K> {
         let mut mirror = self.fork_on_ram();
         let result = f(&mut mirror)?;
         Ok((mirror.database.to_ops(), result))
-    }
-
-    fn next_difficulty(&self) -> Result<Difficulty, BlockchainError> {
-        let to = self
-            .get_height()?
-            .saturating_sub(self.config.difficulty_lag);
-        let from = to.saturating_sub(self.config.difficulty_window);
-        let headers = (from..to)
-            .map(|i| self.get_header(i))
-            .collect::<Result<Vec<_>, _>>()?;
-        let mut timestamps = headers
-            .iter()
-            .map(|h| h.proof_of_work.timestamp)
-            .collect::<Vec<_>>();
-        if timestamps.len() < 2 {
-            return Ok(self.config.minimum_pow_difficulty);
-        }
-        timestamps.sort_unstable();
-        let final_size = self.config.difficulty_window - 2 * self.config.difficulty_cut;
-        let (begin, end) = if timestamps.len() as u64 > final_size {
-            let begin = (timestamps.len() as u64 - final_size + 1) / 2;
-            let end = begin + final_size - 1;
-            (begin as usize, end as usize)
-        } else {
-            (0, timestamps.len() - 1)
-        };
-        let time_delta = (timestamps[end] - timestamps[begin])
-            .saturating_sub((end - begin) as u32 * self.config.mpn_proving_time as u32);
-        if time_delta == 0 {
-            return Ok(self.config.minimum_pow_difficulty);
-        }
-        let power_delta =
-            self.get_power_at(from + end as u64)? - self.get_power_at(from + begin as u64)?;
-        Ok(std::cmp::max(
-            Difficulty::from_power(
-                power_delta * (self.config.block_time as u128) / (time_delta as u128),
-            ),
-            self.config.minimum_pow_difficulty,
-        ))
     }
 
     fn get_compressed_state_at(
@@ -1208,7 +1158,7 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(result)
     }
 
-    fn apply_block(&mut self, block: &Block, check_pow: bool) -> Result<(), BlockchainError> {
+    fn apply_block(&mut self, block: &Block, check_validator: bool) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
             let curr_height = chain.get_height()?;
 
@@ -1226,7 +1176,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     return Err(BlockchainError::InvalidMerkleRoot);
                 }
 
-                chain.will_extend(curr_height, &[block.header.clone()], check_pow)?;
+                chain.will_extend(curr_height, &[block.header.clone()], true)?;
             }
 
             // All blocks except genesis block should have a miner reward
@@ -1257,14 +1207,14 @@ impl<K: KvStore> KvStoreChain<K> {
                         }
                         let reward_entry = &entries[0];
 
-                        if curr_height >= 4675 {
-                            if !self.is_validator(
+                        if check_validator
+                            && !self.is_validator(
                                 block.header.proof_of_work.timestamp,
                                 reward_entry.dst.clone(),
                                 ValidatorProof {},
-                            )? {
-                                return Err(BlockchainError::UnelectedValidator);
-                            }
+                            )?
+                        {
+                            return Err(BlockchainError::UnelectedValidator);
                         }
 
                         if let Some(allowed_miners) = &self.config.limited_miners {
@@ -1373,10 +1323,6 @@ impl<K: KvStore> KvStoreChain<K> {
             chain.database.update(&[
                 WriteOp::Put(keys::height(), (curr_height + 1).into()),
                 WriteOp::Put(
-                    keys::power(block.header.number),
-                    (block.header.power() + self.get_power()?).into(),
-                ),
-                WriteOp::Put(
                     keys::header(block.header.number),
                     block.header.clone().into(),
                 ),
@@ -1404,17 +1350,6 @@ impl<K: KvStore> KvStoreChain<K> {
 
         self.database.update(&ops)?;
         Ok(())
-    }
-
-    fn get_power_at(&self, index: u64) -> Result<u128, BlockchainError> {
-        if index >= self.get_height()? {
-            return Err(BlockchainError::BlockNotFound);
-        }
-        Ok(self
-            .database
-            .get(keys::power(index))?
-            .ok_or(BlockchainError::Inconsistency)?
-            .try_into()?)
     }
 }
 
@@ -1622,12 +1557,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self,
         from: u64,
         headers: &[Header],
-        check_pow: bool,
+        check_validator: bool,
     ) -> Result<bool, BlockchainError> {
-        let current_power = self.get_power()?;
-
-        // WARN: Pelmeni Testnet
-        let check_pow = from < 4675;
+        if from + headers.len() as u64 <= self.get_height()? {
+            return Ok(false);
+        }
 
         if from == 0 {
             return Err(BlockchainError::ExtendFromGenesis);
@@ -1635,81 +1569,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             return Err(BlockchainError::ExtendFromFuture);
         }
 
-        let mut new_power: u128 = self
-            .database
-            .get(keys::power(from - 1))?
-            .ok_or(BlockchainError::Inconsistency)?
-            .try_into()?;
-
         let mut last_header = self.get_header(from - 1)?;
 
-        let mut timestamps = (0..std::cmp::min(from, self.config.median_timestamp_count))
-            .map(|i| {
-                self.get_header(from - 1 - i)
-                    .map(|b| b.proof_of_work.timestamp)
-            })
-            .collect::<Result<Vec<u32>, BlockchainError>>()?;
-
-        let mut diff_timestamps =
-            (from.saturating_sub(self.config.difficulty_window + self.config.difficulty_lag)..from)
-                .map(|i| self.get_header(i).map(|h| h.proof_of_work.timestamp))
-                .collect::<Result<Vec<u32>, BlockchainError>>()?;
-        let mut diff_powers =
-            (from.saturating_sub(self.config.difficulty_window + self.config.difficulty_lag)..from)
-                .map(|i| self.get_power_at(i))
-                .collect::<Result<Vec<u128>, BlockchainError>>()?;
-
         for h in headers.iter() {
-            let expected_target = {
-                if diff_timestamps.len() <= self.config.difficulty_lag as usize {
-                    self.config.minimum_pow_difficulty
-                } else {
-                    let mut timestamps = diff_timestamps
-                        [0..diff_timestamps.len() - self.config.difficulty_lag as usize]
-                        .to_vec();
-                    if timestamps.len() >= 2 {
-                        timestamps.sort_unstable();
-                        let final_size =
-                            self.config.difficulty_window - 2 * self.config.difficulty_cut;
-                        let (begin, end) = if timestamps.len() as u64 > final_size {
-                            let begin = (timestamps.len() as u64 - final_size + 1) / 2;
-                            let end = begin + final_size - 1;
-                            (begin as usize, end as usize)
-                        } else {
-                            (0, timestamps.len() - 1)
-                        };
-                        let time_delta = (timestamps[end] - timestamps[begin]).saturating_sub(
-                            (end - begin) as u32 * self.config.mpn_proving_time as u32,
-                        );
-                        if time_delta > 0 {
-                            let power_delta = diff_powers[end] - diff_powers[begin];
-                            std::cmp::max(
-                                Difficulty::from_power(
-                                    power_delta * (self.config.block_time as u128)
-                                        / (time_delta as u128),
-                                ),
-                                self.config.minimum_pow_difficulty,
-                            )
-                        } else {
-                            self.config.minimum_pow_difficulty
-                        }
-                    } else {
-                        self.config.minimum_pow_difficulty
-                    }
-                }
-            };
-            let pow_key = self.pow_key(h.number)?;
-
-            if h.proof_of_work.timestamp < utils::median(&timestamps) {
+            if h.proof_of_work.timestamp < last_header.proof_of_work.timestamp {
                 return Err(BlockchainError::InvalidTimestamp);
-            }
-
-            if expected_target != h.proof_of_work.target {
-                return Err(BlockchainError::DifficultyTargetWrong);
-            }
-
-            if check_pow && !h.meets_target(&pow_key) {
-                return Err(BlockchainError::DifficultyTargetUnmet);
             }
 
             if h.number != last_header.number + 1 {
@@ -1720,25 +1584,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 return Err(BlockchainError::InvalidParentHash);
             }
 
-            timestamps.push(h.proof_of_work.timestamp);
-            while timestamps.len() > self.config.median_timestamp_count as usize {
-                timestamps.remove(0);
-            }
-
-            diff_powers.push(new_power + h.power());
-            diff_timestamps.push(h.proof_of_work.timestamp);
-            while diff_timestamps.len()
-                > (self.config.difficulty_window + self.config.difficulty_lag) as usize
-            {
-                diff_powers.remove(0);
-                diff_timestamps.remove(0);
-            }
-
             last_header = h.clone();
-            new_power += h.power();
         }
 
-        Ok(!check_pow || (new_power > current_power))
+        Ok(true)
     }
     fn extend(&mut self, from: u64, blocks: &[Block]) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
@@ -1799,11 +1648,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     ) -> Result<Option<BlockAndPatch>, BlockchainError> {
         let height = self.get_height()?;
 
-        if height >= 4675 {
-            if self.validator_status(timestamp, wallet)?.is_none() {
-                return Ok(None);
-            }
+        if self.validator_status(timestamp, wallet)?.is_none() {
+            return Ok(None);
         }
+
         let outdated_contracts = self.get_outdated_contracts()?;
 
         if !outdated_contracts.is_empty() {
@@ -1868,11 +1716,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 parent_hash: last_header.hash(),
                 number: height as u64,
                 block_root: Default::default(),
-                proof_of_work: ProofOfWork {
-                    timestamp,
-                    target: self.next_difficulty()?,
-                    nonce: 0,
-                },
+                proof_of_work: ProofOfWork { timestamp },
             },
             body: txs,
         };
@@ -1891,26 +1735,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 patch: block_delta,
             })),
         }
-    }
-
-    fn get_power(&self) -> Result<u128, BlockchainError> {
-        let height = self.get_height()?;
-        if height > 0 {
-            self.get_power_at(height - 1)
-        } else {
-            Ok(0)
-        }
-    }
-
-    fn pow_key(&self, index: u64) -> Result<Vec<u8>, BlockchainError> {
-        Ok(if index < self.config.pow_key_change_delay {
-            self.config.pow_base_key.to_vec()
-        } else {
-            let reference = ((index - self.config.pow_key_change_delay)
-                / self.config.pow_key_change_interval)
-                * self.config.pow_key_change_interval;
-            self.get_header(reference)?.hash().to_vec()
-        })
     }
 
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError> {
@@ -2052,144 +1876,22 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     fn validator_set(&self) -> Result<Vec<Address>, BlockchainError> {
-        Ok(if self.get_height()? >= 6767 {
-            let mut vals = vec![
-                "ed59b172ea59a292165f1aad656d8dc4c970a8ab3c4b0089aa299e066cd9db3a9d",
-                "ed244dd812173e33c99d24025d57f534fa1d029f4142c94561d95a92a8c1c3437b",
-                "edfbdc2bf51b3f7fbaacdb8cce79f0e2d8158dc708fce39c09c326db0fcb42b9bf",
-                "ed0145bd0c1f71b5e86289991f7444dc536ec3bff988d26ce119eba245fc052829",
-                "ed0c2686ddd1bc623419d4de144da6e67f3c4ab678598a54e6140162268be033c5",
-                "ed073e9a0d6cd628c1c418cd19e211b2a1500b89aae1d2f30040d8d7da92e7d3ba",
-                "ed679cd2575eb24a98033e1f2f8f0826e3bb396b31117fc4aef0e8d88eec05bb02",
-                "edfe66743ad2b77b5c5a2b013a8ba3316e4f020a0a8afcd5f6aef1b6da017a215f",
-                "ede17621e34267237a7f0cdb930ba8111f8bd823f27513e8b8a272f10317157a15",
-                "edcac39cc534b62fc4007aec0410a2586e6e3a1e766a9953922a8b2b766451d1e8",
-                "ede8a0e1ce7705ef957477c9dcff717431fb7ce0f63e973a1f93fadb01210d3753",
-                "edd4b614ec85b019bd3ba0fb5ffa2301edef877319ea5367f9e0dcc12e1b05010e",
-                "ed8a142e94f9f42da430233e2076a9ba1dff508bad22ade0919ae12031b8bbbdc1",
-                "edffc978eff3dfee31c0561c88027a4b6f3ea6a5cc0fb466e8c8aaa8000bcb5501",
-                "ede25395cd5d4b3f3b3490f3d9a8b5eb4c441b462ea2302d469be1be91cec54bc7",
-                "ed6059f334576f8ff31d1f597ec11686a3da7b20e850e2c41d51f56a6169498164",
-                "edffe4c7042b179401c37c914097538974e7da338ca2a3e69080a42bb44d85a2e8",
-                "ed828a5b934710c9fba5e0b7d509eb501cd23fa2a5d2d9d64756c16e6b37ad5538",
-                "ed6b42ae8896177cc7ac1d3cce3998e9381240da096b6abfb3c05ca51542814f75",
-            ];
-            if self.get_height()? >= 7200 {
-                vals.push("ed1b217b86f162230ff795331a518f03d5ab65664cdab8650eb10d0261600b5eeb");
-            }
-            vals
-        } else if self.get_height()? >= 5000 {
-            vec![
-                "edac798dca2e3275b06948c6839b9813697fc2fb60174c79e366f860d844b17202", // Apricot Pool
-                "ed115845ae1e3565a956b329285ae2f28d53e4b67865ad92f0131c46bea76cf858", // CHN Pool
-                "ed078800541138668423cbad38275209481583b8d9fd12bd03d5f859805b054db6", // Starnodes Pool
-                "ed2d5bd425ecdb9c64f098216271ea19bfecc79a8de76a8b402b5260425a9114bc", // Nodn Pool
-                "ed5bbc3a8fd8dc14fe7a93211e3b2f4cca8c198c5c4a64fa1e097251b087759a14", // LazyPenguin Pool
-                "ed9ab51573c41c03d7ab863569df608daecbfe0b2b0da0efe282fd8f68e464ce28", // Making.Cash Pool
-                "edeaac78d4d14d59e727a903f8187fc25020022869e8c61ba9443a86fddc819ae6", // Super One Pool
-                "ed8d2fdd62ec6c067789aa694cee59b81f34aa354fcb461acada43e26770f41d36", // Systemd Pool
-                "edd1350235d42dfd428b592b7badfe1538aec9a3b11393a0f639ff400045255eda",
-                "eda601420e26c8461ababf6314eed8589e0e6dec04015006e528fdff704e817e12",
-                "ed923f518f4635194f562dbaaed6f6893dbec2b8b1cfddd3cf8c843adff498daf7",
-                "eda8e819854ec66bb13194f7d202574484d764836a00ce88c79da259898c89debe",
-                "ed159defb2be4ee8bc88592328bd4594e366bdccef75949276d7f94170a97da8b5",
-                "ed311a53d3b84f86ed6367c976be35a6587115786c2ffe33a8c1779b71dfe87f65",
-                "ed6477379d43c0eca965e6567d573eeaf0797a5799cc598bab7e66ac289edb153b",
-                "ed7af5d18274de5d80a9618401cd517f9124a640ca0ff8f4dab38508f24a1438ca",
-                "edf70f00d0e166c67ac9b4825d65545082f396c3aa3de3a0507f56654e6ab9eba3",
-                "ed632e30fc6bc3017a4a05cd985c04e47be724cb98f7cfc0f31687a4c166fd855a",
-                "ed8f06b23a4598bb2e263ceb5013287138d891752cc725a653827d54251bc6a3f8",
-                "ed5c668535143381256a0beaafb3444c8e34950324f50c589be7880771b6d55dfc",
-                "edc23d5fa2ec9da01fe80a7a91e31faca358c462e1df6467c9988005755ac5479a",
-                "ed11176f82e7ac98baa95180e40d568bdee21bae1da5add2eae323db69e61d10f6",
-                "ed8ff3c29c476cb0fda1647b05f20b56d22b85b4eb10411e91275668c8ceac8a42",
-                "edb33fc644b44a04299605ad6f8b16e5e517bf09f2be4bd517dac3660650049df7",
-                "ed478c5c2b67292eff1d1b2cb1f1c9afd16b3789050a1dd6bcd5a46f6b283db68f",
-                "ed5c76767e69f15bacc30c58251690fc075963b04bc08d314fe015cbc0e861f3d7",
-                "ed3458d3b32aac6b23ee5c5be1f523243b0101356f329f68075caf8683cf6bff4d",
-                "ed1e1cfa41c4546684d5bda8c78161cb654d4e45fdd68a207b976ca302bf6b05b6",
-                "ed31f2e519d335be5c941df424bca8fe5943bddd1c2c96e21f52cd5cf9f6058041",
-                "ed7f7fd6bb6497f41cdd262bcd61035fd67db71f94e6bcba92fa7b83edebef0e0f",
-                "ed8d61b4ebdf40c356b51f0413ba33eb3a5cf10978283b79a645f25d12016e8074",
-                "ed6ce694bc947fdcd373848137aee27670451cd21d4804659a2dc939cde3e5e3cf",
-                "edc4303f8e539efa15dca0436fc60f15836a76a3735bd63bbad5034ff248dd8b47",
-                "edf2c401817b84497e04d344a3285cea8d114445c93aa7beb6225895fedf4eedd3",
-                "edfdaf9489a5815679b6aaca7288bca04d01e01c0fe955b2b97985ee5e6b035d0d",
-                "ede495f73172a08324a2c98be4d56c9f93f5654d5fb22d2b0caab5d6065733b2de",
-                "ed1183ed0046a59b26df9044b3ee3083435585f9198cb1b68ad5a91e4ea56bc4da",
-                "ed737b3e5fd5eab898e7efec141a9605b0c6470a182e35ee55943d344565a872b6",
-                "ed4fdba9a5b2e407a4f310c669366432b306ee1b949f75156fdf52451efe76cb26",
-                "edae00fbe3cc48152e268d2747a502ac97282fccc2168dc857bbe64f297fb43078",
-                "edd2ac08bf81505c8ce18e4343f361cd533848c5b567de0e11c4d17d8d067a402b",
-                "ede98eb0e4965453f9da5c2b35a7fe88f994a260a27394abc46905ad8df8d85ee7",
-            ]
-        } else {
-            vec![
-                "edac798dca2e3275b06948c6839b9813697fc2fb60174c79e366f860d844b17202", // Apricot Pool
-                "ed115845ae1e3565a956b329285ae2f28d53e4b67865ad92f0131c46bea76cf858", // CHN Pool
-                "ed078800541138668423cbad38275209481583b8d9fd12bd03d5f859805b054db6", // Starnodes Pool
-                "ed2d5bd425ecdb9c64f098216271ea19bfecc79a8de76a8b402b5260425a9114bc", // Nodn Pool
-                "ed5bbc3a8fd8dc14fe7a93211e3b2f4cca8c198c5c4a64fa1e097251b087759a14", // LazyPenguin Pool
-                "ed9ab51573c41c03d7ab863569df608daecbfe0b2b0da0efe282fd8f68e464ce28", // Making.Cash Pool
-                "edeaac78d4d14d59e727a903f8187fc25020022869e8c61ba9443a86fddc819ae6", // Super One Pool
-                "ed8d2fdd62ec6c067789aa694cee59b81f34aa354fcb461acada43e26770f41d36", // Systemd Pool
-            ]
-        }
-        .iter()
-        .map(|s| s.parse().unwrap())
-        .collect())
+        Ok(vec![])
     }
     fn is_validator(
         &self,
-        timestamp: u32,
-        addr: Address,
+        _timestamp: u32,
+        _addr: Address,
         _proof: ValidatorProof,
     ) -> Result<bool, BlockchainError> {
-        let block_time = if self.get_height()? >= 7200 { 60 } else { 180 };
-        let mut slot_number = (timestamp / block_time) as usize;
-        if self.get_height()? >= 7572 {
-            if slot_number % 2 == 0 {
-                return Ok(addr
-                    == "ed41a7cf1f401669022204accfb7c71b270c6f621caf983f1afd488cca79b993f3"
-                        .parse()
-                        .unwrap());
-            }
-            slot_number /= 2;
-        }
-        let i = slot_number % self.validator_set()?.len();
-        let winner = self.validator_set()?[i].clone();
-        Ok(addr == winner)
+        Ok(true)
     }
     fn validator_status(
         &self,
-        timestamp: u32,
-        wallet: &TxBuilder,
+        _timestamp: u32,
+        _wallet: &TxBuilder,
     ) -> Result<Option<ValidatorProof>, BlockchainError> {
-        let block_time = if self.get_height()? >= 7200 { 60 } else { 180 };
-        let mut slot_number = (timestamp / block_time) as usize;
-        if self.get_height()? >= 7572 {
-            if slot_number % 2 == 0 {
-                return Ok(
-                    if wallet.get_address()
-                        == "ed41a7cf1f401669022204accfb7c71b270c6f621caf983f1afd488cca79b993f3"
-                            .parse()
-                            .unwrap()
-                    {
-                        Some(ValidatorProof {})
-                    } else {
-                        None
-                    },
-                );
-            }
-            slot_number /= 2;
-        }
-        let i = slot_number % self.validator_set()?.len();
-        let winner = self.validator_set()?[i].clone();
-        Ok(if wallet.get_address() == winner {
-            Some(ValidatorProof {})
-        } else {
-            None
-        })
+        Ok(Some(ValidatorProof {}))
     }
 
     fn cleanup_chain_mempool(
