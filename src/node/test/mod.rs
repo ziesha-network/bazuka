@@ -218,7 +218,7 @@ fn sample_contract_call() -> TransactionAndDelta {
     let updater = TxBuilder::new(&Vec::from("ABC"));
 
     let cid =
-        ContractId::from_str("44601d08c57bee3e3f0261cb83d9e435b94ef764bda2ee6d3705cbc805efad86")
+        ContractId::from_str("1525ced32cb40609838e7dad549014268e4449abc2a1621e485bc8f88a48f223")
             .unwrap();
     let state_model = zk::ZkStateModel::List {
         item_type: Box::new(zk::ZkStateModel::Scalar),
