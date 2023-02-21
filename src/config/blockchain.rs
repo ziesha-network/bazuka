@@ -3,7 +3,7 @@ use super::{UNIT, UNIT_ZEROS};
 use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
 use crate::core::{
-    Amount, Block, ContractId, Header, Money, ProofOfWork, Signature, Token, TokenId, Transaction,
+    Amount, Block, ContractId, Header, Money, ProofOfStake, Signature, Token, TokenId, Transaction,
     TransactionAndDelta, TransactionData, ZkHasher,
 };
 use crate::zk;
@@ -144,7 +144,10 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             parent_hash: Default::default(),
             number: 0,
             block_root: Default::default(),
-            proof_of_work: ProofOfWork { timestamp: 0 },
+            proof_of_stake: ProofOfStake {
+                timestamp: 0,
+                validator: Default::default(),
+            },
         },
         body: vec![ziesha_token_creation_tx, mpn_tx_delta.tx],
     };

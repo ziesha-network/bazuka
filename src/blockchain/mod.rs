@@ -4,7 +4,7 @@ pub use error::*;
 use crate::core::{
     hash::Hash, Account, Address, Amount, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
     ContractId, ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, MpnAddress,
-    MpnSourcedTx, ProofOfWork, RegularSendEntry, Signature, Staker, Token, TokenId, TokenUpdate,
+    MpnSourcedTx, ProofOfStake, RegularSendEntry, Signature, Staker, Token, TokenId, TokenUpdate,
     Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
 };
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
@@ -1281,7 +1281,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
                         if check_validator
                             && !self.is_validator(
-                                block.header.proof_of_work.timestamp,
+                                block.header.proof_of_stake.timestamp,
                                 reward_entry.dst.clone(),
                                 ValidatorProof {},
                             )?
@@ -1658,7 +1658,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let mut last_header = self.get_header(from - 1)?;
 
         for h in headers.iter() {
-            if h.proof_of_work.timestamp < last_header.proof_of_work.timestamp {
+            if h.proof_of_stake.timestamp < last_header.proof_of_stake.timestamp {
                 return Err(BlockchainError::InvalidTimestamp);
             }
 
@@ -1802,7 +1802,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 parent_hash: last_header.hash(),
                 number: height as u64,
                 block_root: Default::default(),
-                proof_of_work: ProofOfWork { timestamp },
+                proof_of_stake: ProofOfStake {
+                    timestamp,
+                    validator: wallet.get_address(),
+                },
             },
             body: txs,
         };

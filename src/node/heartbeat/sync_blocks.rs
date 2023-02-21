@@ -74,7 +74,7 @@ pub async fn sync_blocks<B: Blockchain>(
                     chain_fail = true;
                     break;
                 }
-                if head.proof_of_work.timestamp.saturating_sub(net_ts) > max_ts_diff {
+                if head.proof_of_stake.timestamp.saturating_sub(net_ts) > max_ts_diff {
                     log::warn!("Block timestamp is way ahead of future!");
                     chain_fail = true;
                     break;
@@ -130,7 +130,7 @@ pub async fn sync_blocks<B: Blockchain>(
                     chain_fail = true;
                     break;
                 }
-                if peer_header.proof_of_work.timestamp.saturating_sub(net_ts) > max_ts_diff {
+                if peer_header.proof_of_stake.timestamp.saturating_sub(net_ts) > max_ts_diff {
                     log::warn!("Block timestamp is way ahead of future!");
                     chain_fail = true;
                     break;

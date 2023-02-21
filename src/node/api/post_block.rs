@@ -13,7 +13,7 @@ pub async fn post_block<B: Blockchain>(
         if req
             .block
             .header
-            .proof_of_work
+            .proof_of_stake
             .timestamp
             .saturating_sub(ctx.network_timestamp())
             > ctx.opts.max_block_time_difference

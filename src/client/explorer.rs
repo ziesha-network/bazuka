@@ -1,5 +1,5 @@
 use crate::core::{
-    Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, Money, ProofOfWork, Token,
+    Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, Money, ProofOfStake, Token,
     TokenUpdate, Transaction, TransactionData,
 };
 use crate::crypto::jubjub::*;
@@ -66,12 +66,12 @@ impl From<&Token> for ExplorerToken {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct ExplorerProofOfWork {
+pub struct ExplorerProofOfStake {
     pub timestamp: u32,
 }
 
-impl From<&ProofOfWork> for ExplorerProofOfWork {
-    fn from(obj: &ProofOfWork) -> Self {
+impl From<&ProofOfStake> for ExplorerProofOfStake {
+    fn from(obj: &ProofOfStake) -> Self {
         Self {
             timestamp: obj.timestamp,
         }
@@ -83,7 +83,7 @@ pub struct ExplorerHeader {
     pub parent_hash: String,
     pub number: u64,
     pub block_root: String,
-    pub proof_of_work: ExplorerProofOfWork,
+    pub proof_of_stake: ExplorerProofOfStake,
 }
 
 impl From<&Header> for ExplorerHeader {
@@ -92,7 +92,7 @@ impl From<&Header> for ExplorerHeader {
             parent_hash: hex::encode(&obj.parent_hash),
             number: obj.number,
             block_root: hex::encode(&obj.parent_hash),
-            proof_of_work: (&obj.proof_of_work).into(),
+            proof_of_stake: (&obj.proof_of_stake).into(),
         }
     }
 }

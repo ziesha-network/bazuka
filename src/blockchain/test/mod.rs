@@ -748,7 +748,7 @@ fn test_genesis_is_not_replaceable() -> Result<(), BlockchainError> {
     assert_eq!(conf.genesis.block.header.hash(), first_block.header.hash());
 
     let mut another_conf = conf.clone();
-    another_conf.genesis.block.header.proof_of_work.timestamp += 1;
+    another_conf.genesis.block.header.proof_of_stake.timestamp += 1;
 
     assert!(matches!(
         chain.extend(0, &[another_conf.genesis.block]),

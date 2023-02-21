@@ -39,14 +39,14 @@ pub type ParseMpnAddressError = address::ParseMpnAddressError;
 pub type MpnDeposit = transaction::MpnDeposit<Hasher, Signer, ZkSigner>;
 pub type MpnWithdraw = transaction::MpnWithdraw<Hasher, Signer, ZkSigner>;
 pub type MpnTransaction = zk::MpnTransaction;
-pub type Header = header::Header<Hasher>;
+pub type Header = header::Header<Hasher, Signer>;
 pub type Block = blocks::Block<Hasher, Signer, Vrf>;
 pub type TokenId = transaction::TokenId;
 pub type ParseTokenIdError = transaction::ParseTokenIdError;
 pub type TokenUpdate = transaction::TokenUpdate<Signer>;
 pub type Token = transaction::Token<Signer>;
 
-pub type ProofOfWork = header::ProofOfWork;
+pub type ProofOfStake = header::ProofOfStake<Signer>;
 pub type ContractId = transaction::ContractId<Hasher>;
 
 pub type TransactionAndDelta = transaction::TransactionAndDelta<Hasher, Signer, Vrf>;
