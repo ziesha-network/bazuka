@@ -83,7 +83,7 @@ impl KvStore for LevelDbKvStore {
             Err(_) => Err(KvStoreError::Failure),
         }
     }
-    fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
+    fn pairs(&self, prefix: StringKey) -> Result<Vec<(StringKey, Blob)>, KvStoreError> {
         let it = self.0.iter(ReadOptions::new());
         it.seek(&prefix);
         Ok(it
@@ -106,13 +106,13 @@ impl<'a> KvStore for LevelDbSnapshot<'a> {
     fn update(&mut self, _: &[WriteOp]) -> Result<(), KvStoreError> {
         panic!("Cannot update!");
     }
-    fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
+    fn pairs(&self, prefix: StringKey) -> Result<Vec<(StringKey, Blob)>, KvStoreError> {
         let it = self.0.iter(ReadOptions::new());
         it.seek(&prefix);
-        let mut result = HashMap::new();
+        let mut result = Vec::new();
         for (k, v) in it {
             if k.0.starts_with(&prefix.0) {
-                result.insert(k, Blob(v));
+                result.push((k, Blob(v)));
             } else {
                 break;
             }

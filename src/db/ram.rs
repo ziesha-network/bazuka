@@ -1,10 +1,10 @@
 use super::*;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-pub struct RamKvStore(HashMap<String, Blob>);
+pub struct RamKvStore(BTreeMap<String, Blob>);
 impl RamKvStore {
     pub fn new() -> RamKvStore {
-        RamKvStore(HashMap::new())
+        RamKvStore(BTreeMap::new())
     }
 }
 
@@ -27,7 +27,7 @@ impl KvStore for RamKvStore {
         }
         Ok(())
     }
-    fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
+    fn pairs(&self, prefix: StringKey) -> Result<Vec<(StringKey, Blob)>, KvStoreError> {
         Ok(self
             .0
             .clone()

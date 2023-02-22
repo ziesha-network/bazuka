@@ -11,7 +11,7 @@ use crate::zk::{
 };
 use db_key::Key;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -175,7 +175,7 @@ pub enum WriteOp {
 pub trait KvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError>;
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError>;
-    fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError>;
+    fn pairs(&self, prefix: StringKey) -> Result<Vec<(StringKey, Blob)>, KvStoreError>;
     fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
         let mut kvs: Vec<_> = self.pairs("".into())?.into_iter().collect();
         kvs.sort_by_key(|(k, _)| k.clone());
@@ -239,8 +239,9 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
         }
         Ok(())
     }
-    fn pairs(&self, prefix: StringKey) -> Result<HashMap<StringKey, Blob>, KvStoreError> {
-        let mut res = self.store.pairs(prefix.clone())?;
+    fn pairs(&self, prefix: StringKey) -> Result<Vec<(StringKey, Blob)>, KvStoreError> {
+        let mut res: BTreeMap<StringKey, Blob> =
+            self.store.pairs(prefix.clone())?.into_iter().collect();
         for (k, v) in self.overwrite.iter() {
             if let Some(v) = v {
                 if k.0.starts_with(&prefix.0) {
@@ -250,7 +251,7 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
                 res.remove(k);
             }
         }
-        Ok(res)
+        Ok(res.into_iter().collect())
     }
 }
 
