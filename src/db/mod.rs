@@ -173,16 +173,29 @@ pub enum WriteOp {
 }
 
 pub enum QueryResult<'a> {
-    Ready(Vec<(StringKey, Blob)>),
-    LevelDb(leveldb::iterator::Iterator<'a, StringKey>),
-    Ram(std::collections::btree_map::Range<'a, StringKey, Blob>),
+    Precalculated(Vec<(StringKey, Blob)>),
+    LevelDb {
+        prefix: StringKey,
+        db: leveldb::iterator::Iterator<'a, StringKey>,
+    },
+    Ram {
+        range: std::collections::btree_map::Range<'a, StringKey, Blob>,
+        prefix: StringKey,
+    },
 }
 impl<'a> QueryResult<'a> {
     pub fn into_iter(self) -> Box<dyn Iterator<Item = (StringKey, Blob)> + 'a> {
         match self {
-            QueryResult::Ready(v) => Box::new(v.into_iter()),
-            QueryResult::LevelDb(v) => Box::new(v.map(|(k, v)| (k, Blob(v)))),
-            QueryResult::Ram(v) => Box::new(v.map(|(k, v)| (k.clone(), v.clone()))),
+            QueryResult::Precalculated(v) => Box::new(v.into_iter()),
+            QueryResult::LevelDb { prefix, db } => Box::new(
+                db.map(|(k, v)| (k, Blob(v)))
+                    .take_while(move |(k, _)| k.0.starts_with(&prefix.0)),
+            ),
+            QueryResult::Ram { range, prefix } => Box::new(
+                range
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .take_while(move |(k, _)| k.0.starts_with(&prefix.0)),
+            ),
         }
     }
 }
@@ -266,7 +279,7 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
                 res.remove(k);
             }
         }
-        Ok(QueryResult::Ready(res.into_iter().collect()))
+        Ok(QueryResult::Precalculated(res.into_iter().collect()))
     }
 }
 

@@ -17,19 +17,24 @@ fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), Blockc
         b.rollback(),
         Err(BlockchainError::NoBlocksToRollback)
     ));
-    assert!(b.database.pairs("".into())?.is_empty());
+    assert!(b
+        .database
+        .pairs("".into())?
+        .into_iter()
+        .collect::<Vec<_>>()
+        .is_empty());
     Ok(())
 }
 
 fn circulated_money<K: KvStore>(b: &KvStoreChain<K>) -> Result<Amount, BlockchainError> {
     let mut money_sum = Amount(0);
-    for (k, v) in b.database.pairs("ACB-".into())? {
+    for (k, v) in b.database.pairs("ACB-".into())?.into_iter() {
         if k.0.ends_with("Ziesha") {
             let bal: Amount = v.try_into().unwrap();
             money_sum += bal;
         }
     }
-    for (k, v) in b.database.pairs("CAB-".into())? {
+    for (k, v) in b.database.pairs("CAB-".into())?.into_iter() {
         if k.0.ends_with("Ziesha") {
             let bal: Amount = v.try_into().unwrap();
             money_sum += bal;

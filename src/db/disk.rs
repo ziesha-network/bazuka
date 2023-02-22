@@ -86,7 +86,7 @@ impl KvStore for LevelDbKvStore {
     fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError> {
         let it = self.0.iter(ReadOptions::new());
         it.seek(&prefix);
-        Ok(QueryResult::LevelDb(it))
+        Ok(QueryResult::LevelDb { db: it, prefix })
     }
 }
 
@@ -104,6 +104,6 @@ impl<'a> KvStore for LevelDbSnapshot<'a> {
     fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError> {
         let it = self.0.iter(ReadOptions::new());
         it.seek(&prefix);
-        Ok(QueryResult::LevelDb(it))
+        Ok(QueryResult::LevelDb { db: it, prefix })
     }
 }

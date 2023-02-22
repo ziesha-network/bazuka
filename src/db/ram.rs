@@ -29,8 +29,11 @@ impl KvStore for RamKvStore {
     }
     fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError> {
         use std::ops::Bound;
-        Ok(QueryResult::Ram(
-            self.0.range((Bound::Included(prefix), Bound::Unbounded)),
-        ))
+        Ok(QueryResult::Ram {
+            range: self
+                .0
+                .range((Bound::Included(prefix.clone()), Bound::Unbounded)),
+            prefix,
+        })
     }
 }

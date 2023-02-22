@@ -27,18 +27,75 @@ fn test_ram_and_disk_pair_prefix() -> Result<(), KvStoreError> {
     ram.update(ops)?;
     disk.update(ops)?;
 
-    assert_eq!(disk.pairs("".into())?.len(), 5);
-    assert_eq!(ram.pairs("".into())?.len(), 5);
-    assert_eq!(disk.pairs("a".into())?.len(), 2);
-    assert_eq!(ram.pairs("a".into())?.len(), 2);
-    assert_eq!(disk.pairs("b".into())?.len(), 2);
-    assert_eq!(ram.pairs("b".into())?.len(), 2);
-    assert_eq!(disk.pairs("d".into())?.len(), 1);
-    assert_eq!(ram.pairs("d".into())?.len(), 1);
-    assert_eq!(disk.pairs("a0".into())?.len(), 1);
-    assert_eq!(ram.pairs("a0".into())?.len(), 1);
-    assert_eq!(disk.pairs("a1".into())?.len(), 0);
-    assert_eq!(ram.pairs("a1".into())?.len(), 0);
+    assert_eq!(
+        disk.pairs("".into())?.into_iter().collect::<Vec<_>>().len(),
+        5
+    );
+    assert_eq!(
+        ram.pairs("".into())?.into_iter().collect::<Vec<_>>().len(),
+        5
+    );
+    assert_eq!(
+        disk.pairs("a".into())?
+            .into_iter()
+            .collect::<Vec<_>>()
+            .len(),
+        2
+    );
+    assert_eq!(
+        ram.pairs("a".into())?.into_iter().collect::<Vec<_>>().len(),
+        2
+    );
+    assert_eq!(
+        disk.pairs("b".into())?
+            .into_iter()
+            .collect::<Vec<_>>()
+            .len(),
+        2
+    );
+    assert_eq!(
+        ram.pairs("b".into())?.into_iter().collect::<Vec<_>>().len(),
+        2
+    );
+    assert_eq!(
+        disk.pairs("d".into())?
+            .into_iter()
+            .collect::<Vec<_>>()
+            .len(),
+        1
+    );
+    assert_eq!(
+        ram.pairs("d".into())?.into_iter().collect::<Vec<_>>().len(),
+        1
+    );
+    assert_eq!(
+        disk.pairs("a0".into())?
+            .into_iter()
+            .collect::<Vec<_>>()
+            .len(),
+        1
+    );
+    assert_eq!(
+        ram.pairs("a0".into())?
+            .into_iter()
+            .collect::<Vec<_>>()
+            .len(),
+        1
+    );
+    assert_eq!(
+        disk.pairs("a1".into())?
+            .into_iter()
+            .collect::<Vec<_>>()
+            .len(),
+        0
+    );
+    assert_eq!(
+        ram.pairs("a1".into())?
+            .into_iter()
+            .collect::<Vec<_>>()
+            .len(),
+        0
+    );
 
     Ok(())
 }
