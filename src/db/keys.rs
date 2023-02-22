@@ -34,12 +34,22 @@ pub fn account(address: &Address) -> StringKey {
     format!("ACC-{}", address).into()
 }
 
-pub fn staker_prefix() -> String {
-    "STK".into()
+pub fn staker(address: &Address) -> StringKey {
+    format!("STK-{}", address).into()
 }
 
-pub fn staker(address: &Address) -> StringKey {
-    format!("{}-{}", staker_prefix(), address).into()
+pub fn staker_rank_prefix() -> String {
+    "SRK".into()
+}
+
+pub fn staker_rank(amount: Amount, address: &Address) -> StringKey {
+    format!(
+        "{}-{:016x}-{}",
+        staker_rank_prefix(),
+        (u64::MAX - Into::<u64>::into(amount)),
+        address
+    )
+    .into()
 }
 
 pub fn delegate(from: &Address, to: &Address) -> StringKey {

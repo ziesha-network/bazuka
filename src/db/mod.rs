@@ -113,7 +113,8 @@ gen_try_into!(
     ZkDataPairs,
     ZkDeltaPairs,
     Token,
-    Amount
+    Amount,
+    ()
 );
 gen_from!(
     u32,
@@ -140,7 +141,8 @@ gen_from!(
     &ZkDataPairs,
     &ZkDeltaPairs,
     &Token,
-    Amount
+    Amount,
+    ()
 );
 
 impl Key for StringKey {

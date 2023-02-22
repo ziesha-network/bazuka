@@ -642,7 +642,7 @@ impl<K: KvStore> KvStoreChain<K> {
     fn get_stakers(&self) -> Result<Vec<Staker>, BlockchainError> {
         let mut stakers = self
             .database
-            .pairs(keys::staker_prefix().into())?
+            .pairs(keys::staker_rank_prefix().into())?
             .into_iter()
             .map(|(k, v)| {
                 || -> Result<(Address, Staker), BlockchainError> {
@@ -705,14 +705,17 @@ impl<K: KvStore> KvStoreChain<K> {
             match &tx.data {
                 TransactionData::RegisterStaker { vrf_pub_key } => {
                     if chain.get_staker(tx_src.clone())?.is_none() {
-                        chain.database.update(&[WriteOp::Put(
-                            keys::staker(&tx_src),
-                            Staker {
-                                stake: Amount(0),
-                                vrf_pub_key: vrf_pub_key.clone(),
-                            }
-                            .into(),
-                        )])?;
+                        chain.database.update(&[
+                            WriteOp::Put(keys::staker_rank(Amount(0), &tx_src), ().into()),
+                            WriteOp::Put(
+                                keys::staker(&tx_src),
+                                Staker {
+                                    stake: Amount(0),
+                                    vrf_pub_key: vrf_pub_key.clone(),
+                                }
+                                .into(),
+                            ),
+                        ])?;
                     } else {
                         return Err(BlockchainError::StakerAlreadyRegistered);
                     }
@@ -725,6 +728,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     if let Some(mut acc_del) = chain.get_staker(to.clone())? {
                         let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
                         let mut del = chain.get_delegate_of(tx_src.clone(), to.clone())?;
+                        let old_stake = acc_del.stake;
                         if !reverse {
                             if src_bal < *amount {
                                 return Err(BlockchainError::BalanceInsufficient);
@@ -744,12 +748,12 @@ impl<K: KvStore> KvStoreChain<K> {
                             keys::account_balance(&tx_src, TokenId::Ziesha),
                             src_bal.into(),
                         )])?;
-                        chain
-                            .database
-                            .update(&[WriteOp::Put(keys::staker(&to), acc_del.into())])?;
-                        chain
-                            .database
-                            .update(&[WriteOp::Put(keys::delegate(&tx_src, to), del.into())])?;
+                        chain.database.update(&[
+                            WriteOp::Remove(keys::staker_rank(old_stake, &to)),
+                            WriteOp::Put(keys::staker_rank(acc_del.stake, &to), ().into()),
+                            WriteOp::Put(keys::staker(&to), acc_del.into()),
+                            WriteOp::Put(keys::delegate(&tx_src, to), del.into()),
+                        ])?;
                     } else {
                         return Err(BlockchainError::StakerNotFound);
                     }
