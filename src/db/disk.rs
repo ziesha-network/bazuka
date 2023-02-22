@@ -83,15 +83,10 @@ impl KvStore for LevelDbKvStore {
             Err(_) => Err(KvStoreError::Failure),
         }
     }
-    fn pairs(&self, prefix: StringKey) -> Result<Vec<(StringKey, Blob)>, KvStoreError> {
+    fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError> {
         let it = self.0.iter(ReadOptions::new());
         it.seek(&prefix);
-        Ok(it
-            .collect::<Vec<_>>()
-            .into_iter()
-            .take_while(|(k, _)| k.0.starts_with(&prefix.0))
-            .map(|(k, v)| (k, Blob(v)))
-            .collect())
+        Ok(QueryResult::LevelDb(it))
     }
 }
 
@@ -106,17 +101,9 @@ impl<'a> KvStore for LevelDbSnapshot<'a> {
     fn update(&mut self, _: &[WriteOp]) -> Result<(), KvStoreError> {
         panic!("Cannot update!");
     }
-    fn pairs(&self, prefix: StringKey) -> Result<Vec<(StringKey, Blob)>, KvStoreError> {
+    fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError> {
         let it = self.0.iter(ReadOptions::new());
         it.seek(&prefix);
-        let mut result = Vec::new();
-        for (k, v) in it {
-            if k.0.starts_with(&prefix.0) {
-                result.push((k, Blob(v)));
-            } else {
-                break;
-            }
-        }
-        Ok(result)
+        Ok(QueryResult::LevelDb(it))
     }
 }

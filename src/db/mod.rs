@@ -172,10 +172,25 @@ pub enum WriteOp {
     Put(StringKey, Blob),
 }
 
+pub enum QueryResult<'a> {
+    Ready(Vec<(StringKey, Blob)>),
+    LevelDb(leveldb::iterator::Iterator<'a, StringKey>),
+    Ram(std::collections::btree_map::Range<'a, StringKey, Blob>),
+}
+impl<'a> QueryResult<'a> {
+    pub fn into_iter(self) -> Box<dyn Iterator<Item = (StringKey, Blob)> + 'a> {
+        match self {
+            QueryResult::Ready(v) => Box::new(v.into_iter()),
+            QueryResult::LevelDb(v) => Box::new(v.map(|(k, v)| (k, Blob(v)))),
+            QueryResult::Ram(v) => Box::new(v.map(|(k, v)| (k.clone(), v.clone()))),
+        }
+    }
+}
+
 pub trait KvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError>;
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError>;
-    fn pairs(&self, prefix: StringKey) -> Result<Vec<(StringKey, Blob)>, KvStoreError>;
+    fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError>;
     fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
         let mut kvs: Vec<_> = self.pairs("".into())?.into_iter().collect();
         kvs.sort_by_key(|(k, _)| k.clone());
@@ -239,7 +254,7 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
         }
         Ok(())
     }
-    fn pairs(&self, prefix: StringKey) -> Result<Vec<(StringKey, Blob)>, KvStoreError> {
+    fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError> {
         let mut res: BTreeMap<StringKey, Blob> =
             self.store.pairs(prefix.clone())?.into_iter().collect();
         for (k, v) in self.overwrite.iter() {
@@ -251,7 +266,7 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
                 res.remove(k);
             }
         }
-        Ok(res.into_iter().collect())
+        Ok(QueryResult::Ready(res.into_iter().collect()))
     }
 }
 

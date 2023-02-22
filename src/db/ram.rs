@@ -1,7 +1,7 @@
 use super::*;
 use std::collections::BTreeMap;
 
-pub struct RamKvStore(BTreeMap<String, Blob>);
+pub struct RamKvStore(BTreeMap<StringKey, Blob>);
 impl RamKvStore {
     pub fn new() -> RamKvStore {
         RamKvStore(BTreeMap::new())
@@ -16,29 +16,21 @@ impl Default for RamKvStore {
 
 impl KvStore for RamKvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError> {
-        Ok(self.0.get(&k.0).cloned())
+        Ok(self.0.get(&k).cloned())
     }
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError> {
         for op in ops.iter() {
             match op {
-                WriteOp::Remove(k) => self.0.remove(&k.0),
-                WriteOp::Put(k, v) => self.0.insert(k.0.clone(), v.clone()),
+                WriteOp::Remove(k) => self.0.remove(k),
+                WriteOp::Put(k, v) => self.0.insert(k.clone(), v.clone()),
             };
         }
         Ok(())
     }
-    fn pairs(&self, prefix: StringKey) -> Result<Vec<(StringKey, Blob)>, KvStoreError> {
-        Ok(self
-            .0
-            .clone()
-            .into_iter()
-            .filter_map(|(k, v)| {
-                if k.starts_with(&prefix.0) {
-                    Some((StringKey::new(&k), v))
-                } else {
-                    None
-                }
-            })
-            .collect())
+    fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError> {
+        use std::ops::Bound;
+        Ok(QueryResult::Ram(
+            self.0.range((Bound::Included(prefix), Bound::Unbounded)),
+        ))
     }
 }

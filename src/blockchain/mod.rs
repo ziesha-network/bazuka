@@ -1953,13 +1953,13 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn currency_in_circulation(&self) -> Result<Amount, BlockchainError> {
         let mut amount_sum = Amount(0);
-        for (k, v) in self.database.pairs("ACB-".into())? {
+        for (k, v) in self.database.pairs("ACB-".into())?.into_iter() {
             if k.0.ends_with("Ziesha") {
                 let bal: Amount = v.try_into().unwrap();
                 amount_sum += bal;
             }
         }
-        for (k, v) in self.database.pairs("CAB-".into())? {
+        for (k, v) in self.database.pairs("CAB-".into())?.into_iter() {
             if k.0.ends_with("Ziesha") {
                 let bal: Amount = v.try_into().unwrap();
                 amount_sum += bal;

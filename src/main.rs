@@ -465,7 +465,7 @@ async fn main() -> Result<(), NodeError> {
                 ChainCliOptions::DbQuery { prefix } => {
                     let rdb = ReadOnlyLevelDbKvStore::read_only(&conf.db, 64).unwrap();
                     let db = rdb.snapshot();
-                    for (k, v) in db.pairs(prefix.into()).unwrap() {
+                    for (k, v) in db.pairs(prefix.into()).unwrap().into_iter() {
                         println!("{} -> {}", k, v);
                     }
                 }
@@ -478,7 +478,13 @@ async fn main() -> Result<(), NodeError> {
                     while fork.get_height().unwrap() != 0 {
                         fork.rollback().unwrap();
                     }
-                    let rollback_validity_check = fork.db().pairs("".into()).unwrap().is_empty();
+                    let rollback_validity_check = fork
+                        .db()
+                        .pairs("".into())
+                        .unwrap()
+                        .into_iter()
+                        .collect::<Vec<_>>()
+                        .is_empty();
                     let mut sum_mpn: Amount = 0.into();
                     for mpn_acc in chain.get_mpn_accounts(0, 10000).unwrap() {
                         for money in mpn_acc.1.tokens.values() {

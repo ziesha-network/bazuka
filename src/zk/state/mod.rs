@@ -98,11 +98,14 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             .map(|i| Self::get_data(db, mpn_contract_id, &ZkDataLocator(vec![index, i as u64])))
             .collect::<Result<Vec<ZkScalar>, StateManagerError>>()?;
         let mut token_indices = HashSet::new();
-        for (k, _) in db.pairs(keys::local_value(
-            &mpn_contract_id,
-            &ZkDataLocator(vec![index, 3]),
-            true,
-        ))? {
+        for (k, _) in db
+            .pairs(keys::local_value(
+                &mpn_contract_id,
+                &ZkDataLocator(vec![index, 3]),
+                true,
+            ))?
+            .into_iter()
+        {
             let loc = ZkDataLocator::from_str(k.0.split('-').nth(3).unwrap())?;
             if loc.0.len() == 4 {
                 token_indices.insert(loc.0[2]);
@@ -139,7 +142,10 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         page_size: usize,
     ) -> Result<Vec<(u64, MpnAccount)>, StateManagerError> {
         let mut indices = Vec::new();
-        for (k, _) in db.pairs(keys::local_scalar_value_prefix(&mpn_contract_id).into())? {
+        for (k, _) in db
+            .pairs(keys::local_scalar_value_prefix(&mpn_contract_id).into())?
+            .into_iter()
+        {
             let loc = ZkDataLocator::from_str(k.0.split('-').nth(3).unwrap())?;
             indices.push(loc.0[0]);
         }
@@ -199,7 +205,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         id: ContractId,
     ) -> Result<(), StateManagerError> {
         let mut rems = Vec::new();
-        for (k, _) in db.pairs(keys::local_prefix(&id).into())? {
+        for (k, _) in db.pairs(keys::local_prefix(&id).into())?.into_iter() {
             rems.push(WriteOp::Remove(k));
         }
         db.update(&rems)?;
@@ -352,7 +358,10 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     ) -> Result<ZkState, StateManagerError> {
         const MAX_ROLLBACKS: u64 = 5;
         let mut data = ZkDataPairs(Default::default());
-        for (k, v) in db.pairs(keys::local_scalar_value_prefix(&id).into())? {
+        for (k, v) in db
+            .pairs(keys::local_scalar_value_prefix(&id).into())?
+            .into_iter()
+        {
             let loc = ZkDataLocator::from_str(k.0.split('-').nth(3).unwrap())?;
             data.0.insert(loc, v.try_into()?);
         }
@@ -384,9 +393,12 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
     ) -> Result<(ZkCompressedState, Vec<ZkCompressedState>), StateManagerError> {
         let mut fork = db.mirror();
         let contract_type = Self::type_of(&fork, id)?;
-        for (k, _) in fork.pairs(keys::local_prefix(&id).into())? {
-            fork.update(&[WriteOp::Remove(k)])?;
-        }
+        let removals = fork
+            .pairs(keys::local_prefix(&id).into())?
+            .into_iter()
+            .map(|(k, _)| WriteOp::Remove(k))
+            .collect::<Vec<_>>();
+        fork.update(&removals)?;
 
         let mut state_hash = contract_type.compress_default::<H>();
         let mut state_size = 0;
