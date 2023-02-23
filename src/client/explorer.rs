@@ -1,6 +1,6 @@
 use crate::core::{
-    Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, Money, ProofOfStake, Token,
-    TokenUpdate, Transaction, TransactionData,
+    Address, Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, Money, ProofOfStake,
+    Staker, Token, TokenUpdate, Transaction, TransactionData,
 };
 use crate::crypto::jubjub::*;
 use crate::zk::{
@@ -434,6 +434,21 @@ impl From<&Block> for ExplorerBlock {
         Self {
             header: (&obj.header).into(),
             body: obj.body.iter().map(|tx| tx.into()).collect(),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerStaker {
+    pub_key: String,
+    stake: u64,
+}
+
+impl From<&(Address, Staker)> for ExplorerStaker {
+    fn from(obj: &(Address, Staker)) -> Self {
+        Self {
+            pub_key: obj.0.to_string(),
+            stake: obj.1.stake.into(),
         }
     }
 }

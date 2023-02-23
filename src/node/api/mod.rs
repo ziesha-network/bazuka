@@ -50,3 +50,5 @@ mod post_validator_claim;
 pub use post_validator_claim::*;
 mod generate_block;
 pub use generate_block::*;
+mod get_explorer_stakers;
+pub use get_explorer_stakers::*;

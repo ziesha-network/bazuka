@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 use super::{
-    explorer::{ExplorerBlock, ExplorerMpnAccount},
+    explorer::{ExplorerBlock, ExplorerMpnAccount, ExplorerStaker},
     Peer, PeerAddress,
 };
 use serde::{Deserialize, Serialize};
@@ -117,6 +117,14 @@ pub struct GetExplorerBlocksRequest {
 pub struct GetExplorerBlocksResponse {
     pub pow_hashes: Vec<String>,
     pub blocks: Vec<ExplorerBlock>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetExplorerStakersRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetExplorerStakersResponse {
+    pub stakers: Vec<ExplorerStaker>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
