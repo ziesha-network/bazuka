@@ -68,12 +68,14 @@ impl From<&Token> for ExplorerToken {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerProofOfStake {
     pub timestamp: u32,
+    pub validator: String,
 }
 
 impl From<&ProofOfStake> for ExplorerProofOfStake {
     fn from(obj: &ProofOfStake) -> Self {
         Self {
             timestamp: obj.timestamp,
+            validator: obj.validator.to_string(),
         }
     }
 }
