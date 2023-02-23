@@ -2010,21 +2010,23 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     fn get_stakers(&self) -> Result<Vec<(Address, Staker)>, BlockchainError> {
-        let mut stakers = self
+        let staker_addrs = self
             .database
             .pairs(keys::staker_rank_prefix().into())?
             .into_iter()
             .map(|(k, v)| {
-                || -> Result<(Address, Staker), BlockchainError> {
+                || -> Result<Address, BlockchainError> {
                     let pk: Address = k.0[21..]
                         .parse()
                         .map_err(|_| BlockchainError::Inconsistency)?;
-                    let v: Staker = v.try_into()?;
-                    Ok((pk, v))
+                    Ok(pk)
                 }()
             })
             .collect::<Result<Vec<_>, _>>()?;
-        stakers.sort_unstable_by_key(|(_, v)| v.stake);
+        let stakers = staker_addrs
+            .into_iter()
+            .map(|a| self.get_staker(a.clone()).map(move |s| (a, s.unwrap())))
+            .collect::<Result<Vec<_>, BlockchainError>>()?;
         Ok(stakers)
     }
 }
