@@ -4,9 +4,10 @@ use crate::client::PeerAddress;
 use crate::core::{
     Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Money,
     MpnAddress, MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token, TokenId,
-    Transaction, TransactionAndDelta, TransactionData, ZkSigner,
+    Transaction, TransactionAndDelta, TransactionData, Vrf, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
+use crate::crypto::VerifiableRandomFunction;
 use crate::crypto::ZkSignatureScheme;
 use crate::zk;
 use crate::zk::ZkHasher;
@@ -47,6 +48,25 @@ impl TxBuilder {
     pub fn sign_tx(&self, tx: &mut Transaction) {
         let bytes = bincode::serialize(&tx).unwrap();
         tx.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
+    }
+    pub fn register_validator(&self, memo: String, fee: Money, nonce: u32) -> TransactionAndDelta {
+        let (vrf_pub, vrf_priv) = Vrf::generate_keys(&mut rand::thread_rng());
+        let mut tx = Transaction {
+            memo,
+            src: Some(self.get_address()),
+            data: TransactionData::RegisterStaker {
+                vrf_pub_key: vrf_pub,
+            },
+            nonce,
+            fee,
+            sig: Signature::Unsigned,
+        };
+        self.sign_tx(&mut tx);
+
+        TransactionAndDelta {
+            tx,
+            state_delta: None,
+        }
     }
     pub fn claim_validator(
         &self,
