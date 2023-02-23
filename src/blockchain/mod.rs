@@ -1974,17 +1974,28 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn is_validator(
         &self,
         _timestamp: u32,
-        _addr: Address,
+        addr: Address,
         _proof: ValidatorProof,
     ) -> Result<bool, BlockchainError> {
-        Ok(true)
+        Ok(addr
+            == "edba6586f1eee16b4832212be6d2679c4e680d1200632c56271f2063d9cd5ffe63"
+                .parse()
+                .unwrap())
     }
     fn validator_status(
         &self,
         _timestamp: u32,
-        _wallet: &TxBuilder,
+        wallet: &TxBuilder,
     ) -> Result<Option<ValidatorProof>, BlockchainError> {
-        Ok(Some(ValidatorProof {}))
+        if wallet.get_address()
+            == "edba6586f1eee16b4832212be6d2679c4e680d1200632c56271f2063d9cd5ffe63"
+                .parse()
+                .unwrap()
+        {
+            Ok(Some(ValidatorProof {}))
+        } else {
+            Ok(None)
+        }
     }
 
     fn cleanup_chain_mempool(
