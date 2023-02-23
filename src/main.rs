@@ -17,7 +17,7 @@ use {
     bazuka::client::{BazukaClient, NodeError, PeerAddress},
     bazuka::config,
     bazuka::core::{
-        Amount, ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId, ZieshaAddress,
+        Address, Amount, ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId, ZieshaAddress,
     },
     bazuka::wallet::{TxBuilder, Wallet},
     colored::Colorize,
@@ -91,6 +91,24 @@ enum WalletOptions {
         to: ZieshaAddress,
         #[structopt(long)]
         token: Option<usize>,
+        #[structopt(long)]
+        amount: Amount,
+        #[structopt(long, default_value = "0")]
+        fee: Amount,
+    },
+    /// Register your validator
+    RegisterValidator {
+        #[structopt(long)]
+        memo: Option<String>,
+        #[structopt(long, default_value = "0")]
+        fee: Amount,
+    },
+    /// Delegate to a validator
+    Delegate {
+        #[structopt(long)]
+        memo: Option<String>,
+        #[structopt(long)]
+        to: Address,
         #[structopt(long)]
         amount: Amount,
         #[structopt(long, default_value = "0")]
@@ -940,6 +958,83 @@ async fn main() -> Result<(), NodeError> {
                 let mut wallet = wallet.expect("Bazuka is not initialized!");
                 wallet.reset();
                 wallet.save(wallet_path).unwrap();
+            }
+            WalletOptions::RegisterValidator { memo, fee } => {
+                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tx_builder = TxBuilder::new(&wallet.seed());
+                let (req_loop, client) = BazukaClient::connect(
+                    tx_builder.get_priv_key(),
+                    conf.random_node(),
+                    conf.network,
+                    None,
+                );
+                try_join!(
+                    async move {
+                        let curr_nonce = client
+                            .get_account(tx_builder.get_address())
+                            .await?
+                            .account
+                            .nonce;
+
+                        let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
+                        let tx = tx_builder.register_validator(
+                            memo.unwrap_or_default(),
+                            Money {
+                                amount: fee,
+                                token_id: TokenId::Ziesha,
+                            },
+                            new_nonce,
+                        );
+                        wallet.add_rsend(tx.clone());
+                        wallet.save(wallet_path).unwrap();
+                        println!("{:#?}", client.transact(tx).await?);
+                        Ok::<(), NodeError>(())
+                    },
+                    req_loop
+                )
+                .unwrap();
+            }
+            WalletOptions::Delegate {
+                memo,
+                amount,
+                to,
+                fee,
+            } => {
+                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                let tx_builder = TxBuilder::new(&wallet.seed());
+                let (req_loop, client) = BazukaClient::connect(
+                    tx_builder.get_priv_key(),
+                    conf.random_node(),
+                    conf.network,
+                    None,
+                );
+                try_join!(
+                    async move {
+                        let curr_nonce = client
+                            .get_account(tx_builder.get_address())
+                            .await?
+                            .account
+                            .nonce;
+
+                        let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
+                        let tx = tx_builder.delegate(
+                            memo.unwrap_or_default(),
+                            to,
+                            amount,
+                            Money {
+                                amount: fee,
+                                token_id: TokenId::Ziesha,
+                            },
+                            new_nonce,
+                        );
+                        wallet.add_rsend(tx.clone());
+                        wallet.save(wallet_path).unwrap();
+                        println!("{:#?}", client.transact(tx).await?);
+                        Ok::<(), NodeError>(())
+                    },
+                    req_loop
+                )
+                .unwrap();
             }
             WalletOptions::ResendPending { fill_gaps } => {
                 let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");

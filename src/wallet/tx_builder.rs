@@ -49,6 +49,33 @@ impl TxBuilder {
         let bytes = bincode::serialize(&tx).unwrap();
         tx.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
     }
+    pub fn delegate(
+        &self,
+        memo: String,
+        address: Address,
+        amount: Amount,
+        fee: Money,
+        nonce: u32,
+    ) -> TransactionAndDelta {
+        let mut tx = Transaction {
+            memo,
+            src: Some(self.get_address()),
+            data: TransactionData::Delegate {
+                to: address,
+                amount,
+                reverse: false,
+            },
+            nonce,
+            fee,
+            sig: Signature::Unsigned,
+        };
+        self.sign_tx(&mut tx);
+
+        TransactionAndDelta {
+            tx,
+            state_delta: None,
+        }
+    }
     pub fn register_validator(&self, memo: String, fee: Money, nonce: u32) -> TransactionAndDelta {
         let (vrf_pub, vrf_priv) = Vrf::generate_keys(&mut rand::thread_rng());
         let mut tx = Transaction {
