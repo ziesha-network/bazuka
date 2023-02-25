@@ -372,7 +372,7 @@ pub struct ValidatorProof {}
 pub trait Blockchain {
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn get_stake(&self, addr: Address, epoch: u32) -> Result<Amount, BlockchainError>;
-    fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, Amount)>, BlockchainError>;
+    fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, f32)>, BlockchainError>;
     fn cleanup_chain_mempool(
         &self,
         timestamp: u32,
@@ -2042,18 +2042,16 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
 
-    fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, Amount)>, BlockchainError> {
+    fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, f32)>, BlockchainError> {
         let stakers = self
             .database
             .pairs(keys::staker_rank_prefix(epoch).into())?
             .into_iter()
             .map(|(k, v)| {
-                || -> Result<(Address, Amount), BlockchainError> {
-                    let stake = Amount(
-                        u64::MAX
-                            - u64::from_str_radix(&k.0[13..29], 16)
-                                .map_err(|_| BlockchainError::Inconsistency)?,
-                    );
+                || -> Result<(Address, u64), BlockchainError> {
+                    let stake = u64::MAX
+                        - u64::from_str_radix(&k.0[13..29], 16)
+                            .map_err(|_| BlockchainError::Inconsistency)?;
                     let pk: Address = k.0[30..]
                         .parse()
                         .map_err(|_| BlockchainError::Inconsistency)?;
@@ -2061,7 +2059,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 }()
             })
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(stakers)
+        let sum_stakes = stakers.iter().map(|(_, a)| *a).sum::<u64>();
+        Ok(stakers
+            .into_iter()
+            .map(|(addr, amt)| (addr, (amt as f64 / sum_stakes as f64) as f32))
+            .collect())
     }
 
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32) {

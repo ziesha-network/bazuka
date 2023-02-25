@@ -450,14 +450,14 @@ impl From<&Block> for ExplorerBlock {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerStaker {
     pub_key: String,
-    stake: u64,
+    chance: f32,
 }
 
-impl From<&(Address, Amount)> for ExplorerStaker {
-    fn from(obj: &(Address, Amount)) -> Self {
+impl From<&(Address, f32)> for ExplorerStaker {
+    fn from(obj: &(Address, f32)) -> Self {
         Self {
             pub_key: obj.0.to_string(),
-            stake: obj.1.into(),
+            chance: obj.1,
         }
     }
 }
