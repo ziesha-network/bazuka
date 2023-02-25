@@ -30,6 +30,8 @@ pub struct GetStatsResponse {
     pub nodes: usize,
     pub next_reward: Amount,
     pub timestamp: u32,
+    pub epoch: u32,
+    pub slot: u32,
     pub version: String,
     pub network: String,
     pub validator_proof: Option<ValidatorProof>,
