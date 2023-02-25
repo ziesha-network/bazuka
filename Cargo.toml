@@ -45,6 +45,7 @@ async-trait = { version = "0.1.53", optional = true }
 serde_yaml = { version = "0.8", optional = true }
 tempdir = { version = "0.3.7", optional = true }
 schnorrkel = { version = "0.10.2", features = ["serde"] }
+rand_chacha = "0.3.1"
 
 [features]
 default = ["node"]

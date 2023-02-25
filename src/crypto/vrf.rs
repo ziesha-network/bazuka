@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash)]
 pub struct VRF;
 
+#[derive(Clone)]
 pub struct PrivateKey(pub schnorrkel::keys::SecretKey);
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]

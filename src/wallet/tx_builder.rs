@@ -2,7 +2,7 @@ use crate::blockchain::ValidatorProof;
 use crate::client::messages::ValidatorClaim;
 use crate::client::PeerAddress;
 use crate::core::{
-    Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Money,
+    Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Hasher, Money,
     MpnAddress, MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token, TokenId,
     Transaction, TransactionAndDelta, TransactionData, Vrf, ZkSigner,
 };
@@ -11,10 +11,14 @@ use crate::crypto::VerifiableRandomFunction;
 use crate::crypto::ZkSignatureScheme;
 use crate::zk;
 use crate::zk::ZkHasher;
+use rand::SeedableRng;
+use rand_chacha::ChaChaRng;
 
 #[derive(Clone)]
 pub struct TxBuilder {
     seed: Vec<u8>,
+    vrf_private_key: <Vrf as VerifiableRandomFunction>::Priv,
+    vrf_public_key: <Vrf as VerifiableRandomFunction>::Pub,
     private_key: <Signer as SignatureScheme>::Priv,
     zk_private_key: <ZkSigner as ZkSignatureScheme>::Priv,
     address: Address,
@@ -25,12 +29,17 @@ impl TxBuilder {
     pub fn new(seed: &[u8]) -> Self {
         let (pk, sk) = Signer::generate_keys(seed);
         let (zk_pk, zk_sk) = ZkSigner::generate_keys(seed);
+        let chacha_seed: [u8; 32] = <Hasher as crate::core::hash::Hash>::hash(seed);
+        let mut chacha_rng = ChaChaRng::from_seed(chacha_seed);
+        let (vrf_public_key, vrf_private_key) = Vrf::generate_keys(&mut chacha_rng);
         Self {
             seed: seed.to_vec(),
             address: pk,
             zk_address: zk_pk,
             private_key: sk,
             zk_private_key: zk_sk,
+            vrf_public_key,
+            vrf_private_key,
         }
     }
     pub fn get_priv_key(&self) -> <Signer as SignatureScheme>::Priv {
@@ -80,12 +89,11 @@ impl TxBuilder {
         }
     }
     pub fn register_validator(&self, memo: String, fee: Money, nonce: u32) -> TransactionAndDelta {
-        let (vrf_pub, vrf_priv) = Vrf::generate_keys(&mut rand::thread_rng());
         let mut tx = Transaction {
             memo,
             src: Some(self.get_address()),
             data: TransactionData::RegisterStaker {
-                vrf_pub_key: vrf_pub,
+                vrf_pub_key: self.vrf_public_key.clone(),
             },
             nonce,
             fee,
