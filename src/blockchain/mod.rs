@@ -3,9 +3,9 @@ pub use error::*;
 
 use crate::core::{
     hash::Hash, Account, Address, Amount, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
-    ContractId, ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, MpnAddress,
-    MpnSourcedTx, ProofOfStake, RegularSendEntry, Signature, Staker, Token, TokenId, TokenUpdate,
-    Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
+    ContractId, ContractUpdate, ContractWithdraw, Delegate, DelegateId, Hasher, Header, Money,
+    MpnAddress, MpnSourcedTx, ProofOfStake, RegularSendEntry, Signature, Staker, Token, TokenId,
+    TokenUpdate, Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
 };
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
 use crate::wallet::TxBuilder;
@@ -303,17 +303,16 @@ pub struct BlockchainConfig {
     pub reward_ratio: u64,
     pub max_block_size: usize,
     pub max_delta_count: usize,
-    pub block_time: u32,
-    pub median_timestamp_count: u64,
     pub ziesha_token_id: TokenId,
     pub mpn_contract_id: ContractId,
     pub mpn_num_function_calls: usize,
     pub mpn_num_contract_deposits: usize,
     pub mpn_num_contract_withdraws: usize,
     pub mpn_log4_account_capacity: u8,
-    pub mpn_proving_time: u32,
     pub testnet_height_limit: Option<u64>,
     pub max_memo_length: usize,
+    pub slot_duration: u32,
+    pub slot_per_epoch: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -371,9 +370,12 @@ pub enum TxSideEffect {
 pub struct ValidatorProof {}
 
 pub trait Blockchain {
-    fn get_stakers(&self) -> Result<Vec<(Address, Staker)>, BlockchainError>;
+    fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
+    fn get_stake(&self, addr: Address, epoch: u32) -> Result<Amount, BlockchainError>;
+    fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, Amount)>, BlockchainError>;
     fn cleanup_chain_mempool(
         &self,
+        timestamp: u32,
         txs: &[ChainSourcedTx],
     ) -> Result<Vec<ChainSourcedTx>, BlockchainError>;
     fn validator_set(&self) -> Result<Vec<Address>, BlockchainError>;
@@ -403,7 +405,11 @@ pub trait Blockchain {
         contract_id: ContractId,
         token_id: TokenId,
     ) -> Result<Amount, BlockchainError>;
-    fn get_delegate_of(&self, from: Address, to: Address) -> Result<Delegate, BlockchainError>;
+    fn get_delegate(
+        &self,
+        delegator: Address,
+        delegate_id: DelegateId,
+    ) -> Result<Delegate, BlockchainError>;
     fn get_staker(&self, addr: Address) -> Result<Option<Staker>, BlockchainError>;
     fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
     fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError>;
@@ -642,10 +648,12 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn apply_tx(
         &mut self,
+        timestamp: u32,
         tx: &Transaction,
         allow_treasury: bool,
     ) -> Result<TxSideEffect, BlockchainError> {
         let (ops, side_effect) = self.isolated(|chain| {
+            let (epoch, _slot) = self.epoch_slot(timestamp);
             let mut side_effect = TxSideEffect::Nothing;
 
             if tx.src == None && !allow_treasury {
@@ -687,55 +695,63 @@ impl<K: KvStore> KvStoreChain<K> {
             match &tx.data {
                 TransactionData::RegisterStaker { vrf_pub_key } => {
                     if chain.get_staker(tx_src.clone())?.is_none() {
-                        chain.database.update(&[
-                            WriteOp::Put(keys::staker_rank(Amount(0), &tx_src), ().into()),
-                            WriteOp::Put(
-                                keys::staker(&tx_src),
-                                Staker {
-                                    stake: Amount(0),
-                                    vrf_pub_key: vrf_pub_key.clone(),
-                                }
-                                .into(),
-                            ),
-                        ])?;
+                        chain.database.update(&[WriteOp::Put(
+                            keys::staker(&tx_src),
+                            Staker {
+                                vrf_pub_key: vrf_pub_key.clone(),
+                            }
+                            .into(),
+                        )])?;
                     } else {
                         return Err(BlockchainError::StakerAlreadyRegistered);
                     }
                 }
+                TransactionData::DestroyDelegate { delegate_id } => {
+                    let delegate = chain.get_delegate(tx_src.clone(), delegate_id.clone())?;
+                    if epoch < delegate.end {
+                        return Err(BlockchainError::DelegateStillActive);
+                    }
+                    chain
+                        .database
+                        .update(&[WriteOp::Remove(keys::delegate(&tx_src, delegate_id))])?;
+                }
                 TransactionData::Delegate {
                     amount,
                     to,
-                    reverse,
+                    since,
+                    count,
                 } => {
-                    if let Some(mut acc_del) = chain.get_staker(to.clone())? {
+                    if let Some(_) = chain.get_staker(to.clone())? {
                         let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
-                        let mut del = chain.get_delegate_of(tx_src.clone(), to.clone())?;
-                        let old_stake = acc_del.stake;
-                        if !reverse {
-                            if src_bal < *amount {
-                                return Err(BlockchainError::BalanceInsufficient);
-                            }
-                            src_bal -= *amount;
-                            del.amount += *amount;
-                            acc_del.stake += *amount;
-                        } else {
-                            if del.amount < *amount {
-                                return Err(BlockchainError::BalanceInsufficient);
-                            }
-                            del.amount -= *amount;
-                            acc_del.stake -= *amount;
-                            src_bal += *amount;
+                        if src_bal < *amount {
+                            return Err(BlockchainError::BalanceInsufficient);
                         }
+                        src_bal -= *amount;
                         chain.database.update(&[WriteOp::Put(
                             keys::account_balance(&tx_src, TokenId::Ziesha),
                             src_bal.into(),
                         )])?;
-                        chain.database.update(&[
-                            WriteOp::Remove(keys::staker_rank(old_stake, &to)),
-                            WriteOp::Put(keys::staker_rank(acc_del.stake, &to), ().into()),
-                            WriteOp::Put(keys::staker(&to), acc_del.into()),
-                            WriteOp::Put(keys::delegate(&tx_src, to), del.into()),
-                        ])?;
+
+                        let delegate_id = DelegateId::new(tx);
+                        chain.database.update(&[WriteOp::Put(
+                            keys::delegate(&tx_src, &delegate_id),
+                            Delegate {
+                                delegator: tx_src.clone(),
+                                amount: *amount,
+                                end: since + count,
+                            }
+                            .into(),
+                        )])?;
+
+                        for epoch in *since..(*since + *count) {
+                            let old_stake = chain.get_stake(to.clone(), epoch)?;
+                            let new_stake = old_stake + *amount;
+                            chain.database.update(&[
+                                WriteOp::Remove(keys::staker_rank(epoch, old_stake, &to)),
+                                WriteOp::Put(keys::staker_rank(epoch, new_stake, &to), ().into()),
+                                WriteOp::Put(keys::stake(&to, epoch), new_stake.into()),
+                            ])?;
+                        }
                     } else {
                         return Err(BlockchainError::StakerNotFound);
                     }
@@ -1146,6 +1162,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn select_transactions(
         &self,
+        timestamp: u32,
         txs: &[TransactionAndDelta],
         check: bool,
     ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
@@ -1176,7 +1193,7 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut block_sz = 0usize;
             let mut delta_cnt = 0isize;
             for tx in sorted.into_iter().rev() {
-                match chain.isolated(|chain| chain.apply_tx(&tx.tx, false)) {
+                match chain.isolated(|chain| chain.apply_tx(timestamp, &tx.tx, false)) {
                     Ok((ops, eff)) => {
                         let delta_diff = if let TxSideEffect::StateChange { state_change, .. } = eff
                         {
@@ -1294,7 +1311,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 }
 
                 // Reward tx allowed to get money from Treasury
-                chain.apply_tx(reward_tx, true)?;
+                chain.apply_tx(block.header.proof_of_stake.timestamp, reward_tx, true)?;
                 &block.body[1..]
             } else {
                 &block.body[..]
@@ -1342,7 +1359,7 @@ impl<K: KvStore> KvStoreChain<K> {
                 if let TxSideEffect::StateChange {
                     contract_id,
                     state_change,
-                } = chain.apply_tx(tx, is_genesis)?
+                } = chain.apply_tx(block.header.proof_of_stake.timestamp, tx, is_genesis)?
                 {
                     state_size_delta += state_change.state.size() as isize
                         - state_change.prev_state.size() as isize;
@@ -1597,11 +1614,16 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
 
-    fn get_delegate_of(&self, from: Address, to: Address) -> Result<Delegate, BlockchainError> {
-        Ok(match self.database.get(keys::delegate(&from, &to))? {
-            Some(b) => b.try_into()?,
-            None => Delegate { amount: Amount(0) },
-        })
+    fn get_delegate(
+        &self,
+        delegator: Address,
+        delegate_id: DelegateId,
+    ) -> Result<Delegate, BlockchainError> {
+        Ok(self
+            .database
+            .get(keys::delegate(&delegator, &delegate_id))?
+            .map(|b| b.try_into())
+            .ok_or(BlockchainError::DelegateNotFound)??)
     }
 
     fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError> {
@@ -1733,7 +1755,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let last_header = self.get_header(height - 1)?;
         let treasury_nonce = self.get_account(Default::default())?.nonce;
 
-        let tx_and_deltas = self.select_transactions(mempool, check)?;
+        let tx_and_deltas = self.select_transactions(timestamp, mempool, check)?;
         // WARN: Sum will be invalid if tx fees are not in Ziesha!
         let fee_sum = Amount(
             tx_and_deltas
@@ -1982,6 +2004,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
 
     fn cleanup_chain_mempool(
         &self,
+        timestamp: u32,
         txs: &[ChainSourcedTx],
     ) -> Result<Vec<ChainSourcedTx>, BlockchainError> {
         let (_, result) = self.isolated(|chain| {
@@ -1989,7 +2012,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             for tx in txs.iter() {
                 match &tx {
                     ChainSourcedTx::TransactionAndDelta(tx_delta) => {
-                        if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
+                        if let Err(e) = chain.apply_tx(timestamp, &tx_delta.tx, false) {
                             log::info!("Rejecting transaction: {}", e);
                         } else {
                             result.push(tx.clone());
@@ -2009,25 +2032,39 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(result)
     }
 
-    fn get_stakers(&self) -> Result<Vec<(Address, Staker)>, BlockchainError> {
-        let staker_addrs = self
+    fn get_stake(&self, addr: Address, epoch: u32) -> Result<Amount, BlockchainError> {
+        Ok(match self.database.get(keys::stake(&addr, epoch))? {
+            Some(b) => b.try_into()?,
+            None => 0.into(),
+        })
+    }
+
+    fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, Amount)>, BlockchainError> {
+        let stakers = self
             .database
-            .pairs(keys::staker_rank_prefix().into())?
+            .pairs(keys::staker_rank_prefix(epoch).into())?
             .into_iter()
             .map(|(k, v)| {
-                || -> Result<Address, BlockchainError> {
-                    let pk: Address = k.0[21..]
+                || -> Result<(Address, Amount), BlockchainError> {
+                    let stake = Amount(
+                        u64::MAX
+                            - u64::from_str_radix(&k.0[13..29], 16)
+                                .map_err(|_| BlockchainError::Inconsistency)?,
+                    );
+                    let pk: Address = k.0[30..]
                         .parse()
                         .map_err(|_| BlockchainError::Inconsistency)?;
-                    Ok(pk)
+                    Ok((pk, stake))
                 }()
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let stakers = staker_addrs
-            .into_iter()
-            .map(|a| self.get_staker(a.clone()).map(move |s| (a, s.unwrap())))
-            .collect::<Result<Vec<_>, BlockchainError>>()?;
         Ok(stakers)
+    }
+
+    fn epoch_slot(&self, timestamp: u32) -> (u32, u32) {
+        let slot_number = timestamp / self.config.slot_duration;
+        let epoch_number = slot_number / self.config.slot_per_epoch;
+        (epoch_number, slot_number % self.config.slot_per_epoch)
     }
 }
 

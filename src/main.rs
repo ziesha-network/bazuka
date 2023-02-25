@@ -111,6 +111,10 @@ enum WalletOptions {
         to: Address,
         #[structopt(long)]
         amount: Amount,
+        #[structopt(long)]
+        since: u32,
+        #[structopt(long)]
+        count: u32,
         #[structopt(long, default_value = "0")]
         fee: Amount,
     },
@@ -997,6 +1001,8 @@ async fn main() -> Result<(), NodeError> {
             WalletOptions::Delegate {
                 memo,
                 amount,
+                since,
+                count,
                 to,
                 fee,
             } => {
@@ -1021,6 +1027,8 @@ async fn main() -> Result<(), NodeError> {
                             memo.unwrap_or_default(),
                             to,
                             amount,
+                            since,
+                            count,
                             Money {
                                 amount: fee,
                                 token_id: TokenId::Ziesha,

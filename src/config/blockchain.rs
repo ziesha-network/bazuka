@@ -170,11 +170,6 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         reward_ratio: 100_000, // 1/100_000 -> 0.01% of Treasury Supply per block
         max_block_size: MB as usize,
         max_delta_count: 1024, // Only allow max of 1024 ZkScalar cells to be added per block
-        block_time: 120,       // Seconds
-
-        // New block's timestamp should be higher than median
-        // timestamp of 10 previous blocks
-        median_timestamp_count: 10,
 
         // We expect a minimum number of MPN contract updates
         // in a block to consider it valid
@@ -182,10 +177,11 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         mpn_num_contract_deposits: 1,
         mpn_num_contract_withdraws: 1,
         mpn_log4_account_capacity: MPN_LOG4_ACCOUNT_CAPACITY,
-        mpn_proving_time: 30, // Seconds
 
         testnet_height_limit: Some(TESTNET_HEIGHT_LIMIT),
         max_memo_length: 64,
+        slot_duration: 180,
+        slot_per_epoch: 20,
     }
 }
 
@@ -200,7 +196,6 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.mpn_num_contract_deposits = 0;
     conf.mpn_num_contract_withdraws = 0;
     conf.mpn_num_function_calls = 0;
-    conf.mpn_proving_time = 0;
     conf.mpn_contract_id = mpn_contract_id;
     conf.testnet_height_limit = None;
 

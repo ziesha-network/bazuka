@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::{Address, ContractId, TokenId};
+use crate::core::{Address, ContractId, DelegateId, TokenId};
 use crate::zk::ZkDataLocator;
 
 pub fn height() -> StringKey {
@@ -35,25 +35,29 @@ pub fn account(address: &Address) -> StringKey {
 }
 
 pub fn staker(address: &Address) -> StringKey {
-    format!("STK-{}", address).into()
+    format!("SKR-{}", address).into()
 }
 
-pub fn staker_rank_prefix() -> String {
-    "SRK".into()
+pub fn stake(address: &Address, epoch: u32) -> StringKey {
+    format!("STK-{}-{}", address, epoch).into()
 }
 
-pub fn staker_rank(amount: Amount, address: &Address) -> StringKey {
+pub fn staker_rank_prefix(epoch: u32) -> String {
+    format!("SRK-{:08x}", epoch).into()
+}
+
+pub fn staker_rank(epoch: u32, amount: Amount, address: &Address) -> StringKey {
     format!(
         "{}-{:016x}-{}",
-        staker_rank_prefix(),
+        staker_rank_prefix(epoch),
         (u64::MAX - Into::<u64>::into(amount)),
         address
     )
     .into()
 }
 
-pub fn delegate(from: &Address, to: &Address) -> StringKey {
-    format!("DEL-{}-{}", from, to).into()
+pub fn delegate(delegator: &Address, delegate_id: &DelegateId) -> StringKey {
+    format!("DEL-{}-{}", delegator, delegate_id).into()
 }
 
 pub fn account_balance(address: &Address, token_id: TokenId) -> StringKey {

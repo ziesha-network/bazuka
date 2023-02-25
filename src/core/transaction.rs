@@ -20,12 +20,6 @@ pub enum ParseContractIdError {
     Invalid,
 }
 
-#[derive(Error, Debug)]
-pub enum ParseTokenIdError {
-    #[error("token-id invalid")]
-    Invalid,
-}
-
 impl<H: Hash> ContractId<H> {
     pub fn new<S: SignatureScheme, V: VerifiableRandomFunction>(tx: &Transaction<H, S, V>) -> Self {
         Self(tx.hash())
@@ -36,6 +30,35 @@ impl<H: Hash> std::fmt::Display for ContractId<H> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", hex::encode(self.0))
     }
+}
+
+#[derive(
+    serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy, Eq, std::hash::Hash,
+)]
+pub struct DelegateId<H: Hash>(H::Output);
+
+#[derive(Error, Debug)]
+pub enum ParseDelegateIdError {
+    #[error("delegate-id invalid")]
+    Invalid,
+}
+
+impl<H: Hash> DelegateId<H> {
+    pub fn new<S: SignatureScheme, V: VerifiableRandomFunction>(tx: &Transaction<H, S, V>) -> Self {
+        Self(tx.hash())
+    }
+}
+
+impl<H: Hash> std::fmt::Display for DelegateId<H> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum ParseTokenIdError {
+    #[error("token-id invalid")]
+    Invalid,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy, Hash, Eq)]
@@ -296,7 +319,11 @@ pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunctio
     Delegate {
         amount: Amount,
         to: S::Pub,
-        reverse: bool,
+        since: u32,
+        count: u32,
+    },
+    DestroyDelegate {
+        delegate_id: DelegateId<H>,
     },
     RegularSend {
         entries: Vec<RegularSendEntry<S>>,

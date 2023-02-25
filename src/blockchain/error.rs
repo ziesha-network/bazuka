@@ -108,4 +108,8 @@ pub enum BlockchainError {
     MemoTooLong,
     #[error("Wrong validator has built the block!")]
     UnelectedValidator,
+    #[error("delegate not found")]
+    DelegateNotFound,
+    #[error("cannot destroy a delegate that is still active")]
+    DelegateStillActive,
 }

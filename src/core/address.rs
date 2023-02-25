@@ -64,10 +64,11 @@ pub struct Account {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Staker<V: VerifiableRandomFunction> {
     pub vrf_pub_key: V::Pub,
-    pub stake: Amount,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
-pub struct Delegate {
+pub struct Delegate<S: SignatureScheme> {
+    pub delegator: S::Pub,
     pub amount: Amount,
+    pub end: u32, // Epoch
 }

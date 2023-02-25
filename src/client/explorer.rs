@@ -1,6 +1,6 @@
 use crate::core::{
-    Address, Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, Money, ProofOfStake,
-    Staker, Token, TokenUpdate, Transaction, TransactionData,
+    Address, Amount, Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, Money,
+    ProofOfStake, Token, TokenUpdate, Transaction, TransactionData,
 };
 use crate::crypto::jubjub::*;
 use crate::zk::{
@@ -334,10 +334,14 @@ pub enum ExplorerTransactionData {
     RegisterStaker {
         vrf_pub_key: String,
     },
+    DestroyDelegate {
+        delegate_id: String,
+    },
     Delegate {
         to: String,
         amount: u64,
-        reverse: bool,
+        since: u32,
+        count: u32,
     },
     RegularSend {
         entries: Vec<(String, ExplorerMoney)>,
@@ -364,14 +368,19 @@ impl From<&TransactionData> for ExplorerTransactionData {
             TransactionData::RegisterStaker { vrf_pub_key } => Self::RegisterStaker {
                 vrf_pub_key: hex::encode(vrf_pub_key.as_ref()),
             },
+            TransactionData::DestroyDelegate { delegate_id } => Self::DestroyDelegate {
+                delegate_id: delegate_id.to_string(),
+            },
             TransactionData::Delegate {
                 to,
                 amount,
-                reverse,
+                since,
+                count,
             } => Self::Delegate {
                 to: to.to_string(),
                 amount: (*amount).into(),
-                reverse: *reverse,
+                since: *since,
+                count: *count,
             },
             TransactionData::RegularSend { entries } => Self::RegularSend {
                 entries: entries
@@ -444,11 +453,11 @@ pub struct ExplorerStaker {
     stake: u64,
 }
 
-impl From<&(Address, Staker)> for ExplorerStaker {
-    fn from(obj: &(Address, Staker)) -> Self {
+impl From<&(Address, Amount)> for ExplorerStaker {
+    fn from(obj: &(Address, Amount)) -> Self {
         Self {
             pub_key: obj.0.to_string(),
-            stake: obj.1.stake.into(),
+            stake: obj.1.into(),
         }
     }
 }

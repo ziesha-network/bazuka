@@ -54,6 +54,8 @@ impl TxBuilder {
         memo: String,
         address: Address,
         amount: Amount,
+        since: u32,
+        count: u32,
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
@@ -63,7 +65,8 @@ impl TxBuilder {
             data: TransactionData::Delegate {
                 to: address,
                 amount,
-                reverse: false,
+                since,
+                count,
             },
             nonce,
             fee,
