@@ -23,13 +23,13 @@ pub enum ParseAmountError {
     Invalid,
 }
 
-impl std::fmt::Display for Amount {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl Amount {
+    pub fn display_by_decimals(&self, decimals: u8) -> String {
         let mut s = self.0.to_string();
-        while s.len() <= UNIT_ZEROS as usize {
+        while s.len() <= decimals as usize {
             s.insert(0, '0');
         }
-        s.insert(s.len() - UNIT_ZEROS as usize, '.');
+        s.insert(s.len() - decimals as usize, '.');
         while let Some(last) = s.chars().last() {
             if last == '0' {
                 s.pop();
@@ -42,7 +42,13 @@ impl std::fmt::Display for Amount {
                 s.push('0');
             }
         }
-        write!(f, "{}", s)
+        return s;
+    }
+}
+
+impl std::fmt::Display for Amount {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.display_by_decimals(UNIT_ZEROS))
     }
 }
 
@@ -135,6 +141,13 @@ mod tests {
             format!("{}", Amount(123456789987654321)),
             "123456789.987654321"
         );
+    }
+
+    #[test]
+    fn test_display_by_decimals_func() {
+        assert_eq!(Amount(123000000000).display_by_decimals(4), "12300000.0000");
+        assert_eq!(Amount(123456789).display_by_decimals(6), "123.456789");
+        assert_eq!(Amount(123456789).display_by_decimals(9), "0.123456789");
     }
 
     #[test]
