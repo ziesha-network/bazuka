@@ -112,4 +112,6 @@ pub enum BlockchainError {
     DelegateNotFound,
     #[error("cannot destroy a delegate that is still active")]
     DelegateStillActive,
+    #[error("cannot delegate on old epochs")]
+    DelegateOnOldEpochs,
 }

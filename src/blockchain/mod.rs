@@ -722,6 +722,9 @@ impl<K: KvStore> KvStoreChain<K> {
                     count,
                 } => {
                     if let Some(_) = chain.get_staker(to.clone())? {
+                        if *since <= epoch {
+                            return Err(BlockchainError::DelegateOnOldEpochs);
+                        }
                         let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
                         if src_bal < *amount {
                             return Err(BlockchainError::BalanceInsufficient);
