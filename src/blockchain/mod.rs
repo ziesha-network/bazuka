@@ -313,6 +313,7 @@ pub struct BlockchainConfig {
     pub max_memo_length: usize,
     pub slot_duration: u32,
     pub slot_per_epoch: u32,
+    pub chain_start_timestamp: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -371,6 +372,7 @@ pub struct ValidatorProof {}
 
 pub trait Blockchain {
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
+    fn random(&self, timestamp: u32) -> Result<f32, BlockchainError>;
     fn get_stake(&self, addr: Address, epoch: u32) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, f32)>, BlockchainError>;
     fn cleanup_chain_mempool(
@@ -378,7 +380,6 @@ pub trait Blockchain {
         timestamp: u32,
         txs: &[ChainSourcedTx],
     ) -> Result<Vec<ChainSourcedTx>, BlockchainError>;
-    fn validator_set(&self) -> Result<Vec<Address>, BlockchainError>;
     fn is_validator(
         &self,
         timestamp: u32,
@@ -1325,7 +1326,7 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut state_updates: HashMap<ContractId, ZkCompressedStateChange> = HashMap::new();
             let mut outdated_contracts = self.get_outdated_contracts()?;
 
-            if !txs.par_iter().all(|tx| tx.verify_signature()) {
+            if !is_genesis && !txs.par_iter().all(|tx| tx.verify_signature()) {
                 return Err(BlockchainError::SignatureError);
             }
 
@@ -1975,31 +1976,39 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         Ok(amount_sum)
     }
 
-    fn validator_set(&self) -> Result<Vec<Address>, BlockchainError> {
-        Ok(vec![])
-    }
     fn is_validator(
         &self,
-        _timestamp: u32,
+        timestamp: u32,
         addr: Address,
         _proof: ValidatorProof,
     ) -> Result<bool, BlockchainError> {
-        Ok(addr
-            == "edba6586f1eee16b4832212be6d2679c4e680d1200632c56271f2063d9cd5ffe63"
-                .parse()
-                .unwrap())
+        let (epoch, _) = self.epoch_slot(timestamp);
+        let stakers: HashMap<Address, f32> = self.get_stakers(epoch)?.into_iter().collect();
+        if let Some(chance) = stakers.get(&addr) {
+            let rand = self.random(timestamp)?;
+            if rand <= *chance {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        } else {
+            Ok(false)
+        }
     }
     fn validator_status(
         &self,
-        _timestamp: u32,
+        timestamp: u32,
         wallet: &TxBuilder,
     ) -> Result<Option<ValidatorProof>, BlockchainError> {
-        if wallet.get_address()
-            == "edba6586f1eee16b4832212be6d2679c4e680d1200632c56271f2063d9cd5ffe63"
-                .parse()
-                .unwrap()
-        {
-            Ok(Some(ValidatorProof {}))
+        let (epoch, _) = self.epoch_slot(timestamp);
+        let stakers: HashMap<Address, f32> = self.get_stakers(epoch)?.into_iter().collect();
+        if let Some(chance) = stakers.get(&wallet.get_address()) {
+            let rand = self.random(timestamp)?;
+            if rand <= *chance {
+                Ok(Some(ValidatorProof {}))
+            } else {
+                Ok(None)
+            }
         } else {
             Ok(None)
         }
@@ -2067,9 +2076,18 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32) {
-        let slot_number = timestamp / self.config.slot_duration;
+        // TODO: Error instead of saturating_sub!
+        let slot_number =
+            timestamp.saturating_sub(self.config.chain_start_timestamp) / self.config.slot_duration;
         let epoch_number = slot_number / self.config.slot_per_epoch;
         (epoch_number, slot_number % self.config.slot_per_epoch)
+    }
+
+    fn random(&self, timestamp: u32) -> Result<f32, BlockchainError> {
+        use rand::{Rng, SeedableRng};
+        let (epoch, slot) = self.epoch_slot(timestamp);
+        let mut rng = rand_chacha::ChaChaRng::seed_from_u64((epoch as u64) << 32 + slot);
+        Ok(rng.gen_range(0.0..1.0))
     }
 }
 

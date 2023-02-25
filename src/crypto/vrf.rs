@@ -1,7 +1,10 @@
 use super::VerifiableRandomFunction;
+use rand::SeedableRng;
 use rand::{CryptoRng, RngCore};
 use schnorrkel::Keypair;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
+use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash)]
 pub struct VRF;
@@ -15,6 +18,23 @@ pub struct PublicKey(pub schnorrkel::keys::PublicKey);
 impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum ParsePublicKeyError {
+    #[error("vrf public key invalid")]
+    Invalid,
+}
+
+impl FromStr for PublicKey {
+    type Err = ParsePublicKeyError;
+    fn from_str(_s: &str) -> Result<Self, Self::Err> {
+        // TODO: Implement this!
+        // WARN: Fix this!
+        let keypair: Keypair =
+            Keypair::generate_with(&mut rand_chacha::ChaChaRng::seed_from_u64(0));
+        Ok(PublicKey(keypair.public.clone()))
     }
 }
 

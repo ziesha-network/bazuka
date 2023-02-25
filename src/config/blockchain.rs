@@ -11,6 +11,8 @@ use crate::zk;
 #[cfg(test)]
 use crate::wallet::TxBuilder;
 
+const CHAIN_START_TIMESTAMP: u32 = 1677362975;
+
 const MPN_LOG4_ACCOUNT_CAPACITY: u8 = 15;
 const MPN_LOG4_PAYMENT_CAPACITY: u8 = 3;
 pub const MPN_LOG4_TOKEN_CAPACITY: u8 = 3;
@@ -139,6 +141,36 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     let ziesha_token_creation_tx = get_ziesha_token_creation_tx();
     let ziesha_token_id = TokenId::new(&ziesha_token_creation_tx);
 
+    let create_staker = Transaction {
+        memo: "Very first staker created!".into(),
+        src: Some(
+            "ed15e221d00f06673bf508e0239bb09a65e5a7473b5b07593c8b8f7c5692171468"
+                .parse()
+                .unwrap(),
+        ),
+        data: TransactionData::RegisterStaker {
+            vrf_pub_key: "".parse().unwrap(),
+        },
+        nonce: 1,
+        fee: Money::ziesha(0),
+        sig: Signature::Unsigned,
+    };
+    let delegate_to_staker = Transaction {
+        memo: "Very first staker created!".into(),
+        src: None,
+        data: TransactionData::Delegate {
+            to: "ed15e221d00f06673bf508e0239bb09a65e5a7473b5b07593c8b8f7c5692171468"
+                .parse()
+                .unwrap(),
+            amount: Amount(1000),
+            since: 1,
+            count: 10,
+        },
+        nonce: 3,
+        fee: Money::ziesha(0),
+        sig: Signature::Unsigned,
+    };
+
     let blk = Block {
         header: Header {
             parent_hash: Default::default(),
@@ -149,7 +181,12 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 validator: Default::default(),
             },
         },
-        body: vec![ziesha_token_creation_tx, mpn_tx_delta.tx],
+        body: vec![
+            ziesha_token_creation_tx,
+            mpn_tx_delta.tx,
+            create_staker,
+            delegate_to_staker,
+        ],
     };
 
     BlockchainConfig {
@@ -182,6 +219,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         max_memo_length: 64,
         slot_duration: 180,
         slot_per_epoch: 20,
+        chain_start_timestamp: CHAIN_START_TIMESTAMP,
     }
 }
 

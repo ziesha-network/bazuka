@@ -61,6 +61,7 @@ pub trait VerifiableRandomFunction: Clone + Serialize {
         + Eq
         + std::hash::Hash
         + Serialize
+        + FromStr
         + DeserializeOwned
         + AsRef<[u8]>;
     type Priv;
