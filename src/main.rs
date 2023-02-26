@@ -112,7 +112,7 @@ enum WalletOptions {
         #[structopt(long)]
         amount: Amount,
         #[structopt(long)]
-        since: u32,
+        since: Option<u32>,
         #[structopt(long)]
         count: u32,
         #[structopt(long, default_value = "0")]
@@ -1022,6 +1022,7 @@ async fn main() -> Result<(), NodeError> {
                 );
                 try_join!(
                     async move {
+                        let epoch = client.stats().await?.epoch;
                         let curr_nonce = client
                             .get_account(tx_builder.get_address())
                             .await?
@@ -1033,7 +1034,7 @@ async fn main() -> Result<(), NodeError> {
                             memo.unwrap_or_default(),
                             to,
                             amount,
-                            since,
+                            since.unwrap_or(epoch + 1),
                             count,
                             Money {
                                 amount: fee,
