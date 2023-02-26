@@ -724,7 +724,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     count,
                 } => {
                     // WARN: Height check on testnet
-                    if chain.get_height() >= 290 && *count > self.config.max_epoch_delegate {
+                    if chain.get_height()? >= 290 && *count > self.config.max_epoch_delegate {
                         return Err(BlockchainError::DelegateExcessiveEpochCount);
                     }
                     let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
