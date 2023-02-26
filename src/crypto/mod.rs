@@ -54,7 +54,6 @@ pub trait ZkSignatureScheme: Clone + Serialize {
 }
 
 pub trait VerifiableRandomFunction: Clone + Serialize {
-    type Ctx;
     type Pub: Clone
         + Debug
         + PartialEq
@@ -65,9 +64,9 @@ pub trait VerifiableRandomFunction: Clone + Serialize {
         + DeserializeOwned
         + AsRef<[u8]>;
     type Priv;
-    type Sig;
-    fn make_context(bytes: &[u8]) -> Self::Ctx;
+    type Out;
+    type Proof;
     fn generate_keys<R: RngCore + CryptoRng>(csprng: R) -> (Self::Pub, Self::Priv);
-    fn sign(sk: &Self::Priv, ctx: &Self::Ctx, msg: &[u8]) -> Self::Sig;
-    fn verify(pk: &Self::Pub, ctx: &Self::Ctx, msg: &[u8], sig: &Self::Sig) -> bool;
+    fn sign(sk: &Self::Priv, msg: &[u8]) -> (Self::Out, Self::Proof);
+    fn verify(pk: &Self::Pub, msg: &[u8], output: &Self::Out, proof: &Self::Proof) -> bool;
 }

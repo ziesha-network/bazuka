@@ -39,19 +39,18 @@ impl FromStr for PublicKey {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Signature(pub schnorrkel::Signature);
+pub struct Proof(pub schnorrkel::vrf::VRFProof);
 
 #[derive(Clone)]
-pub struct Context(pub schnorrkel::context::SigningContext);
+pub struct Output(pub schnorrkel::vrf::VRFPreOut);
+
+const SIGNING_CONTEXT: &'static [u8] = b"ZieshaVRF";
 
 impl VerifiableRandomFunction for VRF {
-    type Ctx = Context;
     type Pub = PublicKey;
     type Priv = PrivateKey;
-    type Sig = Signature;
-    fn make_context(bytes: &[u8]) -> Context {
-        Context(schnorrkel::context::signing_context(bytes))
-    }
+    type Proof = Proof;
+    type Out = Output;
     fn generate_keys<R: CryptoRng + RngCore>(csprng: R) -> (PublicKey, PrivateKey) {
         let keypair: Keypair = Keypair::generate_with(csprng);
         (
@@ -59,10 +58,15 @@ impl VerifiableRandomFunction for VRF {
             PrivateKey(keypair.secret.clone()),
         )
     }
-    fn sign(sk: &PrivateKey, ctx: &Context, message: &[u8]) -> Signature {
-        Signature(sk.0.clone().to_keypair().sign(ctx.0.bytes(message)))
+    fn sign(sk: &PrivateKey, message: &[u8]) -> (Output, Proof) {
+        let keypair = sk.0.clone().to_keypair();
+        let ctx = schnorrkel::context::signing_context(SIGNING_CONTEXT);
+        let (in_out, proof, _) = keypair.vrf_sign(ctx.bytes(message));
+        (Output(in_out.to_preout()), Proof(proof))
     }
-    fn verify(pk: &PublicKey, ctx: &Context, message: &[u8], sig: &Signature) -> bool {
-        pk.0.verify(ctx.0.bytes(message), &sig.0).is_ok()
+    fn verify(pk: &PublicKey, message: &[u8], out: &Output, proof: &Proof) -> bool {
+        let ctx = schnorrkel::context::signing_context(SIGNING_CONTEXT);
+        pk.0.vrf_verify(ctx.bytes(message), &out.0, &proof.0)
+            .is_ok()
     }
 }
