@@ -372,7 +372,7 @@ pub struct ValidatorProof {}
 
 pub trait Blockchain {
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
-    fn random(&self, timestamp: u32) -> Result<f32, BlockchainError>;
+    fn random(&self, addr: &Address, timestamp: u32) -> Result<f32, BlockchainError>;
     fn get_stake(&self, addr: Address, epoch: u32) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, f32)>, BlockchainError>;
     fn cleanup_chain_mempool(
@@ -1985,7 +1985,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let (epoch, _) = self.epoch_slot(timestamp);
         let stakers: HashMap<Address, f32> = self.get_stakers(epoch)?.into_iter().collect();
         if let Some(chance) = stakers.get(&addr) {
-            let rand = self.random(timestamp)?;
+            let rand = self.random(&addr, timestamp)?;
             if rand <= *chance {
                 Ok(true)
             } else {
@@ -2003,7 +2003,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         let (epoch, _) = self.epoch_slot(timestamp);
         let stakers: HashMap<Address, f32> = self.get_stakers(epoch)?.into_iter().collect();
         if let Some(chance) = stakers.get(&wallet.get_address()) {
-            let rand = self.random(timestamp)?;
+            let rand = self.random(&wallet.get_address(), timestamp)?;
             if rand <= *chance {
                 Ok(Some(ValidatorProof {}))
             } else {
@@ -2083,10 +2083,11 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         (epoch_number, slot_number % self.config.slot_per_epoch)
     }
 
-    fn random(&self, timestamp: u32) -> Result<f32, BlockchainError> {
+    fn random(&self, addr: &Address, timestamp: u32) -> Result<f32, BlockchainError> {
         use rand::{Rng, SeedableRng};
         let (epoch, slot) = self.epoch_slot(timestamp);
-        let mut rng = rand_chacha::ChaChaRng::seed_from_u64((epoch as u64) << 32 + slot);
+        let seed: [u8; 32] = Hasher::hash(format!("{}-{}-{}", addr, epoch, slot).as_bytes());
+        let mut rng = rand_chacha::ChaChaRng::from_seed(seed);
         Ok(rng.gen_range(0.0..1.0))
     }
 }
