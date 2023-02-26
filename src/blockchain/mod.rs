@@ -723,7 +723,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     since,
                     count,
                 } => {
-                    if count > self.config.max_epoch_delegate {
+                    if *count > self.config.max_epoch_delegate {
                         return Err(BlockchainError::DelegateExcessiveEpochCount);
                     }
                     let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
