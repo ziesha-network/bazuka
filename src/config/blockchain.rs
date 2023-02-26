@@ -11,7 +11,7 @@ use crate::zk;
 #[cfg(test)]
 use crate::wallet::TxBuilder;
 
-const CHAIN_START_TIMESTAMP: u32 = 1677362975;
+const CHAIN_START_TIMESTAMP: u32 = 1677411749 - 180 * 15;
 
 const MPN_LOG4_ACCOUNT_CAPACITY: u8 = 15;
 const MPN_LOG4_PAYMENT_CAPACITY: u8 = 3;
@@ -144,7 +144,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     let create_staker = Transaction {
         memo: "Very first staker created!".into(),
         src: Some(
-            "ed15e221d00f06673bf508e0239bb09a65e5a7473b5b07593c8b8f7c5692171468"
+            "ed02b39ed13c94e8899588363cf8be09fe6e0ecb9967631a2464d5bcca7dcd7af8"
                 .parse()
                 .unwrap(),
         ),
@@ -156,15 +156,15 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         sig: Signature::Unsigned,
     };
     let delegate_to_staker = Transaction {
-        memo: "Very first staker created!".into(),
+        memo: "Very first delegation!".into(),
         src: None,
         data: TransactionData::Delegate {
-            to: "ed15e221d00f06673bf508e0239bb09a65e5a7473b5b07593c8b8f7c5692171468"
+            to: "ed02b39ed13c94e8899588363cf8be09fe6e0ecb9967631a2464d5bcca7dcd7af8"
                 .parse()
                 .unwrap(),
             amount: Amount(1000),
             since: 1,
-            count: 10,
+            count: 24,
         },
         nonce: 3,
         fee: Money::ziesha(0),
