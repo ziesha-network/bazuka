@@ -220,6 +220,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         slot_duration: 180,
         slot_per_epoch: 20,
         chain_start_timestamp: CHAIN_START_TIMESTAMP,
+        max_epoch_delegate: 100,
     }
 }
 

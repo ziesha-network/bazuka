@@ -314,6 +314,7 @@ pub struct BlockchainConfig {
     pub slot_duration: u32,
     pub slot_per_epoch: u32,
     pub chain_start_timestamp: u32,
+    pub max_epoch_delegate: u32,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -722,42 +723,41 @@ impl<K: KvStore> KvStoreChain<K> {
                     since,
                     count,
                 } => {
-                    if let Some(_) = chain.get_staker(to.clone())? {
-                        if *since <= epoch {
-                            return Err(BlockchainError::DelegateOnOldEpochs);
-                        }
-                        let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
-                        if src_bal < *amount {
-                            return Err(BlockchainError::BalanceInsufficient);
-                        }
-                        src_bal -= *amount;
-                        chain.database.update(&[WriteOp::Put(
-                            keys::account_balance(&tx_src, TokenId::Ziesha),
-                            src_bal.into(),
-                        )])?;
+                    if count > self.config.max_epoch_delegate {
+                        return Err(BlockchainError::DelegateExcessiveEpochCount);
+                    }
+                    let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
+                    if src_bal < *amount {
+                        return Err(BlockchainError::BalanceInsufficient);
+                    }
+                    src_bal -= *amount;
+                    chain.database.update(&[WriteOp::Put(
+                        keys::account_balance(&tx_src, TokenId::Ziesha),
+                        src_bal.into(),
+                    )])?;
 
-                        let delegate_id = DelegateId::new(tx);
-                        chain.database.update(&[WriteOp::Put(
-                            keys::delegate(&tx_src, &delegate_id),
-                            Delegate {
-                                delegator: tx_src.clone(),
-                                amount: *amount,
-                                end: since + count,
-                            }
-                            .into(),
-                        )])?;
-
-                        for epoch in *since..(*since + *count) {
-                            let old_stake = chain.get_stake(to.clone(), epoch)?;
-                            let new_stake = old_stake + *amount;
-                            chain.database.update(&[
-                                WriteOp::Remove(keys::staker_rank(epoch, old_stake, &to)),
-                                WriteOp::Put(keys::staker_rank(epoch, new_stake, &to), ().into()),
-                                WriteOp::Put(keys::stake(&to, epoch), new_stake.into()),
-                            ])?;
+                    let delegate_id = DelegateId::new(tx);
+                    chain.database.update(&[WriteOp::Put(
+                        keys::delegate(&tx_src, &delegate_id),
+                        Delegate {
+                            delegator: tx_src.clone(),
+                            amount: *amount,
+                            end: since + count,
                         }
-                    } else {
-                        return Err(BlockchainError::StakerNotFound);
+                        .into(),
+                    )])?;
+
+                    let epoch_begin = std::cmp::min(*since, epoch + 1);
+                    let epoch_end = std::cmp::min(*since + *count, epoch + 1);
+
+                    for epoch in epoch_begin..epoch_end {
+                        let old_stake = chain.get_stake(to.clone(), epoch)?;
+                        let new_stake = old_stake + *amount;
+                        chain.database.update(&[
+                            WriteOp::Remove(keys::staker_rank(epoch, old_stake, &to)),
+                            WriteOp::Put(keys::staker_rank(epoch, new_stake, &to), ().into()),
+                            WriteOp::Put(keys::stake(&to, epoch), new_stake.into()),
+                        ])?;
                     }
                 }
                 TransactionData::CreateToken { token } => {
