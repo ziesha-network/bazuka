@@ -11,8 +11,10 @@ pub async fn get_explorer_stakers<B: Blockchain>(
     let context = context.read().await;
     let ts = context.network_timestamp();
     let (epoch, _) = context.blockchain.epoch_slot(ts);
-    let stakers = context.blockchain.get_stakers(epoch)?;
+    let current = context.blockchain.get_stakers(epoch)?;
+    let next = context.blockchain.get_stakers(epoch + 1)?;
     Ok(GetExplorerStakersResponse {
-        stakers: stakers.iter().map(|b| b.into()).collect(),
+        current: current.iter().map(|b| b.into()).collect(),
+        next: next.iter().map(|b| b.into()).collect(),
     })
 }
