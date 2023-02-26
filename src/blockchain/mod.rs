@@ -747,8 +747,8 @@ impl<K: KvStore> KvStoreChain<K> {
                         .into(),
                     )])?;
 
-                    let epoch_begin = std::cmp::min(*since, epoch + 1);
-                    let epoch_end = std::cmp::min(*since + *count, epoch + 1);
+                    let epoch_begin = std::cmp::max(*since, epoch + 1);
+                    let epoch_end = std::cmp::max(*since + *count, epoch + 1);
 
                     for epoch in epoch_begin..epoch_end {
                         let old_stake = chain.get_stake(to.clone(), epoch)?;
