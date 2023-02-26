@@ -42,6 +42,24 @@ impl Wallet {
             tokens: vec![TokenId::Ziesha],
         }
     }
+    pub fn delete_chain_tx(&mut self, nonce: u32) {
+        let tx_builder = TxBuilder::new(&self.seed());
+        self.chain_sourced_txs.retain(|t| t.nonce() != nonce);
+        for tx in self.chain_sourced_txs.iter_mut() {
+            if tx.nonce() > nonce {
+                match tx {
+                    ChainSourcedTx::TransactionAndDelta(tx_delta) => {
+                        tx_delta.tx.nonce -= 1;
+                        tx_builder.sign_tx(&mut tx_delta.tx);
+                    }
+                    ChainSourcedTx::MpnDeposit(mpn_deposit) => {
+                        mpn_deposit.payment.nonce -= 1;
+                        tx_builder.sign_deposit(&mut mpn_deposit.payment);
+                    }
+                }
+            }
+        }
+    }
     pub fn add_token(&mut self, token_id: TokenId) {
         if !self.tokens.contains(&token_id) {
             self.tokens.push(token_id);

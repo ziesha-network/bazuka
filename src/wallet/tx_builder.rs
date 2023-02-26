@@ -54,6 +54,10 @@ impl TxBuilder {
     pub fn sign(&self, bytes: &[u8]) -> <Signer as SignatureScheme>::Sig {
         Signer::sign(&self.private_key, bytes)
     }
+    pub fn sign_deposit(&self, tx: &mut ContractDeposit) {
+        let bytes = bincode::serialize(&tx).unwrap();
+        tx.sig = Some(Signer::sign(&self.private_key, &bytes));
+    }
     pub fn sign_tx(&self, tx: &mut Transaction) {
         let bytes = bincode::serialize(&tx).unwrap();
         tx.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
@@ -314,8 +318,7 @@ impl TxBuilder {
             fee,
             sig: None,
         };
-        let bytes = bincode::serialize(&tx).unwrap();
-        tx.sig = Some(Signer::sign(&self.private_key, &bytes));
+        self.sign_deposit(&mut tx);
         MpnDeposit {
             zk_address: to.pub_key,
             zk_token_index: to_token_index,

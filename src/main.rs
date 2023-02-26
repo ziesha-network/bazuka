@@ -126,6 +126,8 @@ enum WalletOptions {
     ResendPending {
         #[structopt(long)]
         fill_gaps: bool,
+        #[structopt(long)]
+        shift: bool,
     },
 }
 
@@ -195,8 +197,9 @@ enum CliOptions {
 #[allow(dead_code)]
 async fn resend_all_wallet_txs(
     conf: BazukaConfig,
-    wallet: &Wallet,
+    wallet: &mut Wallet,
     fill_gaps: bool,
+    shift: bool,
 ) -> Result<(), NodeError> {
     let tx_builder = TxBuilder::new(&wallet.seed());
     let (req_loop, client) = BazukaClient::connect(
@@ -224,6 +227,9 @@ async fn resend_all_wallet_txs(
                 .await?
                 .account
                 .nonce;
+            if shift {
+                wallet.delete_chain_tx(curr_nonce + 1);
+            }
             for tx in wallet.chain_sourced_txs.iter() {
                 if tx.nonce() >= curr_nonce {
                     match tx {
@@ -1044,9 +1050,10 @@ async fn main() -> Result<(), NodeError> {
                 )
                 .unwrap();
             }
-            WalletOptions::ResendPending { fill_gaps } => {
-                let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-                resend_all_wallet_txs(conf, &wallet, fill_gaps).await?;
+            WalletOptions::ResendPending { fill_gaps, shift } => {
+                let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+                resend_all_wallet_txs(conf, &mut wallet, fill_gaps, shift).await?;
+                wallet.save(wallet_path).unwrap();
             }
             WalletOptions::Info {} => {
                 let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
