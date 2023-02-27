@@ -1179,13 +1179,17 @@ async fn main() -> Result<(), NodeError> {
                                         MpnAddress { pub_key: acc_pk }
                                     );
                                     for (_, money) in resp.tokens.iter() {
+                                        let resp = client
+                                            .get_token(money.token_id)
+                                            .await
+                                            .map(|resp| resp).unwrap();
                                         if let Some(inf) = token_balances.get(&money.token_id) {
                                             let token_index = token_indices[&money.token_id];
                                             println!(
                                                 "{}\t{}{}",
                                                 format!("#{} <{}>:", token_index, inf.name)
                                                     .bright_yellow(),
-                                                money.amount,
+                                                money.amount.display_by_decimals(resp.token.decimals),
                                                 if money.token_id == TokenId::Ziesha {
                                                     bazuka::config::SYMBOL.to_string()
                                                 } else {

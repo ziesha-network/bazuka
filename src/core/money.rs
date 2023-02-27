@@ -129,22 +129,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_amount_to_str() {
-        assert_eq!(format!("{}", Amount(0)), "0.0");
-        assert_eq!(format!("{}", Amount(1)), "0.000000001");
-        assert_eq!(format!("{}", Amount(12)), "0.000000012");
-        assert_eq!(format!("{}", Amount(1234)), "0.000001234");
-        assert_eq!(format!("{}", Amount(123000000000)), "123.0");
-        assert_eq!(format!("{}", Amount(123456789)), "0.123456789");
-        assert_eq!(format!("{}", Amount(1234567898)), "1.234567898");
+    fn test_display_by_decimals_func() {
+        assert_eq!(Amount(0).display_by_decimals(UNIT_ZEROS), "0.0");
+        assert_eq!(Amount(1).display_by_decimals(UNIT_ZEROS), "0.000000001");
+        assert_eq!(Amount(12).display_by_decimals(UNIT_ZEROS), "0.000000012");
+        assert_eq!(Amount(1234).display_by_decimals(UNIT_ZEROS), "0.000001234");
+        assert_eq!(Amount(123000000000).display_by_decimals(UNIT_ZEROS), "123.0");
+        assert_eq!(Amount(123456789).display_by_decimals(UNIT_ZEROS), "0.123456789");
+        assert_eq!(Amount(1234567898).display_by_decimals(UNIT_ZEROS), "1.234567898");
         assert_eq!(
-            format!("{}", Amount(123456789987654321)),
+            Amount(123456789987654321).display_by_decimals(UNIT_ZEROS),
             "123456789.987654321"
         );
-    }
-
-    #[test]
-    fn test_display_by_decimals_func() {
         assert_eq!(Amount(123000000000).display_by_decimals(4), "12300000.0000");
         assert_eq!(Amount(123456789).display_by_decimals(6), "123.456789");
         assert_eq!(Amount(123456789).display_by_decimals(9), "0.123456789");
