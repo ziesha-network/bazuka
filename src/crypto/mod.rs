@@ -64,7 +64,7 @@ pub trait VerifiableRandomFunction: Clone + Serialize {
         + DeserializeOwned
         + AsRef<[u8]>;
     type Priv;
-    type Out;
+    type Out: Into<f32>;
     type Proof;
     fn generate_keys<R: RngCore + CryptoRng>(csprng: R) -> (Self::Pub, Self::Priv);
     fn sign(sk: &Self::Priv, msg: &[u8]) -> (Self::Out, Self::Proof);

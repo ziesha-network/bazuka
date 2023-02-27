@@ -1,6 +1,8 @@
 use super::VerifiableRandomFunction;
+use rand::Rng;
 use rand::SeedableRng;
 use rand::{CryptoRng, RngCore};
+use rand_chacha::ChaChaRng;
 use schnorrkel::Keypair;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -43,6 +45,12 @@ pub struct Proof(pub schnorrkel::vrf::VRFProof);
 
 #[derive(Clone)]
 pub struct Output(pub schnorrkel::vrf::VRFPreOut);
+
+impl Into<f32> for Output {
+    fn into(self) -> f32 {
+        ChaChaRng::from_seed(self.0 .0).gen_range(0.0..1.0)
+    }
+}
 
 const SIGNING_CONTEXT: &'static [u8] = b"ZieshaVRF";
 
