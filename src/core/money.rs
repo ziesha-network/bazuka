@@ -44,6 +44,27 @@ impl Amount {
         }
         return s;
     }
+
+    pub fn from_string(s: &str, decimals: u8) -> Result<Self, ParseAmountError> {
+        let mut s = s.trim().to_string();
+        if let Some(dot_pos) = s.find('.') {
+            if s == "." {
+                return Err(ParseAmountError::Invalid);
+            }
+            let dot_rpos = s.len() - 1 - dot_pos;
+            if dot_rpos > decimals as usize {
+                return Err(ParseAmountError::Invalid);
+            }
+            for _ in 0..decimals as usize - dot_rpos {
+                s.push('0');
+            }
+            s.remove(dot_pos);
+            Ok(Self(s.parse().map_err(|_| ParseAmountError::Invalid)?))
+        } else {
+            let as_u64: u64 = s.parse().map_err(|_| ParseAmountError::Invalid)?;
+            Ok(Self(as_u64 * UNIT))
+        }
+    }
 }
 
 impl std::fmt::Display for Amount {
@@ -55,24 +76,7 @@ impl std::fmt::Display for Amount {
 impl FromStr for Amount {
     type Err = ParseAmountError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut s = s.trim().to_string();
-        if let Some(dot_pos) = s.find('.') {
-            if s == "." {
-                return Err(ParseAmountError::Invalid);
-            }
-            let dot_rpos = s.len() - 1 - dot_pos;
-            if dot_rpos > UNIT_ZEROS as usize {
-                return Err(ParseAmountError::Invalid);
-            }
-            for _ in 0..UNIT_ZEROS as usize - dot_rpos {
-                s.push('0');
-            }
-            s.remove(dot_pos);
-            Ok(Self(s.parse().map_err(|_| ParseAmountError::Invalid)?))
-        } else {
-            let as_u64: u64 = s.parse().map_err(|_| ParseAmountError::Invalid)?;
-            Ok(Self(as_u64 * UNIT))
-        }
+        return Amount::from_string(&s, UNIT_ZEROS);
     }
 }
 
@@ -134,9 +138,18 @@ mod tests {
         assert_eq!(Amount(1).display_by_decimals(UNIT_ZEROS), "0.000000001");
         assert_eq!(Amount(12).display_by_decimals(UNIT_ZEROS), "0.000000012");
         assert_eq!(Amount(1234).display_by_decimals(UNIT_ZEROS), "0.000001234");
-        assert_eq!(Amount(123000000000).display_by_decimals(UNIT_ZEROS), "123.0");
-        assert_eq!(Amount(123456789).display_by_decimals(UNIT_ZEROS), "0.123456789");
-        assert_eq!(Amount(1234567898).display_by_decimals(UNIT_ZEROS), "1.234567898");
+        assert_eq!(
+            Amount(123000000000).display_by_decimals(UNIT_ZEROS),
+            "123.0"
+        );
+        assert_eq!(
+            Amount(123456789).display_by_decimals(UNIT_ZEROS),
+            "0.123456789"
+        );
+        assert_eq!(
+            Amount(1234567898).display_by_decimals(UNIT_ZEROS),
+            "1.234567898"
+        );
         assert_eq!(
             Amount(123456789987654321).display_by_decimals(UNIT_ZEROS),
             "123456789.987654321"
