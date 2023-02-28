@@ -52,7 +52,7 @@ impl Amount {
         let mut s = s.trim().to_string();
         if decimals == 0 {
             let as_u64: u64 = s.parse().map_err(|_| ParseAmountError::Invalid)?;
-            return Ok(Self(as_u64 * UNIT))
+            return Ok(Self(as_u64 * UNIT));
         }
         if let Some(dot_pos) = s.find('.') {
             if s == "." {

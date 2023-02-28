@@ -24,7 +24,8 @@ pub async fn log_info<B: Blockchain>(
     let wallet_addr = ctx.wallet.get_address();
     let tkn = ctx
         .blockchain
-        .get_token(crate::core::TokenId::Ziesha)?.unwrap();
+        .get_token(crate::core::TokenId::Ziesha)?
+        .unwrap();
     let balance = ctx
         .blockchain
         .get_balance(wallet_addr, crate::core::TokenId::Ziesha)?;

@@ -393,10 +393,7 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn get_token(
-        &self,
-        token_id: TokenId,
-    ) -> Result<GetTokenInfoResponse, NodeError> {
+    pub async fn get_token(&self, token_id: TokenId) -> Result<GetTokenInfoResponse, NodeError> {
         self.sender
             .json_get::<GetTokenInfoRequest, GetTokenInfoResponse>(
                 format!("http://{}/token", self.peer),
