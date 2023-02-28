@@ -62,7 +62,8 @@ pub trait VerifiableRandomFunction: Clone + Serialize {
         + Serialize
         + FromStr
         + DeserializeOwned
-        + AsRef<[u8]>;
+        + AsRef<[u8]>
+        + Display;
     type Priv;
     type Out: Clone
         + Debug

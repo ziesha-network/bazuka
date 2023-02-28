@@ -47,6 +47,9 @@ impl TxBuilder {
     pub fn get_address(&self) -> Address {
         self.address.clone()
     }
+    pub fn get_vrf_public_key(&self) -> <Vrf as VerifiableRandomFunction>::Pub {
+        self.vrf_public_key.clone()
+    }
     pub fn get_zk_address(&self) -> <ZkSigner as ZkSignatureScheme>::Pub {
         self.zk_address.clone()
     }

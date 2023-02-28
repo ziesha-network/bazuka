@@ -1099,6 +1099,11 @@ async fn main() -> Result<(), NodeError> {
                         println!("{}", "Main-chain\n---------".bright_green());
                         println!(
                             "{}\t{}",
+                            "VRF public-key:".bright_yellow(),
+                            tx_builder.get_vrf_public_key()
+                        );
+                        println!(
+                            "{}\t{}",
                             "Address:".bright_yellow(),
                             tx_builder.get_address()
                         );

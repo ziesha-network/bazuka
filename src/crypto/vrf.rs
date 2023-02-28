@@ -29,14 +29,27 @@ pub enum ParsePublicKeyError {
     Invalid,
 }
 
+impl std::fmt::Display for PublicKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "vrf")?;
+        for byte in self.0.to_bytes().iter() {
+            write!(f, "{:02x}", byte)?;
+        }
+        Ok(())
+    }
+}
+
 impl FromStr for PublicKey {
     type Err = ParsePublicKeyError;
-    fn from_str(_s: &str) -> Result<Self, Self::Err> {
-        // TODO: Implement this!
-        // WARN: Fix this!
-        let keypair: Keypair =
-            Keypair::generate_with(&mut rand_chacha::ChaChaRng::seed_from_u64(0));
-        Ok(PublicKey(keypair.public.clone()))
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if !s.starts_with("vrf") || s.len() != 67 {
+            return Err(ParsePublicKeyError::Invalid);
+        }
+        let bytes = hex::decode(&s[3..]).map_err(|_| ParsePublicKeyError::Invalid)?;
+        Ok(Self(
+            schnorrkel::keys::PublicKey::from_bytes(&bytes)
+                .map_err(|_| ParsePublicKeyError::Invalid)?,
+        ))
     }
 }
 
