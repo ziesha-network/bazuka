@@ -96,6 +96,19 @@ impl TxBuilder {
             },
         )
     }
+    pub fn generate_random(
+        &self,
+        epoch: u32,
+        slot: u32,
+    ) -> (
+        <Vrf as VerifiableRandomFunction>::Out,
+        <Vrf as VerifiableRandomFunction>::Proof,
+    ) {
+        Vrf::sign(
+            &self.vrf_private_key,
+            format!("{}-{}", epoch, slot).as_bytes(),
+        )
+    }
     pub fn register_validator(&self, memo: String, fee: Money, nonce: u32) -> TransactionAndDelta {
         let mut tx = Transaction {
             memo,
