@@ -788,8 +788,8 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
         .draft_block(1650000000, &mempool, &wallet_miner, true)?
         .unwrap();
 
-    assert_eq!(2, draft.block.body.len());
-    assert_eq!(Some(wallet1.get_address()), draft.block.body[1].src);
+    assert_eq!(1, draft.block.body.len());
+    assert_eq!(Some(wallet1.get_address()), draft.block.body[0].src);
 
     rollback_till_empty(&mut chain)?;
 
@@ -841,7 +841,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
 
     chain.apply_block(&draft.block)?;
 
-    assert_eq!(3, draft.block.body.len());
+    assert_eq!(2, draft.block.body.len());
 
     let account1 = chain.get_balance(wallet1.get_address(), TokenId::Ziesha)?;
     let account2 = chain.get_balance(wallet2.get_address(), TokenId::Ziesha)?;
@@ -912,7 +912,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
 
     let last_block = chain.get_block(height - 1)?;
     assert_eq!(
-        last_block.body[1].data.clone(),
+        last_block.body[0].data.clone(),
         TransactionData::RegularSend {
             entries: vec![RegularSendEntry {
                 dst: wallet2.get_address(),

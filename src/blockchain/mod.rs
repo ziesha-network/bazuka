@@ -1253,75 +1253,56 @@ impl<K: KvStore> KvStoreChain<K> {
                 chain.will_extend(curr_height, &[block.header.clone()])?;
             }
 
-            // All blocks except genesis block should have a miner reward
-            let txs = if !is_genesis {
+            if !is_genesis {
+                if chain.config.check_validator
+                    && !chain.is_validator(
+                        block.header.proof_of_stake.timestamp,
+                        block.header.proof_of_stake.validator.clone(),
+                        block.header.proof_of_stake.proof.clone(),
+                    )?
+                {
+                    return Err(BlockchainError::UnelectedValidator);
+                }
+
                 // WARN: Sum will be invalid if fees are not in Ziesha
                 let fee_sum = Amount(
-                    block.body[1..]
+                    block
+                        .body
                         .iter()
                         .map(|t| -> u64 { t.fee.amount.into() })
                         .sum(),
                 );
-
-                let reward_tx = block
-                    .body
-                    .first()
-                    .ok_or(BlockchainError::MinerRewardNotFound)?;
-
-                if reward_tx.src != None
-                    || reward_tx.fee != Money::ziesha(0)
-                    || reward_tx.sig != Signature::Unsigned
-                {
-                    return Err(BlockchainError::InvalidMinerReward);
-                }
-                match &reward_tx.data {
-                    TransactionData::RegularSend { entries } => {
-                        if entries.len() != 1 {
-                            return Err(BlockchainError::InvalidMinerReward);
-                        }
-                        let reward_entry = &entries[0];
-
-                        if self.config.check_validator
-                            && !self.is_validator(
-                                block.header.proof_of_stake.timestamp,
-                                reward_entry.dst.clone(),
-                                block.header.proof_of_stake.proof.clone(),
-                            )?
-                        {
-                            return Err(BlockchainError::UnelectedValidator);
-                        }
-
-                        if let Some(allowed_miners) = &self.config.limited_miners {
-                            if !allowed_miners.contains(&reward_entry.dst) {
-                                return Err(BlockchainError::AddressNotAllowedToMine);
-                            }
-                        }
-                        let expected_reward = Money {
-                            amount: next_reward + fee_sum,
-                            token_id: TokenId::Ziesha,
-                        };
-                        if reward_entry.amount != expected_reward {
-                            return Err(BlockchainError::InvalidMinerReward);
-                        }
-                    }
-                    _ => {
-                        return Err(BlockchainError::InvalidMinerReward);
-                    }
-                }
+                let treasury_nonce = chain.get_account(Default::default())?.nonce;
 
                 // Reward tx allowed to get money from Treasury
-                chain.apply_tx(block.header.proof_of_stake.timestamp, reward_tx, true)?;
-                &block.body[1..]
-            } else {
-                &block.body[..]
-            };
+                chain.apply_tx(
+                    block.header.proof_of_stake.timestamp,
+                    &Transaction {
+                        memo: String::new(),
+                        src: None,
+                        data: TransactionData::RegularSend {
+                            entries: vec![RegularSendEntry {
+                                dst: block.header.proof_of_stake.validator.clone(),
+                                amount: Money {
+                                    amount: next_reward + fee_sum,
+                                    token_id: TokenId::Ziesha,
+                                },
+                            }],
+                        },
+                        nonce: treasury_nonce + 1,
+                        fee: Money::ziesha(0),
+                        sig: Signature::Unsigned,
+                    },
+                    true,
+                )?;
+            }
 
             let mut body_size = 0usize;
             let mut state_size_delta = 0isize;
             let mut state_updates: HashMap<ContractId, ZkCompressedStateChange> = HashMap::new();
             let mut outdated_contracts = self.get_outdated_contracts()?;
 
-            if !is_genesis && !txs.par_iter().all(|tx| tx.verify_signature()) {
+            if !is_genesis && !block.body.par_iter().all(|tx| tx.verify_signature()) {
                 return Err(BlockchainError::SignatureError);
             }
 
@@ -1329,7 +1310,7 @@ impl<K: KvStore> KvStoreChain<K> {
             let mut num_mpn_contract_deposits = 0;
             let mut num_mpn_contract_withdraws = 0;
 
-            for tx in txs.iter() {
+            for tx in block.body.iter() {
                 // Count MPN updates
                 if let TransactionData::UpdateContract {
                     contract_id,
@@ -1748,33 +1729,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         }
 
         let last_header = self.get_header(height - 1)?;
-        let treasury_nonce = self.get_account(Default::default())?.nonce;
 
         let tx_and_deltas = self.select_transactions(timestamp, mempool, check)?;
-        // WARN: Sum will be invalid if tx fees are not in Ziesha!
-        let fee_sum = Amount(
-            tx_and_deltas
-                .iter()
-                .map(|t| -> u64 { t.tx.fee.amount.into() })
-                .sum(),
-        );
 
-        let mut txs = vec![Transaction {
-            memo: String::new(),
-            src: None,
-            data: TransactionData::RegularSend {
-                entries: vec![RegularSendEntry {
-                    dst: wallet.get_address(),
-                    amount: Money {
-                        amount: self.next_reward()? + fee_sum,
-                        token_id: TokenId::Ziesha,
-                    },
-                }],
-            },
-            nonce: treasury_nonce + 1,
-            fee: Money::ziesha(0),
-            sig: Signature::Unsigned,
-        }];
+        let mut txs = Vec::new();
 
         let mut block_delta: HashMap<ContractId, zk::ZkStatePatch> = HashMap::new();
         for tx_delta in tx_and_deltas.iter() {
