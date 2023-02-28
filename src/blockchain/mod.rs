@@ -376,7 +376,7 @@ pub trait Blockchain {
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn random(&self, addr: &Address, timestamp: u32) -> Result<f32, BlockchainError>;
     fn get_stake(&self, addr: Address, epoch: u32) -> Result<Amount, BlockchainError>;
-    fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, f32)>, BlockchainError>;
+    fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, Amount)>, BlockchainError>;
     fn cleanup_chain_mempool(
         &self,
         timestamp: u32,
@@ -1979,7 +1979,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         _proof: ValidatorProof,
     ) -> Result<bool, BlockchainError> {
         let (epoch, _) = self.epoch_slot(timestamp);
-        let stakers: HashMap<Address, f32> = self.get_stakers(epoch)?.into_iter().collect();
+        let stakers = self.get_stakers(epoch)?;
+        let sum_stakes = stakers.iter().map(|(_, a)| u64::from(*a)).sum::<u64>();
+        let stakers: HashMap<Address, f32> = stakers
+            .into_iter()
+            .map(|(k, v)| (k, (u64::from(v) as f64 / sum_stakes as f64) as f32))
+            .collect();
         if let Some(chance) = stakers.get(&addr) {
             let rand = self.random(&addr, timestamp)?;
             if rand <= *chance {
@@ -1997,7 +2002,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         wallet: &TxBuilder,
     ) -> Result<Option<ValidatorProof>, BlockchainError> {
         let (epoch, _) = self.epoch_slot(timestamp);
-        let stakers: HashMap<Address, f32> = self.get_stakers(epoch)?.into_iter().collect();
+        let stakers = self.get_stakers(epoch)?;
+        let sum_stakes = stakers.iter().map(|(_, a)| u64::from(*a)).sum::<u64>();
+        let stakers: HashMap<Address, f32> = stakers
+            .into_iter()
+            .map(|(k, v)| (k, (u64::from(v) as f64 / sum_stakes as f64) as f32))
+            .collect();
         if let Some(chance) = stakers.get(&wallet.get_address()) {
             let rand = self.random(&wallet.get_address(), timestamp)?;
             if rand <= *chance {
@@ -2047,28 +2057,24 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         })
     }
 
-    fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, f32)>, BlockchainError> {
-        let stakers = self
-            .database
+    fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, Amount)>, BlockchainError> {
+        self.database
             .pairs(keys::staker_rank_prefix(epoch).into())?
             .into_iter()
             .map(|(k, _)| {
-                || -> Result<(Address, u64), BlockchainError> {
-                    let stake = u64::MAX
-                        - u64::from_str_radix(&k.0[13..29], 16)
-                            .map_err(|_| BlockchainError::Inconsistency)?;
+                || -> Result<(Address, Amount), BlockchainError> {
+                    let stake = Amount(
+                        u64::MAX
+                            - u64::from_str_radix(&k.0[13..29], 16)
+                                .map_err(|_| BlockchainError::Inconsistency)?,
+                    );
                     let pk: Address = k.0[30..]
                         .parse()
                         .map_err(|_| BlockchainError::Inconsistency)?;
                     Ok((pk, stake))
                 }()
             })
-            .collect::<Result<Vec<_>, _>>()?;
-        let sum_stakes = stakers.iter().map(|(_, a)| *a).sum::<u64>();
-        Ok(stakers
-            .into_iter()
-            .map(|(addr, amt)| (addr, (amt as f64 / sum_stakes as f64) as f32))
-            .collect())
+            .collect::<Result<Vec<_>, _>>()
     }
 
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32) {
