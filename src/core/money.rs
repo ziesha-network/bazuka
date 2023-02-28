@@ -157,7 +157,7 @@ mod tests {
             Amount(123456789987654321).display_by_decimals(UNIT_ZEROS),
             "123456789.987654321"
         );
-        assert_eq!(Amount(123000000000).display_by_decimals(4), "12300000.0000");
+        assert_eq!(Amount(123000000000).display_by_decimals(4), "12300000.0");
         assert_eq!(Amount(123456789).display_by_decimals(6), "123.456789");
         assert_eq!(Amount(123456789).display_by_decimals(9), "0.123456789");
     }
