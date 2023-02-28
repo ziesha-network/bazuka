@@ -236,6 +236,7 @@ async fn node_service<B: Blockchain>(
         }
 
         match (method, &path[..]) {
+            #[cfg(test)]
             (Method::POST, "/generate_block") => {
                 *response.body_mut() = Body::from(bincode::serialize(
                     &api::generate_block(

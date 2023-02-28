@@ -48,7 +48,10 @@ mod get_token;
 pub use get_token::*;
 mod post_validator_claim;
 pub use post_validator_claim::*;
-mod generate_block;
-pub use generate_block::*;
 mod get_explorer_stakers;
 pub use get_explorer_stakers::*;
+
+#[cfg(test)]
+mod generate_block;
+#[cfg(test)]
+pub use generate_block::*;
