@@ -835,11 +835,9 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
     );
 
     let mempool = vec![t1, t2];
-    let mut draft = chain
+    let draft = chain
         .draft_block(1650000000, &mempool, &wallet_miner, true)?
         .unwrap();
-
-    validate_block(&chain, &mut draft)?;
 
     chain.apply_block(&draft.block)?;
 
@@ -886,11 +884,9 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
         1,
     );
     let mut mempool = vec![t1];
-    let mut draft = chain
+    let draft = chain
         .draft_block(1650000000, &mempool, &wallet_miner, true)?
         .unwrap();
-
-    validate_block(&chain, &mut draft)?;
 
     chain.apply_block(&draft.block)?;
 
@@ -903,11 +899,9 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
     );
     mempool.push(t2);
 
-    let mut draft = chain
+    let draft = chain
         .draft_block(1650000001, &mempool, &wallet_miner, true)?
         .unwrap();
-
-    validate_block(&chain, &mut draft)?;
 
     let prev_checksum = chain.database.checksum::<Hasher>()?;
 
@@ -946,12 +940,5 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
 
     rollback_till_empty(&mut chain)?;
 
-    Ok(())
-}
-
-fn validate_block<B: Blockchain>(
-    chain: &B,
-    _draft: &mut BlockAndPatch,
-) -> Result<(), BlockchainError> {
     Ok(())
 }

@@ -4,9 +4,8 @@ mod simulation;
 use simulation::*;
 
 use crate::config::blockchain;
-use crate::core::{ContractId, Money, TransactionAndDelta, ZkHasher};
+use crate::core::{Money, TransactionAndDelta, ZkHasher};
 use crate::zk;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;

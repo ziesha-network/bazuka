@@ -2,9 +2,9 @@ use crate::blockchain::ValidatorProof;
 use crate::client::messages::ValidatorClaim;
 use crate::client::PeerAddress;
 use crate::core::{
-    Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Hasher, Money,
-    MpnAddress, MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token, TokenId,
-    Transaction, TransactionAndDelta, TransactionData, Vrf, ZkSigner,
+    Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, DelegateId,
+    Hasher, Money, MpnAddress, MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token,
+    TokenId, Transaction, TransactionAndDelta, TransactionData, Vrf, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::VerifiableRandomFunction;
@@ -71,7 +71,7 @@ impl TxBuilder {
         count: u32,
         fee: Money,
         nonce: u32,
-    ) -> TransactionAndDelta {
+    ) -> (DelegateId, TransactionAndDelta) {
         let mut tx = Transaction {
             memo,
             src: Some(self.get_address()),
@@ -87,10 +87,14 @@ impl TxBuilder {
         };
         self.sign_tx(&mut tx);
 
-        TransactionAndDelta {
-            tx,
-            state_delta: None,
-        }
+        let delegate_id = DelegateId::new(&tx);
+        (
+            delegate_id,
+            TransactionAndDelta {
+                tx,
+                state_delta: None,
+            },
+        )
     }
     pub fn register_validator(&self, memo: String, fee: Money, nonce: u32) -> TransactionAndDelta {
         let mut tx = Transaction {

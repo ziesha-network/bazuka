@@ -17,7 +17,8 @@ use {
     bazuka::client::{BazukaClient, NodeError, PeerAddress},
     bazuka::config,
     bazuka::core::{
-        Address, Amount, ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId, ZieshaAddress,
+        Address, Amount, ChainSourcedTx, DelegateId, Money, MpnAddress, MpnSourcedTx, TokenId,
+        ZieshaAddress,
     },
     bazuka::wallet::{TxBuilder, Wallet},
     colored::Colorize,
@@ -115,6 +116,15 @@ enum WalletOptions {
         since: Option<u32>,
         #[structopt(long)]
         count: u32,
+        #[structopt(long, default_value = "0")]
+        fee: Amount,
+    },
+    /// Reclaim funds inside an ended delegatation back to your account
+    ReclaimDelegate {
+        #[structopt(long)]
+        memo: Option<String>,
+        #[structopt(long)]
+        delegate_id: DelegateId,
         #[structopt(long, default_value = "0")]
         fee: Amount,
     },
@@ -1004,6 +1014,9 @@ async fn main() -> Result<(), NodeError> {
                 )
                 .unwrap();
             }
+            WalletOptions::ReclaimDelegate { .. } => {
+                unimplemented!();
+            }
             WalletOptions::Delegate {
                 memo,
                 amount,
@@ -1030,7 +1043,7 @@ async fn main() -> Result<(), NodeError> {
                             .nonce;
 
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let tx = tx_builder.delegate(
+                        let (delegate_id, tx) = tx_builder.delegate(
                             memo.unwrap_or_default(),
                             to,
                             amount,
@@ -1044,6 +1057,7 @@ async fn main() -> Result<(), NodeError> {
                         );
                         wallet.add_rsend(tx.clone());
                         wallet.save(wallet_path).unwrap();
+                        println!("Delegate-Id: {}", delegate_id);
                         println!("{:#?}", client.transact(tx).await?);
                         Ok::<(), NodeError>(())
                     },

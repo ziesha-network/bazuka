@@ -1,6 +1,6 @@
 use crate::core::{
-    Address, Amount, Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, Money,
-    ProofOfStake, Token, TokenUpdate, Transaction, TransactionData,
+    Address, Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, Money, ProofOfStake,
+    Token, TokenUpdate, Transaction, TransactionData,
 };
 use crate::crypto::jubjub::*;
 use crate::zk::{

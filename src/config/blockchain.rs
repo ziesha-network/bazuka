@@ -241,8 +241,6 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.chain_start_timestamp = 0;
     conf.check_validator = false;
 
-    let miner = TxBuilder::new(&Vec::from("MINER"));
-
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;
     let abc = TxBuilder::new(&Vec::from("ABC"));
     conf.genesis.block.body.push(Transaction {

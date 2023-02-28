@@ -1965,7 +1965,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 amount_sum += bal;
             }
         }
-        for (k, v) in self.database.pairs("DEL-".into())?.into_iter() {
+        for (_, v) in self.database.pairs("DEL-".into())?.into_iter() {
             let bal: Delegate = v.try_into().unwrap();
             amount_sum += bal.amount;
         }
@@ -2052,7 +2052,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .database
             .pairs(keys::staker_rank_prefix(epoch).into())?
             .into_iter()
-            .map(|(k, v)| {
+            .map(|(k, _)| {
                 || -> Result<(Address, u64), BlockchainError> {
                     let stake = u64::MAX
                         - u64::from_str_radix(&k.0[13..29], 16)

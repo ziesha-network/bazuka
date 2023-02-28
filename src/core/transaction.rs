@@ -55,6 +55,15 @@ impl<H: Hash> std::fmt::Display for DelegateId<H> {
     }
 }
 
+impl<H: Hash> FromStr for DelegateId<H> {
+    type Err = ParseDelegateIdError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let bytes = hex::decode(s).map_err(|_| ParseDelegateIdError::Invalid)?;
+        let hash_output = H::Output::try_from(bytes).map_err(|_| ParseDelegateIdError::Invalid)?;
+        Ok(Self(hash_output))
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum ParseTokenIdError {
     #[error("token-id invalid")]

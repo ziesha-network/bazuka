@@ -6,7 +6,7 @@ use tokio::sync::RwLock;
 
 pub async fn get_explorer_stakers<B: Blockchain>(
     context: Arc<RwLock<NodeContext<B>>>,
-    req: GetExplorerStakersRequest,
+    _req: GetExplorerStakersRequest,
 ) -> Result<GetExplorerStakersResponse, NodeError> {
     let context = context.read().await;
     let ts = context.network_timestamp();
