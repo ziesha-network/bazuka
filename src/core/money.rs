@@ -23,13 +23,16 @@ pub enum ParseAmountError {
     Invalid,
 }
 
-impl std::fmt::Display for Amount {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl Amount {
+    pub fn display_by_decimals(&self, decimals: u8) -> String {
         let mut s = self.0.to_string();
-        while s.len() <= UNIT_ZEROS as usize {
+        if decimals == 0 {
+            return s;
+        };
+        while s.len() <= decimals as usize {
             s.insert(0, '0');
         }
-        s.insert(s.len() - UNIT_ZEROS as usize, '.');
+        s.insert(s.len() - decimals as usize, '.');
         while let Some(last) = s.chars().last() {
             if last == '0' {
                 s.pop();
@@ -42,23 +45,24 @@ impl std::fmt::Display for Amount {
                 s.push('0');
             }
         }
-        write!(f, "{}", s)
+        return s;
     }
-}
 
-impl FromStr for Amount {
-    type Err = ParseAmountError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    pub fn from_string(s: &str, decimals: u8) -> Result<Self, ParseAmountError> {
         let mut s = s.trim().to_string();
+        if decimals == 0 {
+            let as_u64: u64 = s.parse().map_err(|_| ParseAmountError::Invalid)?;
+            return Ok(Self(as_u64 * UNIT))
+        }
         if let Some(dot_pos) = s.find('.') {
             if s == "." {
                 return Err(ParseAmountError::Invalid);
             }
             let dot_rpos = s.len() - 1 - dot_pos;
-            if dot_rpos > UNIT_ZEROS as usize {
+            if dot_rpos > decimals as usize {
                 return Err(ParseAmountError::Invalid);
             }
-            for _ in 0..UNIT_ZEROS as usize - dot_rpos {
+            for _ in 0..decimals as usize - dot_rpos {
                 s.push('0');
             }
             s.remove(dot_pos);
@@ -67,6 +71,13 @@ impl FromStr for Amount {
             let as_u64: u64 = s.parse().map_err(|_| ParseAmountError::Invalid)?;
             Ok(Self(as_u64 * UNIT))
         }
+    }
+}
+
+impl FromStr for Amount {
+    type Err = ParseAmountError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        return Amount::from_string(&s, UNIT_ZEROS);
     }
 }
 
@@ -123,18 +134,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_amount_to_str() {
-        assert_eq!(format!("{}", Amount(0)), "0.0");
-        assert_eq!(format!("{}", Amount(1)), "0.000000001");
-        assert_eq!(format!("{}", Amount(12)), "0.000000012");
-        assert_eq!(format!("{}", Amount(1234)), "0.000001234");
-        assert_eq!(format!("{}", Amount(123000000000)), "123.0");
-        assert_eq!(format!("{}", Amount(123456789)), "0.123456789");
-        assert_eq!(format!("{}", Amount(1234567898)), "1.234567898");
+    fn test_display_by_decimals_func() {
+        assert_eq!(Amount(0).display_by_decimals(0), "0");
+        assert_eq!(Amount(1223).display_by_decimals(0), "1223");
+        assert_eq!(Amount(0).display_by_decimals(UNIT_ZEROS), "0.0");
+        assert_eq!(Amount(1).display_by_decimals(UNIT_ZEROS), "0.000000001");
+        assert_eq!(Amount(12).display_by_decimals(UNIT_ZEROS), "0.000000012");
+        assert_eq!(Amount(1234).display_by_decimals(UNIT_ZEROS), "0.000001234");
         assert_eq!(
-            format!("{}", Amount(123456789987654321)),
+            Amount(123000000000).display_by_decimals(UNIT_ZEROS),
+            "123.0"
+        );
+        assert_eq!(
+            Amount(123456789).display_by_decimals(UNIT_ZEROS),
+            "0.123456789"
+        );
+        assert_eq!(
+            Amount(1234567898).display_by_decimals(UNIT_ZEROS),
+            "1.234567898"
+        );
+        assert_eq!(
+            Amount(123456789987654321).display_by_decimals(UNIT_ZEROS),
             "123456789.987654321"
         );
+        assert_eq!(Amount(123000000000).display_by_decimals(4), "12300000.0000");
+        assert_eq!(Amount(123456789).display_by_decimals(6), "123.456789");
+        assert_eq!(Amount(123456789).display_by_decimals(9), "0.123456789");
     }
 
     #[test]

@@ -280,16 +280,25 @@ async fn resend_all_wallet_txs(
                         }
                         match tx {
                             MpnSourcedTx::MpnTransaction(tx) => {
+                                let tkn = client.get_token(tx.amount.token_id).await?;
                                 println!(
                                     "Send {} from MPN-account to {} (Nonce: {})",
-                                    tx.amount.amount, tx.dst_pub_key, tx.nonce
+                                    tx.amount.amount.display_by_decimals(tkn.token.decimals),
+                                    tx.dst_pub_key,
+                                    tx.nonce
                                 );
                                 client.zero_transact(tx.clone()).await?;
                             }
                             MpnSourcedTx::MpnWithdraw(tx) => {
+                                let tkn = client.get_token(tx.payment.amount.token_id).await?;
                                 println!(
                                     "Send {} from MPN-account to {} (Nonce: {})",
-                                    tx.payment.amount.amount, tx.payment.dst, tx.zk_nonce
+                                    tx.payment
+                                        .amount
+                                        .amount
+                                        .display_by_decimals(tkn.token.decimals),
+                                    tx.payment.dst,
+                                    tx.zk_nonce
                                 );
                                 client.transact_contract_withdraw(tx.clone()).await?;
                             }
@@ -1084,6 +1093,7 @@ async fn main() -> Result<(), NodeError> {
                     async move {
                         let acc = client.get_account(tx_builder.get_address()).await;
                         let mut token_balances = HashMap::new();
+                        let mut tokens = HashMap::new();
                         let mut token_indices = HashMap::new();
                         for (i, tkn) in wallet.get_tokens().iter().enumerate() {
                             token_indices.insert(*tkn, i);
@@ -1091,6 +1101,9 @@ async fn main() -> Result<(), NodeError> {
                                 client.get_balance(tx_builder.get_address(), *tkn).await
                             {
                                 token_balances.insert(*tkn, inf);
+                            }
+                            if let Ok(inf) = client.get_token(*tkn).await {
+                                tokens.insert(*tkn, inf);
                             }
                         }
 
@@ -1113,7 +1126,9 @@ async fn main() -> Result<(), NodeError> {
                                     println!(
                                         "{}\t{}{}",
                                         format!("#{} <{}>:", i, inf.name).bright_yellow(),
-                                        inf.balance,
+                                        inf.balance.display_by_decimals(
+                                            tokens.get(id).unwrap().token.decimals
+                                        ),
                                         if *id == TokenId::Ziesha {
                                             bazuka::config::SYMBOL.to_string()
                                         } else {
@@ -1179,13 +1194,20 @@ async fn main() -> Result<(), NodeError> {
                                         MpnAddress { pub_key: acc_pk }
                                     );
                                     for (_, money) in resp.tokens.iter() {
+                                        let resp = client
+                                            .get_token(money.token_id)
+                                            .await
+                                            .map(|resp| resp)
+                                            .unwrap();
                                         if let Some(inf) = token_balances.get(&money.token_id) {
                                             let token_index = token_indices[&money.token_id];
                                             println!(
                                                 "{}\t{}{}",
                                                 format!("#{} <{}>:", token_index, inf.name)
                                                     .bright_yellow(),
-                                                money.amount,
+                                                money
+                                                    .amount
+                                                    .display_by_decimals(resp.token.decimals),
                                                 if money.token_id == TokenId::Ziesha {
                                                     bazuka::config::SYMBOL.to_string()
                                                 } else {
