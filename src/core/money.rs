@@ -26,6 +26,9 @@ pub enum ParseAmountError {
 impl Amount {
     pub fn display_by_decimals(&self, decimals: u8) -> String {
         let mut s = self.0.to_string();
+        if decimals == 0 {
+            return s;
+        };
         while s.len() <= decimals as usize {
             s.insert(0, '0');
         }
@@ -47,6 +50,10 @@ impl Amount {
 
     pub fn from_string(s: &str, decimals: u8) -> Result<Self, ParseAmountError> {
         let mut s = s.trim().to_string();
+        if decimals == 0 {
+            let as_u64: u64 = s.parse().map_err(|_| ParseAmountError::Invalid)?;
+            return Ok(Self(as_u64 * UNIT))
+        }
         if let Some(dot_pos) = s.find('.') {
             if s == "." {
                 return Err(ParseAmountError::Invalid);
@@ -64,12 +71,6 @@ impl Amount {
             let as_u64: u64 = s.parse().map_err(|_| ParseAmountError::Invalid)?;
             Ok(Self(as_u64 * UNIT))
         }
-    }
-}
-
-impl std::fmt::Display for Amount {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.display_by_decimals(UNIT_ZEROS))
     }
 }
 
@@ -134,6 +135,8 @@ mod tests {
 
     #[test]
     fn test_display_by_decimals_func() {
+        assert_eq!(Amount(0).display_by_decimals(0), "0");
+        assert_eq!(Amount(1223).display_by_decimals(0), "1223");
         assert_eq!(Amount(0).display_by_decimals(UNIT_ZEROS), "0.0");
         assert_eq!(Amount(1).display_by_decimals(UNIT_ZEROS), "0.000000001");
         assert_eq!(Amount(12).display_by_decimals(UNIT_ZEROS), "0.000000012");
