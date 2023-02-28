@@ -11,7 +11,7 @@ use crate::zk;
 #[cfg(test)]
 use crate::wallet::TxBuilder;
 
-const CHAIN_START_TIMESTAMP: u32 = 1677411749 - 180 * 15;
+const CHAIN_START_TIMESTAMP: u32 = 1677584168 - 180 * 15;
 
 const MPN_LOG4_ACCOUNT_CAPACITY: u8 = 15;
 const MPN_LOG4_PAYMENT_CAPACITY: u8 = 3;
