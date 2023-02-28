@@ -33,7 +33,6 @@ pub struct GetStatsResponse {
     pub slot: u32,
     pub version: String,
     pub network: String,
-    pub validator_proof: ValidatorProof,
     pub validator_claim: Option<ValidatorClaim>,
 }
 

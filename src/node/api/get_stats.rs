@@ -22,7 +22,6 @@ pub async fn get_stats<B: Blockchain>(
         slot,
         version: env!("CARGO_PKG_VERSION").into(),
         network: context.network.clone(),
-        validator_proof: context.blockchain.validator_status(ts, &context.wallet)?,
         validator_claim: context.validator_claim.clone(),
     })
 }
