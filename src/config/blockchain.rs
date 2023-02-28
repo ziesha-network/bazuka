@@ -221,6 +221,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         slot_per_epoch: 20,
         chain_start_timestamp: CHAIN_START_TIMESTAMP,
         max_epoch_delegate: 100,
+        check_validator: true,
     }
 }
 
@@ -237,6 +238,10 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.mpn_num_function_calls = 0;
     conf.mpn_contract_id = mpn_contract_id;
     conf.testnet_height_limit = None;
+    conf.chain_start_timestamp = 0;
+    conf.check_validator = false;
+
+    let miner = TxBuilder::new(&Vec::from("MINER"));
 
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;
     let abc = TxBuilder::new(&Vec::from("ABC"));
@@ -249,7 +254,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
                 amount: Money::ziesha(10000),
             }],
         },
-        nonce: 3,
+        nonce: 4,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });

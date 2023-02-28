@@ -315,6 +315,7 @@ pub struct BlockchainConfig {
     pub slot_per_epoch: u32,
     pub chain_start_timestamp: u32,
     pub max_epoch_delegate: u32,
+    pub check_validator: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -431,12 +432,7 @@ pub trait Blockchain {
         locator: zk::ZkDataLocator,
     ) -> Result<zk::ZkScalar, BlockchainError>;
     fn next_reward(&self) -> Result<Amount, BlockchainError>;
-    fn will_extend(
-        &self,
-        from: u64,
-        headers: &[Header],
-        check_validator: bool,
-    ) -> Result<bool, BlockchainError>;
+    fn will_extend(&self, from: u64, headers: &[Header]) -> Result<bool, BlockchainError>;
     fn extend(&mut self, from: u64, blocks: &[Block]) -> Result<(), BlockchainError>;
     fn rollback(&mut self) -> Result<(), BlockchainError>;
     fn draft_block(
@@ -481,7 +477,7 @@ impl<K: KvStore> KvStoreChain<K> {
             config: config.clone(),
         };
         if chain.get_height()? == 0 {
-            chain.apply_block(&config.genesis.block, true)?;
+            chain.apply_block(&config.genesis.block)?;
             chain.update_states(&config.genesis.patch)?;
         } else if config.genesis.block != chain.get_block(0)? {
             return Err(BlockchainError::DifferentGenesis);
@@ -1238,7 +1234,7 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(result)
     }
 
-    fn apply_block(&mut self, block: &Block, check_validator: bool) -> Result<(), BlockchainError> {
+    fn apply_block(&mut self, block: &Block) -> Result<(), BlockchainError> {
         let (ops, _) = self.isolated(|chain| {
             let curr_height = chain.get_height()?;
 
@@ -1256,7 +1252,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     return Err(BlockchainError::InvalidMerkleRoot);
                 }
 
-                chain.will_extend(curr_height, &[block.header.clone()], true)?;
+                chain.will_extend(curr_height, &[block.header.clone()])?;
             }
 
             // All blocks except genesis block should have a miner reward
@@ -1287,7 +1283,7 @@ impl<K: KvStore> KvStoreChain<K> {
                         }
                         let reward_entry = &entries[0];
 
-                        if check_validator
+                        if self.config.check_validator
                             && !self.is_validator(
                                 block.header.proof_of_stake.timestamp,
                                 reward_entry.dst.clone(),
@@ -1652,12 +1648,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         )?)
     }
 
-    fn will_extend(
-        &self,
-        from: u64,
-        headers: &[Header],
-        check_validator: bool,
-    ) -> Result<bool, BlockchainError> {
+    fn will_extend(&self, from: u64, headers: &[Header]) -> Result<bool, BlockchainError> {
         if from + headers.len() as u64 <= self.get_height()? {
             return Ok(false);
         }
@@ -1703,7 +1694,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             }
 
             for block in blocks.iter() {
-                chain.apply_block(block, true)?;
+                chain.apply_block(block)?;
             }
 
             Ok(())
@@ -1747,7 +1738,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     ) -> Result<Option<BlockAndPatch>, BlockchainError> {
         let height = self.get_height()?;
 
-        if self.validator_status(timestamp, wallet)?.is_none() {
+        if self.config.check_validator && self.validator_status(timestamp, wallet)?.is_none() {
             return Ok(None);
         }
 
@@ -1825,7 +1816,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         blk.header.block_root = blk.merkle_tree().root();
 
         match self.isolated(|chain| {
-            chain.apply_block(&blk, false)?; // Check if everything is ok
+            chain.apply_block(&blk)?; // Check if everything is ok
             chain.update_states(&block_delta)?;
 
             Ok(())
@@ -1973,6 +1964,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 let bal: Amount = v.try_into().unwrap();
                 amount_sum += bal;
             }
+        }
+        for (k, v) in self.database.pairs("DEL-".into())?.into_iter() {
+            let bal: Delegate = v.try_into().unwrap();
+            amount_sum += bal.amount;
         }
         Ok(amount_sum)
     }

@@ -34,7 +34,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
     );
 
     let draft = chain.draft_block(1, &[tx.clone()], &miner, true)?.unwrap();
-    chain.apply_block(&draft.block, true)?;
+    chain.apply_block(&draft.block)?;
 
     assert_eq!(chain.get_height()?, 2);
     assert_eq!(chain.get_outdated_contracts()?.len(), 1);
@@ -53,13 +53,13 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
 fn test_contract_update() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("MINER"));
     let alice = TxBuilder::new(&Vec::from("ABC"));
-    let cid =
-        ContractId::from_str("1525ced32cb40609838e7dad549014268e4449abc2a1621e485bc8f88a48f223")
-            .unwrap();
+
     let mut chain = KvStoreChain::new(
         db::RamKvStore::new(),
         blockchain::get_test_blockchain_config(),
     )?;
+
+    let cid = chain.config().mpn_contract_id;
 
     let state_model = zk::ZkStateModel::List {
         item_type: Box::new(zk::ZkStateModel::Scalar),
@@ -97,7 +97,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     let draft = chain.draft_block(1, &[tx.clone()], &miner, false)?.unwrap();
 
-    chain.apply_block(&draft.block, true)?;
+    chain.apply_block(&draft.block)?;
 
     assert!(matches!(
         chain.fork_on_ram().update_states(&ZkBlockchainPatch {
@@ -220,6 +220,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
+            0,
             &alice
                 .call_function(
                     "".into(),
@@ -240,6 +241,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
+            0,
             &alice
                 .call_function(
                     "".into(),
@@ -263,6 +265,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
+            0,
             &alice
                 .call_function(
                     "".into(),
@@ -283,6 +286,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
+            0,
             &alice
                 .call_function(
                     "".into(),

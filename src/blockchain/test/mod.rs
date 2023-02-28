@@ -9,10 +9,10 @@ mod tokens;
 
 fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), BlockchainError> {
     while b.get_height()? > 0 {
-        assert_eq!(circulated_money(b)?, Amount(2000000000000000000));
+        assert_eq!(b.currency_in_circulation()?, Amount(2000000000000000000));
         b.rollback()?;
     }
-    assert_eq!(circulated_money(b)?, Amount(0));
+    assert_eq!(b.currency_in_circulation()?, Amount(0));
     assert!(matches!(
         b.rollback(),
         Err(BlockchainError::NoBlocksToRollback)
@@ -24,23 +24,6 @@ fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), Blockc
         .collect::<Vec<_>>()
         .is_empty());
     Ok(())
-}
-
-fn circulated_money<K: KvStore>(b: &KvStoreChain<K>) -> Result<Amount, BlockchainError> {
-    let mut money_sum = Amount(0);
-    for (k, v) in b.database.pairs("ACB-".into())?.into_iter() {
-        if k.0.ends_with("Ziesha") {
-            let bal: Amount = v.try_into().unwrap();
-            money_sum += bal;
-        }
-    }
-    for (k, v) in b.database.pairs("CAB-".into())?.into_iter() {
-        if k.0.ends_with("Ziesha") {
-            let bal: Amount = v.try_into().unwrap();
-            money_sum += bal;
-        }
-    }
-    Ok(money_sum)
 }
 
 #[test]
@@ -99,10 +82,7 @@ fn test_timestamp_increasing() -> Result<(), BlockchainError> {
     )?;
 
     let mut fork1 = chain.fork_on_ram();
-    fork1.apply_block(
-        &fork1.draft_block(10, &[], &miner, true)?.unwrap().block,
-        false,
-    )?;
+    fork1.apply_block(&fork1.draft_block(10, &[], &miner, true)?.unwrap().block)?;
     assert!(matches!(
         fork1.draft_block(
             5, // 5 < 10
@@ -122,24 +102,17 @@ fn test_timestamp_increasing() -> Result<(), BlockchainError> {
             )?
             .unwrap()
             .block,
-        false,
     )?;
 
     for i in 11..30 {
-        fork1.apply_block(
-            &fork1.draft_block(i, &[], &miner, true)?.unwrap().block,
-            false,
-        )?;
+        fork1.apply_block(&fork1.draft_block(i, &[], &miner, true)?.unwrap().block)?;
     }
 
     assert!(matches!(
         fork1.draft_block(28, &[], &miner, true,),
         Err(BlockchainError::InvalidTimestamp)
     ));
-    fork1.apply_block(
-        &fork1.draft_block(29, &[], &miner, true)?.unwrap().block,
-        false,
-    )?;
+    fork1.apply_block(&fork1.draft_block(29, &[], &miner, true)?.unwrap().block)?;
 
     rollback_till_empty(&mut fork1)?;
     drop(fork1);
@@ -296,13 +269,13 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
     let mut fork1 = chain.fork_on_ram();
     let mut fork2 = chain.fork_on_ram();
 
-    fork1.apply_block(&blk1, true)?;
+    fork1.apply_block(&blk1)?;
     assert_eq!(
         fork1.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Amount(9700)
     );
 
-    fork2.apply_block(&blk2, true)?;
+    fork2.apply_block(&blk2)?;
     assert_eq!(
         fork2.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Amount(9700)
@@ -311,7 +284,7 @@ fn test_merkle_root_check() -> Result<(), BlockchainError> {
     let mut blk_wrong = blk1.clone();
     blk_wrong.header.block_root = Default::default();
     assert!(matches!(
-        chain.fork_on_ram().apply_block(&blk_wrong, true),
+        chain.fork_on_ram().apply_block(&blk_wrong),
         Err(BlockchainError::InvalidMerkleRoot)
     ));
 
@@ -358,7 +331,6 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
             .draft_block(1, &[tx.clone()], &miner, true)?
             .unwrap()
             .block,
-        true,
     )?;
     assert_eq!(
         chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
@@ -375,7 +347,6 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
             .draft_block(1, &[tx.clone()], &miner, true)?
             .unwrap()
             .block,
-        true,
     )?;
     assert_eq!(
         chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
@@ -395,10 +366,7 @@ fn test_txs_cant_be_duplicated() -> Result<(), BlockchainError> {
     );
 
     // Alice -> 2700 -> Bob (Fee 300)
-    chain.apply_block(
-        &chain.draft_block(1, &[tx2], &miner, true)?.unwrap().block,
-        true,
-    )?;
+    chain.apply_block(&chain.draft_block(1, &[tx2], &miner, true)?.unwrap().block)?;
     assert_eq!(
         chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
         Amount(4000)
@@ -443,7 +411,7 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
     );
 
     // Ensure apply_tx will raise
-    match chain.apply_tx(&tx.tx, false) {
+    match chain.apply_tx(0, &tx.tx, false) {
         Ok(_) => assert!(
             false,
             "Transaction from wallet with insufficient fund should fail"
@@ -452,10 +420,7 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
     }
 
     // Ensure tx is not included in block and bob has not received funds
-    chain.apply_block(
-        &chain.draft_block(1, &[tx], &miner, true)?.unwrap().block,
-        true,
-    )?;
+    chain.apply_block(&chain.draft_block(1, &[tx], &miner, true)?.unwrap().block)?;
     assert_eq!(
         chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Amount(0)
@@ -508,7 +473,6 @@ fn test_cant_apply_unsigned_tx() -> Result<(), BlockchainError> {
             .draft_block(1, &[unsigned_tx], &miner, true)?
             .unwrap()
             .block,
-        true,
     )?;
     assert_eq!(
         chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
@@ -563,10 +527,7 @@ fn test_cant_apply_invalid_signed_tx() -> Result<(), BlockchainError> {
     }
 
     // Ensure tx is not included in block and bob has not received funds
-    chain.apply_block(
-        &chain.draft_block(1, &[tx], &miner, true)?.unwrap().block,
-        true,
-    )?;
+    chain.apply_block(&chain.draft_block(1, &[tx], &miner, true)?.unwrap().block)?;
     assert_eq!(
         chain.get_balance(bob.get_address(), TokenId::Ziesha)?,
         Amount(0)
@@ -615,7 +576,6 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             )?
             .unwrap()
             .block,
-        true,
     )?;
     assert_eq!(
         chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
@@ -643,7 +603,6 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             )?
             .unwrap()
             .block,
-        true,
     )?;
     assert_eq!(
         chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
@@ -671,7 +630,6 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             )?
             .unwrap()
             .block,
-        true,
     )?;
     assert_eq!(
         chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
@@ -699,7 +657,6 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             )?
             .unwrap()
             .block,
-        true,
     )?;
     assert_eq!(
         chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
@@ -727,7 +684,6 @@ fn test_balances_are_correct_after_tx() -> Result<(), BlockchainError> {
             )?
             .unwrap()
             .block,
-        true,
     )?;
     assert_eq!(
         chain.get_balance(alice.get_address(), TokenId::Ziesha)?,
@@ -781,7 +737,7 @@ fn test_chain_should_not_draft_invalid_transactions() -> Result<(), BlockchainEr
                 amount: Money::ziesha(10_000_000),
             }],
         },
-        nonce: 4,
+        nonce: 5,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });
@@ -856,7 +812,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
                 amount: Money::ziesha(10_000_000),
             }],
         },
-        nonce: 4,
+        nonce: 5,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });
@@ -885,7 +841,7 @@ fn test_chain_should_draft_all_valid_transactions() -> Result<(), BlockchainErro
 
     validate_block(&chain, &mut draft)?;
 
-    chain.apply_block(&draft.block, true)?;
+    chain.apply_block(&draft.block)?;
 
     assert_eq!(3, draft.block.body.len());
 
@@ -915,7 +871,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
                 amount: Money::ziesha(10_000_000),
             }],
         },
-        nonce: 4,
+        nonce: 5,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });
@@ -936,7 +892,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
 
     validate_block(&chain, &mut draft)?;
 
-    chain.apply_block(&draft.block, true)?;
+    chain.apply_block(&draft.block)?;
 
     let t2 = wallet1.create_transaction(
         "".into(),
@@ -955,7 +911,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
 
     let prev_checksum = chain.database.checksum::<Hasher>()?;
 
-    chain.apply_block(&draft.block, true)?;
+    chain.apply_block(&draft.block)?;
 
     let height = chain.get_height()?;
     assert_eq!(3, height);

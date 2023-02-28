@@ -45,7 +45,6 @@ fn test_token_balances() -> Result<(), BlockchainError> {
             .draft_block(1, &[token_create_tx], &miner, false)?
             .unwrap()
             .block,
-        true,
     )?;
 
     assert_eq!(
@@ -69,7 +68,6 @@ fn test_token_balances() -> Result<(), BlockchainError> {
             )?
             .unwrap()
             .block,
-        true,
     )?;
 
     assert_eq!(
@@ -111,7 +109,6 @@ fn test_token_balances() -> Result<(), BlockchainError> {
             )?
             .unwrap()
             .block,
-        true,
     )?;
 
     assert_eq!(chain.get_balance(alice.get_address(), token_id)?, Amount(0));

@@ -217,9 +217,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
 fn sample_contract_call() -> TransactionAndDelta {
     let updater = TxBuilder::new(&Vec::from("ABC"));
 
-    let cid =
-        ContractId::from_str("1525ced32cb40609838e7dad549014268e4449abc2a1621e485bc8f88a48f223")
-            .unwrap();
+    let cid = blockchain::get_test_blockchain_config().mpn_contract_id;
     let state_model = zk::ZkStateModel::List {
         item_type: Box::new(zk::ZkStateModel::Scalar),
         log4_size: 5,
