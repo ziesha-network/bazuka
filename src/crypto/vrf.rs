@@ -40,11 +40,41 @@ impl FromStr for PublicKey {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Proof(pub schnorrkel::vrf::VRFProof);
+impl PartialEq<Proof> for Proof {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_bytes() == other.0.to_bytes()
+    }
+}
+impl Eq for Proof {}
+impl std::hash::Hash for Proof {
+    fn hash<Hasher>(&self, state: &mut Hasher)
+    where
+        Hasher: std::hash::Hasher,
+    {
+        state.write(&self.0.to_bytes());
+        state.finish();
+    }
+}
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Output(pub schnorrkel::vrf::VRFPreOut);
+impl PartialEq<Output> for Output {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.to_bytes() == other.0.to_bytes()
+    }
+}
+impl Eq for Output {}
+impl std::hash::Hash for Output {
+    fn hash<Hasher>(&self, state: &mut Hasher)
+    where
+        Hasher: std::hash::Hasher,
+    {
+        state.write(&self.0.to_bytes());
+        state.finish();
+    }
+}
 
 impl Into<f32> for Output {
     fn into(self) -> f32 {

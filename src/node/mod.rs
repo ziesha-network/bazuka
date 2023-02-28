@@ -239,12 +239,8 @@ async fn node_service<B: Blockchain>(
             #[cfg(test)]
             (Method::POST, "/generate_block") => {
                 *response.body_mut() = Body::from(bincode::serialize(
-                    &api::generate_block(
-                        client,
-                        Arc::clone(&context),
-                        bincode::deserialize(&body_bytes)?,
-                    )
-                    .await?,
+                    &api::generate_block(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
                 )?);
             }
             (Method::GET, "/stats") => {

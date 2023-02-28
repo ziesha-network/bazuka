@@ -5,7 +5,8 @@ pub async fn promote_validator<B: Blockchain>(
 ) -> Result<(), NodeError> {
     let mut ctx = context.write().await;
     let timestamp = ctx.network_timestamp();
-    if let Some(proof) = ctx.blockchain.validator_status(timestamp, &ctx.wallet)? {
+    let proof = ctx.blockchain.validator_status(timestamp, &ctx.wallet)?;
+    if !proof.is_unproven() {
         if let Some(claim) = &ctx.validator_claim {
             if claim.address == ctx.wallet.get_address() {
                 return Ok(());

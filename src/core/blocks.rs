@@ -9,7 +9,7 @@ use super::transaction::Transaction;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Block<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction> {
-    pub header: Header<H, S>,
+    pub header: Header<H, S, V>,
     pub body: Vec<Transaction<H, S, V>>,
 }
 

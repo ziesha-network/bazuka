@@ -1,8 +1,7 @@
-use crate::blockchain::ValidatorProof;
 use crate::blockchain::ZkBlockchainPatch;
 use crate::core::{
     Account, Address, Amount, Block, ChainSourcedTx, ContractId, Header, Money, MpnDeposit,
-    MpnSourcedTx, MpnWithdraw, Signature, Token, TransactionAndDelta,
+    MpnSourcedTx, MpnWithdraw, Signature, Token, TransactionAndDelta, ValidatorProof,
 };
 use crate::zk;
 use std::collections::HashMap;
@@ -34,7 +33,7 @@ pub struct GetStatsResponse {
     pub slot: u32,
     pub version: String,
     pub network: String,
-    pub validator_proof: Option<ValidatorProof>,
+    pub validator_proof: ValidatorProof,
     pub validator_claim: Option<ValidatorClaim>,
 }
 

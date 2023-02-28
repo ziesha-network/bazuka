@@ -5,8 +5,10 @@ use crate::core::{
     hash::Hash, Account, Address, Amount, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
     ContractId, ContractUpdate, ContractWithdraw, Delegate, DelegateId, Hasher, Header, Money,
     MpnAddress, MpnSourcedTx, ProofOfStake, RegularSendEntry, Signature, Staker, Token, TokenId,
-    TokenUpdate, Transaction, TransactionAndDelta, TransactionData, ZkHasher as CoreZkHasher,
+    TokenUpdate, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf,
+    ZkHasher as CoreZkHasher,
 };
+use crate::crypto::VerifiableRandomFunction;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
 use crate::wallet::TxBuilder;
 use crate::zk;
@@ -368,10 +370,6 @@ pub enum TxSideEffect {
     Nothing,
 }
 
-// A proof that you are the validator for this block
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-pub struct ValidatorProof {}
-
 pub trait Blockchain {
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn random(&self, addr: &Address, timestamp: u32) -> Result<f32, BlockchainError>;
@@ -392,7 +390,7 @@ pub trait Blockchain {
         &self,
         timestamp: u32,
         wallet: &TxBuilder,
-    ) -> Result<Option<ValidatorProof>, BlockchainError>;
+    ) -> Result<ValidatorProof, BlockchainError>;
 
     fn currency_in_circulation(&self) -> Result<Amount, BlockchainError>;
 
@@ -1287,7 +1285,7 @@ impl<K: KvStore> KvStoreChain<K> {
                             && !self.is_validator(
                                 block.header.proof_of_stake.timestamp,
                                 reward_entry.dst.clone(),
-                                ValidatorProof {},
+                                block.header.proof_of_stake.proof.clone(),
                             )?
                         {
                             return Err(BlockchainError::UnelectedValidator);
@@ -1338,7 +1336,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     updates,
                 } = &tx.data
                 {
-                    if *contract_id == self.config.mpn_contract_id {
+                    if contract_id.clone() == self.config.mpn_contract_id {
                         for update in updates.iter() {
                             match update {
                                 ContractUpdate::Deposit { .. } => {
@@ -1738,7 +1736,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     ) -> Result<Option<BlockAndPatch>, BlockchainError> {
         let height = self.get_height()?;
 
-        if self.config.check_validator && self.validator_status(timestamp, wallet)?.is_none() {
+        let validator_status = self.validator_status(timestamp, wallet)?;
+        if self.config.check_validator && validator_status.is_unproven() {
             return Ok(None);
         }
 
@@ -1809,6 +1808,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
                 proof_of_stake: ProofOfStake {
                     timestamp,
                     validator: wallet.get_address(),
+                    proof: validator_status,
                 },
             },
             body: txs,
@@ -1976,32 +1976,42 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         &self,
         timestamp: u32,
         addr: Address,
-        _proof: ValidatorProof,
+        proof: ValidatorProof,
     ) -> Result<bool, BlockchainError> {
-        let (epoch, _) = self.epoch_slot(timestamp);
+        let (epoch, slot) = self.epoch_slot(timestamp);
         let stakers = self.get_stakers(epoch)?;
         let sum_stakes = stakers.iter().map(|(_, a)| u64::from(*a)).sum::<u64>();
         let stakers: HashMap<Address, f32> = stakers
             .into_iter()
             .map(|(k, v)| (k, (u64::from(v) as f64 / sum_stakes as f64) as f32))
             .collect();
+
         if let Some(chance) = stakers.get(&addr) {
-            let rand = self.random(&addr, timestamp)?;
-            if rand <= *chance {
-                Ok(true)
-            } else {
-                Ok(false)
+            if let Some(staker_info) = self.get_staker(addr.clone())? {
+                if let ValidatorProof::Proof {
+                    vrf_output,
+                    vrf_proof,
+                } = proof
+                {
+                    if Into::<f32>::into(vrf_output.clone()) <= *chance {
+                        return Ok(Vrf::verify(
+                            &staker_info.vrf_pub_key,
+                            format!("{}-{}", epoch, slot).as_bytes(),
+                            &vrf_output,
+                            &vrf_proof,
+                        ));
+                    }
+                }
             }
-        } else {
-            Ok(false)
         }
+        Ok(false)
     }
     fn validator_status(
         &self,
         timestamp: u32,
         wallet: &TxBuilder,
-    ) -> Result<Option<ValidatorProof>, BlockchainError> {
-        let (epoch, _) = self.epoch_slot(timestamp);
+    ) -> Result<ValidatorProof, BlockchainError> {
+        let (epoch, slot) = self.epoch_slot(timestamp);
         let stakers = self.get_stakers(epoch)?;
         let sum_stakes = stakers.iter().map(|(_, a)| u64::from(*a)).sum::<u64>();
         let stakers: HashMap<Address, f32> = stakers
@@ -2009,14 +2019,17 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             .map(|(k, v)| (k, (u64::from(v) as f64 / sum_stakes as f64) as f32))
             .collect();
         if let Some(chance) = stakers.get(&wallet.get_address()) {
-            let rand = self.random(&wallet.get_address(), timestamp)?;
-            if rand <= *chance {
-                Ok(Some(ValidatorProof {}))
+            let (vrf_output, vrf_proof) = wallet.generate_random(epoch, slot);
+            if Into::<f32>::into(vrf_output.clone()) <= *chance {
+                Ok(ValidatorProof::Proof {
+                    vrf_output,
+                    vrf_proof,
+                })
             } else {
-                Ok(None)
+                Ok(ValidatorProof::Unproven)
             }
         } else {
-            Ok(None)
+            Ok(ValidatorProof::Unproven)
         }
     }
 

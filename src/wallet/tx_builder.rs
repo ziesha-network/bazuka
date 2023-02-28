@@ -1,10 +1,9 @@
-use crate::blockchain::ValidatorProof;
 use crate::client::messages::ValidatorClaim;
 use crate::client::PeerAddress;
 use crate::core::{
     Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, DelegateId,
     Hasher, Money, MpnAddress, MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token,
-    TokenId, Transaction, TransactionAndDelta, TransactionData, Vrf, ZkSigner,
+    TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::VerifiableRandomFunction;

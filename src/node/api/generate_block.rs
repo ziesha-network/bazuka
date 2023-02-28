@@ -1,7 +1,6 @@
 use super::messages::{GenerateBlockRequest, GenerateBlockResponse};
 use super::{promote_block, NodeContext, NodeError};
 use crate::blockchain::Blockchain;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -10,7 +9,6 @@ pub async fn generate_block<B: Blockchain>(
     _req: GenerateBlockRequest,
 ) -> Result<GenerateBlockResponse, NodeError> {
     let mut ctx = context.write().await;
-    let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
     let wallet = ctx.wallet.clone();
     // Invoke PoS block generation
     if let Some(draft) = ctx.try_produce(wallet)? {

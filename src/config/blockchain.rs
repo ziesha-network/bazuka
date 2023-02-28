@@ -4,7 +4,7 @@ use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
 use crate::core::{
     Amount, Block, ContractId, Header, Money, ProofOfStake, Signature, Token, TokenId, Transaction,
-    TransactionAndDelta, TransactionData, ZkHasher,
+    TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
 };
 use crate::zk;
 
@@ -179,6 +179,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             proof_of_stake: ProofOfStake {
                 timestamp: 0,
                 validator: Default::default(),
+                proof: ValidatorProof::Unproven,
             },
         },
         body: vec![
