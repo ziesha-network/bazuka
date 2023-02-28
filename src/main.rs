@@ -280,16 +280,25 @@ async fn resend_all_wallet_txs(
                         }
                         match tx {
                             MpnSourcedTx::MpnTransaction(tx) => {
+                                let tkn = client.get_token(tx.amount.token_id).await?;
                                 println!(
                                     "Send {} from MPN-account to {} (Nonce: {})",
-                                    tx.amount.amount, tx.dst_pub_key, tx.nonce
+                                    tx.amount.amount.display_by_decimals(tkn.token.decimals),
+                                    tx.dst_pub_key,
+                                    tx.nonce
                                 );
                                 client.zero_transact(tx.clone()).await?;
                             }
                             MpnSourcedTx::MpnWithdraw(tx) => {
+                                let tkn = client.get_token(tx.payment.amount.token_id).await?;
                                 println!(
                                     "Send {} from MPN-account to {} (Nonce: {})",
-                                    tx.payment.amount.amount, tx.payment.dst, tx.zk_nonce
+                                    tx.payment
+                                        .amount
+                                        .amount
+                                        .display_by_decimals(tkn.token.decimals),
+                                    tx.payment.dst,
+                                    tx.zk_nonce
                                 );
                                 client.transact_contract_withdraw(tx.clone()).await?;
                             }
@@ -1117,8 +1126,9 @@ async fn main() -> Result<(), NodeError> {
                                     println!(
                                         "{}\t{}{}",
                                         format!("#{} <{}>:", i, inf.name).bright_yellow(),
-                                        inf.balance
-                                            .display_by_decimals(tokens.get(id).unwrap().token.decimals),
+                                        inf.balance.display_by_decimals(
+                                            tokens.get(id).unwrap().token.decimals
+                                        ),
                                         if *id == TokenId::Ziesha {
                                             bazuka::config::SYMBOL.to_string()
                                         } else {
