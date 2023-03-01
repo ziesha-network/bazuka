@@ -88,8 +88,6 @@ pub enum BlockchainError {
     TestnetForcedFork,
     #[error("token already exists")]
     TokenAlreadyExists,
-    #[error("staker already registered")]
-    StakerAlreadyRegistered,
     #[error("token not found")]
     TokenNotFound,
     #[error("token not updatable")]

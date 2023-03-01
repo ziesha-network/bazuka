@@ -689,18 +689,14 @@ impl<K: KvStore> KvStoreChain<K> {
             )])?;
 
             match &tx.data {
-                TransactionData::RegisterStaker { vrf_pub_key } => {
-                    if chain.get_staker(tx_src.clone())?.is_none() {
-                        chain.database.update(&[WriteOp::Put(
-                            keys::staker(&tx_src),
-                            Staker {
-                                vrf_pub_key: vrf_pub_key.clone(),
-                            }
-                            .into(),
-                        )])?;
-                    } else {
-                        return Err(BlockchainError::StakerAlreadyRegistered);
-                    }
+                TransactionData::UpdateStaker { vrf_pub_key } => {
+                    chain.database.update(&[WriteOp::Put(
+                        keys::staker(&tx_src),
+                        Staker {
+                            vrf_pub_key: vrf_pub_key.clone(),
+                        }
+                        .into(),
+                    )])?;
                 }
                 TransactionData::DestroyDelegate { delegate_id } => {
                     let delegate = chain.get_delegate(tx_src.clone(), delegate_id.clone())?;
@@ -711,14 +707,8 @@ impl<K: KvStore> KvStoreChain<K> {
                         .database
                         .update(&[WriteOp::Remove(keys::delegate(&tx_src, delegate_id))])?;
                 }
-                TransactionData::Delegate {
-                    amount,
-                    to,
-                    since,
-                    count,
-                } => {
-                    // WARN: Height check on testnet
-                    if chain.get_height()? >= 290 && *count > self.config.max_epoch_delegate {
+                TransactionData::Delegate { amount, to, until } => {
+                    if (*until).saturating_sub(epoch) > self.config.max_epoch_delegate {
                         return Err(BlockchainError::DelegateExcessiveEpochCount);
                     }
                     let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
@@ -737,13 +727,13 @@ impl<K: KvStore> KvStoreChain<K> {
                         Delegate {
                             delegator: tx_src.clone(),
                             amount: *amount,
-                            end: since + count,
+                            end: *until,
                         }
                         .into(),
                     )])?;
 
-                    let epoch_begin = std::cmp::max(*since, epoch + 1);
-                    let epoch_end = std::cmp::max(*since + *count, epoch + 1);
+                    let epoch_begin = epoch + 1;
+                    let epoch_end = std::cmp::max(*until, epoch + 1);
 
                     for epoch in epoch_begin..epoch_end {
                         let old_stake = chain.get_stake(to.clone(), epoch)?;
@@ -2029,23 +2019,25 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     }
 
     fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, Amount)>, BlockchainError> {
-        self.database
+        let mut stakers = Vec::new();
+        for (k, _) in self
+            .database
             .pairs(keys::staker_rank_prefix(epoch).into())?
             .into_iter()
-            .map(|(k, _)| {
-                || -> Result<(Address, Amount), BlockchainError> {
-                    let stake = Amount(
-                        u64::MAX
-                            - u64::from_str_radix(&k.0[13..29], 16)
-                                .map_err(|_| BlockchainError::Inconsistency)?,
-                    );
-                    let pk: Address = k.0[30..]
-                        .parse()
-                        .map_err(|_| BlockchainError::Inconsistency)?;
-                    Ok((pk, stake))
-                }()
-            })
-            .collect::<Result<Vec<_>, _>>()
+        {
+            let stake = Amount(
+                u64::MAX
+                    - u64::from_str_radix(&k.0[13..29], 16)
+                        .map_err(|_| BlockchainError::Inconsistency)?,
+            );
+            let pk: Address = k.0[30..]
+                .parse()
+                .map_err(|_| BlockchainError::Inconsistency)?;
+            if self.get_staker(pk.clone())?.is_some() {
+                stakers.push((pk, stake));
+            }
+        }
+        Ok(stakers)
     }
 
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32) {

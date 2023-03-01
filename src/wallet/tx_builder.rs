@@ -69,8 +69,7 @@ impl TxBuilder {
         memo: String,
         address: Address,
         amount: Amount,
-        since: u32,
-        count: u32,
+        until: u32,
         fee: Money,
         nonce: u32,
     ) -> (DelegateId, TransactionAndDelta) {
@@ -80,8 +79,7 @@ impl TxBuilder {
             data: TransactionData::Delegate {
                 to: address,
                 amount,
-                since,
-                count,
+                until,
             },
             nonce,
             fee,
@@ -115,7 +113,7 @@ impl TxBuilder {
         let mut tx = Transaction {
             memo,
             src: Some(self.get_address()),
-            data: TransactionData::RegisterStaker {
+            data: TransactionData::UpdateStaker {
                 vrf_pub_key: self.vrf_public_key.clone(),
             },
             nonce,

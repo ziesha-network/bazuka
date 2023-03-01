@@ -148,7 +148,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 .parse()
                 .unwrap(),
         ),
-        data: TransactionData::RegisterStaker {
+        data: TransactionData::UpdateStaker {
             vrf_pub_key: "vrfec707f8ab27ab5fe217eae8932c840393e2cfab3dfaf79d53a88e1ac4ae4c255"
                 .parse()
                 .unwrap(),
@@ -164,9 +164,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             to: "ed02b39ed13c94e8899588363cf8be09fe6e0ecb9967631a2464d5bcca7dcd7af8"
                 .parse()
                 .unwrap(),
-            amount: Amount(1000),
-            since: 1,
-            count: 24,
+            amount: Amount(1000000000000),
+            until: 50,
         },
         nonce: 3,
         fee: Money::ziesha(0),

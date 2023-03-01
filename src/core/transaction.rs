@@ -322,14 +322,13 @@ pub enum TokenUpdate<S: SignatureScheme> {
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction> {
-    RegisterStaker {
+    UpdateStaker {
         vrf_pub_key: V::Pub,
     },
     Delegate {
         amount: Amount,
         to: S::Pub,
-        since: u32,
-        count: u32,
+        until: u32,
     },
     DestroyDelegate {
         delegate_id: DelegateId<H>,
