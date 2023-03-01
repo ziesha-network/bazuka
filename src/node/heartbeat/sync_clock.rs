@@ -29,7 +29,7 @@ pub async fn sync_clock<B: Blockchain>(
                     .json_post::<HandshakeRequest, HandshakeResponse>(
                         format!("http://{}/peers", peer.address),
                         handshake_req,
-                        Limit::default().size(KB).time(SECOND),
+                        Limit::default().size(5 * KB).time(SECOND),
                     )
                     .await;
                 result.map(|r| (r, timer.elapsed()))
