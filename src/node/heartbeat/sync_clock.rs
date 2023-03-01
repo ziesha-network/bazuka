@@ -26,8 +26,8 @@ pub async fn sync_clock<B: Blockchain>(
             async move {
                 let timer = Instant::now();
                 let result = net
-                    .json_post::<HandshakeRequest, HandshakeResponse>(
-                        format!("http://{}/peers", peer.address),
+                    .bincode_post::<HandshakeRequest, HandshakeResponse>(
+                        format!("http://{}/bincode/peers", peer.address),
                         handshake_req,
                         Limit::default().size(5 * KB).time(SECOND),
                     )

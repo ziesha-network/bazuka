@@ -29,10 +29,10 @@ pub async fn discover_peers<B: Blockchain>(
         async move {
             let timer = Instant::now();
             let result = net
-                .json_post::<HandshakeRequest, HandshakeResponse>(
-                    format!("http://{}/peers", peer),
+                .bincode_post::<HandshakeRequest, HandshakeResponse>(
+                    format!("http://{}/bincode/peers", peer),
                     handshake_req,
-                    Limit::default().size(KB).time(SECOND),
+                    Limit::default().size(5 * KB).time(SECOND),
                 )
                 .await;
             result.map(|r| (r, timer.elapsed()))

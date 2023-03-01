@@ -284,12 +284,12 @@ async fn node_service<B: Blockchain>(
                     &api::get_token(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
                 )?);
             }
-            (Method::POST, "/peers") => {
-                *response.body_mut() = Body::from(serde_json::to_vec(
+            (Method::POST, "/bincode/peers") => {
+                *response.body_mut() = Body::from(bincode::serialize(
                     &api::post_peer(
                         client,
                         Arc::clone(&context),
-                        serde_json::from_slice(&body_bytes)?,
+                        bincode::deserialize(&body_bytes)?,
                     )
                     .await?,
                 )?);
