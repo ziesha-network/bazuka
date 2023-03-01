@@ -117,22 +117,21 @@ impl<B: Blockchain> NodeContext<B> {
         &mut self,
         claim: ValidatorClaim,
     ) -> Result<bool, BlockchainError> {
-        let ts = self.network_timestamp();
-        if self
-            .blockchain
-            .is_validator(ts, claim.address.clone(), claim.proof.clone())?
-            && claim.verify_signature()
-        {
-            if self.validator_claim != Some(claim.clone()) {
-                // Only handle one winner!
-                if let Some(curr_claim) = self.validator_claim.clone() {
-                    let (epoch_curr, slot_curr) = self.blockchain.epoch_slot(curr_claim.timestamp);
-                    let (epoch_req, slot_req) = self.blockchain.epoch_slot(claim.timestamp);
-                    if epoch_curr == epoch_req && slot_curr == slot_req {
-                        return Ok(false);
-                    }
+        if self.validator_claim != Some(claim.clone()) {
+            // Only handle one winner!
+            if let Some(curr_claim) = self.validator_claim.clone() {
+                let (epoch_curr, slot_curr) = self.blockchain.epoch_slot(curr_claim.timestamp);
+                let (epoch_req, slot_req) = self.blockchain.epoch_slot(claim.timestamp);
+                if epoch_curr == epoch_req && slot_curr == slot_req {
+                    return Ok(false);
                 }
-
+            }
+            let ts = self.network_timestamp();
+            if self
+                .blockchain
+                .is_validator(ts, claim.address.clone(), claim.proof.clone())?
+                && claim.verify_signature()
+            {
                 self.validator_claim = Some(claim.clone());
                 log::info!("Address {} is the validator!", claim.address);
                 return Ok(true);

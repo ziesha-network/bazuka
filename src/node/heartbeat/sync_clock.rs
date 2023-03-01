@@ -57,18 +57,12 @@ pub async fn sync_clock<B: Blockchain>(
             ctx.timestamp_offset = median_timestamp as i32 - utils::local_timestamp() as i32;
         }
 
-        let mut accepted_claim = None;
         for (_, (resp, _)) in resps.iter() {
             if let Some(claim) = resp.validator_claim.clone() {
                 if ctx.update_validator_claim(claim.clone())? {
-                    accepted_claim = Some(claim);
                     break;
                 }
             }
-        }
-        if let Some(accepted_claim) = accepted_claim {
-            drop(ctx);
-            promote_validator_claim(context, accepted_claim).await;
         }
     }
     Ok(())
