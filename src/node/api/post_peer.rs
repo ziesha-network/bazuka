@@ -28,5 +28,6 @@ pub async fn post_peer<B: Blockchain>(
     Ok(HandshakeResponse {
         peer: context.get_info()?.ok_or(NodeError::NodeIsClientOnly)?,
         timestamp: context.network_timestamp(),
+        validator_claim: context.validator_claim.clone(),
     })
 }

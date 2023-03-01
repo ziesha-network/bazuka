@@ -77,6 +77,7 @@ pub enum HandshakeRequest {
 pub struct HandshakeResponse {
     pub peer: Peer,
     pub timestamp: u32,
+    pub validator_claim: Option<ValidatorClaim>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
