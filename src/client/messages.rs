@@ -409,3 +409,9 @@ pub struct GenerateBlockRequest {}
 pub struct GenerateBlockResponse {
     pub success: bool,
 }
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetMpnWorkRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetMpnWorkResponse {}

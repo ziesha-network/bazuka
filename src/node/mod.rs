@@ -447,6 +447,12 @@ async fn node_service<B: Blockchain>(
                     .await?,
                 )?);
             }
+            (Method::GET, "/bincode/mpn/work") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::get_mpn_work(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
+                )?);
+            }
             _ => {
                 *response.status_mut() = StatusCode::NOT_FOUND;
             }
