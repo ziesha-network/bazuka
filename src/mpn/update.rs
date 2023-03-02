@@ -10,8 +10,8 @@ pub fn update<K: KvStore>(
     mpn_log4_account_capacity: u8,
     fee_token: TokenId,
     db: &mut K,
-    txs: Vec<MpnTransaction>,
-) -> Result<(u64, ZkScalar, ZkScalar, ZkScalar), BlockchainError> {
+    txs: &[MpnTransaction],
+) -> Result<(ZkPublicInputs, Vec<UpdateTransition>), BlockchainError> {
     let mut rejected = Vec::new();
     let mut accepted = Vec::new();
     let mut transitions = Vec::new();
@@ -228,5 +228,13 @@ pub fn update<K: KvStore>(
 
     let ops = mirror.to_ops();
     db.update(&ops)?;
-    Ok((height, state, aux_data, next_state))
+    Ok((
+        ZkPublicInputs {
+            height,
+            state,
+            aux_data,
+            next_state,
+        },
+        transitions,
+    ))
 }

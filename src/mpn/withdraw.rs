@@ -11,8 +11,8 @@ pub fn withdraw<K: KvStore>(
     mpn_contract_id: ContractId,
     mpn_log4_account_capacity: u8,
     db: &mut K,
-    txs: Vec<MpnWithdraw>,
-) -> Result<(u64, ZkScalar, ZkScalar, ZkScalar), BlockchainError> {
+    txs: &[MpnWithdraw],
+) -> Result<(ZkPublicInputs, Vec<WithdrawTransition>), BlockchainError> {
     let mut mirror = db.mirror();
 
     let mut transitions = Vec::new();
@@ -213,5 +213,13 @@ pub fn withdraw<K: KvStore>(
 
     let ops = mirror.to_ops();
     db.update(&ops)?;
-    Ok((height, state, aux_data, next_state))
+    Ok((
+        ZkPublicInputs {
+            height,
+            state,
+            aux_data,
+            next_state,
+        },
+        transitions,
+    ))
 }

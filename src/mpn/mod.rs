@@ -2,8 +2,10 @@ pub mod deposit;
 pub mod update;
 pub mod withdraw;
 
-use crate::core::{Money, MpnDeposit, MpnWithdraw};
-use crate::zk::{MpnAccount, MpnTransaction, ZkScalar};
+use crate::blockchain::BlockchainError;
+use crate::core::{ContractId, Money, MpnDeposit, MpnWithdraw, TokenId};
+use crate::db::{KvStore, WriteOp};
+use crate::zk::{MpnAccount, MpnTransaction, ZkDeltaPairs, ZkScalar};
 use serde::{Deserialize, Serialize};
 
 pub const LOG4_TREE_SIZE: u8 = 15;
@@ -12,6 +14,31 @@ pub const LOG4_DEPOSIT_BATCH_SIZE: u8 = 3;
 pub const LOG4_WITHDRAW_BATCH_SIZE: u8 = 3;
 pub const LOG4_UPDATE_BATCH_SIZE: u8 = 4;
 pub const LOG4_SUPER_UPDATE_BATCH_SIZE: u8 = 5;
+
+fn extract_delta(ops: &[WriteOp]) -> ZkDeltaPairs {
+    let mut pairs = ZkDeltaPairs([].into());
+    for op in ops {
+        match op {
+            WriteOp::Put(k, v) => {
+                let mut it = k.0.split("-S-");
+                it.next();
+                if let Some(loc) = it.next() {
+                    pairs
+                        .0
+                        .insert(loc.parse().unwrap(), Some(v.clone().try_into().unwrap()));
+                }
+            }
+            WriteOp::Remove(k) => {
+                let mut it = k.0.split("-S-");
+                it.next();
+                if let Some(loc) = it.next() {
+                    pairs.0.insert(loc.parse().unwrap(), None);
+                }
+            }
+        }
+    }
+    pairs
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MpnConfig {
@@ -30,9 +57,77 @@ pub enum MpnWorkData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ZkPublicInputs {
+    pub height: u64,
+    pub state: ZkScalar,
+    pub aux_data: ZkScalar,
+    pub next_state: ZkScalar,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MpnWork {
     pub config: MpnConfig,
+    pub public_inputs: ZkPublicInputs,
     pub data: MpnWorkData,
+}
+
+pub fn prepare_works<K: KvStore>(
+    config: MpnConfig,
+    mpn_contract_id: ContractId,
+    mpn_log4_account_capacity: u8,
+    db: &K,
+    deposits: &[MpnDeposit],
+    withdraws: &[MpnWithdraw],
+    updates: &[MpnTransaction],
+    min_deposit_batch_count: usize,
+    min_withdraw_batch_count: usize,
+    min_update_batch_count: usize,
+) -> Result<(Vec<MpnWork>, ZkDeltaPairs), BlockchainError> {
+    let mut mirror = db.mirror();
+    let mut works = Vec::new();
+    for _ in 0..min_deposit_batch_count {
+        let (public_inputs, transitions) = deposit::deposit(
+            mpn_contract_id,
+            mpn_log4_account_capacity,
+            &mut mirror,
+            deposits,
+        )?;
+        works.push(MpnWork {
+            config: config.clone(),
+            public_inputs,
+            data: MpnWorkData::Deposit(transitions),
+        });
+    }
+    for _ in 0..min_withdraw_batch_count {
+        let (public_inputs, transitions) = withdraw::withdraw(
+            mpn_contract_id,
+            mpn_log4_account_capacity,
+            &mut mirror,
+            withdraws,
+        )?;
+        works.push(MpnWork {
+            config: config.clone(),
+            public_inputs,
+            data: MpnWorkData::Withdraw(transitions),
+        });
+    }
+    for _ in 0..min_update_batch_count {
+        let (public_inputs, transitions) = update::update(
+            mpn_contract_id,
+            mpn_log4_account_capacity,
+            TokenId::Ziesha,
+            &mut mirror,
+            updates,
+        )?;
+        works.push(MpnWork {
+            config: config.clone(),
+            public_inputs,
+            data: MpnWorkData::Update(transitions),
+        });
+    }
+    let ops = mirror.to_ops();
+    let delta = extract_delta(&ops);
+    Ok((works, delta))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
