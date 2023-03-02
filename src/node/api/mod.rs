@@ -52,6 +52,8 @@ mod get_explorer_stakers;
 pub use get_explorer_stakers::*;
 mod get_mpn_work;
 pub use get_mpn_work::*;
+mod post_mpn_solution;
+pub use post_mpn_solution::*;
 
 #[cfg(test)]
 mod generate_block;

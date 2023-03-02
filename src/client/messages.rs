@@ -415,3 +415,9 @@ pub struct GetMpnWorkRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMpnWorkResponse {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PostMpnSolutionRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PostMpnSolutionResponse {}
