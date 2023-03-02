@@ -5,8 +5,9 @@ pub mod withdraw;
 use crate::blockchain::BlockchainError;
 use crate::core::{ContractId, Money, MpnDeposit, MpnWithdraw, TokenId};
 use crate::db::{KvStore, WriteOp};
-use crate::zk::{MpnAccount, MpnTransaction, ZkDeltaPairs, ZkScalar};
+use crate::zk::{groth16::Groth16Proof, MpnAccount, MpnTransaction, ZkDeltaPairs, ZkScalar};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 pub const LOG4_TREE_SIZE: u8 = 15;
 pub const LOG4_TOKENS_TREE_SIZE: u8 = 3;
@@ -38,6 +39,12 @@ fn extract_delta(ops: &[WriteOp]) -> ZkDeltaPairs {
         }
     }
     pairs
+}
+
+pub struct MpnWorkPool {
+    final_delta: ZkDeltaPairs,
+    works: HashMap<usize, MpnWork>,
+    solutions: HashMap<usize, Groth16Proof>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

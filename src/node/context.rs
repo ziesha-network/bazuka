@@ -4,6 +4,7 @@ use super::{
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, Mempool};
 use crate::client::messages::{SocialProfiles, ValidatorClaim};
 use crate::core::{ChainSourcedTx, Header, MpnSourcedTx, TransactionAndDelta};
+use crate::mpn::MpnWorkPool;
 use crate::utils;
 use crate::wallet::TxBuilder;
 use std::collections::HashMap;
@@ -24,6 +25,7 @@ pub struct NodeContext<B: Blockchain> {
     pub peer_manager: PeerManager,
     pub timestamp_offset: i32,
     pub validator_claim: Option<ValidatorClaim>,
+    pub mpn_work_pool: Option<MpnWorkPool>,
 
     pub mempool: Mempool,
 
