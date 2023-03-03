@@ -216,7 +216,7 @@ impl From<&ContractDeposit> for ExplorerContractDeposit {
             nonce: obj.nonce,
             amount: obj.amount.into(),
             fee: obj.fee.into(),
-            sig: obj.sig.as_ref().map(|_| "Signed".into()), // TODO: Convert to hex
+            sig: Some(hex::encode(&obj.sig.as_ref().unwrap().0.to_bytes())), // TODO: Convert to hex
         }
     }
 }

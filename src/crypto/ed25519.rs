@@ -45,6 +45,12 @@ impl From<PrivateKey> for PublicKey {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Signature(pub ed25519_dalek::Signature);
 
+impl std::fmt::Display for Signature {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.0.to_string())
+    }
+}
+
 impl<H: Hash> SignatureScheme for Ed25519<H> {
     type PubParseError = ParsePublicKeyError;
     type Pub = PublicKey;
