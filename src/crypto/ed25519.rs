@@ -47,7 +47,7 @@ pub struct Signature(pub ed25519_dalek::Signature);
 
 impl std::fmt::Display for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", hex::encode(self.0.to_bytes()))
+        write!(f, "{}", hex::encode(self.0.to_bytes()))
     }
 }
 
