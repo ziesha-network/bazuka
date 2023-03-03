@@ -29,6 +29,7 @@ pub struct GetStatsResponse {
     pub nodes: usize,
     pub next_reward: Amount,
     pub timestamp: u32,
+    pub timestamp_offset: i32,
     pub epoch: u32,
     pub slot: u32,
     pub version: String,

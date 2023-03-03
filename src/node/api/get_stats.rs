@@ -18,6 +18,7 @@ pub async fn get_stats<B: Blockchain>(
         nodes: context.peer_manager.node_count(),
         next_reward: context.blockchain.next_reward()?,
         timestamp: ts,
+        timestamp_offset: context.timestamp_offset,
         epoch,
         slot,
         version: env!("CARGO_PKG_VERSION").into(),
