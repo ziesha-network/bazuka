@@ -4,6 +4,7 @@ extern crate lazy_static;
 pub mod blockchain;
 
 pub mod common;
+pub mod cli;
 pub mod config;
 pub mod core;
 pub mod crypto;
