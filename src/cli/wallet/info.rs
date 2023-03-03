@@ -3,12 +3,12 @@ use tokio::try_join;
 use crate::client::NodeError;
 use crate::config;
 use crate::core::MpnAddress;
-use crate::wallet::{TxBuilder};
+use crate::wallet::TxBuilder;
 use crate::{client::BazukaClient, core::TokenId};
-use std::collections::HashMap;
 use colored::Colorize;
+use std::collections::HashMap;
 
-use super::{get_conf, get_wallet, get_wallet_path};
+use super::{get_conf, get_wallet};
 
 pub async fn info() -> () {
     let wallet = get_wallet();
@@ -28,11 +28,15 @@ pub async fn info() -> () {
         async move {
             let acc = client.get_account(tx_builder.get_address()).await;
             let mut token_balances = HashMap::new();
+            let mut tokens = HashMap::new();
             let mut token_indices = HashMap::new();
             for (i, tkn) in wallet.get_tokens().iter().enumerate() {
                 token_indices.insert(*tkn, i);
                 if let Ok(inf) = client.get_balance(tx_builder.get_address(), *tkn).await {
                     token_balances.insert(*tkn, inf);
+                }
+                if let Ok(inf) = client.get_token(*tkn).await {
+                    tokens.insert(*tkn, inf);
                 }
             }
 
@@ -55,7 +59,8 @@ pub async fn info() -> () {
                         println!(
                             "{}\t{}{}",
                             format!("#{} <{}>:", i, inf.name).bright_yellow(),
-                            inf.balance,
+                            inf.balance
+                                .display_by_decimals(tokens.get(id).unwrap().token.decimals),
                             if *id == TokenId::Ziesha {
                                 crate::config::SYMBOL.to_string()
                             } else {
@@ -117,12 +122,17 @@ pub async fn info() -> () {
                             MpnAddress { pub_key: acc_pk }
                         );
                         for (_, money) in resp.tokens.iter() {
+                            let resp = client
+                                .get_token(money.token_id)
+                                .await
+                                .map(|resp| resp)
+                                .unwrap();
                             if let Some(inf) = token_balances.get(&money.token_id) {
                                 let token_index = token_indices[&money.token_id];
                                 println!(
                                     "{}\t{}{}",
                                     format!("#{} <{}>:", token_index, inf.name).bright_yellow(),
-                                    money.amount,
+                                    money.amount.display_by_decimals(resp.token.decimals),
                                     if money.token_id == TokenId::Ziesha {
                                         crate::config::SYMBOL.to_string()
                                     } else {

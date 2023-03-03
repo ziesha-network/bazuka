@@ -284,12 +284,12 @@ async fn node_service<B: Blockchain>(
                     &api::get_token(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
                 )?);
             }
-            (Method::POST, "/peers") => {
-                *response.body_mut() = Body::from(serde_json::to_vec(
+            (Method::POST, "/bincode/peers") => {
+                *response.body_mut() = Body::from(bincode::serialize(
                     &api::post_peer(
                         client,
                         Arc::clone(&context),
-                        serde_json::from_slice(&body_bytes)?,
+                        bincode::deserialize(&body_bytes)?,
                     )
                     .await?,
                 )?);
@@ -447,6 +447,21 @@ async fn node_service<B: Blockchain>(
                     .await?,
                 )?);
             }
+            (Method::GET, "/bincode/mpn/work") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::get_mpn_work(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
+                )?);
+            }
+            (Method::POST, "/bincode/mpn/solution") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::post_mpn_solution(
+                        Arc::clone(&context),
+                        bincode::deserialize(&body_bytes)?,
+                    )
+                    .await?,
+                )?);
+            }
             _ => {
                 *response.status_mut() = StatusCode::NOT_FOUND;
             }
@@ -518,6 +533,7 @@ pub async fn node_create<B: Blockchain>(
             miner_token: None,
             priv_key: wallet.get_priv_key(),
         }),
+        mpn_work_pool: None,
         mempool: Mempool::new(blockchain.config().mpn_log4_account_capacity),
         blockchain,
         wallet,

@@ -113,8 +113,6 @@ enum WalletOptions {
         #[structopt(long)]
         amount: Amount,
         #[structopt(long)]
-        since: Option<u32>,
-        #[structopt(long)]
         count: u32,
         #[structopt(long, default_value = "0")]
         fee: Amount,
@@ -590,12 +588,11 @@ async fn main() -> Result<(), NodeError> {
             WalletOptions::Delegate {
                 memo,
                 amount,
-                since,
                 count,
                 to,
                 fee,
             } => {
-                bazuka::cli::wallet::delegate(memo, amount, since, count, to, fee).await;
+                bazuka::cli::wallet::delegate(memo, amount, count, to, fee).await;
             }
             WalletOptions::ResendPending { fill_gaps, shift } => {
                 bazuka::cli::wallet::resend_pending(fill_gaps, shift).await;

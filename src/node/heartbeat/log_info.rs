@@ -22,10 +22,14 @@ pub async fn log_info<B: Blockchain>(
     inf.push(("MPN Pool", ctx.mempool.mpn_sourced_len().to_string()));
 
     let wallet_addr = ctx.wallet.get_address();
+    let tkn = ctx
+        .blockchain
+        .get_token(crate::core::TokenId::Ziesha)?
+        .unwrap();
     let balance = ctx
         .blockchain
         .get_balance(wallet_addr, crate::core::TokenId::Ziesha)?;
-    inf.push(("Balance", balance.to_string()));
+    inf.push(("Balance", balance.display_by_decimals(tkn.decimals)));
 
     println!(
         "{}",

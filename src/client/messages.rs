@@ -29,11 +29,11 @@ pub struct GetStatsResponse {
     pub nodes: usize,
     pub next_reward: Amount,
     pub timestamp: u32,
+    pub timestamp_offset: i32,
     pub epoch: u32,
     pub slot: u32,
     pub version: String,
     pub network: String,
-    pub validator_proof: ValidatorProof,
     pub validator_claim: Option<ValidatorClaim>,
 }
 
@@ -78,6 +78,8 @@ pub enum HandshakeRequest {
 pub struct HandshakeResponse {
     pub peer: Peer,
     pub timestamp: u32,
+    pub timestamp_offset: i32,
+    pub validator_claim: Option<ValidatorClaim>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -409,3 +411,15 @@ pub struct GenerateBlockRequest {}
 pub struct GenerateBlockResponse {
     pub success: bool,
 }
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetMpnWorkRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetMpnWorkResponse {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PostMpnSolutionRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PostMpnSolutionResponse {}

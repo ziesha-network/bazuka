@@ -88,8 +88,6 @@ pub enum BlockchainError {
     TestnetForcedFork,
     #[error("token already exists")]
     TokenAlreadyExists,
-    #[error("staker already registered")]
-    StakerAlreadyRegistered,
     #[error("token not found")]
     TokenNotFound,
     #[error("token not updatable")]
@@ -114,4 +112,6 @@ pub enum BlockchainError {
     DelegateStillActive,
     #[error("delegate excessive epoch count")]
     DelegateExcessiveEpochCount,
+    #[error("only a single update is allowed per contract in a block")]
+    SingleUpdateAllowedPerContract,
 }

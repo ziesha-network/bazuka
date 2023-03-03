@@ -9,6 +9,7 @@ pub mod config;
 pub mod core;
 pub mod crypto;
 pub mod db;
+pub mod mpn;
 pub mod utils;
 pub mod wallet;
 pub mod zk;

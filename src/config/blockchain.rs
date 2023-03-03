@@ -11,7 +11,7 @@ use crate::zk;
 #[cfg(test)]
 use crate::wallet::TxBuilder;
 
-const CHAIN_START_TIMESTAMP: u32 = 1677591294 - 180 * 17;
+const CHAIN_START_TIMESTAMP: u32 = 1677770301 - 60 * 5;
 
 const MPN_LOG4_ACCOUNT_CAPACITY: u8 = 15;
 const MPN_LOG4_PAYMENT_CAPACITY: u8 = 3;
@@ -148,7 +148,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 .parse()
                 .unwrap(),
         ),
-        data: TransactionData::RegisterStaker {
+        data: TransactionData::UpdateStaker {
             vrf_pub_key: "vrfec707f8ab27ab5fe217eae8932c840393e2cfab3dfaf79d53a88e1ac4ae4c255"
                 .parse()
                 .unwrap(),
@@ -164,9 +164,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             to: "ed02b39ed13c94e8899588363cf8be09fe6e0ecb9967631a2464d5bcca7dcd7af8"
                 .parse()
                 .unwrap(),
-            amount: Amount(1000),
-            since: 1,
-            count: 24,
+            amount: Amount(1000000000000),
+            until: 50,
         },
         nonce: 3,
         fee: Money::ziesha(0),
@@ -220,8 +219,8 @@ pub fn get_blockchain_config() -> BlockchainConfig {
 
         testnet_height_limit: Some(TESTNET_HEIGHT_LIMIT),
         max_memo_length: 64,
-        slot_duration: 180,
-        slot_per_epoch: 20,
+        slot_duration: 60,
+        slot_per_epoch: 10,
         chain_start_timestamp: CHAIN_START_TIMESTAMP,
         max_epoch_delegate: 100,
         check_validator: true,

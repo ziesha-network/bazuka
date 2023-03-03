@@ -1,16 +1,15 @@
 use tokio::try_join;
 
 use crate::client::{BazukaClient, NodeError};
-use crate::core::{Amount, TokenId, Money};
+use crate::core::{Amount, Money, TokenId};
 use crate::crypto::ed25519::PublicKey;
-use crate::wallet::{TxBuilder};
+use crate::wallet::TxBuilder;
 
-use super::{get_wallet, get_wallet_path, get_conf};
+use super::{get_conf, get_wallet, get_wallet_path};
 
 pub async fn delegate(
     memo: Option<String>,
     amount: Amount,
-    since: Option<u32>,
     count: u32,
     to: PublicKey,
     fee: Amount,
@@ -40,8 +39,7 @@ pub async fn delegate(
                 memo.unwrap_or_default(),
                 to,
                 amount,
-                since.unwrap_or(epoch + 1),
-                count,
+                epoch + 1 + count,
                 Money {
                     amount: fee,
                     token_id: TokenId::Ziesha,

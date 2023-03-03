@@ -393,6 +393,18 @@ impl BazukaClient {
             .await
     }
 
+    pub async fn get_token(&self, token_id: TokenId) -> Result<GetTokenInfoResponse, NodeError> {
+        self.sender
+            .json_get::<GetTokenInfoRequest, GetTokenInfoResponse>(
+                format!("http://{}/token", self.peer),
+                GetTokenInfoRequest {
+                    token_id: token_id.to_string(),
+                },
+                Limit::default(),
+            )
+            .await
+    }
+
     pub async fn get_mpn_account(&self, index: u64) -> Result<GetMpnAccountResponse, NodeError> {
         self.sender
             .json_get::<GetMpnAccountRequest, GetMpnAccountResponse>(
