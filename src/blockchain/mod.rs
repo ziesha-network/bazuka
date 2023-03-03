@@ -1333,7 +1333,11 @@ impl<K: KvStore> KvStoreChain<K> {
                 {
                     state_size_delta += state_change.state.size() as isize
                         - state_change.prev_state.size() as isize;
-                    state_updates.insert(contract_id, state_change.clone());
+                    if !state_updates.contains_key(&contract_id) {
+                        state_updates.insert(contract_id, state_change.clone());
+                    } else {
+                        return Err(BlockchainError::SingleUpdateAllowedPerContract);
+                    }
                     if !outdated_contracts.contains(&contract_id) {
                         outdated_contracts.push(contract_id);
                     }
