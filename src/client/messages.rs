@@ -118,7 +118,6 @@ pub struct GetExplorerBlocksRequest {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetExplorerBlocksResponse {
-    pub pow_hashes: Vec<String>,
     pub blocks: Vec<ExplorerBlock>,
 }
 
