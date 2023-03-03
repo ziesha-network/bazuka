@@ -9,7 +9,10 @@ pub async fn promote_validator<B: Blockchain>(
     if !proof.is_unproven() {
         println!("You are the validator! Promoting...");
         if let Some(claim) = ctx.validator_claim.clone() {
-            if claim.address == ctx.wallet.get_address() {
+            let (curr_epoch, curr_slot) = ctx.blockchain.epoch_slot(timestamp);
+            let (claim_epoch, claim_slot) = ctx.blockchain.epoch_slot(claim.timestamp);
+            let same_epoch_slot = curr_epoch == claim_epoch && curr_slot == claim_slot;
+            if claim.address == ctx.wallet.get_address() && same_epoch_slot {
                 drop(ctx);
                 promote_validator_claim(context, claim).await;
                 return Ok(());
