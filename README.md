@@ -56,7 +56,7 @@ node. If you have already initialized bazuka for another network, you first need
 to remove your previous initialization by running:
 
 ```sh
-rm -rf ~/.bazuka ~/.bazuka-wallet ~/.bazuka.yaml ~/.uzi-pool-history ~/.uzi-pool-miners
+rm -rf ~/.bazuka ~/.bazuka-wallet ~/.bazuka.yaml ~/.zoro-history
 ```
 
 Then initialize:
@@ -83,15 +83,9 @@ bazuka init --network debug --bootstrap 23.34.12.45:8765 --bootstrap 34.56.78.23
 After initializing your node you can run it through:
 
 ```sh
-bazuka node start --discord_handle "YOUR DISCORD HANDLE"
+bazuka node start --discord-handle "YOUR DISCORD HANDLE"
 ```
 
 Highly recommended to also provide your Discord handle through the
 `--discord-handle` flag. By providing your handle, you will leave our bots a
 way to contact you regarding the problems you may have in your node and its status.
-
-### Useful commands:
-
-`bazuka wallet info` Show your wallet address/balances
-
-`bazuka wallet send` Send funds

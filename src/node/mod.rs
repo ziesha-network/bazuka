@@ -533,6 +533,7 @@ pub async fn node_create<B: Blockchain>(
             miner_token: None,
             priv_key: wallet.get_priv_key(),
         }),
+        mpn_work_pool: None,
         mempool: Mempool::new(blockchain.config().mpn_log4_account_capacity),
         blockchain,
         wallet,

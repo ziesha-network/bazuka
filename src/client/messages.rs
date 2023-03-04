@@ -29,6 +29,7 @@ pub struct GetStatsResponse {
     pub nodes: usize,
     pub next_reward: Amount,
     pub timestamp: u32,
+    pub timestamp_offset: i32,
     pub epoch: u32,
     pub slot: u32,
     pub version: String,
@@ -77,6 +78,7 @@ pub enum HandshakeRequest {
 pub struct HandshakeResponse {
     pub peer: Peer,
     pub timestamp: u32,
+    pub timestamp_offset: i32,
     pub validator_claim: Option<ValidatorClaim>,
 }
 
@@ -116,7 +118,6 @@ pub struct GetExplorerBlocksRequest {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetExplorerBlocksResponse {
-    pub pow_hashes: Vec<String>,
     pub blocks: Vec<ExplorerBlock>,
 }
 

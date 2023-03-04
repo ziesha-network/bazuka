@@ -112,4 +112,6 @@ pub enum BlockchainError {
     DelegateStillActive,
     #[error("delegate excessive epoch count")]
     DelegateExcessiveEpochCount,
+    #[error("only a single update is allowed per contract in a block")]
+    SingleUpdateAllowedPerContract,
 }

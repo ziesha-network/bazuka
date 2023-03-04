@@ -372,7 +372,6 @@ pub enum TxSideEffect {
 
 pub trait Blockchain {
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
-    fn random(&self, addr: &Address, timestamp: u32) -> Result<f32, BlockchainError>;
     fn get_stake(&self, addr: Address, epoch: u32) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self, epoch: u32) -> Result<Vec<(Address, Amount)>, BlockchainError>;
     fn cleanup_chain_mempool(
@@ -1333,24 +1332,19 @@ impl<K: KvStore> KvStoreChain<K> {
                 {
                     state_size_delta += state_change.state.size() as isize
                         - state_change.prev_state.size() as isize;
-                    state_updates.insert(contract_id, state_change.clone());
+                    if !state_updates.contains_key(&contract_id) {
+                        state_updates.insert(contract_id, state_change.clone());
+                    } else {
+                        return Err(BlockchainError::SingleUpdateAllowedPerContract);
+                    }
                     if !outdated_contracts.contains(&contract_id) {
                         outdated_contracts.push(contract_id);
                     }
                 }
             }
 
-            // TODO: Temporary! Just for testnet
-            let func_calls = if curr_height < 3550 {
-                self.config.mpn_num_function_calls
-            } else if curr_height < 7572 {
-                10
-            } else {
-                2
-            };
-
             if !is_genesis
-                && (num_mpn_function_calls < func_calls
+                && (num_mpn_function_calls < self.config.mpn_num_function_calls
                     || num_mpn_contract_deposits < self.config.mpn_num_contract_deposits
                     || num_mpn_contract_withdraws < self.config.mpn_num_contract_withdraws)
             {
@@ -2046,14 +2040,6 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             timestamp.saturating_sub(self.config.chain_start_timestamp) / self.config.slot_duration;
         let epoch_number = slot_number / self.config.slot_per_epoch;
         (epoch_number, slot_number % self.config.slot_per_epoch)
-    }
-
-    fn random(&self, addr: &Address, timestamp: u32) -> Result<f32, BlockchainError> {
-        use rand::{Rng, SeedableRng};
-        let (epoch, slot) = self.epoch_slot(timestamp);
-        let seed: [u8; 32] = Hasher::hash(format!("{}-{}-{}", addr, epoch, slot).as_bytes());
-        let mut rng = rand_chacha::ChaChaRng::from_seed(seed);
-        Ok(rng.gen_range(0.0..1.0))
     }
 }
 
