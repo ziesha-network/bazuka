@@ -422,3 +422,13 @@ pub struct PostMpnSolutionRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMpnSolutionResponse {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct CheckTransactionRequest {
+    pub tx_delta: TransactionAndDelta
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct CheckTransactionResponse {
+    pub error: Option<String>
+}
