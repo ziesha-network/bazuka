@@ -350,6 +350,12 @@ async fn node_service<K: KvStore, B: Blockchain<K>>(
                     .await?,
                 )?);
             }
+            (Method::GET, "/bincode/transact/check") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::get_check_tx(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
+                )?);
+            }
             (Method::GET, "/explorer/blocks") => {
                 *response.body_mut() = Body::from(serde_json::to_vec(
                     &api::get_explorer_blocks(Arc::clone(&context), serde_qs::from_str(&qs)?)

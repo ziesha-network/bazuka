@@ -58,7 +58,8 @@ mod post_mpn_worker;
 pub use post_mpn_worker::*;
 mod get_explorer_mempool;
 pub use get_explorer_mempool::*;
-
+mod get_check_tx;
+pub use get_check_tx::*;
 #[cfg(test)]
 mod generate_block;
 #[cfg(test)]

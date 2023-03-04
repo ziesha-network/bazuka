@@ -464,3 +464,13 @@ pub struct GetExplorerMempoolResponse {
     pub chain_sourced: Vec<(ExplorerChainSourcedTx, TransactionStats)>,
     pub mpn_sourced: Vec<(ExplorerMpnSourcedTx, TransactionStats)>,
 }
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct CheckTransactionRequest {
+    pub tx_delta: TransactionAndDelta,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct CheckTransactionResponse {
+    pub error: Option<String>,
+}
