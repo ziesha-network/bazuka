@@ -17,8 +17,7 @@ use {
     bazuka::client::{BazukaClient, NodeError, PeerAddress},
     bazuka::config,
     bazuka::core::{
-        Address, Amount, ChainSourcedTx, DelegateId, Money, MpnAddress, MpnSourcedTx, TokenId,
-        ZieshaAddress,
+        Address, Amount, ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId, ZieshaAddress,
     },
     bazuka::wallet::{TxBuilder, Wallet},
     colored::Colorize,
@@ -112,8 +111,6 @@ enum WalletOptions {
         to: Address,
         #[structopt(long)]
         amount: Amount,
-        #[structopt(long)]
-        count: u32,
         #[structopt(long, default_value = "0")]
         fee: Amount,
     },
@@ -122,7 +119,9 @@ enum WalletOptions {
         #[structopt(long)]
         memo: Option<String>,
         #[structopt(long)]
-        delegate_id: DelegateId,
+        from: Address,
+        #[structopt(long)]
+        amount: Amount,
         #[structopt(long, default_value = "0")]
         fee: Amount,
     },
@@ -1027,7 +1026,6 @@ async fn main() -> Result<(), NodeError> {
             WalletOptions::Delegate {
                 memo,
                 amount,
-                count,
                 to,
                 fee,
             } => {
@@ -1041,7 +1039,6 @@ async fn main() -> Result<(), NodeError> {
                 );
                 try_join!(
                     async move {
-                        let epoch = client.stats().await?.epoch;
                         let curr_nonce = client
                             .get_account(tx_builder.get_address())
                             .await?
@@ -1049,11 +1046,11 @@ async fn main() -> Result<(), NodeError> {
                             .nonce;
 
                         let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-                        let (delegate_id, tx) = tx_builder.delegate(
+                        let tx = tx_builder.delegate(
                             memo.unwrap_or_default(),
                             to,
                             amount,
-                            epoch + 1 + count,
+                            false,
                             Money {
                                 amount: fee,
                                 token_id: TokenId::Ziesha,
@@ -1062,7 +1059,6 @@ async fn main() -> Result<(), NodeError> {
                         );
                         wallet.add_rsend(tx.clone());
                         wallet.save(wallet_path).unwrap();
-                        println!("Delegate-Id: {}", delegate_id);
                         println!("{:#?}", client.transact(tx).await?);
                         Ok::<(), NodeError>(())
                     },

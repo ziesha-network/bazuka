@@ -165,7 +165,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 .parse()
                 .unwrap(),
             amount: Amount(1000000000000),
-            until: 50,
+            reverse: false,
         },
         nonce: 3,
         fee: Money::ziesha(0),
@@ -222,7 +222,6 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         slot_duration: 60,
         slot_per_epoch: 10,
         chain_start_timestamp: CHAIN_START_TIMESTAMP,
-        max_epoch_delegate: 100,
         check_validator: true,
     }
 }

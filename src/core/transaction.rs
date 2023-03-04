@@ -32,38 +32,6 @@ impl<H: Hash> std::fmt::Display for ContractId<H> {
     }
 }
 
-#[derive(
-    serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy, Eq, std::hash::Hash,
-)]
-pub struct DelegateId<H: Hash>(H::Output);
-
-#[derive(Error, Debug)]
-pub enum ParseDelegateIdError {
-    #[error("delegate-id invalid")]
-    Invalid,
-}
-
-impl<H: Hash> DelegateId<H> {
-    pub fn new<S: SignatureScheme, V: VerifiableRandomFunction>(tx: &Transaction<H, S, V>) -> Self {
-        Self(tx.hash())
-    }
-}
-
-impl<H: Hash> std::fmt::Display for DelegateId<H> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", hex::encode(self.0))
-    }
-}
-
-impl<H: Hash> FromStr for DelegateId<H> {
-    type Err = ParseDelegateIdError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let bytes = hex::decode(s).map_err(|_| ParseDelegateIdError::Invalid)?;
-        let hash_output = H::Output::try_from(bytes).map_err(|_| ParseDelegateIdError::Invalid)?;
-        Ok(Self(hash_output))
-    }
-}
-
 #[derive(Error, Debug)]
 pub enum ParseTokenIdError {
     #[error("token-id invalid")]
@@ -328,10 +296,7 @@ pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunctio
     Delegate {
         amount: Amount,
         to: S::Pub,
-        until: u32,
-    },
-    DestroyDelegate {
-        delegate_id: DelegateId<H>,
+        reverse: bool,
     },
     RegularSend {
         entries: Vec<RegularSendEntry<S>>,

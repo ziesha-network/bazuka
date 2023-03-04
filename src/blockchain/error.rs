@@ -110,8 +110,6 @@ pub enum BlockchainError {
     DelegateNotFound,
     #[error("cannot destroy a delegate that is still active")]
     DelegateStillActive,
-    #[error("delegate excessive epoch count")]
-    DelegateExcessiveEpochCount,
     #[error("only a single update is allowed per contract in a block")]
     SingleUpdateAllowedPerContract,
 }

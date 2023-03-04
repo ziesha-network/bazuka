@@ -220,7 +220,6 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
-            0,
             &alice
                 .call_function(
                     "".into(),
@@ -241,7 +240,6 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
-            0,
             &alice
                 .call_function(
                     "".into(),
@@ -265,7 +263,6 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
-            0,
             &alice
                 .call_function(
                     "".into(),
@@ -286,7 +283,6 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
-            0,
             &alice
                 .call_function(
                     "".into(),

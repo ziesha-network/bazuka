@@ -127,7 +127,6 @@ pub struct GetExplorerStakersRequest {}
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetExplorerStakersResponse {
     pub current: Vec<ExplorerStaker>,
-    pub next: Vec<ExplorerStaker>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

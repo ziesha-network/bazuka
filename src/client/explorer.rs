@@ -334,13 +334,10 @@ pub enum ExplorerTransactionData {
     UpdateStaker {
         vrf_pub_key: String,
     },
-    DestroyDelegate {
-        delegate_id: String,
-    },
     Delegate {
         to: String,
         amount: u64,
-        until: u32,
+        reverse: bool,
     },
     RegularSend {
         entries: Vec<(String, ExplorerMoney)>,
@@ -367,13 +364,14 @@ impl From<&TransactionData> for ExplorerTransactionData {
             TransactionData::UpdateStaker { vrf_pub_key } => Self::UpdateStaker {
                 vrf_pub_key: hex::encode(vrf_pub_key.as_ref()),
             },
-            TransactionData::DestroyDelegate { delegate_id } => Self::DestroyDelegate {
-                delegate_id: delegate_id.to_string(),
-            },
-            TransactionData::Delegate { to, amount, until } => Self::Delegate {
+            TransactionData::Delegate {
+                to,
+                amount,
+                reverse,
+            } => Self::Delegate {
                 to: to.to_string(),
                 amount: (*amount).into(),
-                until: *until,
+                reverse: *reverse,
             },
             TransactionData::RegularSend { entries } => Self::RegularSend {
                 entries: entries

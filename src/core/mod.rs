@@ -25,7 +25,7 @@ pub type Address = <Signer as crypto::SignatureScheme>::Pub;
 pub type ParseAddressError = <Signer as crypto::SignatureScheme>::PubParseError;
 pub type Account = address::Account;
 pub type Staker = address::Staker<Vrf>;
-pub type Delegate = address::Delegate<Signer>;
+pub type Delegate = address::Delegate;
 pub type Signature = address::Signature<Signer>;
 pub type Transaction = transaction::Transaction<Hasher, Signer, Vrf>;
 pub type TransactionData = transaction::TransactionData<Hasher, Signer, Vrf>;
@@ -49,7 +49,6 @@ pub type Token = transaction::Token<Signer>;
 
 pub type ProofOfStake = header::ProofOfStake<Signer, Vrf>;
 pub type ContractId = transaction::ContractId<Hasher>;
-pub type DelegateId = transaction::DelegateId<Hasher>;
 
 pub type TransactionAndDelta = transaction::TransactionAndDelta<Hasher, Signer, Vrf>;
 

@@ -411,7 +411,7 @@ fn test_insufficient_balance_is_handled() -> Result<(), BlockchainError> {
     );
 
     // Ensure apply_tx will raise
-    match chain.apply_tx(0, &tx.tx, false) {
+    match chain.apply_tx(&tx.tx, false) {
         Ok(_) => assert!(
             false,
             "Transaction from wallet with insufficient fund should fail"

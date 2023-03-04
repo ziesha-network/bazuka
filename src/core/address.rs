@@ -67,8 +67,6 @@ pub struct Staker<V: VerifiableRandomFunction> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
-pub struct Delegate<S: SignatureScheme> {
-    pub delegator: S::Pub,
+pub struct Delegate {
     pub amount: Amount,
-    pub end: u32, // Epoch
 }

@@ -20,7 +20,6 @@ pub async fn get_zero_mempool<B: Blockchain>(
         Err(NodeError::StatesOutdated)
     } else {
         let ctx = context.read().await;
-        let timestamp = ctx.network_timestamp();
         let height = ctx.blockchain.get_height()?;
         let reward = ctx.blockchain.next_reward()?;
         let mempool = ctx.mempool.clone();
@@ -39,7 +38,7 @@ pub async fn get_zero_mempool<B: Blockchain>(
         let ctx = context.read().await;
         chain_sourced_sorted = ctx
             .blockchain
-            .cleanup_chain_mempool(timestamp, &chain_sourced_sorted)?;
+            .cleanup_chain_mempool(&chain_sourced_sorted)?;
         drop(ctx);
         for tx in chain_sourced_sorted {
             match tx {
