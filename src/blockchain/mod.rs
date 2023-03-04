@@ -172,6 +172,7 @@ pub trait Blockchain<K: KvStore> {
         to: <Hasher as Hash>::Output,
     ) -> Result<ZkBlockchainPatch, BlockchainError>;
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError>;
+    fn check_tx(&self, tx: &Transaction) -> Result<(), BlockchainError>;
 }
 
 pub struct KvStoreChain<K: KvStore> {
@@ -784,6 +785,12 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         let (_, result) =
             self.isolated(|chain| Ok(chain.pay_validator_and_delegators(validator, Amount(0))?))?;
         Ok(result)
+    }
+    fn check_tx(&self, tx: &Transaction) -> Result<(), BlockchainError> {
+        let mut chain = self.fork_on_ram();
+        chain.apply_tx(&tx, false)?;
+
+        Ok(())
     }
 }
 
