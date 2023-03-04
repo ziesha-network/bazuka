@@ -457,6 +457,7 @@ pub trait Blockchain {
         to: <Hasher as Hash>::Output,
     ) -> Result<ZkBlockchainPatch, BlockchainError>;
     fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError>;
+    fn check_tx(&self, tx: &Transaction) -> Result<(), BlockchainError>;
 }
 
 pub struct KvStoreChain<K: KvStore> {
@@ -2040,6 +2041,12 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             timestamp.saturating_sub(self.config.chain_start_timestamp) / self.config.slot_duration;
         let epoch_number = slot_number / self.config.slot_per_epoch;
         (epoch_number, slot_number % self.config.slot_per_epoch)
+    }
+    fn check_tx(&self, tx: &Transaction) -> Result<(), BlockchainError> {
+        let mut chain = self.fork_on_ram();
+        chain.apply_tx(0, &tx, false)?;
+
+        Ok(())
     }
 }
 
