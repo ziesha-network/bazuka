@@ -215,8 +215,9 @@ async fn resend_all_wallet_txs(
         conf.network,
         None,
     );
-    let mpn_log4_account_capacity =
-        config::blockchain::get_blockchain_config().mpn_log4_account_capacity;
+    let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
+        .mpn_config
+        .log4_tree_size;
     try_join!(
         async move {
             let curr_nonce = client
@@ -489,9 +490,12 @@ async fn main() -> Result<(), NodeError> {
         std::fs::write(conf_path.clone(), serde_yaml::to_string(conf).unwrap()).unwrap();
     }
 
-    let mpn_contract_id = config::blockchain::get_blockchain_config().mpn_contract_id;
-    let mpn_log4_account_capacity =
-        config::blockchain::get_blockchain_config().mpn_log4_account_capacity;
+    let mpn_contract_id = config::blockchain::get_blockchain_config()
+        .mpn_config
+        .mpn_contract_id;
+    let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
+        .mpn_config
+        .log4_tree_size;
 
     match opts {
         #[cfg(feature = "node")]
