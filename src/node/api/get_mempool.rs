@@ -11,7 +11,7 @@ pub async fn get_mempool<B: Blockchain>(
     mpn_address: Option<MpnAddress>,
 ) -> Result<GetMempoolResponse, NodeError> {
     let context = context.read().await;
-    let mpn_contract_id = context.blockchain.config().mpn_contract_id;
+    let mpn_contract_id = context.blockchain.config().mpn_config.mpn_contract_id;
     Ok(GetMempoolResponse {
         chain_sourced: context
             .mempool

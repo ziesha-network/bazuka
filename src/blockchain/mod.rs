@@ -10,6 +10,7 @@ use crate::core::{
 };
 use crate::crypto::VerifiableRandomFunction;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
+use crate::mpn::MpnConfig;
 use crate::wallet::TxBuilder;
 use crate::zk;
 
@@ -306,11 +307,7 @@ pub struct BlockchainConfig {
     pub max_block_size: usize,
     pub max_delta_count: usize,
     pub ziesha_token_id: TokenId,
-    pub mpn_contract_id: ContractId,
-    pub mpn_num_function_calls: usize,
-    pub mpn_num_contract_deposits: usize,
-    pub mpn_num_contract_withdraws: usize,
-    pub mpn_log4_account_capacity: u8,
+    pub mpn_config: MpnConfig,
     pub testnet_height_limit: Option<u64>,
     pub max_memo_length: usize,
     pub slot_duration: u32,
@@ -1151,7 +1148,7 @@ impl<K: KvStore> KvStoreChain<K> {
         sorted.sort_unstable_by_key(|tx| {
             let cost = tx.tx.size();
             let is_mpn = if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
-                *contract_id == self.config.mpn_contract_id
+                *contract_id == self.config.mpn_config.mpn_contract_id
             } else {
                 false
             };
@@ -1194,7 +1191,7 @@ impl<K: KvStore> KvStoreChain<K> {
                             contract_id, ..
                         } = &tx.tx.data
                         {
-                            *contract_id == self.config.mpn_contract_id
+                            *contract_id == self.config.mpn_config.mpn_contract_id
                         } else {
                             false
                         };
@@ -1293,7 +1290,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     updates,
                 } = &tx.data
                 {
-                    if contract_id.clone() == self.config.mpn_contract_id {
+                    if contract_id.clone() == self.config.mpn_config.mpn_contract_id {
                         for update in updates.iter() {
                             match update {
                                 ContractUpdate::Deposit { .. } => {
@@ -1331,9 +1328,9 @@ impl<K: KvStore> KvStoreChain<K> {
             }
 
             if !is_genesis
-                && (num_mpn_function_calls < self.config.mpn_num_function_calls
-                    || num_mpn_contract_deposits < self.config.mpn_num_contract_deposits
-                    || num_mpn_contract_withdraws < self.config.mpn_num_contract_withdraws)
+                && (num_mpn_function_calls < self.config.mpn_config.mpn_num_update_batches
+                    || num_mpn_contract_deposits < self.config.mpn_config.mpn_num_deposit_batches
+                    || num_mpn_contract_withdraws < self.config.mpn_config.mpn_num_withdraw_batches)
             {
                 return Err(BlockchainError::InsufficientMpnUpdates);
             }
@@ -1581,7 +1578,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError> {
         Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_account(
             &self.database,
-            self.config.mpn_contract_id,
+            self.config.mpn_config.mpn_contract_id,
             index,
         )?)
     }
@@ -1593,7 +1590,7 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
     ) -> Result<Vec<(u64, zk::MpnAccount)>, BlockchainError> {
         Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_accounts(
             &self.database,
-            self.config.mpn_contract_id,
+            self.config.mpn_config.mpn_contract_id,
             page,
             page_size,
         )?)

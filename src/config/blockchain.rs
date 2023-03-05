@@ -6,6 +6,7 @@ use crate::core::{
     Amount, Block, ContractId, Header, Money, ProofOfStake, Signature, Token, TokenId, Transaction,
     TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
 };
+use crate::mpn::MpnConfig;
 use crate::zk;
 
 #[cfg(test)]
@@ -15,6 +16,7 @@ const CHAIN_START_TIMESTAMP: u32 = 1677770301 - 60 * 5;
 
 const MPN_LOG4_ACCOUNT_CAPACITY: u8 = 15;
 const MPN_LOG4_PAYMENT_CAPACITY: u8 = 3;
+const MPN_LOG4_UPDATE_CAPACITY: u8 = 4;
 pub const MPN_LOG4_TOKEN_CAPACITY: u8 = 3;
 
 const TESTNET_HEIGHT_LIMIT: u64 = 10000;
@@ -193,7 +195,18 @@ pub fn get_blockchain_config() -> BlockchainConfig {
 
     BlockchainConfig {
         limited_miners: None,
-        mpn_contract_id,
+        mpn_config: MpnConfig {
+            mpn_contract_id,
+            log4_tree_size: MPN_LOG4_ACCOUNT_CAPACITY,
+            log4_token_tree_size: MPN_LOG4_TOKEN_CAPACITY,
+            log4_deposit_batch_size: MPN_LOG4_PAYMENT_CAPACITY,
+            log4_withdraw_batch_size: MPN_LOG4_PAYMENT_CAPACITY,
+            log4_update_batch_size: MPN_LOG4_PAYMENT_CAPACITY,
+            mpn_num_update_batches: 1,
+            mpn_num_deposit_batches: 1,
+            mpn_num_withdraw_batches: 1,
+        },
+
         ziesha_token_id,
         genesis: BlockAndPatch {
             block: blk,
@@ -209,13 +222,6 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         reward_ratio: 100_000, // 1/100_000 -> 0.01% of Treasury Supply per block
         max_block_size: MB as usize,
         max_delta_count: 1024, // Only allow max of 1024 ZkScalar cells to be added per block
-
-        // We expect a minimum number of MPN contract updates
-        // in a block to consider it valid
-        mpn_num_function_calls: 1,
-        mpn_num_contract_deposits: 1,
-        mpn_num_contract_withdraws: 1,
-        mpn_log4_account_capacity: MPN_LOG4_ACCOUNT_CAPACITY,
 
         testnet_height_limit: Some(TESTNET_HEIGHT_LIMIT),
         max_memo_length: 64,
@@ -234,10 +240,10 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
 
     let mut conf = get_blockchain_config();
     conf.limited_miners = None;
-    conf.mpn_num_contract_deposits = 0;
-    conf.mpn_num_contract_withdraws = 0;
-    conf.mpn_num_function_calls = 0;
-    conf.mpn_contract_id = mpn_contract_id;
+    conf.mpn_config.mpn_num_update_batches = 0;
+    conf.mpn_config.mpn_num_deposit_batches = 0;
+    conf.mpn_config.mpn_num_withdraw_batches = 0;
+    conf.mpn_config.mpn_contract_id = mpn_contract_id;
     conf.testnet_height_limit = None;
     conf.chain_start_timestamp = 0;
     conf.check_validator = false;

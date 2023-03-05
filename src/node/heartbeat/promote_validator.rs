@@ -9,7 +9,9 @@ pub async fn promote_validator<B: Blockchain>(
     if !proof.is_unproven() {
         let node = ctx.address.ok_or(NodeError::ValidatorNotExposed)?;
         let claim = ctx.wallet.claim_validator(timestamp, proof, node);
-        ctx.update_validator_claim(claim.clone())?;
+        if ctx.update_validator_claim(claim.clone())? {
+            //ctx.mpn_work_pool = Some(MpnWorkPool)
+        }
         if let Some(claim) = ctx.validator_claim.clone() {
             println!("You are the validator! Promoting...");
             if claim.address == ctx.wallet.get_address() {
