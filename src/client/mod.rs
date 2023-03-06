@@ -457,7 +457,7 @@ impl BazukaClient {
     pub async fn get_mpn_works(&self) -> Result<GetMpnWorkResponse, NodeError> {
         self.sender
             .bincode_get::<GetMpnWorkRequest, GetMpnWorkResponse>(
-                format!("http://{}//bincode/mpn/work", self.peer),
+                format!("http://{}/bincode/mpn/work", self.peer),
                 GetMpnWorkRequest {},
                 Limit::default(),
             )
