@@ -59,7 +59,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         blockchain::get_test_blockchain_config(),
     )?;
 
-    let cid = chain.config().mpn_contract_id;
+    let cid = chain.config().mpn_config.mpn_contract_id;
 
     let state_model = zk::ZkStateModel::List {
         item_type: Box::new(zk::ZkStateModel::Scalar),

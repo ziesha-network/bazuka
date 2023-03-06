@@ -10,6 +10,8 @@ use crate::zk::{
 pub fn withdraw<K: KvStore>(
     mpn_contract_id: ContractId,
     mpn_log4_account_capacity: u8,
+    log4_token_tree_size: u8,
+    log4_batch_size: u8,
     db: &mut K,
     txs: &[MpnWithdraw],
 ) -> Result<(ZkPublicInputs, Vec<WithdrawTransition>), BlockchainError> {
@@ -25,7 +27,7 @@ pub fn withdraw<K: KvStore>(
     let mut state_size = root.state_size;
 
     for tx in txs.into_iter() {
-        if transitions.len() == 1 << (2 * LOG4_WITHDRAW_BATCH_SIZE) {
+        if transitions.len() == 1 << (2 * log4_batch_size) {
             break;
         }
         let acc = KvStoreStateManager::<ZkHasher>::get_mpn_account(
@@ -59,7 +61,7 @@ pub fn withdraw<K: KvStore>(
                 nonce: acc.nonce + 1,
             };
 
-            let before_token_hash = updated_acc.tokens_hash::<ZkHasher>(LOG4_TOKENS_TREE_SIZE);
+            let before_token_hash = updated_acc.tokens_hash::<ZkHasher>(log4_token_tree_size);
             let token_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 &mirror,
                 mpn_contract_id,
@@ -166,7 +168,7 @@ pub fn withdraw<K: KvStore>(
                 ZkStateModel::Scalar, // Calldata
             ],
         }),
-        log4_size: LOG4_WITHDRAW_BATCH_SIZE as u8,
+        log4_size: log4_batch_size,
     };
     let mut state_builder = ZkStateBuilder::<crate::core::ZkHasher>::new(state_model.clone());
     for (i, trans) in transitions.iter().enumerate() {

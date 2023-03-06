@@ -9,13 +9,6 @@ use crate::zk::{groth16::Groth16Proof, MpnAccount, MpnTransaction, ZkDeltaPairs,
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub const LOG4_TREE_SIZE: u8 = 15;
-pub const LOG4_TOKENS_TREE_SIZE: u8 = 3;
-pub const LOG4_DEPOSIT_BATCH_SIZE: u8 = 3;
-pub const LOG4_WITHDRAW_BATCH_SIZE: u8 = 3;
-pub const LOG4_UPDATE_BATCH_SIZE: u8 = 4;
-pub const LOG4_SUPER_UPDATE_BATCH_SIZE: u8 = 5;
-
 fn extract_delta(ops: &[WriteOp]) -> ZkDeltaPairs {
     let mut pairs = ZkDeltaPairs([].into());
     for op in ops {
@@ -95,6 +88,8 @@ pub fn prepare_works<K: KvStore>(
         let (public_inputs, transitions) = deposit::deposit(
             config.mpn_config.mpn_contract_id,
             config.mpn_config.log4_tree_size,
+            config.mpn_config.log4_token_tree_size,
+            config.mpn_config.log4_deposit_batch_size,
             &mut mirror,
             deposits,
         )?;
@@ -108,6 +103,8 @@ pub fn prepare_works<K: KvStore>(
         let (public_inputs, transitions) = withdraw::withdraw(
             config.mpn_config.mpn_contract_id,
             config.mpn_config.log4_tree_size,
+            config.mpn_config.log4_token_tree_size,
+            config.mpn_config.log4_withdraw_batch_size,
             &mut mirror,
             withdraws,
         )?;
@@ -121,6 +118,8 @@ pub fn prepare_works<K: KvStore>(
         let (public_inputs, transitions) = update::update(
             config.mpn_config.mpn_contract_id,
             config.mpn_config.log4_tree_size,
+            config.mpn_config.log4_token_tree_size,
+            config.mpn_config.log4_update_batch_size,
             TokenId::Ziesha,
             &mut mirror,
             updates,

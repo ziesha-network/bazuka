@@ -17,7 +17,11 @@ const CHAIN_START_TIMESTAMP: u32 = 1677770301 - 60 * 5;
 const MPN_LOG4_ACCOUNT_CAPACITY: u8 = 15;
 const MPN_LOG4_PAYMENT_CAPACITY: u8 = 3;
 const MPN_LOG4_UPDATE_CAPACITY: u8 = 4;
-pub const MPN_LOG4_TOKEN_CAPACITY: u8 = 3;
+const MPN_LOG4_TOKENS_TREE_SIZE: u8 = 3;
+const MPN_LOG4_DEPOSIT_BATCH_SIZE: u8 = 3;
+const MPN_LOG4_WITHDRAW_BATCH_SIZE: u8 = 3;
+const MPN_LOG4_UPDATE_BATCH_SIZE: u8 = 4;
+//pub const LOG4_SUPER_UPDATE_BATCH_SIZE: u8 = 5;
 
 const TESTNET_HEIGHT_LIMIT: u64 = 10000;
 
@@ -39,7 +43,7 @@ fn get_mpn_contract() -> TransactionAndDelta {
                 zk::ZkStateModel::Scalar, // Pub-key X
                 zk::ZkStateModel::Scalar, // Pub-key Y
                 zk::ZkStateModel::List {
-                    log4_size: MPN_LOG4_TOKEN_CAPACITY,
+                    log4_size: MPN_LOG4_PAYMENT_CAPACITY,
                     item_type: Box::new(zk::ZkStateModel::Struct {
                         field_types: vec![
                             zk::ZkStateModel::Scalar, // Token-Id
@@ -198,10 +202,10 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         mpn_config: MpnConfig {
             mpn_contract_id,
             log4_tree_size: MPN_LOG4_ACCOUNT_CAPACITY,
-            log4_token_tree_size: MPN_LOG4_TOKEN_CAPACITY,
-            log4_deposit_batch_size: MPN_LOG4_PAYMENT_CAPACITY,
-            log4_withdraw_batch_size: MPN_LOG4_PAYMENT_CAPACITY,
-            log4_update_batch_size: MPN_LOG4_PAYMENT_CAPACITY,
+            log4_token_tree_size: MPN_LOG4_TOKENS_TREE_SIZE,
+            log4_deposit_batch_size: MPN_LOG4_DEPOSIT_BATCH_SIZE,
+            log4_withdraw_batch_size: MPN_LOG4_WITHDRAW_BATCH_SIZE,
+            log4_update_batch_size: MPN_LOG4_UPDATE_CAPACITY,
             mpn_num_update_batches: 1,
             mpn_num_deposit_batches: 1,
             mpn_num_withdraw_batches: 1,
