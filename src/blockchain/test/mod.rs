@@ -903,7 +903,7 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
         .draft_block(1650000001, &mempool, &wallet_miner, true)?
         .unwrap();
 
-    let prev_checksum = chain.database.checksum::<Hasher>()?;
+    let prev_checksum = chain.database.pairs("".into())?.checksum::<Hasher>()?;
 
     chain.apply_block(&draft.block)?;
 
@@ -921,11 +921,11 @@ fn test_chain_should_rollback_applied_block() -> Result<(), BlockchainError> {
         }
     );
 
-    let after_checksum = chain.database.checksum::<Hasher>()?;
+    let after_checksum = chain.database.pairs("".into())?.checksum::<Hasher>()?;
 
     chain.rollback()?;
 
-    let rollbacked_checksum = chain.database.checksum::<Hasher>()?;
+    let rollbacked_checksum = chain.database.pairs("".into())?.checksum::<Hasher>()?;
 
     assert_ne!(prev_checksum, after_checksum);
     assert_eq!(prev_checksum, rollbacked_checksum);

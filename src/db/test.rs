@@ -14,7 +14,10 @@ fn test_ram_and_disk_pair_prefix() -> Result<(), KvStoreError> {
     let mut ram = RamKvStore::default();
     let mut disk = temp_disk_store()?;
 
-    assert_eq!(ram.checksum::<Hasher>()?, disk.checksum::<Hasher>()?);
+    assert_eq!(
+        ram.pairs("".into())?.checksum::<Hasher>()?,
+        disk.pairs("".into())?.checksum::<Hasher>()?
+    );
 
     let ops = &[
         WriteOp::Put("bc".into(), Blob(vec![0, 1, 2, 3])),
@@ -106,7 +109,10 @@ fn test_ram_and_disk_db_consistency() -> Result<(), KvStoreError> {
     let mut ram = RamKvStore::default();
     let mut disk = temp_disk_store()?;
 
-    assert_eq!(ram.checksum::<Hasher>()?, disk.checksum::<Hasher>()?);
+    assert_eq!(
+        ram.pairs("".into())?.checksum::<Hasher>()?,
+        disk.pairs("".into())?.checksum::<Hasher>()?
+    );
 
     let ops = &[
         WriteOp::Put("bc".into(), Blob(vec![0, 1, 2, 3])),
@@ -117,7 +123,10 @@ fn test_ram_and_disk_db_consistency() -> Result<(), KvStoreError> {
     ram.update(ops)?;
     disk.update(ops)?;
 
-    assert_eq!(ram.checksum::<Hasher>()?, disk.checksum::<Hasher>()?);
+    assert_eq!(
+        ram.pairs("".into())?.checksum::<Hasher>()?,
+        disk.pairs("".into())?.checksum::<Hasher>()?
+    );
 
     let new_ops = &[
         WriteOp::Remove("aa".into()),
@@ -128,7 +137,10 @@ fn test_ram_and_disk_db_consistency() -> Result<(), KvStoreError> {
     ram.update(new_ops)?;
     disk.update(new_ops)?;
 
-    assert_eq!(ram.checksum::<Hasher>()?, disk.checksum::<Hasher>()?);
+    assert_eq!(
+        ram.pairs("".into())?.checksum::<Hasher>()?,
+        disk.pairs("".into())?.checksum::<Hasher>()?
+    );
 
     Ok(())
 }
@@ -145,7 +157,7 @@ fn test_mirror_kv_store() -> Result<(), KvStoreError> {
 
     ram.update(ops)?;
 
-    let prev_ram_checksum = ram.checksum::<Hasher>()?;
+    let prev_ram_checksum = ram.pairs("".into())?.checksum::<Hasher>()?;
 
     let mut mirror = RamMirrorKvStore::new(&ram);
 
@@ -157,15 +169,18 @@ fn test_mirror_kv_store() -> Result<(), KvStoreError> {
 
     mirror.update(ops_on_mirror)?;
 
-    let mirror_checksum = mirror.checksum::<Hasher>()?;
+    let mirror_checksum = mirror.pairs("".into())?.checksum::<Hasher>()?;
 
     let mirror_ops = mirror.to_ops();
 
-    assert_eq!(ram.checksum::<Hasher>()?, prev_ram_checksum);
+    assert_eq!(
+        ram.pairs("".into())?.checksum::<Hasher>()?,
+        prev_ram_checksum
+    );
 
     ram.update(&mirror_ops)?;
 
-    assert_eq!(ram.checksum::<Hasher>()?, mirror_checksum);
+    assert_eq!(ram.pairs("".into())?.checksum::<Hasher>()?, mirror_checksum);
 
     Ok(())
 }

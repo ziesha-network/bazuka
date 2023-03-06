@@ -2,7 +2,7 @@ pub mod deposit;
 pub mod update;
 pub mod withdraw;
 
-use crate::blockchain::{BlockchainConfig, BlockchainError};
+use crate::blockchain::BlockchainError;
 use crate::core::{ContractId, Money, MpnDeposit, MpnWithdraw, TokenId};
 use crate::db::{KvStore, WriteOp};
 use crate::zk::{groth16::Groth16Proof, MpnAccount, MpnTransaction, ZkDeltaPairs, ZkScalar};
@@ -76,7 +76,7 @@ pub struct MpnWork {
 }
 
 pub fn prepare_works<K: KvStore>(
-    config: &BlockchainConfig,
+    config: &MpnConfig,
     db: &K,
     deposits: &[MpnDeposit],
     withdraws: &[MpnWithdraw],
@@ -84,48 +84,48 @@ pub fn prepare_works<K: KvStore>(
 ) -> Result<MpnWorkPool, BlockchainError> {
     let mut mirror = db.mirror();
     let mut works = Vec::new();
-    for _ in 0..config.mpn_config.mpn_num_deposit_batches {
+    for _ in 0..config.mpn_num_deposit_batches {
         let (public_inputs, transitions) = deposit::deposit(
-            config.mpn_config.mpn_contract_id,
-            config.mpn_config.log4_tree_size,
-            config.mpn_config.log4_token_tree_size,
-            config.mpn_config.log4_deposit_batch_size,
+            config.mpn_contract_id,
+            config.log4_tree_size,
+            config.log4_token_tree_size,
+            config.log4_deposit_batch_size,
             &mut mirror,
             deposits,
         )?;
         works.push(MpnWork {
-            config: config.mpn_config.clone(),
+            config: config.clone(),
             public_inputs,
             data: MpnWorkData::Deposit(transitions),
         });
     }
-    for _ in 0..config.mpn_config.mpn_num_withdraw_batches {
+    for _ in 0..config.mpn_num_withdraw_batches {
         let (public_inputs, transitions) = withdraw::withdraw(
-            config.mpn_config.mpn_contract_id,
-            config.mpn_config.log4_tree_size,
-            config.mpn_config.log4_token_tree_size,
-            config.mpn_config.log4_withdraw_batch_size,
+            config.mpn_contract_id,
+            config.log4_tree_size,
+            config.log4_token_tree_size,
+            config.log4_withdraw_batch_size,
             &mut mirror,
             withdraws,
         )?;
         works.push(MpnWork {
-            config: config.mpn_config.clone(),
+            config: config.clone(),
             public_inputs,
             data: MpnWorkData::Withdraw(transitions),
         });
     }
-    for _ in 0..config.mpn_config.mpn_num_update_batches {
+    for _ in 0..config.mpn_num_update_batches {
         let (public_inputs, transitions) = update::update(
-            config.mpn_config.mpn_contract_id,
-            config.mpn_config.log4_tree_size,
-            config.mpn_config.log4_token_tree_size,
-            config.mpn_config.log4_update_batch_size,
+            config.mpn_contract_id,
+            config.log4_tree_size,
+            config.log4_token_tree_size,
+            config.log4_update_batch_size,
             TokenId::Ziesha,
             &mut mirror,
             updates,
         )?;
         works.push(MpnWork {
-            config: config.mpn_config.clone(),
+            config: config.clone(),
             public_inputs,
             data: MpnWorkData::Update(transitions),
         });

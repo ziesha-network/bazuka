@@ -367,6 +367,7 @@ pub enum TxSideEffect {
 }
 
 pub trait Blockchain {
+    fn database(&self) -> Box<&dyn KvStore>;
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self) -> Result<Vec<(Address, Amount)>, BlockchainError>;
@@ -1378,7 +1379,9 @@ impl<K: KvStore> KvStoreChain<K> {
 
 impl<K: KvStore> Blockchain for KvStoreChain<K> {
     fn db_checksum(&self) -> Result<String, BlockchainError> {
-        Ok(hex::encode(self.database.checksum::<Hasher>()?))
+        Ok(hex::encode(
+            self.database.pairs("".into())?.checksum::<Hasher>()?,
+        ))
     }
     fn get_header(&self, index: u64) -> Result<Header, BlockchainError> {
         if index >= self.get_height()? {
@@ -2024,6 +2027,10 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
             timestamp.saturating_sub(self.config.chain_start_timestamp) / self.config.slot_duration;
         let epoch_number = slot_number / self.config.slot_per_epoch;
         (epoch_number, slot_number % self.config.slot_per_epoch)
+    }
+
+    fn database(&self) -> Box<&dyn KvStore> {
+        Box::new(&self.database)
     }
 }
 

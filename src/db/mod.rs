@@ -198,17 +198,17 @@ impl<'a> QueryResult<'a> {
             ),
         }
     }
+    pub fn checksum<H: Hash>(self) -> Result<H::Output, KvStoreError> {
+        let mut kvs: Vec<_> = self.into_iter().collect();
+        kvs.sort_by_key(|(k, _)| k.clone());
+        Ok(H::hash(&bincode::serialize(&kvs).unwrap()))
+    }
 }
 
 pub trait KvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError>;
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError>;
     fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError>;
-    fn checksum<H: Hash>(&self) -> Result<H::Output, KvStoreError> {
-        let mut kvs: Vec<_> = self.pairs("".into())?.into_iter().collect();
-        kvs.sort_by_key(|(k, _)| k.clone());
-        Ok(H::hash(&bincode::serialize(&kvs).unwrap()))
-    }
     fn mirror(&self) -> RamMirrorKvStore<'_, Self>
     where
         Self: Sized,
