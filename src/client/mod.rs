@@ -471,7 +471,7 @@ impl BazukaClient {
     ) -> Result<PostMpnSolutionResponse, NodeError> {
         self.sender
             .bincode_post::<PostMpnSolutionRequest, PostMpnSolutionResponse>(
-                format!("http://{}//bincode/mpn/solution", self.peer),
+                format!("http://{}/bincode/mpn/solution", self.peer),
                 PostMpnSolutionRequest {
                     proofs,
                     reward_address,
