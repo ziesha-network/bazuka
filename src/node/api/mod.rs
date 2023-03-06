@@ -30,8 +30,6 @@ mod post_mpn_withdraw;
 pub use post_mpn_withdraw::*;
 mod shutdown;
 pub use shutdown::*;
-mod get_zero_mempool;
-pub use get_zero_mempool::*;
 mod get_account;
 pub use get_account::*;
 mod get_mpn_account;

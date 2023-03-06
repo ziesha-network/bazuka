@@ -1,6 +1,7 @@
 use super::*;
-use crate::core::ChainSourcedTx;
+use crate::core::{ChainSourcedTx, MpnSourcedTx};
 use crate::mpn;
+use std::collections::HashSet;
 
 pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
     context: Arc<RwLock<NodeContext<K, B>>>,
@@ -30,12 +31,59 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
         let node = ctx.address.ok_or(NodeError::ValidatorNotExposed)?;
         let claim = ctx.wallet.claim_validator(timestamp, proof, node);
         if ctx.update_validator_claim(claim.clone())? {
+            let mempool = ctx.mempool.clone();
+
+            let mut updates = Vec::new();
+            let mut deposits = Vec::new();
+            let mut withdraws = Vec::new();
+
+            let mut has_tx_delta_before_mpn = HashSet::new();
+            let mut chain_sourced_sorted = mempool
+                .chain_sourced()
+                .map(|(tx, _)| tx.clone())
+                .collect::<Vec<_>>();
+            chain_sourced_sorted.sort_unstable_by_key(|t| t.nonce());
+            chain_sourced_sorted = ctx
+                .blockchain
+                .cleanup_chain_mempool(&chain_sourced_sorted)?;
+            for tx in chain_sourced_sorted {
+                match tx {
+                    ChainSourcedTx::MpnDeposit(mpn_dep) => {
+                        if !has_tx_delta_before_mpn.contains(&mpn_dep.payment.src) {
+                            deposits.push(mpn_dep.clone());
+                        }
+                    }
+                    ChainSourcedTx::TransactionAndDelta(tx_delta) => {
+                        // Make sure there are no regular transactions before any MpnDeposit
+                        // Since MPN-update transaction comes first, processing any regular
+                        // transaction could invalidate MPN-update (Because of the invalid nonce)
+                        // TODO: Is there a better solution?
+                        has_tx_delta_before_mpn.insert(tx_delta.tx.src.clone().unwrap_or_default());
+                    }
+                }
+            }
+
+            let mut mpn_sourced_sorted = mempool
+                .mpn_sourced()
+                .map(|(tx, _)| tx.clone())
+                .collect::<Vec<_>>();
+            mpn_sourced_sorted.sort_unstable_by_key(|t| t.nonce());
+            for tx in mpn_sourced_sorted {
+                match &tx {
+                    MpnSourcedTx::MpnTransaction(mpn_tx) => {
+                        updates.push(mpn_tx.clone());
+                    }
+                    MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
+                        withdraws.push(mpn_withdraw.clone());
+                    }
+                }
+            }
             ctx.mpn_work_pool = Some(mpn::prepare_works(
                 &ctx.blockchain.config().mpn_config,
                 ctx.blockchain.database(),
-                &[],
-                &[],
-                &[],
+                &deposits,
+                &withdraws,
+                &updates,
             )?);
         }
         if let Some(claim) = ctx.validator_claim.clone() {

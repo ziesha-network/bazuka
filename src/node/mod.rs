@@ -404,19 +404,6 @@ async fn node_service<K: KvStore, B: Blockchain<K>>(
                     .await?,
                 )?);
             }
-            (Method::GET, "/bincode/mempool/zero") => {
-                if is_local {
-                    *response.body_mut() = Body::from(bincode::serialize(
-                        &api::get_zero_mempool(
-                            Arc::clone(&context),
-                            bincode::deserialize(&body_bytes)?,
-                        )
-                        .await?,
-                    )?);
-                } else {
-                    *response.status_mut() = StatusCode::FORBIDDEN;
-                }
-            }
             (Method::GET, "/mempool") => {
                 let req: GetJsonMempoolRequest = serde_qs::from_str(&qs)?;
                 let mpn_address = req.mpn_address.parse()?;
