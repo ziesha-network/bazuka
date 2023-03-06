@@ -1,11 +1,12 @@
 use super::messages::{GetBlocksRequest, GetBlocksResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
+use crate::db::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_blocks<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+pub async fn get_blocks<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
     req: GetBlocksRequest,
 ) -> Result<GetBlocksResponse, NodeError> {
     let context = context.read().await;

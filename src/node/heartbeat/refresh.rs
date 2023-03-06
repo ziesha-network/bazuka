@@ -1,6 +1,8 @@
 use super::*;
 
-pub async fn refresh<B: Blockchain>(context: Arc<RwLock<NodeContext<B>>>) -> Result<(), NodeError> {
+pub async fn refresh<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
+) -> Result<(), NodeError> {
     let mut ctx = context.write().await;
     let opts = ctx.opts.clone();
     ctx.refresh()?;

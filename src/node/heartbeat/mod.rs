@@ -12,17 +12,19 @@ mod sync_state;
 use super::{http, promote_validator_claim, Limit, NodeContext, NodeError, Peer, PeerAddress};
 use crate::blockchain::Blockchain;
 use crate::client::messages::*;
+use crate::node::KvStore;
 use crate::utils;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{RwLock, RwLockWriteGuard};
 
 pub async fn make_loop<
-    B: Blockchain,
+    K: KvStore,
+    B: Blockchain<K>,
     Fut: futures::Future<Output = Result<(), NodeError>>,
-    F: Fn(&Arc<RwLock<NodeContext<B>>>) -> Fut,
+    F: Fn(&Arc<RwLock<NodeContext<K, B>>>) -> Fut,
 >(
-    context: &Arc<RwLock<NodeContext<B>>>,
+    context: &Arc<RwLock<NodeContext<K, B>>>,
     func: F,
     interval: Duration,
 ) {
@@ -37,7 +39,9 @@ pub async fn make_loop<
     }
 }
 
-pub async fn heartbeater<B: Blockchain>(ctx: Arc<RwLock<NodeContext<B>>>) -> Result<(), NodeError> {
+pub async fn heartbeater<K: KvStore, B: Blockchain<K>>(
+    ctx: Arc<RwLock<NodeContext<K, B>>>,
+) -> Result<(), NodeError> {
     let ints = ctx.read().await.opts.heartbeat_intervals.clone();
     tokio::join!(
         make_loop(&ctx, |ctx| log_info::log_info(ctx.clone()), ints.log_info),
@@ -82,8 +86,8 @@ pub async fn heartbeater<B: Blockchain>(ctx: Arc<RwLock<NodeContext<B>>>) -> Res
     Ok(())
 }
 
-fn punish_non_responding<B: Blockchain, R: Clone, E>(
-    ctx: &mut RwLockWriteGuard<'_, NodeContext<B>>,
+fn punish_non_responding<K: KvStore, B: Blockchain<K>, R: Clone, E>(
+    ctx: &mut RwLockWriteGuard<'_, NodeContext<K, B>>,
     resps: &[(Peer, Result<R, E>)],
 ) -> Vec<(PeerAddress, R)> {
     resps

@@ -2,11 +2,12 @@ use super::messages::{GetStatesRequest, GetStatesResponse, InputError};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
 use crate::core::{hash::Hash, Hasher};
+use crate::db::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_states<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+pub async fn get_states<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
     req: GetStatesRequest,
 ) -> Result<GetStatesResponse, NodeError> {
     let context = context.read().await;

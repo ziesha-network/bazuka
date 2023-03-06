@@ -16,6 +16,7 @@ use crate::client::{
 use crate::common::*;
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
+use crate::db::KvStore;
 use crate::utils::local_timestamp;
 use crate::wallet::TxBuilder;
 use context::NodeContext;
@@ -97,8 +98,8 @@ fn fetch_signature(
     Ok(None)
 }
 
-async fn promote_block<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+async fn promote_block<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
     block_and_patch: BlockAndPatch,
 ) {
     let context = context.read().await;
@@ -119,8 +120,8 @@ async fn promote_block<B: Blockchain>(
     });
 }
 
-async fn promote_validator_claim<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+async fn promote_validator_claim<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
     validator_claim: ValidatorClaim,
 ) {
     let context = context.read().await;
@@ -140,9 +141,9 @@ async fn promote_validator_claim<B: Blockchain>(
     });
 }
 
-async fn node_service<B: Blockchain>(
+async fn node_service<K: KvStore, B: Blockchain<K>>(
     client: Option<SocketAddr>,
-    context: Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<K, B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
@@ -505,7 +506,7 @@ async fn node_service<B: Blockchain>(
 
 use tokio::sync::mpsc;
 
-pub async fn node_create<B: Blockchain>(
+pub async fn node_create<K: KvStore, B: Blockchain<K>>(
     opts: NodeOptions,
     network: &str,
     address: Option<PeerAddress>,
@@ -520,6 +521,7 @@ pub async fn node_create<B: Blockchain>(
     miner_token: Option<String>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
+        _phantom: std::marker::PhantomData,
         miner_token,
         firewall,
         opts: opts.clone(),

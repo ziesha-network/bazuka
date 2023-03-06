@@ -2,12 +2,13 @@ use super::messages::{GetZeroMempoolRequest, GetZeroMempoolResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
 use crate::core::{ChainSourcedTx, MpnSourcedTx};
+use crate::db::KvStore;
 use std::collections::HashSet;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_zero_mempool<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+pub async fn get_zero_mempool<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
     _req: GetZeroMempoolRequest,
 ) -> Result<GetZeroMempoolResponse, NodeError> {
     if !context

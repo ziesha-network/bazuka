@@ -2,8 +2,8 @@ use super::*;
 use crate::common::*;
 use std::time::{Duration, Instant};
 
-pub async fn discover_peers<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+pub async fn discover_peers<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
 

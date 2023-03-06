@@ -156,7 +156,7 @@ impl Mempool {
 
 impl Mempool {
     #[allow(dead_code)]
-    pub fn refresh<B: Blockchain>(
+    pub fn refresh<K: KvStore, B: Blockchain<K>>(
         &mut self,
         _blockchain: &B,
         _local_ts: u32,
@@ -174,7 +174,7 @@ impl Mempool {
     pub fn chain_sourced_len(&self) -> usize {
         self.chain_sourced.values().map(|c| c.len()).sum()
     }
-    pub fn add_chain_sourced<B: Blockchain>(
+    pub fn add_chain_sourced<K: KvStore, B: Blockchain<K>>(
         &mut self,
         blockchain: &B,
         tx: ChainSourcedTx,
@@ -227,7 +227,7 @@ impl Mempool {
         }
         Ok(())
     }
-    pub fn add_mpn_sourced<B: Blockchain>(
+    pub fn add_mpn_sourced<K: KvStore, B: Blockchain<K>>(
         &mut self,
         blockchain: &B,
         tx: MpnSourcedTx,
@@ -366,8 +366,8 @@ pub enum TxSideEffect {
     Nothing,
 }
 
-pub trait Blockchain {
-    fn database(&self) -> Box<&dyn KvStore>;
+pub trait Blockchain<K: KvStore> {
+    fn database(&self) -> &K;
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self) -> Result<Vec<(Address, Amount)>, BlockchainError>;
@@ -1377,7 +1377,7 @@ impl<K: KvStore> KvStoreChain<K> {
     }
 }
 
-impl<K: KvStore> Blockchain for KvStoreChain<K> {
+impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     fn db_checksum(&self) -> Result<String, BlockchainError> {
         Ok(hex::encode(
             self.database.pairs("".into())?.checksum::<Hasher>()?,
@@ -2029,8 +2029,8 @@ impl<K: KvStore> Blockchain for KvStoreChain<K> {
         (epoch_number, slot_number % self.config.slot_per_epoch)
     }
 
-    fn database(&self) -> Box<&dyn KvStore> {
-        Box::new(&self.database)
+    fn database(&self) -> &K {
+        &self.database
     }
 }
 

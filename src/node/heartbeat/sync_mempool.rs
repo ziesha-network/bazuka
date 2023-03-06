@@ -1,8 +1,8 @@
 use super::*;
 use crate::common::*;
 
-pub async fn sync_mempool<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+pub async fn sync_mempool<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
 
