@@ -6,8 +6,15 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub async fn get_mpn_work<K: KvStore, B: Blockchain<K>>(
-    _context: Arc<RwLock<NodeContext<K, B>>>,
+    context: Arc<RwLock<NodeContext<K, B>>>,
     _req: GetMpnWorkRequest,
 ) -> Result<GetMpnWorkResponse, NodeError> {
-    Ok(GetMpnWorkResponse {})
+    let ctx = context.read().await;
+    Ok(GetMpnWorkResponse {
+        works: ctx
+            .mpn_work_pool
+            .as_ref()
+            .map(|p| p.get_works())
+            .unwrap_or_default(),
+    })
 }

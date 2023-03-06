@@ -40,6 +40,16 @@ pub struct MpnWorkPool {
     solutions: HashMap<usize, Groth16Proof>,
 }
 
+impl MpnWorkPool {
+    pub fn get_works(&self) -> HashMap<usize, MpnWork> {
+        let mut remaining = self.works.clone();
+        for solved in self.solutions.keys() {
+            remaining.remove(solved);
+        }
+        remaining
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MpnConfig {
     pub log4_tree_size: u8,

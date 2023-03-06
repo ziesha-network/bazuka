@@ -9,5 +9,5 @@ pub async fn post_mpn_solution<K: KvStore, B: Blockchain<K>>(
     _context: Arc<RwLock<NodeContext<K, B>>>,
     _req: PostMpnSolutionRequest,
 ) -> Result<PostMpnSolutionResponse, NodeError> {
-    Ok(PostMpnSolutionResponse {})
+    Ok(PostMpnSolutionResponse { accepted: 0 })
 }

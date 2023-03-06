@@ -1,8 +1,9 @@
 use crate::blockchain::ZkBlockchainPatch;
 use crate::core::{
-    Account, Address, Amount, Block, ChainSourcedTx, ContractId, Header, Money, MpnDeposit,
-    MpnSourcedTx, MpnWithdraw, Signature, Token, TransactionAndDelta, ValidatorProof,
+    Account, Address, Amount, Block, ChainSourcedTx, ContractId, Header, Money, MpnAddress,
+    MpnDeposit, MpnSourcedTx, MpnWithdraw, Signature, Token, TransactionAndDelta, ValidatorProof,
 };
+use crate::mpn::MpnWork;
 use crate::zk;
 use std::collections::HashMap;
 use thiserror::Error;
@@ -414,10 +415,17 @@ pub struct GenerateBlockResponse {
 pub struct GetMpnWorkRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetMpnWorkResponse {}
+pub struct GetMpnWorkResponse {
+    pub works: HashMap<usize, MpnWork>,
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct PostMpnSolutionRequest {}
+pub struct PostMpnSolutionRequest {
+    pub proofs: HashMap<usize, zk::groth16::Groth16Proof>,
+    pub address: MpnAddress,
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct PostMpnSolutionResponse {}
+pub struct PostMpnSolutionResponse {
+    pub accepted: usize,
+}
