@@ -13,7 +13,7 @@ pub fn update<K: KvStore>(
     fee_token: TokenId,
     db: &mut K,
     txs: &[MpnTransaction],
-) -> Result<(ZkPublicInputs, Vec<UpdateTransition>), BlockchainError> {
+) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<UpdateTransition>), BlockchainError> {
     let mut rejected = Vec::new();
     let mut accepted = Vec::new();
     let mut transitions = Vec::new();
@@ -204,14 +204,14 @@ pub fn update<K: KvStore>(
     let next_state =
         KvStoreStateManager::<ZkHasher>::get_data(&mirror, mpn_contract_id, &ZkDataLocator(vec![]))
             .unwrap();
+    let new_root = ZkCompressedState {
+        state_hash: next_state,
+        state_size,
+    };
     mirror
         .update(&[WriteOp::Put(
             keys::local_root(&mpn_contract_id),
-            ZkCompressedState {
-                state_hash: next_state,
-                state_size,
-            }
-            .into(),
+            new_root.clone().into(),
         )])
         .unwrap();
 
@@ -231,6 +231,7 @@ pub fn update<K: KvStore>(
     let ops = mirror.to_ops();
     db.update(&ops)?;
     Ok((
+        new_root,
         ZkPublicInputs {
             height,
             state,

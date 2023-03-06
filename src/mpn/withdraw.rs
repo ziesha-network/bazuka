@@ -14,7 +14,7 @@ pub fn withdraw<K: KvStore>(
     log4_batch_size: u8,
     db: &mut K,
     txs: &[MpnWithdraw],
-) -> Result<(ZkPublicInputs, Vec<WithdrawTransition>), BlockchainError> {
+) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<WithdrawTransition>), BlockchainError> {
     let mut mirror = db.mirror();
 
     let mut transitions = Vec::new();
@@ -145,14 +145,14 @@ pub fn withdraw<K: KvStore>(
     let next_state =
         KvStoreStateManager::<ZkHasher>::get_data(&mirror, mpn_contract_id, &ZkDataLocator(vec![]))
             .unwrap();
+    let new_root = ZkCompressedState {
+        state_hash: next_state,
+        state_size,
+    };
     mirror
         .update(&[WriteOp::Put(
             keys::local_root(&mpn_contract_id),
-            ZkCompressedState {
-                state_hash: next_state,
-                state_size,
-            }
-            .into(),
+            new_root.clone().into(),
         )])
         .unwrap();
 
@@ -216,6 +216,7 @@ pub fn withdraw<K: KvStore>(
     let ops = mirror.to_ops();
     db.update(&ops)?;
     Ok((
+        new_root,
         ZkPublicInputs {
             height,
             state,

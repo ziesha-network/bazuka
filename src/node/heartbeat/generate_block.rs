@@ -1,4 +1,5 @@
 use super::*;
+use crate::core::ChainSourcedTx;
 use crate::mpn;
 
 pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
@@ -9,12 +10,21 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
     let proof = ctx.blockchain.validator_status(timestamp, &ctx.wallet)?;
     if !proof.is_unproven() {
         if ctx.opts.automatic_block_generation {
-            let wallet = ctx.wallet.clone();
-            // Invoke PoS block generation
-            if let Some(draft) = ctx.try_produce(wallet)? {
-                drop(ctx);
-                promote_block(context, draft).await;
-                return Ok(());
+            if let Some(work_pool) = &ctx.mpn_work_pool {
+                let wallet = ctx.wallet.clone();
+                let nonce = ctx.blockchain.get_account(wallet.get_address())?.nonce;
+                if let Some(tx_delta) = work_pool.ready(&wallet, nonce + 1) {
+                    log::info!("All MPN-proofs ready!");
+                    ctx.mempool_add_chain_sourced(
+                        true,
+                        ChainSourcedTx::TransactionAndDelta(tx_delta),
+                    )?;
+                    if let Some(draft) = ctx.try_produce(wallet)? {
+                        drop(ctx);
+                        promote_block(context, draft).await;
+                        return Ok(());
+                    }
+                }
             }
         }
         let node = ctx.address.ok_or(NodeError::ValidatorNotExposed)?;

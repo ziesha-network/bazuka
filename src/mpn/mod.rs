@@ -3,11 +3,15 @@ pub mod update;
 pub mod withdraw;
 
 use crate::blockchain::BlockchainError;
-use crate::core::{ContractId, Money, MpnDeposit, MpnWithdraw, TokenId};
+use crate::core::{
+    ContractId, ContractUpdate, Money, MpnDeposit, MpnWithdraw, Signature, TokenId, Transaction,
+    TransactionAndDelta, TransactionData,
+};
 use crate::db::{KvStore, WriteOp};
+use crate::wallet::TxBuilder;
 use crate::zk::{
     groth16::groth16_verify, groth16::Groth16Proof, groth16::Groth16VerifyingKey, MpnAccount,
-    MpnTransaction, ZkDeltaPairs, ZkScalar,
+    MpnTransaction, ZkCompressedState, ZkDeltaPairs, ZkProof, ZkScalar,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -38,6 +42,7 @@ fn extract_delta(ops: &[WriteOp]) -> ZkDeltaPairs {
 }
 
 pub struct MpnWorkPool {
+    config: MpnConfig,
     final_delta: ZkDeltaPairs,
     works: HashMap<usize, MpnWork>,
     solutions: HashMap<usize, Groth16Proof>,
@@ -54,12 +59,65 @@ impl MpnWorkPool {
     pub fn prove(&mut self, id: usize, proof: &Groth16Proof) -> bool {
         if !self.solutions.contains_key(&id) {
             if let Some(work) = self.works.get(&id) {
-                work.verify(proof)
+                if work.verify(proof) {
+                    self.solutions.insert(id, proof.clone());
+                    true
+                } else {
+                    false
+                }
             } else {
                 false
             }
         } else {
             false
+        }
+    }
+    pub fn ready(&self, tx_builder: &TxBuilder, nonce: u32) -> Option<TransactionAndDelta> {
+        if self.works.len() == self.solutions.len() {
+            let mut updates = vec![];
+            for i in 0..self.works.len() {
+                updates.push(match self.works[&i].data.clone() {
+                    MpnWorkData::Deposit(trans) => ContractUpdate::Deposit {
+                        deposit_circuit_id: 0,
+                        deposits: trans.into_iter().map(|t| t.tx.payment.clone()).collect(),
+                        next_state: self.works[&i].new_root.clone(),
+                        proof: ZkProof::Groth16(Box::new(self.solutions[&i].clone())),
+                    },
+                    MpnWorkData::Withdraw(trans) => ContractUpdate::Withdraw {
+                        withdraw_circuit_id: 0,
+                        withdraws: trans.into_iter().map(|t| t.tx.payment.clone()).collect(),
+                        next_state: self.works[&i].new_root.clone(),
+                        proof: ZkProof::Groth16(Box::new(self.solutions[&i].clone())),
+                    },
+                    MpnWorkData::Update(_) => ContractUpdate::FunctionCall {
+                        function_id: 0,
+                        next_state: self.works[&i].new_root.clone(),
+                        proof: ZkProof::Groth16(Box::new(self.solutions[&i].clone())),
+                        fee: Money {
+                            token_id: TokenId::Ziesha,
+                            amount: 0.into(),
+                        },
+                    },
+                });
+            }
+            let mut update = Transaction {
+                memo: String::new(),
+                src: Some(tx_builder.get_address()),
+                nonce: nonce,
+                fee: Money::ziesha(0),
+                data: TransactionData::UpdateContract {
+                    contract_id: self.config.mpn_contract_id.clone(),
+                    updates,
+                },
+                sig: Signature::Unsigned,
+            };
+            tx_builder.sign_tx(&mut update);
+            Some(TransactionAndDelta {
+                tx: update,
+                state_delta: Some(self.final_delta.clone()),
+            })
+        } else {
+            None
         }
     }
 }
@@ -100,6 +158,7 @@ pub struct MpnWork {
     pub config: MpnConfig,
     pub public_inputs: ZkPublicInputs,
     pub data: MpnWorkData,
+    pub new_root: ZkCompressedState,
 }
 
 impl MpnWork {
@@ -134,7 +193,7 @@ pub fn prepare_works<K: KvStore>(
     let mut mirror = db.mirror();
     let mut works = Vec::new();
     for _ in 0..config.mpn_num_deposit_batches {
-        let (public_inputs, transitions) = deposit::deposit(
+        let (new_root, public_inputs, transitions) = deposit::deposit(
             config.mpn_contract_id,
             config.log4_tree_size,
             config.log4_token_tree_size,
@@ -145,11 +204,12 @@ pub fn prepare_works<K: KvStore>(
         works.push(MpnWork {
             config: config.clone(),
             public_inputs,
+            new_root,
             data: MpnWorkData::Deposit(transitions),
         });
     }
     for _ in 0..config.mpn_num_withdraw_batches {
-        let (public_inputs, transitions) = withdraw::withdraw(
+        let (new_root, public_inputs, transitions) = withdraw::withdraw(
             config.mpn_contract_id,
             config.log4_tree_size,
             config.log4_token_tree_size,
@@ -160,11 +220,12 @@ pub fn prepare_works<K: KvStore>(
         works.push(MpnWork {
             config: config.clone(),
             public_inputs,
+            new_root,
             data: MpnWorkData::Withdraw(transitions),
         });
     }
     for _ in 0..config.mpn_num_update_batches {
-        let (public_inputs, transitions) = update::update(
+        let (new_root, public_inputs, transitions) = update::update(
             config.mpn_contract_id,
             config.log4_tree_size,
             config.log4_token_tree_size,
@@ -176,12 +237,14 @@ pub fn prepare_works<K: KvStore>(
         works.push(MpnWork {
             config: config.clone(),
             public_inputs,
+            new_root,
             data: MpnWorkData::Update(transitions),
         });
     }
     let ops = mirror.to_ops();
     let final_delta = extract_delta(&ops);
     Ok(MpnWorkPool {
+        config: config.clone(),
         works: works.into_iter().enumerate().collect(),
         final_delta,
         solutions: HashMap::new(),
