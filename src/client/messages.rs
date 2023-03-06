@@ -422,7 +422,7 @@ pub struct GetMpnWorkResponse {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMpnSolutionRequest {
     pub proofs: HashMap<usize, zk::groth16::Groth16Proof>,
-    pub address: MpnAddress,
+    pub reward_address: MpnAddress,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
