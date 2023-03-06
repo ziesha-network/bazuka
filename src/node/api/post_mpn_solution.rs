@@ -6,8 +6,19 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub async fn post_mpn_solution<K: KvStore, B: Blockchain<K>>(
-    _context: Arc<RwLock<NodeContext<K, B>>>,
-    _req: PostMpnSolutionRequest,
+    context: Arc<RwLock<NodeContext<K, B>>>,
+    req: PostMpnSolutionRequest,
 ) -> Result<PostMpnSolutionResponse, NodeError> {
-    Ok(PostMpnSolutionResponse { accepted: 0 })
+    let mut ctx = context.write().await;
+    if let Some(mpn_work_pool) = &mut ctx.mpn_work_pool {
+        let mut accepted = 0;
+        for (id, proof) in req.proofs.iter() {
+            if mpn_work_pool.prove(*id, proof) {
+                accepted += 1;
+            }
+        }
+        Ok(PostMpnSolutionResponse { accepted })
+    } else {
+        Ok(PostMpnSolutionResponse { accepted: 0 })
+    }
 }

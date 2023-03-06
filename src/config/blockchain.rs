@@ -215,6 +215,9 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             mpn_num_update_batches: 1,
             mpn_num_deposit_batches: 1,
             mpn_num_withdraw_batches: 1,
+            deposit_vk: MPN_DEPOSIT_VK.clone(),
+            withdraw_vk: MPN_WITHDRAW_VK.clone(),
+            update_vk: MPN_UPDATE_VK.clone(),
         },
 
         ziesha_token_id,

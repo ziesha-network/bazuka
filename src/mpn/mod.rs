@@ -5,7 +5,10 @@ pub mod withdraw;
 use crate::blockchain::BlockchainError;
 use crate::core::{ContractId, Money, MpnDeposit, MpnWithdraw, TokenId};
 use crate::db::{KvStore, WriteOp};
-use crate::zk::{groth16::Groth16Proof, MpnAccount, MpnTransaction, ZkDeltaPairs, ZkScalar};
+use crate::zk::{
+    groth16::groth16_verify, groth16::Groth16Proof, groth16::Groth16VerifyingKey, MpnAccount,
+    MpnTransaction, ZkDeltaPairs, ZkScalar,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -48,6 +51,17 @@ impl MpnWorkPool {
         }
         remaining
     }
+    pub fn prove(&mut self, id: usize, proof: &Groth16Proof) -> bool {
+        if !self.solutions.contains_key(&id) {
+            if let Some(work) = self.works.get(&id) {
+                work.verify(proof)
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -61,6 +75,9 @@ pub struct MpnConfig {
     pub mpn_num_update_batches: usize,
     pub mpn_num_deposit_batches: usize,
     pub mpn_num_withdraw_batches: usize,
+    pub deposit_vk: Groth16VerifyingKey,
+    pub withdraw_vk: Groth16VerifyingKey,
+    pub update_vk: Groth16VerifyingKey,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,6 +100,28 @@ pub struct MpnWork {
     pub config: MpnConfig,
     pub public_inputs: ZkPublicInputs,
     pub data: MpnWorkData,
+}
+
+impl MpnWork {
+    pub fn vk(&self) -> Groth16VerifyingKey {
+        match &self.data {
+            MpnWorkData::Deposit(_) => &self.config.deposit_vk,
+            MpnWorkData::Withdraw(_) => &self.config.withdraw_vk,
+            MpnWorkData::Update(_) => &self.config.update_vk,
+        }
+        .clone()
+    }
+    pub fn verify(&self, proof: &Groth16Proof) -> bool {
+        let vk = self.vk();
+        groth16_verify(
+            &vk,
+            self.public_inputs.height,
+            self.public_inputs.state,
+            self.public_inputs.aux_data,
+            self.public_inputs.next_state,
+            proof,
+        )
+    }
 }
 
 pub fn prepare_works<K: KvStore>(
