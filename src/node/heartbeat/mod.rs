@@ -1,7 +1,7 @@
 mod log_info;
 
 mod discover_peers;
-mod promote_validator;
+mod generate_block;
 mod refresh;
 mod sync_blocks;
 mod sync_clock;
@@ -9,7 +9,9 @@ mod sync_mempool;
 mod sync_peers;
 mod sync_state;
 
-use super::{http, promote_validator_claim, Limit, NodeContext, NodeError, Peer, PeerAddress};
+use super::{
+    http, promote_block, promote_validator_claim, Limit, NodeContext, NodeError, Peer, PeerAddress,
+};
 use crate::blockchain::Blockchain;
 use crate::client::messages::*;
 use crate::node::KvStore;
@@ -78,8 +80,8 @@ pub async fn heartbeater<K: KvStore, B: Blockchain<K>>(
         ),
         make_loop(
             &ctx,
-            |ctx| promote_validator::promote_validator(ctx.clone()),
-            ints.promote_validator
+            |ctx| generate_block::generate_block(ctx.clone()),
+            ints.generate_block
         ),
     );
 

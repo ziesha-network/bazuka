@@ -42,7 +42,7 @@ pub struct HeartbeatIntervals {
     pub sync_blocks: Duration,
     pub sync_mempool: Duration,
     pub sync_state: Duration,
-    pub promote_validator: Duration,
+    pub generate_block: Duration,
 }
 
 #[derive(Debug, Clone)]
@@ -62,6 +62,7 @@ pub struct NodeOptions {
     pub chain_mempool_max_fetch: usize,
     pub mpn_mempool_max_fetch: usize,
     pub max_block_time_difference: u32,
+    pub automatic_block_generation: bool,
 }
 
 fn fetch_miner_token(req: &Request<Body>) -> Result<Option<String>, NodeError> {
