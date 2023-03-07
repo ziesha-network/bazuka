@@ -5,8 +5,7 @@ use crate::{
     wallet::TxBuilder,
 };
 use tokio::try_join;
-
-use super::{get_wallet, get_wallet_path, get_conf};
+use crate::cli::{get_wallet, get_wallet_path, get_conf};
 
 pub async fn send(
     memo: Option<String>,

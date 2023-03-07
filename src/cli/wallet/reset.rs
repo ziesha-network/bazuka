@@ -1,4 +1,4 @@
-use super::{get_wallet, get_wallet_path};
+use crate::cli::{get_wallet, get_wallet_path};
 
 pub fn reset() -> () {
     let wallet = get_wallet();

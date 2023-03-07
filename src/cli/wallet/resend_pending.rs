@@ -1,5 +1,4 @@
-use super::BazukaConfig;
-use super::{get_conf, get_wallet, get_wallet_path};
+use crate::cli::{get_conf, get_wallet, get_wallet_path, BazukaConfig};
 use crate::client::BazukaClient;
 use crate::client::NodeError;
 use crate::core::MpnAddress;

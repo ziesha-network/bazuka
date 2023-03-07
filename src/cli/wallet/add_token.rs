@@ -1,6 +1,7 @@
-use crate::core::TokenId;
-
-use super::{get_wallet, get_wallet_path};
+use crate::{
+    cli::{get_wallet, get_wallet_path},
+    core::TokenId,
+};
 
 pub fn add_token(token_id: TokenId) -> () {
     let wallet = get_wallet();

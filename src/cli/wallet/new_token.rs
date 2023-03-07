@@ -1,9 +1,8 @@
+use crate::cli::{get_conf, get_wallet, get_wallet_path};
 use crate::client::{BazukaClient, NodeError};
 use crate::core::{Amount, Money, TokenId};
-use crate::wallet::{TxBuilder};
+use crate::wallet::TxBuilder;
 use tokio::try_join;
-
-use super::{get_conf, get_wallet, get_wallet_path};
 
 pub async fn new_token(
     memo: Option<String>,

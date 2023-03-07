@@ -1,5 +1,6 @@
 use tokio::try_join;
 
+use crate::cli::{get_conf, get_wallet};
 use crate::client::NodeError;
 use crate::config;
 use crate::core::MpnAddress;
@@ -7,8 +8,6 @@ use crate::wallet::TxBuilder;
 use crate::{client::BazukaClient, core::TokenId};
 use colored::Colorize;
 use std::collections::HashMap;
-
-use super::{get_conf, get_wallet};
 
 pub async fn info() -> () {
     let wallet = get_wallet();
