@@ -906,9 +906,6 @@ impl<K: KvStore> KvStoreChain<K> {
                                             BlockchainError::DepositWithdrawPassedToWrongFunction,
                                         );
                                     }
-                                    if deposit.src.clone() == tx_src {
-                                        return Err(BlockchainError::CannotExecuteOwnPayments);
-                                    }
                                     executor_fees.push(deposit.fee);
                                     state_builder.batch_set(&zk::ZkDeltaPairs(
                                         [

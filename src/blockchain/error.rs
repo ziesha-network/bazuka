@@ -72,8 +72,6 @@ pub enum BlockchainError {
     InsufficientMpnUpdates,
     #[error("invalid zero-transaction")]
     InvalidMpnTransaction,
-    #[error("executor cannot execute his own payments")]
-    CannotExecuteOwnPayments,
     #[error("contract contains invalid state-model")]
     InvalidStateModel,
     #[error("height limit reached! if you are on a testnet, make sure you update your software")]
