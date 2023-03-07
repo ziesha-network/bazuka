@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::{ChainSourcedTx, MpnSourcedTx};
+use crate::core::{ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId};
 use crate::mpn;
 use std::collections::HashSet;
 
@@ -78,6 +78,29 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                     }
                 }
             }
+
+            let nonce = ctx.blockchain.get_account(ctx.wallet.get_address())?.nonce;
+            deposits.insert(
+                0,
+                ctx.wallet.deposit_mpn(
+                    "".into(),
+                    ctx.blockchain.config().mpn_config.mpn_contract_id,
+                    MpnAddress {
+                        pub_key: ctx.wallet.get_zk_address(),
+                    },
+                    0,
+                    nonce + 2,
+                    Money {
+                        amount: ctx.blockchain.next_reward()?,
+                        token_id: TokenId::Ziesha,
+                    },
+                    Money {
+                        amount: 0.into(),
+                        token_id: TokenId::Ziesha,
+                    },
+                ),
+            );
+
             ctx.mpn_work_pool = Some(mpn::prepare_works(
                 &ctx.blockchain.config().mpn_config,
                 ctx.blockchain.database(),
