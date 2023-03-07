@@ -2,16 +2,17 @@ use super::messages::{GetMempoolRequest, GetMempoolResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
 use crate::core::{ChainSourcedTx, MpnAddress, MpnSourcedTx, TransactionData};
+use crate::db::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_mempool<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+pub async fn get_mempool<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
     _req: GetMempoolRequest,
     mpn_address: Option<MpnAddress>,
 ) -> Result<GetMempoolResponse, NodeError> {
     let context = context.read().await;
-    let mpn_contract_id = context.blockchain.config().mpn_contract_id;
+    let mpn_contract_id = context.blockchain.config().mpn_config.mpn_contract_id;
     Ok(GetMempoolResponse {
         chain_sourced: context
             .mempool

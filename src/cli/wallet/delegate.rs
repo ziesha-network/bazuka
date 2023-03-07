@@ -34,11 +34,11 @@ pub async fn delegate(
                 .nonce;
 
             let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
-            let (delegate_id, tx) = tx_builder.delegate(
+            let tx = tx_builder.delegate(
                 memo.unwrap_or_default(),
                 to,
                 amount,
-                epoch + 1 + count,
+                false,
                 Money {
                     amount: fee,
                     token_id: TokenId::Ziesha,
@@ -47,7 +47,6 @@ pub async fn delegate(
             );
             wallet.add_rsend(tx.clone());
             wallet.save(wallet_path).unwrap();
-            println!("Delegate-Id: {}", delegate_id);
             println!("{:#?}", client.transact(tx).await?);
             Ok::<(), NodeError>(())
         },

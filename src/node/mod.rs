@@ -16,6 +16,7 @@ use crate::client::{
 use crate::common::*;
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
+use crate::db::KvStore;
 use crate::utils::local_timestamp;
 use crate::wallet::TxBuilder;
 use context::NodeContext;
@@ -41,7 +42,7 @@ pub struct HeartbeatIntervals {
     pub sync_blocks: Duration,
     pub sync_mempool: Duration,
     pub sync_state: Duration,
-    pub promote_validator: Duration,
+    pub generate_block: Duration,
 }
 
 #[derive(Debug, Clone)]
@@ -61,6 +62,7 @@ pub struct NodeOptions {
     pub chain_mempool_max_fetch: usize,
     pub mpn_mempool_max_fetch: usize,
     pub max_block_time_difference: u32,
+    pub automatic_block_generation: bool,
 }
 
 fn fetch_miner_token(req: &Request<Body>) -> Result<Option<String>, NodeError> {
@@ -97,8 +99,8 @@ fn fetch_signature(
     Ok(None)
 }
 
-async fn promote_block<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+async fn promote_block<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
     block_and_patch: BlockAndPatch,
 ) {
     let context = context.read().await;
@@ -119,8 +121,8 @@ async fn promote_block<B: Blockchain>(
     });
 }
 
-async fn promote_validator_claim<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+async fn promote_validator_claim<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
     validator_claim: ValidatorClaim,
 ) {
     let context = context.read().await;
@@ -140,9 +142,9 @@ async fn promote_validator_claim<B: Blockchain>(
     });
 }
 
-async fn node_service<B: Blockchain>(
+async fn node_service<K: KvStore, B: Blockchain<K>>(
     client: Option<SocketAddr>,
-    context: Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<K, B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
@@ -402,19 +404,6 @@ async fn node_service<B: Blockchain>(
                     .await?,
                 )?);
             }
-            (Method::GET, "/bincode/mempool/zero") => {
-                if is_local {
-                    *response.body_mut() = Body::from(bincode::serialize(
-                        &api::get_zero_mempool(
-                            Arc::clone(&context),
-                            bincode::deserialize(&body_bytes)?,
-                        )
-                        .await?,
-                    )?);
-                } else {
-                    *response.status_mut() = StatusCode::FORBIDDEN;
-                }
-            }
             (Method::GET, "/mempool") => {
                 let req: GetJsonMempoolRequest = serde_qs::from_str(&qs)?;
                 let mpn_address = req.mpn_address.parse()?;
@@ -505,7 +494,7 @@ async fn node_service<B: Blockchain>(
 
 use tokio::sync::mpsc;
 
-pub async fn node_create<B: Blockchain>(
+pub async fn node_create<K: KvStore, B: Blockchain<K>>(
     opts: NodeOptions,
     network: &str,
     address: Option<PeerAddress>,
@@ -520,6 +509,7 @@ pub async fn node_create<B: Blockchain>(
     miner_token: Option<String>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
+        _phantom: std::marker::PhantomData,
         miner_token,
         firewall,
         opts: opts.clone(),
@@ -534,7 +524,7 @@ pub async fn node_create<B: Blockchain>(
             priv_key: wallet.get_priv_key(),
         }),
         mpn_work_pool: None,
-        mempool: Mempool::new(blockchain.config().mpn_log4_account_capacity),
+        mempool: Mempool::new(blockchain.config().mpn_config.log4_tree_size),
         blockchain,
         wallet,
         peer_manager: PeerManager::new(

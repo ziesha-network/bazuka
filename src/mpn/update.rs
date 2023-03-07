@@ -8,10 +8,12 @@ use rayon::prelude::*;
 pub fn update<K: KvStore>(
     mpn_contract_id: ContractId,
     mpn_log4_account_capacity: u8,
+    log4_token_tree_size: u8,
+    log4_batch_size: u8,
     fee_token: TokenId,
     db: &mut K,
     txs: &[MpnTransaction],
-) -> Result<(ZkPublicInputs, Vec<UpdateTransition>), BlockchainError> {
+) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<UpdateTransition>), BlockchainError> {
     let mut rejected = Vec::new();
     let mut accepted = Vec::new();
     let mut transitions = Vec::new();
@@ -34,7 +36,7 @@ pub fn update<K: KvStore>(
         .collect::<Vec<_>>();
 
     for tx in txs.into_iter() {
-        if transitions.len() == 1 << (2 * LOG4_UPDATE_BATCH_SIZE) {
+        if transitions.len() == 1 << (2 * log4_batch_size) {
             break;
         }
         let src_before = KvStoreStateManager::<ZkHasher>::get_mpn_account(
@@ -192,8 +194,8 @@ pub fn update<K: KvStore>(
                 src_before_balance: src_token.clone(),
                 src_before_fee_balance: src_fee_token.clone(),
                 dst_before_balance: dst_token.cloned().unwrap_or(Money::default()),
-                src_before_balances_hash: src_before.tokens_hash::<ZkHasher>(LOG4_TOKENS_TREE_SIZE),
-                dst_before_balances_hash: dst_before.tokens_hash::<ZkHasher>(LOG4_TOKENS_TREE_SIZE),
+                src_before_balances_hash: src_before.tokens_hash::<ZkHasher>(log4_token_tree_size),
+                dst_before_balances_hash: dst_before.tokens_hash::<ZkHasher>(log4_token_tree_size),
             });
             accepted.push(tx);
         }
@@ -202,14 +204,14 @@ pub fn update<K: KvStore>(
     let next_state =
         KvStoreStateManager::<ZkHasher>::get_data(&mirror, mpn_contract_id, &ZkDataLocator(vec![]))
             .unwrap();
+    let new_root = ZkCompressedState {
+        state_hash: next_state,
+        state_size,
+    };
     mirror
         .update(&[WriteOp::Put(
             keys::local_root(&mpn_contract_id),
-            ZkCompressedState {
-                state_hash: next_state,
-                state_size,
-            }
-            .into(),
+            new_root.clone().into(),
         )])
         .unwrap();
 
@@ -229,6 +231,7 @@ pub fn update<K: KvStore>(
     let ops = mirror.to_ops();
     db.update(&ops)?;
     Ok((
+        new_root,
         ZkPublicInputs {
             height,
             state,

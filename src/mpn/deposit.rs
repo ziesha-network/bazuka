@@ -11,9 +11,11 @@ use std::collections::HashSet;
 pub fn deposit<K: KvStore>(
     mpn_contract_id: ContractId,
     mpn_log4_account_capacity: u8,
+    log4_token_tree_size: u8,
+    log4_batch_size: u8,
     db: &mut K,
     txs: &[MpnDeposit],
-) -> Result<(ZkPublicInputs, Vec<DepositTransition>), BlockchainError> {
+) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<DepositTransition>), BlockchainError> {
     let mut mirror = db.mirror();
 
     let mut transitions = Vec::new();
@@ -27,7 +29,7 @@ pub fn deposit<K: KvStore>(
     let mut rejected_pub_keys = HashSet::new();
 
     for tx in txs.into_iter() {
-        if transitions.len() == 1 << (2 * LOG4_DEPOSIT_BATCH_SIZE) {
+        if transitions.len() == 1 << (2 * log4_batch_size) {
             break;
         }
         let acc = KvStoreStateManager::<ZkHasher>::get_mpn_account(
@@ -84,7 +86,7 @@ pub fn deposit<K: KvStore>(
             transitions.push(DepositTransition {
                 tx: tx.clone(),
                 before: acc.clone(),
-                before_balances_hash: acc.tokens_hash::<ZkHasher>(LOG4_TOKENS_TREE_SIZE),
+                before_balances_hash: acc.tokens_hash::<ZkHasher>(log4_token_tree_size),
                 before_balance: acc_token.cloned().unwrap_or_default(),
                 proof,
                 balance_proof,
@@ -95,14 +97,14 @@ pub fn deposit<K: KvStore>(
     let next_state =
         KvStoreStateManager::<ZkHasher>::get_data(&mirror, mpn_contract_id, &ZkDataLocator(vec![]))
             .unwrap();
+    let new_root = ZkCompressedState {
+        state_hash: next_state,
+        state_size,
+    };
     mirror
         .update(&[WriteOp::Put(
             keys::local_root(&mpn_contract_id),
-            ZkCompressedState {
-                state_hash: next_state,
-                state_size,
-            }
-            .into(),
+            new_root.clone().into(),
         )])
         .unwrap();
 
@@ -115,7 +117,7 @@ pub fn deposit<K: KvStore>(
                 ZkStateModel::Scalar, // Calldata
             ],
         }),
-        log4_size: LOG4_DEPOSIT_BATCH_SIZE as u8,
+        log4_size: log4_batch_size,
     };
     let mut state_builder = ZkStateBuilder::<ZkHasher>::new(state_model.clone());
 
@@ -152,6 +154,7 @@ pub fn deposit<K: KvStore>(
     db.update(&ops)?;
 
     Ok((
+        new_root,
         ZkPublicInputs {
             height,
             state,

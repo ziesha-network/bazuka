@@ -1,14 +1,15 @@
 use super::messages::{GetPeersRequest, GetPeersResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
+use crate::db::KvStore;
 use rand::prelude::IteratorRandom;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_peers<B: Blockchain>(
+pub async fn get_peers<K: KvStore, B: Blockchain<K>>(
     client: Option<SocketAddr>,
-    context: Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<K, B>>>,
     _req: GetPeersRequest,
 ) -> Result<GetPeersResponse, NodeError> {
     let context = context.read().await;

@@ -13,7 +13,7 @@ pub fn get_node_options() -> NodeOptions {
             sync_blocks: Duration::from_secs(10),
             sync_mempool: Duration::from_secs(30),
             sync_state: Duration::from_secs(10),
-            promote_validator: Duration::from_secs(1),
+            generate_block: Duration::from_secs(3),
         },
         num_peers: 8,
         max_blocks_fetch: 16,
@@ -28,6 +28,7 @@ pub fn get_node_options() -> NodeOptions {
         chain_mempool_max_fetch: 1000,
         mpn_mempool_max_fetch: 1000,
         max_block_time_difference: 120,
+        automatic_block_generation: true,
     }
 }
 
@@ -43,7 +44,7 @@ pub fn get_simulator_options() -> NodeOptions {
             sync_blocks: Duration::from_millis(300),
             sync_mempool: Duration::from_millis(300),
             sync_state: Duration::from_millis(300),
-            promote_validator: Duration::from_millis(300),
+            generate_block: Duration::from_millis(300),
         },
         num_peers: 8,
         max_blocks_fetch: 16,
@@ -58,5 +59,6 @@ pub fn get_simulator_options() -> NodeOptions {
         chain_mempool_max_fetch: 1000,
         mpn_mempool_max_fetch: 1000,
         max_block_time_difference: 120,
+        automatic_block_generation: false,
     }
 }

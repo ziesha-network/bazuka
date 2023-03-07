@@ -1,9 +1,9 @@
 use crate::client::messages::ValidatorClaim;
 use crate::client::PeerAddress;
 use crate::core::{
-    Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, DelegateId,
-    Hasher, Money, MpnAddress, MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token,
-    TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
+    Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Hasher, Money,
+    MpnAddress, MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token, TokenId,
+    Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::VerifiableRandomFunction;
@@ -69,17 +69,17 @@ impl TxBuilder {
         memo: String,
         address: Address,
         amount: Amount,
-        until: u32,
+        reverse: bool,
         fee: Money,
         nonce: u32,
-    ) -> (DelegateId, TransactionAndDelta) {
+    ) -> TransactionAndDelta {
         let mut tx = Transaction {
             memo,
             src: Some(self.get_address()),
             data: TransactionData::Delegate {
                 to: address,
                 amount,
-                until,
+                reverse,
             },
             nonce,
             fee,
@@ -87,14 +87,10 @@ impl TxBuilder {
         };
         self.sign_tx(&mut tx);
 
-        let delegate_id = DelegateId::new(&tx);
-        (
-            delegate_id,
-            TransactionAndDelta {
-                tx,
-                state_delta: None,
-            },
-        )
+        TransactionAndDelta {
+            tx,
+            state_delta: None,
+        }
     }
     pub fn generate_random(
         &self,

@@ -59,7 +59,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
         blockchain::get_test_blockchain_config(),
     )?;
 
-    let cid = chain.config().mpn_contract_id;
+    let cid = chain.config().mpn_config.mpn_contract_id;
 
     let state_model = zk::ZkStateModel::List {
         item_type: Box::new(zk::ZkStateModel::Scalar),
@@ -220,7 +220,6 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
-            0,
             &alice
                 .call_function(
                     "".into(),
@@ -241,7 +240,6 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
-            0,
             &alice
                 .call_function(
                     "".into(),
@@ -265,7 +263,6 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
-            0,
             &alice
                 .call_function(
                     "".into(),
@@ -286,7 +283,6 @@ fn test_contract_update() -> Result<(), BlockchainError> {
 
     assert!(matches!(
         chain.apply_tx(
-            0,
             &alice
                 .call_function(
                     "".into(),

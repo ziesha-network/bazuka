@@ -16,7 +16,7 @@ use {
 use {
     crate::client::{NodeError, PeerAddress},
     crate::config,
-    crate::core::{Address, Amount, DelegateId, TokenId, ZieshaAddress},
+    crate::core::{Address, Amount, TokenId, ZieshaAddress},
     crate::wallet::{TxBuilder, Wallet},
     colored::Colorize,
     rand::Rng,
@@ -124,7 +124,9 @@ enum WalletOptions {
         #[structopt(long)]
         memo: Option<String>,
         #[structopt(long)]
-        delegate_id: DelegateId,
+        from: Address,
+        #[structopt(long)]
+        amount: Amount,
         #[structopt(long, default_value = "0")]
         fee: Amount,
     },

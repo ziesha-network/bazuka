@@ -18,9 +18,16 @@ pub async fn send(
     let wallet = get_wallet();
     let wallet_path = get_wallet_path();
     let conf = get_conf();
-    let mpn_contract_id = config::blockchain::get_blockchain_config().mpn_contract_id;
-    let mpn_log4_account_capacity =
-        config::blockchain::get_blockchain_config().mpn_log4_account_capacity;
+    let mpn_contract_id = config::blockchain::get_blockchain_config()
+        .mpn_config
+        .mpn_contract_id;
+    let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
+        .mpn_config
+        .log4_tree_size;
+    let log4_token_tree_size = config::blockchain::get_blockchain_config()
+        .mpn_config
+        .log4_token_tree_size;
+
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = TxBuilder::new(&wallet.seed());
     let (req_loop, client) = BazukaClient::connect(
@@ -87,11 +94,9 @@ pub async fn send(
                                 .get_mpn_account(to.account_index(mpn_log4_account_capacity))
                                 .await?
                                 .account;
-                            let to_token_index = if let Some(ind) = dst_acc.find_token_index(
-                                config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
-                                tkn,
-                                true,
-                            ) {
+                            let to_token_index = if let Some(ind) =
+                                dst_acc.find_token_index(log4_token_tree_size, tkn, true)
+                            {
                                 ind
                             } else {
                                 panic!("Cannot find empty token slot in your MPN account!");
@@ -135,20 +140,16 @@ pub async fn send(
                                 .get_mpn_account(from.account_index(mpn_log4_account_capacity))
                                 .await?
                                 .account;
-                            let token_index = if let Some(ind) = acc.find_token_index(
-                                config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
-                                tkn,
-                                false,
-                            ) {
+                            let token_index = if let Some(ind) =
+                                acc.find_token_index(log4_token_tree_size, tkn, false)
+                            {
                                 ind
                             } else {
                                 panic!("Token not found in your account!");
                             };
-                            let fee_token_index = if let Some(ind) = acc.find_token_index(
-                                config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
-                                TokenId::Ziesha,
-                                false,
-                            ) {
+                            let fee_token_index = if let Some(ind) =
+                                acc.find_token_index(log4_token_tree_size, TokenId::Ziesha, false)
+                            {
                                 ind
                             } else {
                                 panic!("Token not found in your account!");
@@ -193,29 +194,23 @@ pub async fn send(
                                 .get_mpn_account(to.account_index(mpn_log4_account_capacity))
                                 .await?
                                 .account;
-                            let to_token_index = if let Some(ind) = dst_acc.find_token_index(
-                                config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
-                                tkn,
-                                true,
-                            ) {
+                            let to_token_index = if let Some(ind) =
+                                dst_acc.find_token_index(log4_token_tree_size, tkn, true)
+                            {
                                 ind
                             } else {
                                 panic!("Token not found in your account!");
                             };
-                            let token_index = if let Some(ind) = acc.find_token_index(
-                                config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
-                                tkn,
-                                false,
-                            ) {
+                            let token_index = if let Some(ind) =
+                                acc.find_token_index(log4_token_tree_size, tkn, false)
+                            {
                                 ind
                             } else {
                                 panic!("Token not found in your account!");
                             };
-                            let fee_token_index = if let Some(ind) = acc.find_token_index(
-                                config::blockchain::MPN_LOG4_TOKEN_CAPACITY,
-                                TokenId::Ziesha,
-                                false,
-                            ) {
+                            let fee_token_index = if let Some(ind) =
+                                acc.find_token_index(log4_token_tree_size, TokenId::Ziesha, false)
+                            {
                                 ind
                             } else {
                                 panic!("Token not found in your account!");

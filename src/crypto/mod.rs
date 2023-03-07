@@ -26,7 +26,7 @@ pub trait SignatureScheme: Clone + Serialize {
         + From<Self::Priv>
         + Default; // Default is null pub-key (Treasury address)
     type Priv: Clone;
-    type Sig: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned;
+    type Sig: Clone + Debug + PartialEq + Eq + Serialize + DeserializeOwned + Display;
     fn generate_keys(seed: &[u8]) -> (Self::Pub, Self::Priv);
     fn sign(sk: &Self::Priv, msg: &[u8]) -> Self::Sig;
     fn verify(pk: &Self::Pub, msg: &[u8], sig: &Self::Sig) -> bool;

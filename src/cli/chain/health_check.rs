@@ -10,7 +10,9 @@ use colored::Colorize;
 
 pub fn health_check() {
     let conf = get_conf().unwrap();
-    let mpn_contract_id = crate::config::blockchain::get_blockchain_config().mpn_contract_id;
+    let mpn_contract_id = crate::config::blockchain::get_blockchain_config()
+        .mpn_config
+        .mpn_contract_id;
     let rdb = ReadOnlyLevelDbKvStore::read_only(&conf.db, 64).unwrap();
     let db = rdb.snapshot();
     let chain = KvStoreChain::new(db, crate::config::blockchain::get_blockchain_config()).unwrap();

@@ -5,12 +5,13 @@ use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, Mempool};
 use crate::client::messages::{SocialProfiles, ValidatorClaim};
 use crate::core::{ChainSourcedTx, Header, MpnSourcedTx, TransactionAndDelta};
 use crate::mpn::MpnWorkPool;
+use crate::node::KvStore;
 use crate::utils;
 use crate::wallet::TxBuilder;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub struct NodeContext<B: Blockchain> {
+pub struct NodeContext<K: KvStore, B: Blockchain<K>> {
     pub miner_token: Option<String>,
 
     pub firewall: Option<Firewall>,
@@ -31,9 +32,10 @@ pub struct NodeContext<B: Blockchain> {
 
     pub outdated_since: Option<Timestamp>,
     pub banned_headers: HashMap<Header, Timestamp>,
+    pub _phantom: std::marker::PhantomData<K>,
 }
 
-impl<B: Blockchain> NodeContext<B> {
+impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
     pub fn local_timestamp(&self) -> u32 {
         utils::local_timestamp()
     }

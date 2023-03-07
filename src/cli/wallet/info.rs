@@ -12,8 +12,9 @@ use std::collections::HashMap;
 pub async fn info() -> () {
     let wallet = get_wallet();
     let conf = get_conf();
-    let mpn_log4_account_capacity =
-        config::blockchain::get_blockchain_config().mpn_log4_account_capacity;
+    let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
+        .mpn_config
+        .log4_tree_size;
     let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = TxBuilder::new(&wallet.seed());
 

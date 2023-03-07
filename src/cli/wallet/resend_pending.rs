@@ -24,8 +24,9 @@ async fn resend_all_wallet_txs(
         conf.network,
         None,
     );
-    let mpn_log4_account_capacity =
-        config::blockchain::get_blockchain_config().mpn_log4_account_capacity;
+    let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
+        .mpn_config
+        .log4_tree_size;
     try_join!(
         async move {
             let curr_nonce = client

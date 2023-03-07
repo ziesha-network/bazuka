@@ -3,8 +3,8 @@ use crate::common::*;
 use crate::utils::local_timestamp;
 use rand::prelude::IteratorRandom;
 
-pub async fn sync_peers<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+pub async fn sync_peers<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
 

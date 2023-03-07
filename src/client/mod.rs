@@ -1,11 +1,14 @@
-use crate::core::{Address, MpnDeposit, MpnWithdraw, Signer, TokenId, TransactionAndDelta};
+use crate::core::{
+    Address, MpnAddress, MpnDeposit, MpnWithdraw, Signer, TokenId, TransactionAndDelta,
+};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
-use crate::zk::MpnTransaction;
+use crate::zk::{groth16::Groth16Proof, MpnTransaction};
 use hyper::body::{Bytes, HttpBody};
 use hyper::header::HeaderValue;
 use hyper::{Body, Method, Request, Response, StatusCode};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -446,6 +449,33 @@ impl BazukaClient {
             .bincode_post::<GenerateBlockRequest, GenerateBlockResponse>(
                 format!("http://{}/generate_block", self.peer),
                 GenerateBlockRequest {},
+                Limit::default(),
+            )
+            .await
+    }
+
+    pub async fn get_mpn_works(&self) -> Result<GetMpnWorkResponse, NodeError> {
+        self.sender
+            .bincode_get::<GetMpnWorkRequest, GetMpnWorkResponse>(
+                format!("http://{}/bincode/mpn/work", self.peer),
+                GetMpnWorkRequest {},
+                Limit::default(),
+            )
+            .await
+    }
+
+    pub async fn post_mpn_proof(
+        &self,
+        reward_address: MpnAddress,
+        proofs: HashMap<usize, Groth16Proof>,
+    ) -> Result<PostMpnSolutionResponse, NodeError> {
+        self.sender
+            .bincode_post::<PostMpnSolutionRequest, PostMpnSolutionResponse>(
+                format!("http://{}/bincode/mpn/solution", self.peer),
+                PostMpnSolutionRequest {
+                    proofs,
+                    reward_address,
+                },
                 Limit::default(),
             )
             .await

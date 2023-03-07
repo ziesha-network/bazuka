@@ -2,8 +2,8 @@ use super::*;
 use crate::common::*;
 use std::time::{Duration, Instant};
 
-pub async fn sync_clock<B: Blockchain>(
-    context: Arc<RwLock<NodeContext<B>>>,
+pub async fn sync_clock<K: KvStore, B: Blockchain<K>>(
+    context: Arc<RwLock<NodeContext<K, B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
 
@@ -47,14 +47,16 @@ pub async fn sync_clock<B: Blockchain>(
                 ctx.peer_manager.add_node(resp.peer.clone(), *ping_time);
             }
         }
-        let timestamps = resps
+        let (timestamps, timestamp_offsets): (Vec<u32>, Vec<i32>) = resps
             .iter()
-            .map(|(_, (resp, _))| resp.timestamp)
-            .collect::<Vec<_>>();
+            .map(|(_, (resp, _))| (resp.timestamp, resp.timestamp_offset))
+            .unzip();
         if !timestamps.is_empty() {
             // Set timestamp_offset according to median timestamp of the network
             let median_timestamp = utils::median(&timestamps);
+            let median_timestamp_offset = utils::median(&timestamp_offsets);
             ctx.timestamp_offset = median_timestamp as i32 - utils::local_timestamp() as i32;
+            ctx.timestamp_offset -= median_timestamp_offset;
         }
 
         let mut accepted_claim = None;

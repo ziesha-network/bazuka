@@ -1,14 +1,15 @@
 use super::messages::{HandshakeRequest, HandshakeResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
+use crate::db::KvStore;
 use crate::utils;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn post_peer<B: Blockchain>(
+pub async fn post_peer<K: KvStore, B: Blockchain<K>>(
     client: Option<SocketAddr>,
-    context: Arc<RwLock<NodeContext<B>>>,
+    context: Arc<RwLock<NodeContext<K, B>>>,
     req: HandshakeRequest,
 ) -> Result<HandshakeResponse, NodeError> {
     let mut context = context.write().await;
