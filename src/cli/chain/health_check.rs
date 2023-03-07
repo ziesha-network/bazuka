@@ -1,11 +1,11 @@
-use crate::{
-    blockchain::KvStoreChain,
-    cli::{get_conf},
-    core::{TokenId, Amount},
-    db::{ReadOnlyLevelDbKvStore},
-};
 use crate::blockchain::Blockchain;
 use crate::db::KvStore;
+use crate::{
+    blockchain::KvStoreChain,
+    cli::get_conf,
+    core::{Amount, TokenId},
+    db::ReadOnlyLevelDbKvStore,
+};
 use colored::Colorize;
 
 pub fn health_check() {

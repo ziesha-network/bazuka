@@ -1,8 +1,6 @@
 use crate::blockchain::Blockchain;
 use crate::{
-    blockchain::KvStoreChain,
-    cli::{get_conf},
-    config::blockchain::get_blockchain_config,
+    blockchain::KvStoreChain, cli::get_conf, config::blockchain::get_blockchain_config,
     db::LevelDbKvStore,
 };
 

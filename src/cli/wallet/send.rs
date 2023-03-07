@@ -1,3 +1,4 @@
+use crate::cli::{get_conf, get_wallet, get_wallet_path};
 use crate::{
     client::{BazukaClient, NodeError},
     config,
@@ -5,7 +6,6 @@ use crate::{
     wallet::TxBuilder,
 };
 use tokio::try_join;
-use crate::cli::{get_wallet, get_wallet_path, get_conf};
 
 pub async fn send(
     memo: Option<String>,

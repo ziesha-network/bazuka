@@ -5,7 +5,6 @@ use crate::client::{BazukaClient, NodeError};
 use crate::core::{Amount, Money, TokenId};
 use crate::wallet::TxBuilder;
 
-
 pub async fn register_validator(memo: Option<String>, fee: Amount) -> () {
     let conf = get_conf();
     let wallet = get_wallet();

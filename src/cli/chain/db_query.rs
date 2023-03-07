@@ -1,8 +1,5 @@
 use crate::db::KvStore;
-use crate::{
-    cli::{get_conf},
-    db::{ReadOnlyLevelDbKvStore},
-};
+use crate::{cli::get_conf, db::ReadOnlyLevelDbKvStore};
 
 pub fn db_query(prefix: String) {
     let conf = get_conf().unwrap();

@@ -1,9 +1,9 @@
 #[cfg(feature = "node")]
 use {
-    crate::blockchain::{KvStoreChain},
+    crate::blockchain::KvStoreChain,
     crate::client::{messages::SocialProfiles, Limit, NodeRequest},
     crate::common::*,
-    crate::db::{LevelDbKvStore},
+    crate::db::LevelDbKvStore,
     crate::node::{node_create, Firewall},
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
@@ -27,10 +27,10 @@ use {
     tokio::try_join,
 };
 
-pub mod init;
-pub mod wallet;
-pub mod node;
 pub mod chain;
+pub mod init;
+pub mod node;
+pub mod wallet;
 pub use init::*;
 
 #[cfg(feature = "client")]
@@ -397,19 +397,17 @@ pub async fn initialize_cli() {
 
     match opts {
         #[cfg(feature = "node")]
-        CliOptions::Chain(chain_opts) => {
-            match chain_opts {
-                ChainCliOptions::Rollback {} => {
-                    crate::cli::chain::rollback().await;
-                }
-                ChainCliOptions::DbQuery { prefix } => {
-                    crate::cli::chain::db_query(prefix);
-                }
-                ChainCliOptions::HealthCheck {} => {
-                    crate::cli::chain::health_check();
-                }
+        CliOptions::Chain(chain_opts) => match chain_opts {
+            ChainCliOptions::Rollback {} => {
+                crate::cli::chain::rollback().await;
             }
-        }
+            ChainCliOptions::DbQuery { prefix } => {
+                crate::cli::chain::db_query(prefix);
+            }
+            ChainCliOptions::HealthCheck {} => {
+                crate::cli::chain::health_check();
+            }
+        },
         #[cfg(feature = "node")]
         CliOptions::Node(node_opts) => match node_opts {
             NodeCliOptions::Start {
