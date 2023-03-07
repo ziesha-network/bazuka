@@ -56,6 +56,20 @@ pub fn staker_rank(amount: Amount, address: &Address) -> StringKey {
     .into()
 }
 
+pub fn delegator_rank_prefix(delegatee: &Address) -> String {
+    format!("DRK-{}", delegatee).into()
+}
+
+pub fn delegator_rank(delegatee: &Address, amount: Amount, delegator: &Address) -> StringKey {
+    format!(
+        "{}-{:016x}-{}",
+        delegator_rank_prefix(delegatee),
+        (u64::MAX - Into::<u64>::into(amount)),
+        delegator
+    )
+    .into()
+}
+
 pub fn delegate(delegator: &Address, delegatee: &Address) -> StringKey {
     format!("DEL-{}-{}", delegator, delegatee).into()
 }

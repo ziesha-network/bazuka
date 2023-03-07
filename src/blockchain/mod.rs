@@ -371,6 +371,8 @@ pub trait Blockchain<K: KvStore> {
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self) -> Result<Vec<(Address, Amount)>, BlockchainError>;
+    fn get_delegators(&self, delegatee: Address)
+        -> Result<Vec<(Address, Amount)>, BlockchainError>;
     fn cleanup_chain_mempool(
         &self,
         txs: &[ChainSourcedTx],
@@ -711,6 +713,7 @@ impl<K: KvStore> KvStoreChain<K> {
                     )])?;
 
                     let mut delegate = self.get_delegate(tx_src.clone(), to.clone())?;
+                    let old_delegate = delegate.amount;
                     if !reverse {
                         delegate.amount += *amount;
                     } else {
@@ -719,13 +722,19 @@ impl<K: KvStore> KvStoreChain<K> {
                         }
                         delegate.amount -= *amount;
                     }
-                    chain
-                        .database
-                        .update(&[WriteOp::Put(keys::delegate(&tx_src, to), delegate.into())])?;
+                    chain.database.update(&[WriteOp::Put(
+                        keys::delegate(&tx_src, to),
+                        delegate.clone().into(),
+                    )])?;
 
                     let old_stake = chain.get_stake(to.clone())?;
                     let new_stake = old_stake + *amount;
                     chain.database.update(&[
+                        WriteOp::Remove(keys::delegator_rank(&to, old_delegate, &tx_src)),
+                        WriteOp::Put(
+                            keys::delegator_rank(&to, delegate.amount, &tx_src),
+                            ().into(),
+                        ),
                         WriteOp::Remove(keys::staker_rank(old_stake, &to)),
                         WriteOp::Put(keys::staker_rank(new_stake, &to), ().into()),
                         WriteOp::Put(keys::stake(&to), new_stake.into()),
@@ -2013,6 +2022,33 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             }
         }
         Ok(stakers)
+    }
+
+    fn get_delegators(
+        &self,
+        delegatee: Address,
+    ) -> Result<Vec<(Address, Amount)>, BlockchainError> {
+        let mut delegators = Vec::new();
+        for (k, _) in self
+            .database
+            .pairs(keys::delegator_rank_prefix(&delegatee).into())?
+            .into_iter()
+        {
+            let splitted = k.0.split("-").collect::<Vec<_>>();
+            if splitted.len() != 4 {
+                return Err(BlockchainError::Inconsistency);
+            }
+            let stake = Amount(
+                u64::MAX
+                    - u64::from_str_radix(&splitted[2], 16)
+                        .map_err(|_| BlockchainError::Inconsistency)?,
+            );
+            let pk: Address = splitted[3]
+                .parse()
+                .map_err(|_| BlockchainError::Inconsistency)?;
+            delegators.push((pk, stake));
+        }
+        Ok(delegators)
     }
 
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32) {
