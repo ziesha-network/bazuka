@@ -970,9 +970,6 @@ impl<K: KvStore> KvStoreChain<K> {
                                         );
                                     }
                                     let fingerprint = withdraw.fingerprint();
-                                    if withdraw.dst.clone() == tx_src {
-                                        return Err(BlockchainError::CannotExecuteOwnPayments);
-                                    }
                                     executor_fees.push(withdraw.fee);
                                     state_builder.batch_set(&zk::ZkDeltaPairs(
                                         [
