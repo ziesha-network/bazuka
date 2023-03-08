@@ -15,21 +15,21 @@ pub async fn send(
     fee: Amount,
     token: Option<usize>,
 ) {
+    let conf = get_conf();
     let wallet = get_wallet();
     let wallet_path = get_wallet_path();
-    let conf = get_conf();
-    let mpn_contract_id = config::blockchain::get_blockchain_config()
-        .mpn_config
-        .mpn_contract_id;
-    let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
-        .mpn_config
-        .log4_tree_size;
+    let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+    let tx_builder = TxBuilder::new(&wallet.seed());
     let log4_token_tree_size = config::blockchain::get_blockchain_config()
         .mpn_config
         .log4_token_tree_size;
+    let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
+        .mpn_config
+        .log4_tree_size;
+    let mpn_contract_id = config::blockchain::get_blockchain_config()
+        .mpn_config
+        .mpn_contract_id;
 
-    let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-    let tx_builder = TxBuilder::new(&wallet.seed());
     let (req_loop, client) = BazukaClient::connect(
         tx_builder.get_priv_key(),
         conf.random_node(),

@@ -114,8 +114,6 @@ enum WalletOptions {
         to: Address,
         #[structopt(long)]
         amount: Amount,
-        #[structopt(long)]
-        count: u32,
         #[structopt(long, default_value = "0")]
         fee: Amount,
     },
@@ -473,11 +471,10 @@ pub async fn initialize_cli() {
             WalletOptions::Delegate {
                 memo,
                 amount,
-                count,
                 to,
                 fee,
             } => {
-                crate::cli::wallet::delegate(memo, amount, count, to, fee).await;
+                crate::cli::wallet::delegate(memo, amount, to, fee).await;
             }
             WalletOptions::ResendPending { fill_gaps, shift } => {
                 crate::cli::wallet::resend_pending(fill_gaps, shift).await;

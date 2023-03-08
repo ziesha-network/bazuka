@@ -1,6 +1,7 @@
 use crate::cli::{get_conf, get_wallet, get_wallet_path, BazukaConfig};
 use crate::client::BazukaClient;
 use crate::client::NodeError;
+use crate::config::blockchain;
 use crate::core::MpnAddress;
 use crate::core::{Amount, MpnSourcedTx};
 use crate::core::{ChainSourcedTx, Money, TokenId};
@@ -15,8 +16,6 @@ async fn resend_all_wallet_txs(
     fill_gaps: bool,
     shift: bool,
 ) -> Result<(), NodeError> {
-    use crate::config;
-
     let tx_builder = TxBuilder::new(&wallet.seed());
     let (req_loop, client) = BazukaClient::connect(
         tx_builder.get_priv_key(),
@@ -24,7 +23,7 @@ async fn resend_all_wallet_txs(
         conf.network,
         None,
     );
-    let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
+    let mpn_log4_account_capacity = blockchain::get_blockchain_config()
         .mpn_config
         .log4_tree_size;
     try_join!(

@@ -6,13 +6,7 @@ use crate::core::{Amount, Money, TokenId};
 use crate::crypto::ed25519::PublicKey;
 use crate::wallet::TxBuilder;
 
-pub async fn delegate(
-    memo: Option<String>,
-    amount: Amount,
-    count: u32,
-    to: PublicKey,
-    fee: Amount,
-) -> () {
+pub async fn delegate(memo: Option<String>, amount: Amount, to: PublicKey, fee: Amount) -> () {
     let wallet = get_wallet();
     let wallet_path = get_wallet_path();
     let conf = get_conf();
@@ -26,7 +20,6 @@ pub async fn delegate(
     );
     try_join!(
         async move {
-            let epoch = client.stats().await?.epoch;
             let curr_nonce = client
                 .get_account(tx_builder.get_address())
                 .await?
