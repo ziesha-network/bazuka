@@ -17,7 +17,7 @@ pub async fn init(
     conf: Option<BazukaConfig>,
     conf_path: &PathBuf,
     wallet: Option<Wallet>,
-    wallet_path: &PathBuf
+    wallet_path: &PathBuf,
 ) -> () {
     if wallet.is_none() {
         let w = Wallet::create(&mut rand_mnemonic::thread_rng(), mnemonic);

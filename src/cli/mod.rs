@@ -510,10 +510,7 @@ pub async fn initialize_cli() {
                 .await;
             }
             WalletOptions::Reset {} => {
-                crate::cli::wallet::reset(
-                    &mut wallet.expect(BAZUKA_NOT_INITILIZED),
-                    &wallet_path,
-                );
+                crate::cli::wallet::reset(&mut wallet.expect(BAZUKA_NOT_INITILIZED), &wallet_path);
             }
             WalletOptions::RegisterValidator { memo, fee } => {
                 crate::cli::wallet::register_validator(
