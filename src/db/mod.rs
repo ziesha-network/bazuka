@@ -182,6 +182,80 @@ pub enum QueryResult<'a> {
         range: std::collections::btree_map::Range<'a, StringKey, Blob>,
         prefix: StringKey,
     },
+    Mirror {
+        actual: Box<QueryResult<'a>>,
+        overwrite: BTreeMap<StringKey, Option<Blob>>,
+        prefix: StringKey,
+    },
+}
+pub struct MirroredQueryResultIterator<'a> {
+    prefix: StringKey,
+    actual_iter: Box<dyn std::iter::Iterator<Item = (StringKey, Blob)> + 'a>,
+    curr_actual: Option<(StringKey, Blob)>,
+    overwrite_iter: std::collections::btree_map::IntoIter<StringKey, Option<Blob>>,
+    curr_overwrite: Option<(StringKey, Option<Blob>)>,
+}
+
+enum MirroredQueryResultIteratorElement {
+    Skipped,
+    Item((StringKey, Blob)),
+}
+
+impl<'a> MirroredQueryResultIterator<'a> {
+    fn vnext(&mut self) -> Option<MirroredQueryResultIteratorElement> {
+        if self.curr_actual.is_none() {
+            self.curr_actual = self.actual_iter.next();
+        }
+        if self.curr_overwrite.is_none() {
+            self.curr_overwrite = self.overwrite_iter.next();
+        }
+        match (self.curr_actual.clone(), self.curr_overwrite.clone()) {
+            (Some(curr_actual), Some(curr_overwrite)) => {
+                if curr_actual.0 < curr_overwrite.0 {
+                    self.curr_actual = None;
+                    Some(MirroredQueryResultIteratorElement::Item(curr_actual))
+                } else {
+                    if let Some(v) = curr_overwrite.1 {
+                        if curr_actual.0 == curr_overwrite.0 {
+                            self.curr_actual = None;
+                        }
+                        self.curr_overwrite = None;
+                        Some(MirroredQueryResultIteratorElement::Item((
+                            curr_overwrite.0,
+                            v,
+                        )))
+                    } else {
+                        Some(MirroredQueryResultIteratorElement::Skipped)
+                    }
+                }
+            }
+            (Some(curr_actual), None) => {
+                self.curr_actual = None;
+                Some(MirroredQueryResultIteratorElement::Item(curr_actual))
+            }
+            (None, Some(mut curr_overwrite)) => {
+                self.curr_overwrite = None;
+                Some(if let (k, Some(v)) = curr_overwrite.clone() {
+                    MirroredQueryResultIteratorElement::Item((k, v))
+                } else {
+                    MirroredQueryResultIteratorElement::Skipped
+                })
+            }
+            (None, None) => None,
+        }
+    }
+}
+
+impl<'a> Iterator for MirroredQueryResultIterator<'a> {
+    type Item = (StringKey, Blob);
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(elem) = self.vnext() {
+            if let MirroredQueryResultIteratorElement::Item((k, v)) = elem {
+                return Some((k, v));
+            }
+        }
+        None
+    }
 }
 impl<'a> QueryResult<'a> {
     pub fn into_iter(self) -> Box<dyn Iterator<Item = (StringKey, Blob)> + 'a> {
@@ -196,6 +270,17 @@ impl<'a> QueryResult<'a> {
                     .map(|(k, v)| (k.clone(), v.clone()))
                     .take_while(move |(k, _)| k.0.starts_with(&prefix.0)),
             ),
+            QueryResult::Mirror {
+                actual,
+                overwrite,
+                prefix,
+            } => Box::new(MirroredQueryResultIterator::<'a> {
+                actual_iter: actual.into_iter(),
+                overwrite_iter: overwrite.into_iter(),
+                curr_actual: None,
+                curr_overwrite: None,
+                prefix,
+            }),
         }
     }
     pub fn checksum<H: Hash>(self) -> Result<H::Output, KvStoreError> {
@@ -219,13 +304,13 @@ pub trait KvStore {
 
 pub struct RamMirrorKvStore<'a, K: KvStore> {
     store: &'a K,
-    overwrite: HashMap<StringKey, Option<Blob>>,
+    overwrite: BTreeMap<StringKey, Option<Blob>>,
 }
 impl<'a, K: KvStore> RamMirrorKvStore<'a, K> {
     pub fn new(store: &'a K) -> Self {
         Self {
             store,
-            overwrite: HashMap::new(),
+            overwrite: BTreeMap::new(),
         }
     }
     pub fn rollback(&self) -> Result<Vec<WriteOp>, KvStoreError> {
@@ -268,18 +353,11 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
         Ok(())
     }
     fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError> {
-        let mut res: BTreeMap<StringKey, Blob> =
-            self.store.pairs(prefix.clone())?.into_iter().collect();
-        for (k, v) in self.overwrite.iter() {
-            if let Some(v) = v {
-                if k.0.starts_with(&prefix.0) {
-                    res.insert(k.clone(), v.clone());
-                }
-            } else {
-                res.remove(k);
-            }
-        }
-        Ok(QueryResult::Precalculated(res.into_iter().collect()))
+        Ok(QueryResult::Mirror {
+            actual: Box::new(self.store.pairs(prefix.clone())?),
+            overwrite: self.overwrite.clone(),
+            prefix,
+        })
     }
 }
 
