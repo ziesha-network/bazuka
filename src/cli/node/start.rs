@@ -1,11 +1,15 @@
 use crate::{
-    cli::{get_conf, get_wallet, run_node},
+    cli::{run_node, BazukaConfig},
     client::messages::SocialProfiles,
+    wallet::Wallet,
 };
 
-pub async fn start(discord_handle: Option<String>, client_only: bool) {
-    let conf = get_conf().expect("Bazuka is not initialized!");
-    let wallet = get_wallet().expect("Wallet is not initialized!");
+pub async fn start(
+    discord_handle: Option<String>,
+    client_only: bool,
+    conf: &BazukaConfig,
+    wallet: &Wallet,
+) {
     run_node(
         conf.clone(),
         wallet.clone(),

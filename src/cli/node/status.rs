@@ -1,14 +1,12 @@
 use futures::try_join;
 
 use crate::{
-    cli::{get_conf, get_wallet},
+    cli::BazukaConfig,
     client::{BazukaClient, NodeError},
-    wallet::TxBuilder,
+    wallet::{TxBuilder, Wallet},
 };
 
-pub async fn status() {
-    let conf = get_conf();
-    let wallet = get_wallet();
+pub async fn status(conf: Option<BazukaConfig>, wallet: Option<Wallet>) {
     let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let wallet = TxBuilder::new(&wallet.seed());
     let (req_loop, client) = BazukaClient::connect(

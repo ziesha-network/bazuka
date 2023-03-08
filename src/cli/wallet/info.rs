@@ -1,17 +1,15 @@
 use tokio::try_join;
 
-use crate::cli::{get_conf, get_wallet};
+use crate::cli::BazukaConfig;
 use crate::client::NodeError;
 use crate::config;
 use crate::core::MpnAddress;
-use crate::wallet::TxBuilder;
+use crate::wallet::{TxBuilder, Wallet};
 use crate::{client::BazukaClient, core::TokenId};
 use colored::Colorize;
 use std::collections::HashMap;
 
-pub async fn info() -> () {
-    let wallet = get_wallet();
-    let conf = get_conf();
+pub async fn info(conf: Option<BazukaConfig>, wallet: Option<Wallet>) -> () {
     let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
         .mpn_config
         .log4_tree_size;
