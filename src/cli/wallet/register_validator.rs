@@ -1,14 +1,19 @@
+use std::path::PathBuf;
+
 use tokio::try_join;
 
-use crate::cli::{get_conf, get_wallet, get_wallet_path};
+use crate::cli::BazukaConfig;
 use crate::client::{BazukaClient, NodeError};
 use crate::core::{Amount, Money, TokenId};
-use crate::wallet::TxBuilder;
+use crate::wallet::{TxBuilder, Wallet};
 
-pub async fn register_validator(memo: Option<String>, fee: Amount) -> () {
-    let conf = get_conf();
-    let wallet = get_wallet();
-    let wallet_path = get_wallet_path();
+pub async fn register_validator(
+    memo: Option<String>,
+    fee: Amount,
+    conf: Option<BazukaConfig>,
+    wallet: Option<Wallet>,
+    wallet_path: &PathBuf,
+) -> () {
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = TxBuilder::new(&wallet.seed());
     let (req_loop, client) = BazukaClient::connect(

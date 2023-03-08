@@ -1,15 +1,14 @@
 use crate::blockchain::Blockchain;
+use crate::cli::BazukaConfig;
 use crate::db::KvStore;
 use crate::{
     blockchain::KvStoreChain,
-    cli::get_conf,
     core::{Amount, TokenId},
     db::ReadOnlyLevelDbKvStore,
 };
 use colored::Colorize;
 
-pub fn health_check() {
-    let conf = get_conf().unwrap();
+pub fn health_check(conf: &BazukaConfig) {
     let mpn_contract_id = crate::config::blockchain::get_blockchain_config()
         .mpn_config
         .mpn_contract_id;

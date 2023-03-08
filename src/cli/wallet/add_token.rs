@@ -1,11 +1,8 @@
-use crate::{
-    cli::{get_wallet, get_wallet_path},
-    core::TokenId,
-};
+use std::path::PathBuf;
 
-pub fn add_token(token_id: TokenId) -> () {
-    let wallet = get_wallet();
-    let mut wallet = wallet.expect("Bazuka is not initialized!");
+use crate::{core::TokenId, wallet::Wallet};
+
+pub fn add_token(token_id: TokenId, wallet: &mut Wallet, wallet_path: &PathBuf) -> () {
     wallet.add_token(token_id);
-    wallet.save(get_wallet_path()).unwrap();
+    wallet.save(wallet_path).unwrap();
 }

@@ -1,9 +1,8 @@
-use crate::cli::{get_wallet, get_wallet_path};
+use std::path::PathBuf;
 
-pub fn reset() -> () {
-    let wallet = get_wallet();
-    let wallet_path = get_wallet_path();
-    let mut wallet = wallet.expect("Bazuka is not initialized!");
+use crate::wallet::Wallet;
+
+pub fn reset(wallet: &mut Wallet, wallet_path: &PathBuf) -> () {
     wallet.reset();
     wallet.save(wallet_path).unwrap();
 }

@@ -1,7 +1,9 @@
-use crate::cli::{get_conf, get_wallet, get_wallet_path};
+use std::path::PathBuf;
+
+use crate::cli::{get_conf, get_wallet, get_wallet_path, BazukaConfig};
 use crate::client::{BazukaClient, NodeError};
 use crate::core::{Amount, Money, TokenId};
-use crate::wallet::TxBuilder;
+use crate::wallet::{TxBuilder, Wallet};
 use tokio::try_join;
 
 pub async fn new_token(
@@ -12,10 +14,10 @@ pub async fn new_token(
     decimals: u8,
     mintable: bool,
     fee: Amount,
+    conf: Option<BazukaConfig>,
+    wallet: Option<Wallet>,
+    wallet_path: &PathBuf,
 ) -> () {
-    let wallet = get_wallet();
-    let wallet_path = get_wallet_path();
-    let conf = get_conf();
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = TxBuilder::new(&wallet.seed());
     let (req_loop, client) = BazukaClient::connect(

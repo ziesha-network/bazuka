@@ -1,4 +1,7 @@
-use crate::cli::{get_conf, get_wallet, get_wallet_path};
+use std::path::PathBuf;
+
+use crate::cli::BazukaConfig;
+use crate::wallet::Wallet;
 use crate::{
     client::{BazukaClient, NodeError},
     config,
@@ -14,10 +17,10 @@ pub async fn send(
     amount: Amount,
     fee: Amount,
     token: Option<usize>,
+    conf: Option<BazukaConfig>,
+    wallet: Option<Wallet>,
+    wallet_path: &PathBuf,
 ) {
-    let conf = get_conf();
-    let wallet = get_wallet();
-    let wallet_path = get_wallet_path();
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = TxBuilder::new(&wallet.seed());
     let log4_token_tree_size = config::blockchain::get_blockchain_config()
