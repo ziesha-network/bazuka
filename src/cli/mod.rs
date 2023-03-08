@@ -35,6 +35,7 @@ pub use init::*;
 
 #[cfg(feature = "client")]
 const DEFAULT_PORT: u16 = 8765;
+const BAZUKA_NOT_INITILIZED: &str = "Bazuka is not initialized";
 
 #[cfg(feature = "client")]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -394,21 +395,21 @@ pub async fn initialize_cli() {
         }
         std::fs::write(conf_path.clone(), serde_yaml::to_string(conf).unwrap()).unwrap();
     }
-    let conf = get_conf().expect("Bazuka is not initialized!");
-    let mut wallet = get_wallet().expect("Wallet is not initialized!");
+    let conf = get_conf();
+    let wallet = get_wallet();
     let wallet_path = get_wallet_path();
 
     match opts {
         #[cfg(feature = "node")]
         CliOptions::Chain(chain_opts) => match chain_opts {
             ChainCliOptions::Rollback {} => {
-                crate::cli::chain::rollback(&conf).await;
+                crate::cli::chain::rollback(&conf.expect(BAZUKA_NOT_INITILIZED)).await;
             }
             ChainCliOptions::DbQuery { prefix } => {
-                crate::cli::chain::db_query(prefix, &conf);
+                crate::cli::chain::db_query(prefix, &conf.expect(BAZUKA_NOT_INITILIZED));
             }
             ChainCliOptions::HealthCheck {} => {
-                crate::cli::chain::health_check(&conf);
+                crate::cli::chain::health_check(&conf.expect(BAZUKA_NOT_INITILIZED));
             }
         },
         #[cfg(feature = "node")]
@@ -417,7 +418,13 @@ pub async fn initialize_cli() {
                 discord_handle,
                 client_only,
             } => {
-                crate::cli::node::start(discord_handle, client_only, &conf, &wallet).await;
+                crate::cli::node::start(
+                    discord_handle,
+                    client_only,
+                    &conf.expect(BAZUKA_NOT_INITILIZED),
+                    &wallet.expect(BAZUKA_NOT_INITILIZED),
+                )
+                .await;
             }
             NodeCliOptions::Status {} => {
                 crate::cli::node::status(get_conf(), get_wallet()).await;
@@ -431,14 +438,32 @@ pub async fn initialize_cli() {
             external,
             listen,
             db,
-        } => crate::cli::init(network, bootstrap, mnemonic, external, listen, db).await,
+        } => {
+            crate::cli::init(
+                network,
+                bootstrap,
+                mnemonic,
+                external,
+                listen,
+                db,
+                conf,
+                &conf_path,
+                wallet,
+                &wallet_path,
+            )
+            .await
+        }
         #[cfg(not(feature = "client"))]
         CliOptions::Init { .. } => {
             println!("Client feature not turned on!");
         }
         CliOptions::Wallet(wallet_opts) => match wallet_opts {
             WalletOptions::AddToken { id } => {
-                crate::cli::wallet::add_token(id, &mut wallet, &wallet_path);
+                crate::cli::wallet::add_token(
+                    id,
+                    &mut wallet.expect(BAZUKA_NOT_INITILIZED),
+                    &wallet_path,
+                );
             }
             WalletOptions::NewToken {
                 memo,
@@ -478,14 +503,17 @@ pub async fn initialize_cli() {
                     amount,
                     fee,
                     token,
-                    get_conf(),
-                    get_wallet(),
+                    conf,
+                    wallet,
                     &wallet_path,
                 )
                 .await;
             }
             WalletOptions::Reset {} => {
-                crate::cli::wallet::reset(&mut wallet, &wallet_path);
+                crate::cli::wallet::reset(
+                    &mut wallet.expect(BAZUKA_NOT_INITILIZED),
+                    &wallet_path,
+                );
             }
             WalletOptions::RegisterValidator { memo, fee } => {
                 crate::cli::wallet::register_validator(

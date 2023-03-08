@@ -1,7 +1,4 @@
-use super::{
-    generate_miner_token, get_conf, get_conf_path, get_wallet, get_wallet_path, BazukaConfig,
-    DEFAULT_PORT,
-};
+use super::{generate_miner_token, BazukaConfig, DEFAULT_PORT};
 use crate::{client::PeerAddress, wallet::Wallet};
 use bip39::Mnemonic;
 use colored::Colorize;
@@ -17,11 +14,11 @@ pub async fn init(
     external: Option<PeerAddress>,
     listen: Option<SocketAddr>,
     db: Option<PathBuf>,
+    conf: Option<BazukaConfig>,
+    conf_path: &PathBuf,
+    wallet: Option<Wallet>,
+    wallet_path: &PathBuf
 ) -> () {
-    let wallet = get_wallet();
-    let wallet_path = get_wallet_path();
-    let conf_path = get_conf_path();
-    let conf = get_conf();
     if wallet.is_none() {
         let w = Wallet::create(&mut rand_mnemonic::thread_rng(), mnemonic);
         w.save(wallet_path).unwrap();
