@@ -12,6 +12,7 @@ use crate::zk::{
 use db_key::Key;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
+use std::ops::Bound;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -192,7 +193,7 @@ pub struct MirroredQueryResultIterator<'a> {
     prefix: StringKey,
     actual_iter: Box<dyn std::iter::Iterator<Item = (StringKey, Blob)> + 'a>,
     curr_actual: Option<(StringKey, Blob)>,
-    overwrite_iter: std::collections::btree_map::IntoIter<StringKey, Option<Blob>>,
+    overwrite_iter: std::vec::IntoIter<(StringKey, Option<Blob>)>,
     curr_overwrite: Option<(StringKey, Option<Blob>)>,
 }
 
@@ -276,7 +277,12 @@ impl<'a> QueryResult<'a> {
                 prefix,
             } => Box::new(MirroredQueryResultIterator::<'a> {
                 actual_iter: actual.into_iter(),
-                overwrite_iter: overwrite.into_iter(),
+                overwrite_iter: overwrite
+                    .range((Bound::Included(prefix.clone()), Bound::Unbounded))
+                    .take_while(|(k, _)| k.0.starts_with(&prefix.0))
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect::<Vec<_>>()
+                    .into_iter(),
                 curr_actual: None,
                 curr_overwrite: None,
                 prefix,
