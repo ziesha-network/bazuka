@@ -185,7 +185,7 @@ pub enum QueryResult<'a> {
     },
     Mirror {
         actual: Box<QueryResult<'a>>,
-        overwrite: BTreeMap<StringKey, Option<Blob>>,
+        overwrite: std::collections::btree_map::Range<'a, StringKey, Option<Blob>>,
         prefix: StringKey,
     },
 }
@@ -278,7 +278,6 @@ impl<'a> QueryResult<'a> {
             } => Box::new(MirroredQueryResultIterator::<'a> {
                 actual_iter: actual.into_iter(),
                 overwrite_iter: overwrite
-                    .range((Bound::Included(prefix.clone()), Bound::Unbounded))
                     .take_while(|(k, _)| k.0.starts_with(&prefix.0))
                     .map(|(k, v)| (k.clone(), v.clone()))
                     .collect::<Vec<_>>()
@@ -361,7 +360,9 @@ impl<'a, K: KvStore> KvStore for RamMirrorKvStore<'a, K> {
     fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError> {
         Ok(QueryResult::Mirror {
             actual: Box::new(self.store.pairs(prefix.clone())?),
-            overwrite: self.overwrite.clone(),
+            overwrite: self
+                .overwrite
+                .range((Bound::Included(prefix.clone()), Bound::Unbounded)),
             prefix,
         })
     }
