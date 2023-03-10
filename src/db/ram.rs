@@ -28,7 +28,6 @@ impl KvStore for RamKvStore {
         Ok(())
     }
     fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError> {
-        use std::ops::Bound;
         Ok(QueryResult::Ram {
             range: self
                 .0
