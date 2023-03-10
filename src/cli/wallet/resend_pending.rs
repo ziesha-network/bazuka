@@ -126,6 +126,8 @@ pub async fn resend_pending(fill_gaps: bool, shift: bool) -> () {
     let wallet_path = get_wallet_path();
     let conf = get_conf();
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-    resend_all_wallet_txs(conf, &mut wallet, fill_gaps, shift).await;
+    resend_all_wallet_txs(conf, &mut wallet, fill_gaps, shift)
+        .await
+        .unwrap();
     wallet.save(wallet_path).unwrap();
 }

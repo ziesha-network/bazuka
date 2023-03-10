@@ -18,5 +18,6 @@ pub async fn start(
         },
         client_only,
     )
-    .await;
+    .await
+    .unwrap();
 }

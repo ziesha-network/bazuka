@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::cli::{get_conf, get_wallet, get_wallet_path, BazukaConfig};
+use crate::cli::BazukaConfig;
 use crate::client::{BazukaClient, NodeError};
 use crate::core::{Amount, Money, TokenId};
 use crate::wallet::{TxBuilder, Wallet};
