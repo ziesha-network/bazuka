@@ -217,10 +217,10 @@ impl<'a> MirroredQueryResultIterator<'a> {
                     Some(MirroredQueryResultIteratorElement::Item(curr_actual))
                 } else {
                     self.curr_overwrite = None;
+                    if curr_actual.0 == curr_overwrite.0 {
+                        self.curr_actual = None;
+                    }
                     if let Some(v) = curr_overwrite.1 {
-                        if curr_actual.0 == curr_overwrite.0 {
-                            self.curr_actual = None;
-                        }
                         Some(MirroredQueryResultIteratorElement::Item((
                             curr_overwrite.0,
                             v,
