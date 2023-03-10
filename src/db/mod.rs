@@ -234,7 +234,7 @@ impl<'a> MirroredQueryResultIterator<'a> {
                 self.curr_actual = None;
                 Some(MirroredQueryResultIteratorElement::Item(curr_actual))
             }
-            (None, Some(mut curr_overwrite)) => {
+            (None, Some(curr_overwrite)) => {
                 self.curr_overwrite = None;
                 Some(if let (k, Some(v)) = curr_overwrite.clone() {
                     MirroredQueryResultIteratorElement::Item((k, v))
@@ -252,7 +252,11 @@ impl<'a> Iterator for MirroredQueryResultIterator<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(elem) = self.vnext() {
             if let MirroredQueryResultIteratorElement::Item((k, v)) = elem {
-                return Some((k, v));
+                return if k.0.starts_with(&self.prefix.0) {
+                    Some((k, v))
+                } else {
+                    None
+                };
             }
         }
         None
