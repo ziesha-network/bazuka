@@ -52,6 +52,8 @@ mod get_mpn_work;
 pub use get_mpn_work::*;
 mod post_mpn_solution;
 pub use post_mpn_solution::*;
+mod get_delegatees;
+pub use get_delegatees::*;
 
 #[cfg(test)]
 mod generate_block;

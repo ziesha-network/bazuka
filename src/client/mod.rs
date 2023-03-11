@@ -379,6 +379,23 @@ impl BazukaClient {
             .await
     }
 
+    pub async fn get_delegatees(
+        &self,
+        address: Address,
+        top: usize,
+    ) -> Result<GetDelegateesResponse, NodeError> {
+        self.sender
+            .json_get::<GetDelegateesRequest, GetDelegateesResponse>(
+                format!("http://{}/delegatees", self.peer),
+                GetDelegateesRequest {
+                    address: address.to_string(),
+                    top,
+                },
+                Limit::default(),
+            )
+            .await
+    }
+
     pub async fn get_balance(
         &self,
         address: Address,

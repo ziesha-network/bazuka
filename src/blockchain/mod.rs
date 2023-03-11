@@ -371,8 +371,11 @@ pub trait Blockchain<K: KvStore> {
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self) -> Result<Vec<(Address, Amount)>, BlockchainError>;
-    fn get_delegatees(&self, delegator: Address)
-        -> Result<Vec<(Address, Amount)>, BlockchainError>;
+    fn get_delegatees(
+        &self,
+        delegator: Address,
+        top: usize,
+    ) -> Result<Vec<(Address, Amount)>, BlockchainError>;
     fn get_delegators(&self, delegatee: Address)
         -> Result<Vec<(Address, Amount)>, BlockchainError>;
     fn cleanup_chain_mempool(
@@ -2061,6 +2064,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     fn get_delegatees(
         &self,
         delegator: Address,
+        top: usize,
     ) -> Result<Vec<(Address, Amount)>, BlockchainError> {
         let mut delegatees = Vec::new();
         for (k, _) in self
@@ -2081,6 +2085,9 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
                 .parse()
                 .map_err(|_| BlockchainError::Inconsistency)?;
             delegatees.push((pk, stake));
+            if delegatees.len() >= top {
+                break;
+            }
         }
         Ok(delegatees)
     }

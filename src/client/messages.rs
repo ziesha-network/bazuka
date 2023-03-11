@@ -49,6 +49,17 @@ pub struct GetAccountResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetDelegateesRequest {
+    pub address: String,
+    pub top: usize,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetDelegateesResponse {
+    pub delegatees: HashMap<String, Amount>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMpnAccountRequest {
     pub index: u64,
 }
