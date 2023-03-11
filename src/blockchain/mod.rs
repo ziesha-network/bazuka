@@ -371,6 +371,8 @@ pub trait Blockchain<K: KvStore> {
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self) -> Result<Vec<(Address, Amount)>, BlockchainError>;
+    fn get_delegatees(&self, delegator: Address)
+        -> Result<Vec<(Address, Amount)>, BlockchainError>;
     fn get_delegators(&self, delegatee: Address)
         -> Result<Vec<(Address, Amount)>, BlockchainError>;
     fn cleanup_chain_mempool(
@@ -730,6 +732,11 @@ impl<K: KvStore> KvStoreChain<K> {
                     let old_stake = chain.get_stake(to.clone())?;
                     let new_stake = old_stake + *amount;
                     chain.database.update(&[
+                        WriteOp::Remove(keys::delegatee_rank(&tx_src, old_delegate, &to)),
+                        WriteOp::Put(
+                            keys::delegatee_rank(&tx_src, delegate.amount, &to),
+                            ().into(),
+                        ),
                         WriteOp::Remove(keys::delegator_rank(&to, old_delegate, &tx_src)),
                         WriteOp::Put(
                             keys::delegator_rank(&to, delegate.amount, &tx_src),
@@ -2049,6 +2056,33 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             delegators.push((pk, stake));
         }
         Ok(delegators)
+    }
+
+    fn get_delegatees(
+        &self,
+        delegator: Address,
+    ) -> Result<Vec<(Address, Amount)>, BlockchainError> {
+        let mut delegatees = Vec::new();
+        for (k, _) in self
+            .database
+            .pairs(keys::delegatee_rank_prefix(&delegator).into())?
+            .into_iter()
+        {
+            let splitted = k.0.split("-").collect::<Vec<_>>();
+            if splitted.len() != 4 {
+                return Err(BlockchainError::Inconsistency);
+            }
+            let stake = Amount(
+                u64::MAX
+                    - u64::from_str_radix(&splitted[2], 16)
+                        .map_err(|_| BlockchainError::Inconsistency)?,
+            );
+            let pk: Address = splitted[3]
+                .parse()
+                .map_err(|_| BlockchainError::Inconsistency)?;
+            delegatees.push((pk, stake));
+        }
+        Ok(delegatees)
     }
 
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32) {

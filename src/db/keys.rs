@@ -70,6 +70,20 @@ pub fn delegator_rank(delegatee: &Address, amount: Amount, delegator: &Address) 
     .into()
 }
 
+pub fn delegatee_rank_prefix(delegator: &Address) -> String {
+    format!("DEK-{}", delegator).into()
+}
+
+pub fn delegatee_rank(delegator: &Address, amount: Amount, delegatee: &Address) -> StringKey {
+    format!(
+        "{}-{:016x}-{}",
+        delegatee_rank_prefix(delegator),
+        (u64::MAX - Into::<u64>::into(amount)),
+        delegatee
+    )
+    .into()
+}
+
 pub fn delegate(delegator: &Address, delegatee: &Address) -> StringKey {
     format!("DEL-{}-{}", delegator, delegatee).into()
 }
