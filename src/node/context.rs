@@ -4,11 +4,12 @@ use super::{
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, Mempool};
 use crate::client::messages::{SocialProfiles, ValidatorClaim};
 use crate::core::{ChainSourcedTx, Header, MpnSourcedTx, TransactionAndDelta};
-use crate::mpn::MpnWorkPool;
+use crate::mpn::{MpnWorkPool, MpnWorker};
 use crate::node::KvStore;
 use crate::utils;
 use crate::wallet::TxBuilder;
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::sync::Arc;
 
 pub struct NodeContext<K: KvStore, B: Blockchain<K>> {
@@ -26,6 +27,8 @@ pub struct NodeContext<K: KvStore, B: Blockchain<K>> {
     pub peer_manager: PeerManager,
     pub timestamp_offset: i32,
     pub validator_claim: Option<ValidatorClaim>,
+
+    pub mpn_workers: HashMap<IpAddr, MpnWorker>,
     pub mpn_work_pool: Option<MpnWorkPool>,
 
     pub mempool: Mempool,

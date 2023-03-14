@@ -440,3 +440,13 @@ pub struct PostMpnSolutionRequest {
 pub struct PostMpnSolutionResponse {
     pub accepted: usize,
 }
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PostMpnWorkerRequest {
+    pub mpn_address: MpnAddress,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct PostMpnWorkerResponse {
+    pub accepted: bool,
+}

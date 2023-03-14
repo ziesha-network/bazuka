@@ -61,4 +61,6 @@ pub enum NodeError {
     BlockTimestampInFuture,
     #[error("your validator is not exposed on the internet")]
     ValidatorNotExposed,
+    #[error("request sender's ip address is unknown")]
+    SenderIpUnknown,
 }

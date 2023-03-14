@@ -456,6 +456,16 @@ async fn node_service<K: KvStore, B: Blockchain<K>>(
                     .await?,
                 )?);
             }
+            (Method::POST, "/bincode/mpn/worker") => {
+                *response.body_mut() = Body::from(bincode::serialize(
+                    &api::post_mpn_worker(
+                        client,
+                        Arc::clone(&context),
+                        bincode::deserialize(&body_bytes)?,
+                    )
+                    .await?,
+                )?);
+            }
             _ => {
                 *response.status_mut() = StatusCode::NOT_FOUND;
             }
@@ -528,6 +538,7 @@ pub async fn node_create<K: KvStore, B: Blockchain<K>>(
             miner_token: None,
             priv_key: wallet.get_priv_key(),
         }),
+        mpn_workers: HashMap::new(),
         mpn_work_pool: None,
         mempool: Mempool::new(blockchain.config().mpn_config.log4_tree_size),
         blockchain,

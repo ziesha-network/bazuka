@@ -4,8 +4,8 @@ pub mod withdraw;
 
 use crate::blockchain::BlockchainError;
 use crate::core::{
-    ContractId, ContractUpdate, Money, MpnDeposit, MpnWithdraw, Signature, TokenId, Transaction,
-    TransactionAndDelta, TransactionData,
+    ContractId, ContractUpdate, Money, MpnAddress, MpnDeposit, MpnWithdraw, Signature, TokenId,
+    Transaction, TransactionAndDelta, TransactionData,
 };
 use crate::db::{KvStore, WriteOp};
 use crate::wallet::TxBuilder;
@@ -151,6 +151,11 @@ pub struct ZkPublicInputs {
     pub state: ZkScalar,
     pub aux_data: ZkScalar,
     pub next_state: ZkScalar,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MpnWorker {
+    pub mpn_address: MpnAddress,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
