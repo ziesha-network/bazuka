@@ -15,6 +15,16 @@ use crate::zk::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::net::IpAddr;
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum MpnError {
+    #[error("blockchain error happened: {0}")]
+    BlockchainError(#[from] BlockchainError),
+    #[error("insufficient workers in the pool")]
+    InsufficientWorkers,
+}
 
 fn extract_delta(ops: &[WriteOp]) -> ZkDeltaPairs {
     let mut pairs = ZkDeltaPairs([].into());
@@ -49,12 +59,15 @@ pub struct MpnWorkPool {
 }
 
 impl MpnWorkPool {
-    pub fn get_works(&self) -> HashMap<usize, MpnWork> {
+    pub fn get_works(&self, ip_addr: IpAddr) -> HashMap<usize, MpnWork> {
         let mut remaining = self.works.clone();
         for solved in self.solutions.keys() {
             remaining.remove(solved);
         }
         remaining
+            .into_iter()
+            .filter(|(_, v)| v.worker.ip_addr == ip_addr)
+            .collect()
     }
     pub fn prove(&mut self, id: usize, proof: &Groth16Proof) -> bool {
         if !self.solutions.contains_key(&id) {
@@ -155,6 +168,7 @@ pub struct ZkPublicInputs {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MpnWorker {
+    pub ip_addr: IpAddr,
     pub mpn_address: MpnAddress,
 }
 
@@ -164,6 +178,7 @@ pub struct MpnWork {
     pub public_inputs: ZkPublicInputs,
     pub data: MpnWorkData,
     pub new_root: ZkCompressedState,
+    pub worker: MpnWorker,
 }
 
 impl MpnWork {
@@ -191,12 +206,19 @@ impl MpnWork {
 pub fn prepare_works<K: KvStore>(
     config: &MpnConfig,
     db: &K,
+    workers: &HashMap<IpAddr, MpnWorker>,
     deposits: &[MpnDeposit],
     withdraws: &[MpnWithdraw],
     updates: &[MpnTransaction],
-) -> Result<MpnWorkPool, BlockchainError> {
+) -> Result<MpnWorkPool, MpnError> {
     let mut mirror = db.mirror();
     let mut works = Vec::new();
+    let workers = workers.values().collect::<Vec<_>>();
+    if workers.len() == 0 {
+        return Err(MpnError::InsufficientWorkers);
+    }
+    let mut worker_id = 0;
+
     for _ in 0..config.mpn_num_deposit_batches {
         let (new_root, public_inputs, transitions) = deposit::deposit(
             config.mpn_contract_id,
@@ -211,7 +233,9 @@ pub fn prepare_works<K: KvStore>(
             public_inputs,
             new_root,
             data: MpnWorkData::Deposit(transitions),
+            worker: workers[worker_id].clone(),
         });
+        worker_id = (worker_id + 1) % workers.len();
     }
     for _ in 0..config.mpn_num_withdraw_batches {
         let (new_root, public_inputs, transitions) = withdraw::withdraw(
@@ -227,7 +251,9 @@ pub fn prepare_works<K: KvStore>(
             public_inputs,
             new_root,
             data: MpnWorkData::Withdraw(transitions),
+            worker: workers[worker_id].clone(),
         });
+        worker_id = (worker_id + 1) % workers.len();
     }
     for _ in 0..config.mpn_num_update_batches {
         let (new_root, public_inputs, transitions) = update::update(
@@ -244,7 +270,9 @@ pub fn prepare_works<K: KvStore>(
             public_inputs,
             new_root,
             data: MpnWorkData::Update(transitions),
+            worker: workers[worker_id].clone(),
         });
+        worker_id = (worker_id + 1) % workers.len();
     }
     let ops = mirror.to_ops();
     let final_delta = extract_delta(&ops);

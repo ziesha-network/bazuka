@@ -17,6 +17,7 @@ pub async fn post_mpn_worker<K: KvStore, B: Blockchain<K>>(
     context.mpn_workers.insert(
         ip,
         MpnWorker {
+            ip_addr: ip,
             mpn_address: req.mpn_address,
         },
     );

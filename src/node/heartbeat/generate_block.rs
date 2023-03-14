@@ -104,6 +104,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
             ctx.mpn_work_pool = Some(mpn::prepare_works(
                 &ctx.blockchain.config().mpn_config,
                 ctx.blockchain.database(),
+                &ctx.mpn_workers,
                 &deposits,
                 &withdraws,
                 &updates,

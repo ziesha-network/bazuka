@@ -443,8 +443,12 @@ async fn node_service<K: KvStore, B: Blockchain<K>>(
             }
             (Method::GET, "/bincode/mpn/work") => {
                 *response.body_mut() = Body::from(bincode::serialize(
-                    &api::get_mpn_work(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
-                        .await?,
+                    &api::get_mpn_work(
+                        client,
+                        Arc::clone(&context),
+                        bincode::deserialize(&body_bytes)?,
+                    )
+                    .await?,
                 )?);
             }
             (Method::POST, "/bincode/mpn/solution") => {
