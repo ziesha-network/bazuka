@@ -47,6 +47,7 @@ fn create_test_node(
         inc_recv,
         out_send,
         None,
+        vec![],
     );
     (
         node,

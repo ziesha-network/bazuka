@@ -46,6 +46,8 @@ pub struct BazukaConfigMpnWorker {
     mpn_address: String,
 }
 
+#[cfg(feature = "client")]
+#[derive(Debug)]
 pub struct InvalidMpnWorker;
 
 impl TryInto<MpnWorker> for BazukaConfigMpnWorker {
@@ -295,6 +297,11 @@ async fn run_node(
         inc_recv,
         out_send,
         Some(firewall),
+        bazuka_config
+            .mpn_workers
+            .iter()
+            .map(|w| w.clone().try_into().unwrap())
+            .collect(),
     );
 
     // Async loop that is responsible for getting incoming HTTP requests through a

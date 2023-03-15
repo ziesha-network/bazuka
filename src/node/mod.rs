@@ -17,6 +17,7 @@ use crate::common::*;
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::db::KvStore;
+use crate::mpn::MpnWorker;
 use crate::utils::local_timestamp;
 use crate::wallet::TxBuilder;
 use context::NodeContext;
@@ -502,6 +503,7 @@ pub async fn node_create<K: KvStore, B: Blockchain<K>>(
     mut incoming: mpsc::UnboundedReceiver<NodeRequest>,
     outgoing: mpsc::UnboundedSender<NodeRequest>,
     firewall: Option<Firewall>,
+    mpn_workers: Vec<MpnWorker>,
 ) -> Result<(), NodeError> {
     let context = Arc::new(RwLock::new(NodeContext {
         _phantom: std::marker::PhantomData,
@@ -516,7 +518,10 @@ pub async fn node_create<K: KvStore, B: Blockchain<K>>(
             chan: outgoing,
             priv_key: wallet.get_priv_key(),
         }),
-        mpn_workers: HashMap::new(),
+        mpn_workers: mpn_workers
+            .into_iter()
+            .map(|w| (w.token.clone(), w))
+            .collect(),
         mpn_work_pool: None,
         mempool: Mempool::new(blockchain.config().mpn_config.log4_tree_size),
         blockchain,
