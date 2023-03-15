@@ -16,10 +16,10 @@ use {
 use {
     crate::client::{NodeError, PeerAddress},
     crate::config,
-    crate::core::{Address, Amount, TokenId, ZieshaAddress},
+    crate::core::{Address, Amount, MpnAddress, TokenId, ZieshaAddress},
+    crate::mpn::MpnWorker,
     crate::wallet::{TxBuilder, Wallet},
     colored::Colorize,
-    rand::Rng,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
     std::path::{Path, PathBuf},
@@ -40,14 +40,33 @@ const DEFAULT_PORT: u16 = 8765;
 const BAZUKA_NOT_INITILIZED: &str = "Bazuka is not initialized";
 
 #[cfg(feature = "client")]
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BazukaConfigMpnWorker {
+    token: String,
+    mpn_address: String,
+}
+
+pub struct InvalidMpnWorker;
+
+impl TryInto<MpnWorker> for BazukaConfigMpnWorker {
+    type Error = InvalidMpnWorker;
+    fn try_into(self) -> Result<MpnWorker, InvalidMpnWorker> {
+        Ok(MpnWorker {
+            token: self.token,
+            mpn_address: self.mpn_address.parse().map_err(|_| InvalidMpnWorker)?,
+        })
+    }
+}
+
+#[cfg(feature = "client")]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BazukaConfig {
     listen: SocketAddr,
     external: PeerAddress,
     network: String,
-    miner_token: String,
     bootstrap: Vec<PeerAddress>,
     db: PathBuf,
+    mpn_workers: Vec<BazukaConfigMpnWorker>,
 }
 
 #[cfg(feature = "client")]
@@ -159,6 +178,8 @@ enum NodeCliOptions {
     },
     /// Get status of a node
     Status {},
+    /// Add a new mpn worker
+    AddMpnWorker { mpn_address: MpnAddress },
 }
 
 #[derive(StructOpt)]
@@ -245,11 +266,6 @@ async fn run_node(
         "Wallet zk address:".bright_yellow(),
         wallet.get_zk_address()
     );
-    println!(
-        "{} {}",
-        "Miner token:".bright_yellow(),
-        bazuka_config.miner_token
-    );
 
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let (out_send, mut out_recv) = mpsc::unbounded_channel::<NodeRequest>();
@@ -279,7 +295,6 @@ async fn run_node(
         inc_recv,
         out_send,
         Some(firewall),
-        Some(bazuka_config.miner_token.clone()),
     );
 
     // Async loop that is responsible for getting incoming HTTP requests through a
@@ -352,16 +367,6 @@ async fn run_node(
     Ok(())
 }
 
-#[cfg(feature = "client")]
-fn generate_miner_token() -> String {
-    use rand::distributions::Alphanumeric;
-    rand::thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(30)
-        .map(char::from)
-        .collect()
-}
-
 fn get_wallet() -> Option<Wallet> {
     let wallet_path = get_wallet_path();
     let wallet = Wallet::open(wallet_path.clone()).unwrap();
@@ -391,14 +396,6 @@ pub async fn initialize_cli() {
 
     let conf_path = get_conf_path();
 
-    let mut conf = get_conf();
-
-    if let Some(ref mut conf) = &mut conf {
-        if conf.miner_token.is_empty() {
-            conf.miner_token = generate_miner_token();
-        }
-        std::fs::write(conf_path.clone(), serde_yaml::to_string(conf).unwrap()).unwrap();
-    }
     let conf = get_conf();
     let wallet = get_wallet();
     let wallet_path = get_wallet_path();
@@ -431,6 +428,9 @@ pub async fn initialize_cli() {
             }
             NodeCliOptions::Status {} => {
                 crate::cli::node::status(get_conf(), get_wallet()).await;
+            }
+            NodeCliOptions::AddMpnWorker { mpn_address } => {
+                crate::cli::node::add_mpn_worker(&conf_path, get_conf(), mpn_address).await;
             }
         },
         #[cfg(feature = "client")]

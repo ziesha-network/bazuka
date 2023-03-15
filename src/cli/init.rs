@@ -1,4 +1,4 @@
-use super::{generate_miner_token, BazukaConfig, DEFAULT_PORT};
+use super::{BazukaConfig, DEFAULT_PORT};
 use crate::{client::PeerAddress, wallet::Wallet};
 use bip39::Mnemonic;
 use colored::Colorize;
@@ -36,18 +36,17 @@ pub async fn init(
     }
 
     if conf.is_none() {
-        let miner_token = generate_miner_token();
         let public_ip = crate::client::utils::get_public_ip().await.unwrap();
         std::fs::write(
             conf_path,
             serde_yaml::to_string(&BazukaConfig {
                 network,
-                miner_token,
                 bootstrap,
                 listen: listen.unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT))),
                 external: external
                     .unwrap_or_else(|| PeerAddress(SocketAddr::from((public_ip, DEFAULT_PORT)))),
                 db: db.unwrap_or_else(|| home::home_dir().unwrap().join(Path::new(".bazuka"))),
+                mpn_workers: vec![],
             })
             .unwrap(),
         )

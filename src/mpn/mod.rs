@@ -15,7 +15,6 @@ use crate::zk::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::net::IpAddr;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -59,14 +58,14 @@ pub struct MpnWorkPool {
 }
 
 impl MpnWorkPool {
-    pub fn get_works(&self, ip_addr: IpAddr) -> HashMap<usize, MpnWork> {
+    pub fn get_works(&self, token: String) -> HashMap<usize, MpnWork> {
         let mut remaining = self.works.clone();
         for solved in self.solutions.keys() {
             remaining.remove(solved);
         }
         remaining
             .into_iter()
-            .filter(|(_, v)| v.worker.ip_addr == ip_addr)
+            .filter(|(_, v)| v.worker.token == token)
             .collect()
     }
     pub fn prove(&mut self, id: usize, proof: &Groth16Proof) -> bool {
@@ -168,7 +167,7 @@ pub struct ZkPublicInputs {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MpnWorker {
-    pub ip_addr: IpAddr,
+    pub token: String,
     pub mpn_address: MpnAddress,
 }
 
@@ -206,7 +205,7 @@ impl MpnWork {
 pub fn prepare_works<K: KvStore>(
     config: &MpnConfig,
     db: &K,
-    workers: &HashMap<IpAddr, MpnWorker>,
+    workers: &HashMap<String, MpnWorker>,
     deposits: &[MpnDeposit],
     withdraws: &[MpnWithdraw],
     updates: &[MpnTransaction],

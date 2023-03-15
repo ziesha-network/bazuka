@@ -23,12 +23,8 @@ pub async fn register_validator(
     let commision_u8 = (commision * (u8::MAX as f32)) as u8;
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = TxBuilder::new(&wallet.seed());
-    let (req_loop, client) = BazukaClient::connect(
-        tx_builder.get_priv_key(),
-        conf.random_node(),
-        conf.network,
-        None,
-    );
+    let (req_loop, client) =
+        BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
     try_join!(
         async move {
             let curr_nonce = client

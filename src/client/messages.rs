@@ -423,7 +423,9 @@ pub struct GenerateBlockResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetMpnWorkRequest {}
+pub struct GetMpnWorkRequest {
+    pub token: String,
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMpnWorkResponse {
@@ -443,6 +445,7 @@ pub struct PostMpnSolutionResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMpnWorkerRequest {
+    pub token: String,
     pub mpn_address: MpnAddress,
 }
 

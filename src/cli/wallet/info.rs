@@ -16,12 +16,8 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<Wallet>) -> () {
     let (conf, wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = TxBuilder::new(&wallet.seed());
 
-    let (req_loop, client) = BazukaClient::connect(
-        tx_builder.get_priv_key(),
-        conf.random_node(),
-        conf.network,
-        None,
-    );
+    let (req_loop, client) =
+        BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
     try_join!(
         async move {
             let acc = client.get_account(tx_builder.get_address()).await;

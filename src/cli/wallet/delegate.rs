@@ -12,12 +12,8 @@ pub async fn delegate(memo: Option<String>, amount: Amount, to: PublicKey, fee: 
     let conf = get_conf();
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = TxBuilder::new(&wallet.seed());
-    let (req_loop, client) = BazukaClient::connect(
-        tx_builder.get_priv_key(),
-        conf.random_node(),
-        conf.network,
-        None,
-    );
+    let (req_loop, client) =
+        BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
     try_join!(
         async move {
             let curr_nonce = client

@@ -9,12 +9,9 @@ use crate::node::KvStore;
 use crate::utils;
 use crate::wallet::TxBuilder;
 use std::collections::HashMap;
-use std::net::IpAddr;
 use std::sync::Arc;
 
 pub struct NodeContext<K: KvStore, B: Blockchain<K>> {
-    pub miner_token: Option<String>,
-
     pub firewall: Option<Firewall>,
     pub social_profiles: SocialProfiles,
     pub opts: NodeOptions,
@@ -28,7 +25,7 @@ pub struct NodeContext<K: KvStore, B: Blockchain<K>> {
     pub timestamp_offset: i32,
     pub validator_claim: Option<ValidatorClaim>,
 
-    pub mpn_workers: HashMap<IpAddr, MpnWorker>,
+    pub mpn_workers: HashMap<String, MpnWorker>,
     pub mpn_work_pool: Option<MpnWorkPool>,
 
     pub mempool: Mempool,

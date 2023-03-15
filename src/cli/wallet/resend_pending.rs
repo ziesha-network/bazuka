@@ -17,12 +17,8 @@ async fn resend_all_wallet_txs(
     shift: bool,
 ) -> Result<(), NodeError> {
     let tx_builder = TxBuilder::new(&wallet.seed());
-    let (req_loop, client) = BazukaClient::connect(
-        tx_builder.get_priv_key(),
-        conf.random_node(),
-        conf.network,
-        None,
-    );
+    let (req_loop, client) =
+        BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
     let mpn_log4_account_capacity = blockchain::get_blockchain_config()
         .mpn_config
         .log4_tree_size;

@@ -2,22 +2,19 @@ use super::messages::{GetMpnWorkRequest, GetMpnWorkResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
 use crate::db::KvStore;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub async fn get_mpn_work<K: KvStore, B: Blockchain<K>>(
-    client: Option<SocketAddr>,
     context: Arc<RwLock<NodeContext<K, B>>>,
-    _req: GetMpnWorkRequest,
+    req: GetMpnWorkRequest,
 ) -> Result<GetMpnWorkResponse, NodeError> {
     let ctx = context.read().await;
-    let ip = client.map(|c| c.ip()).ok_or(NodeError::SenderIpUnknown)?;
     Ok(GetMpnWorkResponse {
         works: ctx
             .mpn_work_pool
             .as_ref()
-            .map(|p| p.get_works(ip))
+            .map(|p| p.get_works(req.token))
             .unwrap_or_default(),
     })
 }

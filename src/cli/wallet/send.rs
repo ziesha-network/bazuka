@@ -33,12 +33,8 @@ pub async fn send(
         .mpn_config
         .mpn_contract_id;
 
-    let (req_loop, client) = BazukaClient::connect(
-        tx_builder.get_priv_key(),
-        conf.random_node(),
-        conf.network,
-        None,
-    );
+    let (req_loop, client) =
+        BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
     let tkn = if let Some(token) = token {
         if token >= wallet.get_tokens().len() {
             panic!("Wrong token selected!");
