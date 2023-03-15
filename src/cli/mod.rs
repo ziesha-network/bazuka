@@ -29,9 +29,11 @@ use {
 
 pub mod chain;
 pub mod init;
-pub mod node;
 pub mod wallet;
 pub use init::*;
+
+#[cfg(feature = "node")]
+pub mod node;
 
 #[cfg(feature = "client")]
 const DEFAULT_PORT: u16 = 8765;
@@ -161,7 +163,7 @@ enum NodeCliOptions {
 
 #[derive(StructOpt)]
 #[allow(clippy::large_enum_variant)]
-#[cfg(feature = "node")]
+#[cfg(feature = "client")]
 enum ChainCliOptions {
     /// Rollback the blockchain
     Rollback {},
@@ -402,7 +404,6 @@ pub async fn initialize_cli() {
     let wallet_path = get_wallet_path();
 
     match opts {
-        #[cfg(feature = "node")]
         CliOptions::Chain(chain_opts) => match chain_opts {
             ChainCliOptions::Rollback {} => {
                 crate::cli::chain::rollback(&conf.expect(BAZUKA_NOT_INITILIZED)).await;
