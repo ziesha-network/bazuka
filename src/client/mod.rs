@@ -481,6 +481,19 @@ impl BazukaClient {
             .await
     }
 
+    pub async fn post_mpn_worker(
+        &self,
+        mpn_address: MpnAddress,
+    ) -> Result<PostMpnWorkerResponse, NodeError> {
+        self.sender
+            .bincode_post::<PostMpnWorkerRequest, PostMpnWorkerResponse>(
+                format!("http://{}/bincode/mpn/worker", self.peer),
+                PostMpnWorkerRequest { mpn_address },
+                Limit::default(),
+            )
+            .await
+    }
+
     pub async fn post_mpn_proof(
         &self,
         reward_address: MpnAddress,
