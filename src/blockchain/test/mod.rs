@@ -5,6 +5,7 @@ use crate::crypto::SignatureScheme;
 use crate::db;
 
 mod contract;
+mod rewards;
 mod tokens;
 
 fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), BlockchainError> {
