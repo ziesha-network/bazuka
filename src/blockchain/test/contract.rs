@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 #[test]
 fn test_contract_create_patch() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(&Vec::from("MINER"));
+    let miner = TxBuilder::new(&Vec::from("VALIDATOR"));
     let alice = TxBuilder::new(&Vec::from("ABC"));
     let mut chain = KvStoreChain::new(
         db::RamKvStore::new(),
@@ -51,7 +51,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
 
 #[test]
 fn test_contract_update() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(&Vec::from("MINER"));
+    let miner = TxBuilder::new(&Vec::from("VALIDATOR"));
     let alice = TxBuilder::new(&Vec::from("ABC"));
 
     let mut chain = KvStoreChain::new(

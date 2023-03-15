@@ -292,6 +292,7 @@ pub enum TokenUpdate<S: SignatureScheme> {
 pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction> {
     UpdateStaker {
         vrf_pub_key: V::Pub,
+        commision: u8, // n parts out of 255 parts
     },
     Delegate {
         amount: Amount,

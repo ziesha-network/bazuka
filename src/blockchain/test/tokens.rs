@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn test_token_balances() -> Result<(), BlockchainError> {
-    let miner = TxBuilder::new(&Vec::from("MINER"));
+    let miner = TxBuilder::new(&Vec::from("VALIDATOR"));
     let alice = TxBuilder::new(&Vec::from("ABCD"));
     let bob = TxBuilder::new(&Vec::from("DCBA"));
 

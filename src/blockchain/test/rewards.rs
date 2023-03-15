@@ -18,12 +18,6 @@ fn test_correct_rewards() -> Result<(), BlockchainError> {
         db::RamKvStore::new(),
         blockchain::get_test_blockchain_config(),
     )?;
-    println!(
-        "{}",
-        chain
-            .get_balance(validator.get_address(), TokenId::Ziesha)?
-            .0
-    );
 
     let expected_reward_1 = chain.next_reward()?;
     assert_eq!(expected_reward_1, Amount(19999989999999));
@@ -85,7 +79,7 @@ fn test_correct_rewards() -> Result<(), BlockchainError> {
 
     let expected_reward_3 = chain.next_reward()?;
     assert_eq!(expected_reward_3, Amount(19999590002199));
-    let expected_validator_reward_3 = Amount(expected_reward_3.0 / 20);
+    let expected_validator_reward_3 = Amount(expected_reward_3.0 * 12 / 255);
     let draft = chain.draft_block(0, &[], &validator, true)?.unwrap();
     chain.apply_block(&draft.block)?;
     assert!(close_enough(

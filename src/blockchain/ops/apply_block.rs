@@ -24,6 +24,10 @@ pub fn apply_block<K: KvStore>(
         }
 
         if !is_genesis {
+            let validator = chain
+                .get_staker(block.header.proof_of_stake.validator.clone())?
+                .ok_or(BlockchainError::ValidatorNotRegistered)?;
+
             if chain.config.check_validator
                 && !chain.is_validator(
                     block.header.proof_of_stake.timestamp,
@@ -45,7 +49,8 @@ pub fn apply_block<K: KvStore>(
             let treasury_nonce = chain.get_account(Default::default())?.nonce;
 
             let next_reward = chain.next_reward()? + fee_sum;
-            let stakers_reward = u64::from(next_reward) as f64 * 19.0 / 20.0; // WARN: Hardcoded!
+            let stakers_reward = u64::from(next_reward) as f64
+                * ((u8::MAX - validator.commision) as f64 / u8::MAX as f64); // WARN: Hardcoded!
 
             let delegators = chain.get_delegators(block.header.proof_of_stake.validator.clone())?;
             let total_f64 = delegators

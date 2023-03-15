@@ -105,12 +105,19 @@ impl TxBuilder {
             format!("{}-{}", epoch, slot).as_bytes(),
         )
     }
-    pub fn register_validator(&self, memo: String, fee: Money, nonce: u32) -> TransactionAndDelta {
+    pub fn register_validator(
+        &self,
+        memo: String,
+        commision: u8,
+        fee: Money,
+        nonce: u32,
+    ) -> TransactionAndDelta {
         let mut tx = Transaction {
             memo,
             src: Some(self.get_address()),
             data: TransactionData::UpdateStaker {
                 vrf_pub_key: self.vrf_public_key.clone(),
+                commision,
             },
             nonce,
             fee,

@@ -164,6 +164,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             vrf_pub_key: "vrfec707f8ab27ab5fe217eae8932c840393e2cfab3dfaf79d53a88e1ac4ae4c255"
                 .parse()
                 .unwrap(),
+            commision: 12, // 12/255 ~= 5%
         },
         nonce: 1,
         fee: Money::ziesha(0),
@@ -242,6 +243,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         slot_per_epoch: 10,
         chain_start_timestamp: CHAIN_START_TIMESTAMP,
         check_validator: true,
+        max_validator_commision: 26, // 26 / 255 ~= 10%
     }
 }
 
@@ -263,6 +265,9 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
 
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;
     let abc = TxBuilder::new(&Vec::from("ABC"));
+    let validator_1 = TxBuilder::new(&Vec::from("VALIDATOR"));
+    let validator_2 = TxBuilder::new(&Vec::from("VALIDATOR2"));
+    let validator_3 = TxBuilder::new(&Vec::from("VALIDATOR3"));
     conf.genesis.block.body.push(Transaction {
         memo: "Dummy tx".into(),
         src: None,
@@ -276,6 +281,19 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });
+
+    for val in [validator_1, validator_2, validator_3] {
+        conf.genesis.block.body.push(
+            val.register_validator(
+                "Test validator".into(),
+                12, // 12/256 ~= 5%
+                Money::ziesha(0),
+                1,
+            )
+            .tx,
+        );
+    }
+
     conf.genesis.patch = ZkBlockchainPatch {
         patches: [(
             mpn_contract_id,

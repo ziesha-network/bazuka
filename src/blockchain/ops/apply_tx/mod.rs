@@ -53,8 +53,11 @@ pub fn apply_tx<K: KvStore>(
         )])?;
 
         match &tx.data {
-            TransactionData::UpdateStaker { vrf_pub_key } => {
-                update_staker::update_staker(chain, tx_src, vrf_pub_key.clone())?;
+            TransactionData::UpdateStaker {
+                vrf_pub_key,
+                commision,
+            } => {
+                update_staker::update_staker(chain, tx_src, vrf_pub_key.clone(), *commision)?;
             }
             TransactionData::Delegate {
                 amount,

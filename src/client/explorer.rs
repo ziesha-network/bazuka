@@ -333,6 +333,7 @@ impl From<&ContractUpdate> for ExplorerContractUpdate {
 pub enum ExplorerTransactionData {
     UpdateStaker {
         vrf_pub_key: String,
+        commision: u8,
     },
     Delegate {
         to: String,
@@ -361,8 +362,12 @@ pub enum ExplorerTransactionData {
 impl From<&TransactionData> for ExplorerTransactionData {
     fn from(obj: &TransactionData) -> Self {
         match obj {
-            TransactionData::UpdateStaker { vrf_pub_key } => Self::UpdateStaker {
+            TransactionData::UpdateStaker {
+                vrf_pub_key,
+                commision,
+            } => Self::UpdateStaker {
                 vrf_pub_key: hex::encode(vrf_pub_key.as_ref()),
+                commision: *commision,
             },
             TransactionData::Delegate {
                 to,

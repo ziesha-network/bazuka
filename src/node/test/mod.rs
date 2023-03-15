@@ -45,21 +45,21 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("ABC")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("CBA")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR2")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("BAC")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR3")),
                 addr: 122,
                 bootstrap: vec![121],
                 timestamp_offset: 15,
@@ -99,21 +99,21 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("ABC")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("CBA")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR2")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("BAC")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR3")),
                 addr: 122,
                 bootstrap: vec![121],
                 timestamp_offset: 15,
@@ -156,14 +156,14 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("ABC")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("CBA")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR2")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
@@ -262,14 +262,14 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("ABC")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("CBA")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR2")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
@@ -335,14 +335,14 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         vec![
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("ABC")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR")),
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("CBA")),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR2")),
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
