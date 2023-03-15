@@ -9,11 +9,18 @@ use crate::wallet::{TxBuilder, Wallet};
 
 pub async fn register_validator(
     memo: Option<String>,
+    commision: f32,
     fee: Amount,
     conf: Option<BazukaConfig>,
     wallet: Option<Wallet>,
     wallet_path: &PathBuf,
 ) -> () {
+    // TODO: Dirty code!
+    if (0.0..0.1).contains(&commision) {
+        panic!("Commision out of range!");
+    }
+
+    let commision_u8 = (commision * (u8::MAX as f32)) as u8;
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = TxBuilder::new(&wallet.seed());
     let (req_loop, client) = BazukaClient::connect(
@@ -33,6 +40,7 @@ pub async fn register_validator(
             let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
             let tx = tx_builder.register_validator(
                 memo.unwrap_or_default(),
+                commision_u8,
                 Money {
                     amount: fee,
                     token_id: TokenId::Ziesha,

@@ -18,4 +18,5 @@ pub struct BlockchainConfig {
     pub slot_per_epoch: u32,
     pub chain_start_timestamp: u32,
     pub check_validator: bool,
+    pub max_validator_commision: u8,
 }

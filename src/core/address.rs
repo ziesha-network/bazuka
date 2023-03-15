@@ -64,6 +64,7 @@ pub struct Account {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Staker<V: VerifiableRandomFunction> {
     pub vrf_pub_key: V::Pub,
+    pub commision: u8,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]

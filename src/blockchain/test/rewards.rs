@@ -3,6 +3,7 @@ use super::*;
 const EPSILON: Amount = Amount(5);
 
 fn close_enough(a: Amount, b: Amount) -> bool {
+    println!("{} {}", a.0, b.0);
     if a > b {
         a - b < EPSILON
     } else {
@@ -85,7 +86,7 @@ fn test_correct_rewards() -> Result<(), BlockchainError> {
 
     let expected_reward_3 = chain.next_reward()?;
     assert_eq!(expected_reward_3, Amount(19999590002199));
-    let expected_validator_reward_3 = Amount(expected_reward_3.0 / 20);
+    let expected_validator_reward_3 = Amount(expected_reward_3.0 * 12 / 256);
     let draft = chain.draft_block(0, &[], &validator, true)?.unwrap();
     chain.apply_block(&draft.block)?;
     assert!(close_enough(
