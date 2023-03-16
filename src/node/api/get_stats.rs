@@ -14,7 +14,7 @@ pub async fn get_stats<K: KvStore, B: Blockchain<K>>(
     let (epoch, slot) = context.blockchain.epoch_slot(ts);
     Ok(GetStatsResponse {
         social_profiles: context.social_profiles.clone(),
-        address: context.wallet.get_address().to_string(),
+        address: context.validator_wallet.get_address().to_string(),
         height: context.blockchain.get_height()?,
         nodes: context.peer_manager.node_count(),
         next_reward: context.blockchain.next_reward()?,

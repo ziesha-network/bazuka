@@ -21,7 +21,7 @@ pub async fn log_info<K: KvStore, B: Blockchain<K>>(
     inf.push(("Chain Pool", ctx.mempool.chain_sourced_len().to_string()));
     inf.push(("MPN Pool", ctx.mempool.mpn_sourced_len().to_string()));
 
-    let wallet_addr = ctx.wallet.get_address();
+    let wallet_addr = ctx.validator_wallet.get_address();
     let tkn = ctx
         .blockchain
         .get_token(crate::core::TokenId::Ziesha)?

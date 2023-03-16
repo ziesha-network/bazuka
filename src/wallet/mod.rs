@@ -15,6 +15,21 @@ use std::io::prelude::*;
 use std::path::Path;
 use thiserror::Error;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum WalletType {
+    User(usize),
+    Validator,
+}
+
+impl WalletType {
+    fn bip39_passphrase(&self) -> String {
+        match self {
+            WalletType::User(index) => index.to_string(),
+            WalletType::Validator => "validator".into(),
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum WalletError {
     #[error("bincode error happened. wallet corrupted: {0}")]
@@ -24,37 +39,83 @@ pub enum WalletError {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Wallet {
+pub struct WalletCollection {
     mnemonic: Mnemonic,
-    pub tokens: Vec<TokenId>,
-    pub chain_sourced_txs: Vec<ChainSourcedTx>,
-    pub mpn_sourced_txs: HashMap<MpnAddress, Vec<MpnSourcedTx>>,
+    wallets: HashMap<WalletType, Wallet>,
 }
 
-impl Wallet {
+impl WalletCollection {
+    pub fn mnemonic(&self) -> &Mnemonic {
+        &self.mnemonic
+    }
     pub fn create<R: RngCore + CryptoRng>(rng: &mut R, mnemonic: Option<Mnemonic>) -> Self {
         Self {
             mnemonic: mnemonic.unwrap_or_else(|| {
                 Mnemonic::generate_in_with(rng, bip39::Language::English, 12).unwrap()
             }),
+            wallets: Default::default(),
+        }
+    }
+    fn seed(&self, wallet_type: WalletType) -> [u8; 64] {
+        self.mnemonic.to_seed(&wallet_type.bip39_passphrase())
+    }
+    pub fn user_builder(&self, index: usize) -> TxBuilder {
+        TxBuilder::new(&self.seed(WalletType::User(index)))
+    }
+    pub fn validator_builder(&self) -> TxBuilder {
+        TxBuilder::new(&self.seed(WalletType::Validator))
+    }
+    pub fn user(&mut self, index: usize) -> &mut Wallet {
+        self.wallets.entry(WalletType::User(index)).or_default()
+    }
+    pub fn validator(&mut self) -> &mut Wallet {
+        self.wallets.entry(WalletType::Validator).or_default()
+    }
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<Option<Self>, WalletError> {
+        if let Ok(mut f) = File::open(&path) {
+            let mut bytes = Vec::new();
+            f.read_to_end(&mut bytes)?;
+            Ok(Some(bincode::deserialize(&bytes)?))
+        } else {
+            Ok(None)
+        }
+    }
+    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), WalletError> {
+        File::create(path)?.write_all(&bincode::serialize(self)?)?;
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Wallet {
+    pub tokens: Vec<TokenId>,
+    pub chain_sourced_txs: Vec<ChainSourcedTx>,
+    pub mpn_sourced_txs: HashMap<MpnAddress, Vec<MpnSourcedTx>>,
+}
+
+impl Default for Wallet {
+    fn default() -> Self {
+        Self {
             chain_sourced_txs: Vec::new(),
             mpn_sourced_txs: HashMap::new(),
             tokens: vec![TokenId::Ziesha],
         }
     }
-    pub fn delete_chain_tx(&mut self, nonce: u32) {
-        let tx_builder = TxBuilder::new(&self.seed());
+}
+
+impl Wallet {
+    pub fn delete_chain_tx(&mut self, nonce: u32, resigner: TxBuilder) {
         self.chain_sourced_txs.retain(|t| t.nonce() != nonce);
         for tx in self.chain_sourced_txs.iter_mut() {
             if tx.nonce() > nonce {
                 match tx {
                     ChainSourcedTx::TransactionAndDelta(tx_delta) => {
                         tx_delta.tx.nonce -= 1;
-                        tx_builder.sign_tx(&mut tx_delta.tx);
+                        resigner.sign_tx(&mut tx_delta.tx);
                     }
                     ChainSourcedTx::MpnDeposit(mpn_deposit) => {
                         mpn_deposit.payment.nonce -= 1;
-                        tx_builder.sign_deposit(&mut mpn_deposit.payment);
+                        resigner.sign_deposit(&mut mpn_deposit.payment);
                     }
                 }
             }
@@ -114,24 +175,5 @@ impl Wallet {
         } else {
             None
         }
-    }
-    pub fn seed(&self) -> [u8; 64] {
-        self.mnemonic.to_seed("")
-    }
-    pub fn mnemonic(&self) -> &Mnemonic {
-        &self.mnemonic
-    }
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<Option<Self>, WalletError> {
-        if let Ok(mut f) = File::open(&path) {
-            let mut bytes = Vec::new();
-            f.read_to_end(&mut bytes)?;
-            Ok(Some(bincode::deserialize(&bytes)?))
-        } else {
-            Ok(None)
-        }
-    }
-    pub fn save<P: AsRef<Path>>(&self, path: P) -> Result<(), WalletError> {
-        File::create(path)?.write_all(&bincode::serialize(self)?)?;
-        Ok(())
     }
 }

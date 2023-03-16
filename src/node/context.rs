@@ -20,7 +20,8 @@ pub struct NodeContext<K: KvStore, B: Blockchain<K>> {
     pub shutdown: bool,
     pub outgoing: Arc<OutgoingSender>,
     pub blockchain: B,
-    pub wallet: TxBuilder,
+    pub validator_wallet: TxBuilder,
+    pub user_wallet: TxBuilder,
     pub peer_manager: PeerManager,
     pub timestamp_offset: i32,
     pub validator_claim: Option<ValidatorClaim>,
@@ -60,7 +61,7 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
         Ok(self.address.map(|address| Peer {
             address,
             height,
-            pub_key: self.wallet.get_address(),
+            pub_key: self.validator_wallet.get_address(),
             outdated_states,
         }))
     }

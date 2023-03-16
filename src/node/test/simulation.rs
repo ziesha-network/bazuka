@@ -43,6 +43,7 @@ fn create_test_node(
         chain,
         opts.timestamp_offset,
         opts.wallet.clone(),
+        opts.wallet.clone(),
         SocialProfiles::default(),
         inc_recv,
         out_send,

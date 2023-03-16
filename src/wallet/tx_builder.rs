@@ -53,6 +53,11 @@ impl TxBuilder {
     pub fn get_zk_address(&self) -> <ZkSigner as ZkSignatureScheme>::Pub {
         self.zk_address.clone()
     }
+    pub fn get_mpn_address(&self) -> MpnAddress {
+        MpnAddress {
+            pub_key: self.get_zk_address(),
+        }
+    }
     pub fn sign(&self, bytes: &[u8]) -> <Signer as SignatureScheme>::Sig {
         Signer::sign(&self.private_key, bytes)
     }

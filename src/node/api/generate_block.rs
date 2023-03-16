@@ -10,7 +10,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
     _req: GenerateBlockRequest,
 ) -> Result<GenerateBlockResponse, NodeError> {
     let mut ctx = context.write().await;
-    let wallet = ctx.wallet.clone();
+    let wallet = ctx.validator_wallet.clone();
     // Invoke PoS block generation
     if let Some(draft) = ctx.try_produce(wallet)? {
         drop(ctx);

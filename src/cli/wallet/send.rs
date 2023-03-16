@@ -1,12 +1,11 @@
 use std::path::PathBuf;
 
 use crate::cli::BazukaConfig;
-use crate::wallet::Wallet;
+use crate::wallet::WalletCollection;
 use crate::{
     client::{BazukaClient, NodeError},
     config,
     core::{Amount, Money, TokenId, ZieshaAddress},
-    wallet::TxBuilder,
 };
 use tokio::try_join;
 
@@ -18,11 +17,11 @@ pub async fn send(
     fee: Amount,
     token: Option<usize>,
     conf: Option<BazukaConfig>,
-    wallet: Option<Wallet>,
+    wallet: Option<WalletCollection>,
     wallet_path: &PathBuf,
 ) {
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-    let tx_builder = TxBuilder::new(&wallet.seed());
+    let tx_builder = wallet.user_builder(0);
     let log4_token_tree_size = config::blockchain::get_blockchain_config()
         .mpn_config
         .log4_token_tree_size;
@@ -36,10 +35,10 @@ pub async fn send(
     let (req_loop, client) =
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
     let tkn = if let Some(token) = token {
-        if token >= wallet.get_tokens().len() {
+        if token >= wallet.user(0).get_tokens().len() {
             panic!("Wrong token selected!");
         } else {
-            wallet.get_tokens()[token]
+            wallet.user(0).get_tokens()[token]
         }
     } else {
         TokenId::Ziesha
@@ -58,7 +57,7 @@ pub async fn send(
                                 .await?
                                 .account
                                 .nonce;
-                            let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
+                            let new_nonce = wallet.user(0).new_r_nonce().unwrap_or(curr_nonce + 1);
                             let tx = tx_builder.create_transaction(
                                 memo.unwrap_or_default(),
                                 to,
@@ -72,7 +71,7 @@ pub async fn send(
                                 },
                                 new_nonce,
                             );
-                            wallet.add_rsend(tx.clone());
+                            wallet.user(0).add_rsend(tx.clone());
                             wallet.save(wallet_path).unwrap();
                             println!("{:#?}", client.transact(tx).await?);
                             Ok::<(), NodeError>(())
@@ -100,7 +99,7 @@ pub async fn send(
                             } else {
                                 panic!("Cannot find empty token slot in your MPN account!");
                             };
-                            let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
+                            let new_nonce = wallet.user(0).new_r_nonce().unwrap_or(curr_nonce + 1);
                             let pay = tx_builder.deposit_mpn(
                                 memo.unwrap_or_default(),
                                 mpn_contract_id,
@@ -116,7 +115,7 @@ pub async fn send(
                                     token_id: TokenId::Ziesha,
                                 },
                             );
-                            wallet.add_deposit(pay.clone());
+                            wallet.user(0).add_deposit(pay.clone());
                             wallet.save(wallet_path).unwrap();
                             println!("{:#?}", client.transact_contract_deposit(pay).await?);
                             Ok::<(), NodeError>(())
@@ -153,7 +152,7 @@ pub async fn send(
                             } else {
                                 panic!("Token not found in your account!");
                             };
-                            let new_nonce = wallet.new_z_nonce(&from).unwrap_or(acc.nonce);
+                            let new_nonce = wallet.user(0).new_z_nonce(&from).unwrap_or(acc.nonce);
                             let pay = tx_builder.withdraw_mpn(
                                 memo.unwrap_or_default(),
                                 mpn_contract_id,
@@ -170,7 +169,7 @@ pub async fn send(
                                 },
                                 to.to_string().parse().unwrap(), // TODO: WTH :D
                             );
-                            wallet.add_withdraw(pay.clone());
+                            wallet.user(0).add_withdraw(pay.clone());
                             wallet.save(wallet_path).unwrap();
                             println!("{:#?}", client.transact_contract_withdraw(pay).await?);
                             Ok::<(), NodeError>(())
@@ -214,7 +213,7 @@ pub async fn send(
                             } else {
                                 panic!("Token not found in your account!");
                             };
-                            let new_nonce = wallet.new_z_nonce(&from).unwrap_or(acc.nonce);
+                            let new_nonce = wallet.user(0).new_z_nonce(&from).unwrap_or(acc.nonce);
                             let tx = tx_builder.create_mpn_transaction(
                                 token_index,
                                 to,
@@ -230,7 +229,7 @@ pub async fn send(
                                 },
                                 new_nonce,
                             );
-                            wallet.add_zsend(tx.clone());
+                            wallet.user(0).add_zsend(tx.clone());
                             wallet.save(wallet_path).unwrap();
                             println!("{:#?}", client.zero_transact(tx).await?);
                             Ok::<(), NodeError>(())

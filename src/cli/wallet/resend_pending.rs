@@ -1,22 +1,22 @@
-use crate::cli::{get_conf, get_wallet, get_wallet_path, BazukaConfig};
+use crate::cli::{get_conf, get_wallet_collection, get_wallet_path, BazukaConfig};
 use crate::client::BazukaClient;
 use crate::client::NodeError;
 use crate::config::blockchain;
 use crate::core::MpnAddress;
 use crate::core::{Amount, MpnSourcedTx};
 use crate::core::{ChainSourcedTx, Money, TokenId};
-use crate::wallet::{TxBuilder, Wallet};
+use crate::wallet::WalletCollection;
 use tokio::try_join;
 
 #[cfg(feature = "client")]
 #[allow(dead_code)]
 async fn resend_all_wallet_txs(
     conf: BazukaConfig,
-    wallet: &mut Wallet,
+    wallet: &mut WalletCollection,
     fill_gaps: bool,
     shift: bool,
 ) -> Result<(), NodeError> {
-    let tx_builder = TxBuilder::new(&wallet.seed());
+    let tx_builder = wallet.user_builder(0);
     let (req_loop, client) =
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
     let mpn_log4_account_capacity = blockchain::get_blockchain_config()
@@ -40,9 +40,11 @@ async fn resend_all_wallet_txs(
                 .account
                 .nonce;
             if shift {
-                wallet.delete_chain_tx(curr_nonce + 1);
+                wallet
+                    .user(0)
+                    .delete_chain_tx(curr_nonce + 1, tx_builder.clone());
             }
-            for tx in wallet.chain_sourced_txs.iter() {
+            for tx in wallet.user(0).chain_sourced_txs.iter() {
                 if tx.nonce() >= curr_nonce {
                     match tx {
                         ChainSourcedTx::TransactionAndDelta(tx) => {
@@ -54,7 +56,7 @@ async fn resend_all_wallet_txs(
                     }
                 }
             }
-            for acc in wallet.mpn_sourced_txs.values() {
+            for acc in wallet.user(0).mpn_sourced_txs.values() {
                 for tx in acc.iter() {
                     if tx.nonce() >= curr_mpn_nonce {
                         if fill_gaps {
@@ -118,7 +120,7 @@ async fn resend_all_wallet_txs(
 }
 
 pub async fn resend_pending(fill_gaps: bool, shift: bool) -> () {
-    let wallet = get_wallet();
+    let wallet = get_wallet_collection();
     let wallet_path = get_wallet_path();
     let conf = get_conf();
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");

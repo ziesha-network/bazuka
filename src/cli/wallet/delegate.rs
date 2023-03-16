@@ -1,17 +1,16 @@
 use tokio::try_join;
 
-use crate::cli::{get_conf, get_wallet, get_wallet_path};
+use crate::cli::{get_conf, get_wallet_collection, get_wallet_path};
 use crate::client::{BazukaClient, NodeError};
 use crate::core::{Amount, Money, TokenId};
 use crate::crypto::ed25519::PublicKey;
-use crate::wallet::TxBuilder;
 
 pub async fn delegate(memo: Option<String>, amount: Amount, to: PublicKey, fee: Amount) -> () {
-    let wallet = get_wallet();
+    let wallet = get_wallet_collection();
     let wallet_path = get_wallet_path();
     let conf = get_conf();
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-    let tx_builder = TxBuilder::new(&wallet.seed());
+    let tx_builder = wallet.user_builder(0);
     let (req_loop, client) =
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
     try_join!(
@@ -22,7 +21,7 @@ pub async fn delegate(memo: Option<String>, amount: Amount, to: PublicKey, fee: 
                 .account
                 .nonce;
 
-            let new_nonce = wallet.new_r_nonce().unwrap_or(curr_nonce + 1);
+            let new_nonce = wallet.user(0).new_r_nonce().unwrap_or(curr_nonce + 1);
             let tx = tx_builder.delegate(
                 memo.unwrap_or_default(),
                 to,
@@ -34,7 +33,7 @@ pub async fn delegate(memo: Option<String>, amount: Amount, to: PublicKey, fee: 
                 },
                 new_nonce,
             );
-            wallet.add_rsend(tx.clone());
+            wallet.user(0).add_rsend(tx.clone());
             wallet.save(wallet_path).unwrap();
             println!("{:#?}", client.transact(tx).await?);
             Ok::<(), NodeError>(())

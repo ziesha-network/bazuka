@@ -8,11 +8,13 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
 ) -> Result<(), NodeError> {
     let mut ctx = context.write().await;
     let timestamp = ctx.network_timestamp();
-    let proof = ctx.blockchain.validator_status(timestamp, &ctx.wallet)?;
+    let proof = ctx
+        .blockchain
+        .validator_status(timestamp, &ctx.validator_wallet)?;
     if !proof.is_unproven() {
         if ctx.opts.automatic_block_generation {
             if let Some(work_pool) = &ctx.mpn_work_pool {
-                let wallet = ctx.wallet.clone();
+                let wallet = ctx.validator_wallet.clone();
                 let nonce = ctx.blockchain.get_account(wallet.get_address())?.nonce;
                 if let Some(tx_delta) = work_pool.ready(&wallet, nonce + 1) {
                     log::info!("All MPN-proofs ready!");
@@ -30,7 +32,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
             }
         }
         let node = ctx.address.ok_or(NodeError::ValidatorNotExposed)?;
-        let claim = ctx.wallet.claim_validator(timestamp, proof, node);
+        let claim = ctx.validator_wallet.claim_validator(timestamp, proof, node);
         if ctx.update_validator_claim(claim.clone())? {
             let mempool = ctx.mempool.clone();
 
@@ -82,25 +84,28 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
 
             let validator_reward = ctx
                 .blockchain
-                .min_validator_reward(ctx.wallet.get_address())?;
+                .min_validator_reward(ctx.validator_wallet.get_address())?;
 
-            let nonce = ctx.blockchain.get_account(ctx.wallet.get_address())?.nonce;
+            let nonce = ctx
+                .blockchain
+                .get_account(ctx.validator_wallet.get_address())?
+                .nonce;
             let mpn_nonce = ctx
                 .blockchain
                 .get_mpn_account(
                     MpnAddress {
-                        pub_key: ctx.wallet.get_zk_address(),
+                        pub_key: ctx.validator_wallet.get_zk_address(),
                     }
                     .account_index(ctx.blockchain.config().mpn_config.log4_tree_size),
                 )?
                 .nonce;
             deposits.insert(
                 0,
-                ctx.wallet.deposit_mpn(
+                ctx.validator_wallet.deposit_mpn(
                     "".into(),
                     ctx.blockchain.config().mpn_config.mpn_contract_id,
                     MpnAddress {
-                        pub_key: ctx.wallet.get_zk_address(),
+                        pub_key: ctx.validator_wallet.get_zk_address(),
                     },
                     0,
                     nonce + 2,
@@ -125,12 +130,12 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                 Amount(100_000_000_000),
                 Amount(300_000_000_000),
                 mpn_nonce,
-                ctx.wallet.clone(),
+                ctx.validator_wallet.clone(),
             )?);
         }
         if let Some(claim) = ctx.validator_claim.clone() {
             println!("You are the validator! Promoting...");
-            if claim.address == ctx.wallet.get_address() {
+            if claim.address == ctx.validator_wallet.get_address() {
                 drop(ctx);
                 promote_validator_claim(context, claim).await;
             }

@@ -12,7 +12,7 @@ use crate::zk;
 #[cfg(test)]
 use crate::wallet::TxBuilder;
 
-const CHAIN_START_TIMESTAMP: u32 = 1677770301 - 60 * 5;
+const CHAIN_START_TIMESTAMP: u32 = 1678976362;
 
 const MPN_LOG4_TREE_SIZE: u8 = 15;
 const MPN_LOG4_TOKENS_TREE_SIZE: u8 = 3;
@@ -156,12 +156,12 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     let create_staker = Transaction {
         memo: "Very first staker created!".into(),
         src: Some(
-            "ed02b39ed13c94e8899588363cf8be09fe6e0ecb9967631a2464d5bcca7dcd7af8"
+            "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
                 .parse()
                 .unwrap(),
         ),
         data: TransactionData::UpdateStaker {
-            vrf_pub_key: "vrfec707f8ab27ab5fe217eae8932c840393e2cfab3dfaf79d53a88e1ac4ae4c255"
+            vrf_pub_key: "vrf666384dd335e559a564d432b0623f6c2791e794ecd964845d47b1a350ade6866"
                 .parse()
                 .unwrap(),
             commision: 12, // 12/255 ~= 5%
@@ -174,7 +174,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         memo: "Very first delegation!".into(),
         src: None,
         data: TransactionData::Delegate {
-            to: "ed02b39ed13c94e8899588363cf8be09fe6e0ecb9967631a2464d5bcca7dcd7af8"
+            to: "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
                 .parse()
                 .unwrap(),
             amount: Amount(1000000000000),
@@ -191,7 +191,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             number: 0,
             block_root: Default::default(),
             proof_of_stake: ProofOfStake {
-                timestamp: 0,
+                timestamp: CHAIN_START_TIMESTAMP,
                 validator: Default::default(),
                 proof: ValidatorProof::Unproven,
             },
@@ -264,6 +264,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.check_validator = false;
 
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;
+    conf.genesis.block.header.proof_of_stake.timestamp = 0;
     let abc = TxBuilder::new(&Vec::from("ABC"));
     let validator_1 = TxBuilder::new(&Vec::from("VALIDATOR"));
     let validator_2 = TxBuilder::new(&Vec::from("VALIDATOR2"));

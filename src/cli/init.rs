@@ -1,5 +1,5 @@
 use super::{BazukaConfig, DEFAULT_PORT};
-use crate::{client::PeerAddress, wallet::Wallet};
+use crate::{client::PeerAddress, wallet::WalletCollection};
 use bip39::Mnemonic;
 use colored::Colorize;
 use std::{
@@ -16,11 +16,11 @@ pub async fn init(
     db: Option<PathBuf>,
     conf: Option<BazukaConfig>,
     conf_path: &PathBuf,
-    wallet: Option<Wallet>,
+    wallet: Option<WalletCollection>,
     wallet_path: &PathBuf,
 ) -> () {
     if wallet.is_none() {
-        let w = Wallet::create(&mut rand_mnemonic::thread_rng(), mnemonic);
+        let w = WalletCollection::create(&mut rand_mnemonic::thread_rng(), mnemonic);
         w.save(wallet_path).unwrap();
         println!("Wallet generated!");
         println!("{} {}", "Mnemonic phrase:".bright_yellow(), w.mnemonic());

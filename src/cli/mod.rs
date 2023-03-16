@@ -18,7 +18,7 @@ use {
     crate::config,
     crate::core::{Address, Amount, MpnAddress, TokenId, ZieshaAddress},
     crate::mpn::MpnWorker,
-    crate::wallet::{TxBuilder, Wallet},
+    crate::wallet::WalletCollection,
     colored::Colorize,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
@@ -232,7 +232,7 @@ enum CliOptions {
 #[cfg(feature = "node")]
 async fn run_node(
     bazuka_config: BazukaConfig,
-    wallet: Wallet,
+    wallet: WalletCollection,
     social_profiles: SocialProfiles,
     client_only: bool,
 ) -> Result<(), NodeError> {
@@ -241,8 +241,6 @@ async fn run_node(
     } else {
         Some(bazuka_config.external)
     };
-
-    let wallet = TxBuilder::new(&wallet.seed());
 
     println!(
         "{} v{}",
@@ -255,17 +253,6 @@ async fn run_node(
         println!("{} {}", "Internet endpoint:".bright_yellow(), addr);
     }
     println!("{} {}", "Network:".bright_yellow(), bazuka_config.network);
-
-    println!(
-        "{} {}",
-        "Wallet address:".bright_yellow(),
-        wallet.get_address()
-    );
-    println!(
-        "{} {}",
-        "Wallet zk address:".bright_yellow(),
-        wallet.get_zk_address()
-    );
 
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let (out_send, mut out_recv) = mpsc::unbounded_channel::<NodeRequest>();
@@ -290,7 +277,8 @@ async fn run_node(
         )
         .unwrap(),
         0,
-        wallet,
+        wallet.validator_builder(),
+        wallet.user_builder(0),
         social_profiles,
         inc_recv,
         out_send,
@@ -372,9 +360,9 @@ async fn run_node(
     Ok(())
 }
 
-fn get_wallet() -> Option<Wallet> {
+fn get_wallet_collection() -> Option<WalletCollection> {
     let wallet_path = get_wallet_path();
-    let wallet = Wallet::open(wallet_path.clone()).unwrap();
+    let wallet = WalletCollection::open(wallet_path.clone()).unwrap();
     wallet
 }
 
@@ -402,7 +390,7 @@ pub async fn initialize_cli() {
     let conf_path = get_conf_path();
 
     let conf = get_conf();
-    let wallet = get_wallet();
+    let wallet = get_wallet_collection();
     let wallet_path = get_wallet_path();
 
     match opts {
@@ -432,7 +420,7 @@ pub async fn initialize_cli() {
                 .await;
             }
             NodeCliOptions::Status {} => {
-                crate::cli::node::status(get_conf(), get_wallet()).await;
+                crate::cli::node::status(get_conf(), get_wallet_collection()).await;
             }
             NodeCliOptions::AddMpnWorker { mpn_address } => {
                 crate::cli::node::add_mpn_worker(&conf_path, get_conf(), mpn_address).await;
@@ -491,7 +479,7 @@ pub async fn initialize_cli() {
                     mintable,
                     fee,
                     get_conf(),
-                    get_wallet(),
+                    get_wallet_collection(),
                     &wallet_path,
                 )
                 .await;
@@ -530,7 +518,7 @@ pub async fn initialize_cli() {
                     commision,
                     fee,
                     get_conf(),
-                    get_wallet(),
+                    get_wallet_collection(),
                     &get_wallet_path(),
                 )
                 .await;
@@ -550,7 +538,7 @@ pub async fn initialize_cli() {
                 crate::cli::wallet::resend_pending(fill_gaps, shift).await;
             }
             WalletOptions::Info {} => {
-                crate::cli::wallet::info(get_conf(), get_wallet()).await;
+                crate::cli::wallet::info(get_conf(), get_wallet_collection()).await;
             }
         },
     }

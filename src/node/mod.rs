@@ -498,7 +498,8 @@ pub async fn node_create<K: KvStore, B: Blockchain<K>>(
     bootstrap: Vec<PeerAddress>,
     blockchain: B,
     timestamp_offset: i32,
-    wallet: TxBuilder,
+    validator_wallet: TxBuilder,
+    user_wallet: TxBuilder,
     social_profiles: SocialProfiles,
     mut incoming: mpsc::UnboundedReceiver<NodeRequest>,
     outgoing: mpsc::UnboundedSender<NodeRequest>,
@@ -516,7 +517,7 @@ pub async fn node_create<K: KvStore, B: Blockchain<K>>(
         outgoing: Arc::new(OutgoingSender {
             network: network.into(),
             chan: outgoing,
-            priv_key: wallet.get_priv_key(),
+            priv_key: validator_wallet.get_priv_key(),
         }),
         mpn_workers: mpn_workers
             .into_iter()
@@ -525,7 +526,8 @@ pub async fn node_create<K: KvStore, B: Blockchain<K>>(
         mpn_work_pool: None,
         mempool: Mempool::new(blockchain.config().mpn_config.log4_tree_size),
         blockchain,
-        wallet,
+        validator_wallet,
+        user_wallet,
         peer_manager: PeerManager::new(
             address,
             bootstrap,
