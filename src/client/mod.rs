@@ -375,15 +375,15 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn get_delegatees(
+    pub async fn get_delegations(
         &self,
         address: Address,
         top: usize,
-    ) -> Result<GetDelegateesResponse, NodeError> {
+    ) -> Result<GetDelegationsResponse, NodeError> {
         self.sender
-            .json_get::<GetDelegateesRequest, GetDelegateesResponse>(
-                format!("http://{}/delegatees", self.peer),
-                GetDelegateesRequest {
+            .json_get::<GetDelegationsRequest, GetDelegationsResponse>(
+                format!("http://{}/delegations", self.peer),
+                GetDelegationsRequest {
                     address: address.to_string(),
                     top,
                 },

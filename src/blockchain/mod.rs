@@ -81,10 +81,13 @@ pub trait Blockchain<K: KvStore> {
     fn get_delegatees(
         &self,
         delegator: Address,
-        top: usize,
+        top: Option<usize>,
     ) -> Result<Vec<(Address, Amount)>, BlockchainError>;
-    fn get_delegators(&self, delegatee: Address)
-        -> Result<Vec<(Address, Amount)>, BlockchainError>;
+    fn get_delegators(
+        &self,
+        delegatee: Address,
+        top: Option<usize>,
+    ) -> Result<Vec<(Address, Amount)>, BlockchainError>;
     fn cleanup_chain_mempool(
         &self,
         txs: &[ChainSourcedTx],
@@ -702,6 +705,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     fn get_delegators(
         &self,
         delegatee: Address,
+        top: Option<usize>,
     ) -> Result<Vec<(Address, Amount)>, BlockchainError> {
         let mut delegators = Vec::new();
         for (k, _) in self
@@ -722,6 +726,11 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
                 .parse()
                 .map_err(|_| BlockchainError::Inconsistency)?;
             delegators.push((pk, stake));
+            if let Some(top) = top {
+                if delegators.len() >= top {
+                    break;
+                }
+            }
         }
         Ok(delegators)
     }
@@ -729,7 +738,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     fn get_delegatees(
         &self,
         delegator: Address,
-        top: usize,
+        top: Option<usize>,
     ) -> Result<Vec<(Address, Amount)>, BlockchainError> {
         let mut delegatees = Vec::new();
         for (k, _) in self
@@ -750,8 +759,10 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
                 .parse()
                 .map_err(|_| BlockchainError::Inconsistency)?;
             delegatees.push((pk, stake));
-            if delegatees.len() >= top {
-                break;
+            if let Some(top) = top {
+                if delegatees.len() >= top {
+                    break;
+                }
             }
         }
         Ok(delegatees)

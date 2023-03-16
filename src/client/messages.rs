@@ -49,13 +49,14 @@ pub struct GetAccountResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetDelegateesRequest {
+pub struct GetDelegationsRequest {
     pub address: String,
     pub top: usize,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetDelegateesResponse {
+pub struct GetDelegationsResponse {
+    pub delegators: HashMap<String, Amount>,
     pub delegatees: HashMap<String, Amount>,
 }
 

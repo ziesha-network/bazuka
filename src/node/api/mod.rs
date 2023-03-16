@@ -52,8 +52,8 @@ mod get_mpn_work;
 pub use get_mpn_work::*;
 mod post_mpn_solution;
 pub use post_mpn_solution::*;
-mod get_delegatees;
-pub use get_delegatees::*;
+mod get_delegations;
+pub use get_delegations::*;
 mod post_mpn_worker;
 pub use post_mpn_worker::*;
 

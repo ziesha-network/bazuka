@@ -74,6 +74,40 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<Wallet>) -> () {
                 println!("{} {}", "Error:".bright_red(), "Node not available!");
             }
 
+            let delegations = client
+                .get_delegations(tx_builder.get_address(), 100)
+                .await?;
+
+            if !delegations.delegators.is_empty() {
+                println!();
+                println!("{}", "Delegators\n---------".bright_green());
+                for (addr, amount) in delegations.delegators.iter() {
+                    println!(
+                        "{} -> You ({}{})",
+                        addr,
+                        amount.display_by_decimals(
+                            tokens.get(&TokenId::Ziesha).unwrap().token.decimals
+                        ),
+                        crate::config::SYMBOL
+                    );
+                }
+            }
+
+            if !delegations.delegatees.is_empty() {
+                println!();
+                println!("{}", "Delegatees\n---------".bright_green());
+                for (addr, amount) in delegations.delegatees.iter() {
+                    println!(
+                        "You -> {} ({}{})",
+                        addr,
+                        amount.display_by_decimals(
+                            tokens.get(&TokenId::Ziesha).unwrap().token.decimals
+                        ),
+                        crate::config::SYMBOL
+                    );
+                }
+            }
+
             println!();
 
             let mpn_address = MpnAddress {
