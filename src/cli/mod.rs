@@ -42,7 +42,6 @@ const BAZUKA_NOT_INITILIZED: &str = "Bazuka is not initialized";
 #[cfg(feature = "client")]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BazukaConfigMpnWorker {
-    token: String,
     mpn_address: String,
 }
 
@@ -54,7 +53,6 @@ impl TryInto<MpnWorker> for BazukaConfigMpnWorker {
     type Error = InvalidMpnWorker;
     fn try_into(self) -> Result<MpnWorker, InvalidMpnWorker> {
         Ok(MpnWorker {
-            token: self.token,
             mpn_address: self.mpn_address.parse().map_err(|_| InvalidMpnWorker)?,
         })
     }

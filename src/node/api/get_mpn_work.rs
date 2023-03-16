@@ -14,7 +14,7 @@ pub async fn get_mpn_work<K: KvStore, B: Blockchain<K>>(
         works: ctx
             .mpn_work_pool
             .as_ref()
-            .map(|p| p.get_works(req.token))
+            .map(|p| p.get_works(req.mpn_address))
             .unwrap_or_default(),
     })
 }

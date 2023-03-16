@@ -467,11 +467,14 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn get_mpn_works(&self, token: String) -> Result<GetMpnWorkResponse, NodeError> {
+    pub async fn get_mpn_works(
+        &self,
+        mpn_address: MpnAddress,
+    ) -> Result<GetMpnWorkResponse, NodeError> {
         self.sender
             .bincode_get::<GetMpnWorkRequest, GetMpnWorkResponse>(
                 format!("http://{}/bincode/mpn/work", self.peer),
-                GetMpnWorkRequest { token },
+                GetMpnWorkRequest { mpn_address },
                 Limit::default(),
             )
             .await
@@ -479,13 +482,12 @@ impl BazukaClient {
 
     pub async fn post_mpn_worker(
         &self,
-        token: String,
         mpn_address: MpnAddress,
     ) -> Result<PostMpnWorkerResponse, NodeError> {
         self.sender
             .bincode_post::<PostMpnWorkerRequest, PostMpnWorkerResponse>(
                 format!("http://{}/bincode/mpn/worker", self.peer),
-                PostMpnWorkerRequest { token, mpn_address },
+                PostMpnWorkerRequest { mpn_address },
                 Limit::default(),
             )
             .await

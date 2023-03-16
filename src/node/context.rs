@@ -3,7 +3,7 @@ use super::{
 };
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, Mempool};
 use crate::client::messages::{SocialProfiles, ValidatorClaim};
-use crate::core::{ChainSourcedTx, Header, MpnSourcedTx, TransactionAndDelta};
+use crate::core::{ChainSourcedTx, Header, MpnAddress, MpnSourcedTx, TransactionAndDelta};
 use crate::mpn::{MpnWorkPool, MpnWorker};
 use crate::node::KvStore;
 use crate::utils;
@@ -25,7 +25,7 @@ pub struct NodeContext<K: KvStore, B: Blockchain<K>> {
     pub timestamp_offset: i32,
     pub validator_claim: Option<ValidatorClaim>,
 
-    pub mpn_workers: HashMap<String, MpnWorker>,
+    pub mpn_workers: HashMap<MpnAddress, MpnWorker>,
     pub mpn_work_pool: Option<MpnWorkPool>,
 
     pub mempool: Mempool,

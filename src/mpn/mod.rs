@@ -58,14 +58,14 @@ pub struct MpnWorkPool {
 }
 
 impl MpnWorkPool {
-    pub fn get_works(&self, token: String) -> HashMap<usize, MpnWork> {
+    pub fn get_works(&self, mpn_address: MpnAddress) -> HashMap<usize, MpnWork> {
         let mut remaining = self.works.clone();
         for solved in self.solutions.keys() {
             remaining.remove(solved);
         }
         remaining
             .into_iter()
-            .filter(|(_, v)| v.worker.token == token)
+            .filter(|(_, v)| v.worker.mpn_address == mpn_address)
             .collect()
     }
     pub fn prove(&mut self, id: usize, proof: &Groth16Proof) -> bool {
@@ -167,7 +167,6 @@ pub struct ZkPublicInputs {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MpnWorker {
-    pub token: String,
     pub mpn_address: MpnAddress,
 }
 
@@ -205,7 +204,7 @@ impl MpnWork {
 pub fn prepare_works<K: KvStore>(
     config: &MpnConfig,
     db: &K,
-    workers: &HashMap<String, MpnWorker>,
+    workers: &HashMap<MpnAddress, MpnWorker>,
     deposits: &[MpnDeposit],
     withdraws: &[MpnWithdraw],
     updates: &[MpnTransaction],

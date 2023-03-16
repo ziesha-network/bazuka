@@ -520,7 +520,7 @@ pub async fn node_create<K: KvStore, B: Blockchain<K>>(
         }),
         mpn_workers: mpn_workers
             .into_iter()
-            .map(|w| (w.token.clone(), w))
+            .map(|w| (w.mpn_address.clone(), w))
             .collect(),
         mpn_work_pool: None,
         mempool: Mempool::new(blockchain.config().mpn_config.log4_tree_size),

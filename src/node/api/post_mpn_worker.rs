@@ -11,11 +11,10 @@ pub async fn post_mpn_worker<K: KvStore, B: Blockchain<K>>(
     req: PostMpnWorkerRequest,
 ) -> Result<PostMpnWorkerResponse, NodeError> {
     let mut context = context.write().await;
-    if context.mpn_workers.contains_key(&req.token) {
+    if context.mpn_workers.contains_key(&req.mpn_address) {
         context.mpn_workers.insert(
-            req.token.clone(),
+            req.mpn_address.clone(),
             MpnWorker {
-                token: req.token,
                 mpn_address: req.mpn_address,
             },
         );
