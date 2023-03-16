@@ -8,9 +8,7 @@ pub fn update_staker<K: KvStore>(
     vrf_pub_key: <Vrf as VerifiableRandomFunction>::Pub,
     commision: u8,
 ) -> Result<(), BlockchainError> {
-    if commision > chain.config.max_validator_commision {
-        return Err(BlockchainError::ExcessiveValidatorCommision);
-    }
+    let commision = std::cmp::min(commision, chain.config.max_validator_commision);
 
     chain.database.update(&[WriteOp::Put(
         keys::staker(&tx_src),
