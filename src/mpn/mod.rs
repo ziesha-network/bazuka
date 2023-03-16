@@ -291,40 +291,38 @@ pub fn prepare_works<K: KvStore>(
             .entry(workers[worker_id].mpn_address.clone())
             .or_default() += update_reward;
         block_reward -= update_reward;
+        let mut update_txs = Vec::new();
         for (addr, amount) in rewards.iter() {
-            updates.insert(
+            update_txs.push(validator_tx_builder.create_mpn_transaction(
                 0,
-                validator_tx_builder.create_mpn_transaction(
-                    0,
-                    addr.clone(),
-                    0,
-                    Money {
-                        token_id: TokenId::Ziesha,
-                        amount: *amount,
-                    },
-                    0,
-                    Money::ziesha(0),
-                    validator_tx_builder_mpn_nonce,
-                ),
-            );
+                addr.clone(),
+                0,
+                Money {
+                    token_id: TokenId::Ziesha,
+                    amount: *amount,
+                },
+                0,
+                Money::ziesha(0),
+                validator_tx_builder_mpn_nonce,
+            ));
             validator_tx_builder_mpn_nonce += 1;
         }
         if i == config.mpn_num_update_batches - 1 {
-            updates.insert(
+            update_txs.push(validator_tx_builder.create_mpn_transaction(
                 0,
-                validator_tx_builder.create_mpn_transaction(
-                    0,
-                    user_tx_builder.get_mpn_address(),
-                    0,
-                    Money {
-                        token_id: TokenId::Ziesha,
-                        amount: block_reward,
-                    },
-                    0,
-                    Money::ziesha(0),
-                    validator_tx_builder_mpn_nonce,
-                ),
-            );
+                user_tx_builder.get_mpn_address(),
+                0,
+                Money {
+                    token_id: TokenId::Ziesha,
+                    amount: block_reward,
+                },
+                0,
+                Money::ziesha(0),
+                validator_tx_builder_mpn_nonce,
+            ));
+        }
+        for tx in update_txs.into_iter().rev() {
+            updates.insert(0, tx);
         }
         let (new_root, public_inputs, transitions) = update::update(
             config.mpn_contract_id,

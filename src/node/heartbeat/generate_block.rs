@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::{Amount, ChainSourcedTx, Money, MpnAddress, MpnSourcedTx};
+use crate::core::{Amount, ChainSourcedTx, MpnAddress, MpnSourcedTx};
 use crate::mpn;
 use std::collections::HashSet;
 
