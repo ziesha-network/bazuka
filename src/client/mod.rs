@@ -493,16 +493,12 @@ impl BazukaClient {
 
     pub async fn post_mpn_proof(
         &self,
-        reward_address: MpnAddress,
         proofs: HashMap<usize, Groth16Proof>,
     ) -> Result<PostMpnSolutionResponse, NodeError> {
         self.sender
             .bincode_post::<PostMpnSolutionRequest, PostMpnSolutionResponse>(
                 format!("http://{}/bincode/mpn/solution", self.peer),
-                PostMpnSolutionRequest {
-                    proofs,
-                    reward_address,
-                },
+                PostMpnSolutionRequest { proofs },
                 Limit::default(),
             )
             .await
