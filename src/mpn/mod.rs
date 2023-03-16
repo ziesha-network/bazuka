@@ -205,14 +205,17 @@ pub fn prepare_works<K: KvStore>(
     config: &MpnConfig,
     db: &K,
     workers: &HashMap<MpnAddress, MpnWorker>,
-    deposits: &[MpnDeposit],
-    withdraws: &[MpnWithdraw],
-    updates: &[MpnTransaction],
+    mut deposits: Vec<MpnDeposit>,
+    withdraws: Vec<MpnWithdraw>,
+    mut updates: Vec<MpnTransaction>,
+    mut block_reward: Amount,
     deposit_reward: Amount,
     withdraw_reward: Amount,
     update_reward: Amount,
-    tx_builder_mpn_nonce: u64,
-    tx_builder: TxBuilder,
+    validator_tx_builder_nonce: u32,
+    mut validator_tx_builder_mpn_nonce: u64,
+    validator_tx_builder: TxBuilder,
+    user_tx_builder: TxBuilder,
 ) -> Result<MpnWorkPool, MpnError> {
     let mut mirror = db.mirror();
     let mut works = Vec::new();
@@ -223,6 +226,22 @@ pub fn prepare_works<K: KvStore>(
     let mut worker_id = 0;
     let mut rewards = HashMap::<MpnAddress, Amount>::new();
 
+    deposits.insert(
+        0,
+        validator_tx_builder.deposit_mpn(
+            "".into(),
+            config.mpn_contract_id,
+            validator_tx_builder.get_mpn_address(),
+            0,
+            validator_tx_builder_nonce + 2,
+            Money {
+                token_id: TokenId::Ziesha,
+                amount: block_reward,
+            },
+            Money::ziesha(0),
+        ),
+    );
+
     for _ in 0..config.mpn_num_deposit_batches {
         let (new_root, public_inputs, transitions) = deposit::deposit(
             config.mpn_contract_id,
@@ -230,7 +249,7 @@ pub fn prepare_works<K: KvStore>(
             config.log4_token_tree_size,
             config.log4_deposit_batch_size,
             &mut mirror,
-            deposits,
+            &deposits,
         )?;
         works.push(MpnWork {
             config: config.clone(),
@@ -242,6 +261,7 @@ pub fn prepare_works<K: KvStore>(
         *rewards
             .entry(workers[worker_id].mpn_address.clone())
             .or_default() += deposit_reward;
+        block_reward -= deposit_reward;
         worker_id = (worker_id + 1) % workers.len();
     }
     for _ in 0..config.mpn_num_withdraw_batches {
@@ -251,7 +271,7 @@ pub fn prepare_works<K: KvStore>(
             config.log4_token_tree_size,
             config.log4_withdraw_batch_size,
             &mut mirror,
-            withdraws,
+            &withdraws,
         )?;
         works.push(MpnWork {
             config: config.clone(),
@@ -263,17 +283,18 @@ pub fn prepare_works<K: KvStore>(
         *rewards
             .entry(workers[worker_id].mpn_address.clone())
             .or_default() += withdraw_reward;
+        block_reward -= withdraw_reward;
         worker_id = (worker_id + 1) % workers.len();
     }
-    let mut update_txs = updates.to_vec();
     for i in 0..config.mpn_num_update_batches {
         *rewards
             .entry(workers[worker_id].mpn_address.clone())
             .or_default() += update_reward;
+        block_reward -= update_reward;
         for (addr, amount) in rewards.iter() {
-            update_txs.insert(
+            updates.insert(
                 0,
-                tx_builder.create_mpn_transaction(
+                validator_tx_builder.create_mpn_transaction(
                     0,
                     addr.clone(),
                     0,
@@ -283,7 +304,25 @@ pub fn prepare_works<K: KvStore>(
                     },
                     0,
                     Money::ziesha(0),
-                    tx_builder_mpn_nonce + i as u64,
+                    validator_tx_builder_mpn_nonce,
+                ),
+            );
+            validator_tx_builder_mpn_nonce += 1;
+        }
+        if i == config.mpn_num_update_batches - 1 {
+            updates.insert(
+                0,
+                validator_tx_builder.create_mpn_transaction(
+                    0,
+                    user_tx_builder.get_mpn_address(),
+                    0,
+                    Money {
+                        token_id: TokenId::Ziesha,
+                        amount: block_reward,
+                    },
+                    0,
+                    Money::ziesha(0),
+                    validator_tx_builder_mpn_nonce,
                 ),
             );
         }
@@ -294,7 +333,7 @@ pub fn prepare_works<K: KvStore>(
             config.log4_update_batch_size,
             TokenId::Ziesha,
             &mut mirror,
-            &update_txs,
+            &updates,
         )?;
         rewards.clear();
         works.push(MpnWork {
