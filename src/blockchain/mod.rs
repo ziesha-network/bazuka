@@ -100,6 +100,7 @@ pub trait Blockchain<K: KvStore> {
         timestamp: u32,
         wallet: &TxBuilder,
     ) -> Result<ValidatorProof, BlockchainError>;
+    fn min_validator_reward(&self, validator: Address) -> Result<Amount, BlockchainError>;
 
     fn currency_in_circulation(&self) -> Result<Amount, BlockchainError>;
 
@@ -766,6 +767,11 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
 
     fn database(&self) -> &K {
         &self.database
+    }
+    fn min_validator_reward(&self, validator: Address) -> Result<Amount, BlockchainError> {
+        let (_, result) =
+            self.isolated(|chain| Ok(chain.pay_validator_and_delegators(validator, Amount(0))?))?;
+        Ok(result)
     }
 }
 

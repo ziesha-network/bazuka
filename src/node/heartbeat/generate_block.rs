@@ -1,6 +1,5 @@
 use super::*;
-use crate::blockchain::BlockchainError;
-use crate::core::{Amount, ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId};
+use crate::core::{ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId};
 use crate::mpn;
 use std::collections::HashSet;
 
@@ -80,13 +79,10 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                 }
             }
 
-            let validator = ctx
+            let validator_reward = ctx
                 .blockchain
-                .get_staker(ctx.wallet.get_address())?
-                .ok_or(BlockchainError::ValidatorNotRegistered)?;
-            let validator_reward = Amount(
-                u64::from(ctx.blockchain.next_reward()?) / 255u64 * validator.commision as u64,
-            );
+                .min_validator_reward(ctx.wallet.get_address())?;
+
             let nonce = ctx.blockchain.get_account(ctx.wallet.get_address())?.nonce;
             deposits.insert(
                 0,
