@@ -283,7 +283,7 @@ pub fn prepare_works<K: KvStore>(
                     },
                     0,
                     Money::ziesha(0),
-                    tx_builder_mpn_nonce + 1 + i as u64,
+                    tx_builder_mpn_nonce + i as u64,
                 ),
             );
         }
