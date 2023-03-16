@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::{ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId};
+use crate::core::{Amount, ChainSourcedTx, Money, MpnAddress, MpnSourcedTx, TokenId};
 use crate::mpn;
 use std::collections::HashSet;
 
@@ -84,6 +84,15 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                 .min_validator_reward(ctx.wallet.get_address())?;
 
             let nonce = ctx.blockchain.get_account(ctx.wallet.get_address())?.nonce;
+            let mpn_nonce = ctx
+                .blockchain
+                .get_mpn_account(
+                    MpnAddress {
+                        pub_key: ctx.wallet.get_zk_address(),
+                    }
+                    .account_index(ctx.blockchain.config().mpn_config.log4_tree_size),
+                )?
+                .nonce;
             deposits.insert(
                 0,
                 ctx.wallet.deposit_mpn(
@@ -104,7 +113,6 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                     },
                 ),
             );
-
             ctx.mpn_work_pool = Some(mpn::prepare_works(
                 &ctx.blockchain.config().mpn_config,
                 ctx.blockchain.database(),
@@ -112,6 +120,11 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                 &deposits,
                 &withdraws,
                 &updates,
+                Amount(100_000_000_000), // TODO: Remove Hardcoded rewards
+                Amount(100_000_000_000),
+                Amount(300_000_000_000),
+                mpn_nonce,
+                ctx.wallet.clone(),
             )?);
         }
         if let Some(claim) = ctx.validator_claim.clone() {
