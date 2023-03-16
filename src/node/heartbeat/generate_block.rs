@@ -21,6 +21,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                         ChainSourcedTx::TransactionAndDelta(tx_delta),
                     )?;
                     if let Some(draft) = ctx.try_produce(wallet)? {
+                        ctx.mpn_work_pool = None;
                         drop(ctx);
                         promote_block(context, draft).await;
                         return Ok(());
