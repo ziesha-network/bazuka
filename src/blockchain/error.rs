@@ -110,8 +110,6 @@ pub enum BlockchainError {
     DelegateStillActive,
     #[error("only a single update is allowed per contract in a block")]
     SingleUpdateAllowedPerContract,
-    #[error("validator's commision is very high")]
-    ExcessiveValidatorCommision,
     #[error("validator is not registered")]
     ValidatorNotRegistered,
 }
