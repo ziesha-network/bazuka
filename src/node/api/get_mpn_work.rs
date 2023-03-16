@@ -10,11 +10,11 @@ pub async fn get_mpn_work<K: KvStore, B: Blockchain<K>>(
     req: GetMpnWorkRequest,
 ) -> Result<GetMpnWorkResponse, NodeError> {
     let ctx = context.read().await;
-    Ok(GetMpnWorkResponse {
-        works: ctx
-            .mpn_work_pool
-            .as_ref()
-            .map(|p| p.get_works(req.mpn_address))
-            .unwrap_or_default(),
-    })
+    let works = ctx
+        .mpn_work_pool
+        .as_ref()
+        .map(|p| p.get_works(req.mpn_address.clone()))
+        .unwrap_or_default();
+    println!("Sending {} works to {}", works.len(), req.mpn_address);
+    Ok(GetMpnWorkResponse { works })
 }
