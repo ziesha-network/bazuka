@@ -16,8 +16,8 @@ pub async fn register_validator(
     wallet_path: &PathBuf,
 ) -> () {
     // TODO: Dirty code!
-    if (0.0..0.1).contains(&commision) {
-        panic!("Commision out of range!");
+    if !(0.0..0.1).contains(&commision) {
+        panic!("Commision out of range! Commision should be a float number between 0.0 to 0.1!");
     }
 
     let commision_u8 = (commision * (u8::MAX as f32)) as u8;
