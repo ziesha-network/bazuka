@@ -260,12 +260,21 @@ impl<K: KvStore> KvStoreChain<K> {
             .ok_or(BlockchainError::Inconsistency)??)
     }
 
+    fn pay_validator_and_delegators(
+        &mut self,
+        validator: Address,
+        fee_sum: Amount,
+    ) -> Result<Amount, BlockchainError> {
+        ops::pay_validator_and_delegators(self, validator, fee_sum)
+    }
+
     fn select_transactions(
         &self,
+        validator: Address,
         txs: &[TransactionAndDelta],
         check: bool,
     ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
-        ops::select_transactions(self, txs, check)
+        ops::select_transactions(self, validator, txs, check)
     }
 
     fn apply_block(&mut self, block: &Block) -> Result<(), BlockchainError> {

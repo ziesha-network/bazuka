@@ -22,7 +22,7 @@ pub fn draft_block<K: KvStore>(
 
     let last_header = chain.get_header(height - 1)?;
 
-    let tx_and_deltas = chain.select_transactions(mempool, check)?;
+    let tx_and_deltas = chain.select_transactions(wallet.get_address(), mempool, check)?;
 
     let mut txs = Vec::new();
 

@@ -17,3 +17,5 @@ mod select_transactions;
 pub use select_transactions::*;
 mod rollback;
 pub use rollback::*;
+mod pay_validator_and_delegators;
+pub use pay_validator_and_delegators::*;

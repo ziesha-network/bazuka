@@ -2,6 +2,7 @@ use super::*;
 
 pub fn select_transactions<K: KvStore>(
     chain: &KvStoreChain<K>,
+    validator: Address,
     txs: &[TransactionAndDelta],
     check: bool,
 ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
@@ -28,6 +29,9 @@ pub fn select_transactions<K: KvStore>(
         return Ok(sorted);
     }
     let (_, result) = chain.isolated(|chain| {
+        // Safe to consider a 0 fee-sum
+        chain.pay_validator_and_delegators(validator, Amount(0))?;
+
         let mut result = Vec::new();
         let mut block_sz = 0usize;
         let mut delta_cnt = 0isize;

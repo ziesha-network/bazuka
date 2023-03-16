@@ -24,10 +24,6 @@ pub fn apply_block<K: KvStore>(
         }
 
         if !is_genesis {
-            let validator = chain
-                .get_staker(block.header.proof_of_stake.validator.clone())?
-                .ok_or(BlockchainError::ValidatorNotRegistered)?;
-
             if chain.config.check_validator
                 && !chain.is_validator(
                     block.header.proof_of_stake.timestamp,
@@ -37,7 +33,6 @@ pub fn apply_block<K: KvStore>(
             {
                 return Err(BlockchainError::UnelectedValidator);
             }
-
             // WARN: Sum will be invalid if fees are not in Ziesha
             let fee_sum = Amount(
                 block
@@ -46,57 +41,10 @@ pub fn apply_block<K: KvStore>(
                     .map(|t| -> u64 { t.fee.amount.into() })
                     .sum(),
             );
-            let treasury_nonce = chain.get_account(Default::default())?.nonce;
-
-            let next_reward = chain.next_reward()? + fee_sum;
-            let stakers_reward = u64::from(next_reward) as f64
-                * ((u8::MAX - validator.commision) as f64 / u8::MAX as f64); // WARN: Hardcoded!
-
-            let delegators = chain.get_delegators(block.header.proof_of_stake.validator.clone())?;
-            let total_f64 = delegators
-                .iter()
-                .map(|(_, a)| Into::<u64>::into(*a))
-                .sum::<u64>() as f64;
-            let mut payments = delegators
-                .into_iter()
-                .map(|(addr, stake)| {
-                    (
-                        addr,
-                        Amount(((u64::from(stake) as f64 / total_f64) * stakers_reward) as u64),
-                    )
-                })
-                .collect::<Vec<_>>();
-
-            let validator_reward = next_reward
-                - payments
-                    .iter()
-                    .map(|(_, a)| *a)
-                    .fold(Amount(0), |a, b| a + b);
-            payments.push((
+            chain.pay_validator_and_delegators(
                 block.header.proof_of_stake.validator.clone(),
-                validator_reward,
-            ));
-            for (i, (addr, amnt)) in payments.into_iter().enumerate() {
-                chain.apply_tx(
-                    &Transaction {
-                        memo: String::new(),
-                        src: None,
-                        data: TransactionData::RegularSend {
-                            entries: vec![RegularSendEntry {
-                                dst: addr,
-                                amount: Money {
-                                    amount: amnt,
-                                    token_id: TokenId::Ziesha,
-                                },
-                            }],
-                        },
-                        nonce: treasury_nonce + 1 + i as u32,
-                        fee: Money::ziesha(0),
-                        sig: Signature::Unsigned,
-                    },
-                    true,
-                )?;
-            }
+                fee_sum,
+            )?;
         }
 
         let mut body_size = 0usize;
