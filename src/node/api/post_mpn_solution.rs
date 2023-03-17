@@ -17,6 +17,7 @@ pub async fn post_mpn_solution<K: KvStore, B: Blockchain<K>>(
                 accepted += 1;
             }
         }
+        println!("Got {} accepted SNARK proofs!", accepted);
         Ok(PostMpnSolutionResponse { accepted })
     } else {
         Ok(PostMpnSolutionResponse { accepted: 0 })
