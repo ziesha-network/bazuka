@@ -25,7 +25,7 @@ impl WalletType {
     fn bip39_passphrase(&self) -> String {
         match self {
             WalletType::User(index) => {
-                if index == 0 {
+                if *index == 0 {
                     "".into()
                 } else {
                     index.to_string()
