@@ -58,12 +58,15 @@ pub struct MpnWorkPool {
 }
 
 impl MpnWorkPool {
-    pub fn get_works(&self, mpn_address: MpnAddress) -> HashMap<usize, MpnWork> {
+    pub fn remaining_works(&self) -> HashMap<usize, MpnWork> {
         let mut remaining = self.works.clone();
         for solved in self.solutions.keys() {
             remaining.remove(solved);
         }
         remaining
+    }
+    pub fn get_works(&self, mpn_address: MpnAddress) -> HashMap<usize, MpnWork> {
+        self.remaining_works()
             .into_iter()
             .filter(|(_, v)| v.worker.mpn_address == mpn_address)
             .collect()

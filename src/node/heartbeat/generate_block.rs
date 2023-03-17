@@ -124,6 +124,15 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
             }
         }
     } else {
+        if let Some(claim) = ctx.validator_claim.clone() {
+            if claim.address == ctx.validator_wallet.get_address() {
+                if let Some(work_pool) = &ctx.mpn_work_pool {
+                    for work in work_pool.remaining_works().values() {
+                        log::error!("Prover {} is late!", work.worker.mpn_address);
+                    }
+                }
+            }
+        }
         ctx.mpn_work_pool = None;
         if let Some(claim) = ctx.validator_claim.clone() {
             if !ctx.blockchain.is_validator(
