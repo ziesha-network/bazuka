@@ -28,11 +28,6 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                 "Validator address:".bright_yellow(),
                 val_tx_builder.get_address()
             );
-            println!(
-                "{}\t{}",
-                "Validator VRF pub-key:".bright_yellow(),
-                val_tx_builder.get_vrf_public_key()
-            );
 
             let validator_ziesha = client
                 .get_balance(val_tx_builder.get_address(), TokenId::Ziesha)
