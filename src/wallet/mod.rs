@@ -24,7 +24,13 @@ pub enum WalletType {
 impl WalletType {
     fn bip39_passphrase(&self) -> String {
         match self {
-            WalletType::User(index) => index.to_string(),
+            WalletType::User(index) => {
+                if index == 0 {
+                    "".into()
+                } else {
+                    index.to_string()
+                }
+            }
             WalletType::Validator => "validator".into(),
         }
     }
