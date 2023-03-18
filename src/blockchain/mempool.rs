@@ -69,6 +69,9 @@ impl AccountMempool {
     fn len(&self) -> usize {
         self.txs.len()
     }
+    fn first_tx(&self) -> Option<&(ChainSourcedTx, TransactionStats)> {
+        self.txs.front()
+    }
     fn first_nonce(&self) -> Option<u32> {
         self.txs.front().map(|(tx, _)| tx.nonce())
     }
@@ -170,6 +173,9 @@ impl Mempool {
             self.rejected_chain_sourced.remove(&tx);
         }
         if !self.rejected_chain_sourced.contains_key(&tx) {
+            if !tx.verify_signature() {
+                return Ok(());
+            }
             let chain_acc = blockchain.get_account(tx.sender())?;
             if self
                 .chain_sourced
@@ -178,6 +184,12 @@ impl Mempool {
                     all.update_account(chain_acc.clone());
                     if is_local && !all.applicable(&tx) {
                         all.reset(tx.nonce());
+                    }
+                    if let Some((first_tx, stats)) = all.first_tx() {
+                        // TODO: config.replace_tx_threshold instead of 60
+                        if now > stats.first_seen + 60 && first_tx != &tx {
+                            all.reset(tx.nonce());
+                        }
                     }
                     !all.applicable(&tx)
                 })
@@ -204,10 +216,9 @@ impl Mempool {
                 .chain_sourced
                 .entry(tx.sender().clone())
                 .or_insert(AccountMempool::new(chain_acc));
-            if tx.verify_signature() {
-                if is_local || all.len() < limit {
-                    all.insert(tx.clone(), TransactionStats::new(is_local, now));
-                }
+
+            if is_local || all.len() < limit {
+                all.insert(tx.clone(), TransactionStats::new(is_local, now));
             }
         }
         Ok(())
