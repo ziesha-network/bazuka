@@ -188,6 +188,11 @@ impl Mempool {
                     if let Some((first_tx, stats)) = all.first_tx() {
                         // TODO: config.replace_tx_threshold instead of 60
                         if now > stats.first_seen + 60 && first_tx != &tx {
+                            log::info!(
+                                "{} replaced its transaction on nonce {}",
+                                tx.sender(),
+                                tx.nonce()
+                            );
                             all.reset(tx.nonce());
                         }
                     }
