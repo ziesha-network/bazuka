@@ -460,29 +460,75 @@ impl From<&(Address, Amount)> for ExplorerStaker {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct ExplorerMpnDeposit {}
+pub struct ExplorerMpnDeposit {
+    pub zk_address: String,
+    pub zk_token_index: u64,
+    pub payment: ExplorerContractDeposit,
+}
 
 impl From<&MpnDeposit> for ExplorerMpnDeposit {
     fn from(obj: &MpnDeposit) -> Self {
-        Self {}
+        Self {
+            zk_address: obj.zk_address.to_string(),
+            zk_token_index: obj.zk_token_index,
+            payment: (&obj.payment).into(),
+        }
     }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct ExplorerMpnWithdraw {}
+pub struct ExplorerMpnWithdraw {
+    pub zk_address: String,
+    pub zk_token_index: u64,
+    pub zk_fee_token_index: u64,
+    pub zk_nonce: u64,
+    pub zk_sig: String,
+    pub payment: ExplorerContractWithdraw,
+}
 
 impl From<&MpnWithdraw> for ExplorerMpnWithdraw {
     fn from(obj: &MpnWithdraw) -> Self {
-        Self {}
+        Self {
+            zk_address: obj.zk_address.to_string(),
+            zk_token_index: obj.zk_token_index,
+            zk_fee_token_index: obj.zk_fee_token_index,
+            zk_nonce: obj.zk_nonce,
+            zk_sig: "".into(), // TODO: Convert sig to hex
+            payment: (&obj.payment).into(),
+        }
     }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct ExplorerMpnTransaction {}
+pub struct ExplorerMpnTransaction {
+    pub nonce: u64,
+    pub src_pub_key: String,
+    pub dst_pub_key: String,
+
+    pub src_token_index: u64,
+    pub src_fee_token_index: u64,
+    pub dst_token_index: u64,
+
+    pub amount: ExplorerMoney,
+    pub fee: ExplorerMoney,
+    pub sig: String,
+}
 
 impl From<&MpnTransaction> for ExplorerMpnTransaction {
     fn from(obj: &MpnTransaction) -> Self {
-        Self {}
+        Self {
+            nonce: obj.nonce,
+            src_pub_key: obj.src_pub_key.to_string(),
+            dst_pub_key: obj.dst_pub_key.to_string(),
+
+            src_token_index: obj.src_token_index,
+            src_fee_token_index: obj.src_fee_token_index,
+            dst_token_index: obj.dst_token_index,
+
+            amount: obj.amount.into(),
+            fee: obj.fee.into(),
+            sig: "".into(), // TODO: Convert sig to hex
+        }
     }
 }
 
