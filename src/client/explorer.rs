@@ -1,10 +1,11 @@
 use crate::core::{
-    Address, Amount, Block, ContractDeposit, ContractUpdate, ContractWithdraw, Header, Money,
-    ProofOfStake, Token, TokenUpdate, Transaction, TransactionData,
+    Address, Amount, Block, ChainSourcedTx, ContractDeposit, ContractUpdate, ContractWithdraw,
+    Header, Money, MpnDeposit, MpnSourcedTx, MpnWithdraw, ProofOfStake, Token, TokenUpdate,
+    Transaction, TransactionData,
 };
 use crate::crypto::jubjub::*;
 use crate::zk::{
-    MpnAccount, ZkCompressedState, ZkContract, ZkMultiInputVerifierKey, ZkProof,
+    MpnAccount, MpnTransaction, ZkCompressedState, ZkContract, ZkMultiInputVerifierKey, ZkProof,
     ZkSingleInputVerifierKey, ZkStateModel, ZkVerifierKey,
 };
 use serde::{Deserialize, Serialize};
@@ -454,6 +455,65 @@ impl From<&(Address, Amount)> for ExplorerStaker {
         Self {
             pub_key: obj.0.to_string(),
             stake: obj.1.into(),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerMpnDeposit {}
+
+impl From<&MpnDeposit> for ExplorerMpnDeposit {
+    fn from(obj: &MpnDeposit) -> Self {
+        Self {}
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerMpnWithdraw {}
+
+impl From<&MpnWithdraw> for ExplorerMpnWithdraw {
+    fn from(obj: &MpnWithdraw) -> Self {
+        Self {}
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerMpnTransaction {}
+
+impl From<&MpnTransaction> for ExplorerMpnTransaction {
+    fn from(obj: &MpnTransaction) -> Self {
+        Self {}
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub enum ExplorerChainSourcedTx {
+    TransactionAndDelta(ExplorerTransaction),
+    MpnDeposit(ExplorerMpnDeposit),
+}
+
+impl From<&ChainSourcedTx> for ExplorerChainSourcedTx {
+    fn from(obj: &ChainSourcedTx) -> Self {
+        match obj {
+            ChainSourcedTx::TransactionAndDelta(tx_delta) => {
+                Self::TransactionAndDelta((&tx_delta.tx).into())
+            }
+            ChainSourcedTx::MpnDeposit(mpn_deposit) => Self::MpnDeposit(mpn_deposit.into()),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub enum ExplorerMpnSourcedTx {
+    MpnTransaction(ExplorerMpnTransaction),
+    MpnWithdraw(ExplorerMpnWithdraw),
+}
+
+impl From<&MpnSourcedTx> for ExplorerMpnSourcedTx {
+    fn from(obj: &MpnSourcedTx) -> Self {
+        match obj {
+            MpnSourcedTx::MpnTransaction(mpn_tx) => Self::MpnTransaction(mpn_tx.into()),
+            MpnSourcedTx::MpnWithdraw(mpn_withdraw) => Self::MpnWithdraw(mpn_withdraw.into()),
         }
     }
 }

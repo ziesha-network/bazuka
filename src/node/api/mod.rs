@@ -56,6 +56,8 @@ mod get_delegations;
 pub use get_delegations::*;
 mod post_mpn_worker;
 pub use post_mpn_worker::*;
+mod get_explorer_mempool;
+pub use get_explorer_mempool::*;
 
 #[cfg(test)]
 mod generate_block;

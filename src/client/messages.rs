@@ -1,4 +1,4 @@
-use crate::blockchain::ZkBlockchainPatch;
+use crate::blockchain::{TransactionStats, ZkBlockchainPatch};
 use crate::core::{
     Account, Address, Amount, Block, ChainSourcedTx, ContractId, Header, Money, MpnAddress,
     MpnDeposit, MpnSourcedTx, MpnWithdraw, Signature, Token, TransactionAndDelta, ValidatorProof,
@@ -9,7 +9,10 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 use super::{
-    explorer::{ExplorerBlock, ExplorerMpnAccount, ExplorerStaker},
+    explorer::{
+        ExplorerBlock, ExplorerChainSourcedTx, ExplorerMpnAccount, ExplorerMpnSourcedTx,
+        ExplorerStaker,
+    },
     Peer, PeerAddress,
 };
 use serde::{Deserialize, Serialize};
@@ -451,4 +454,13 @@ pub struct PostMpnWorkerRequest {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMpnWorkerResponse {
     pub accepted: bool,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetExplorerMempoolRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetExplorerMempoolResponse {
+    pub chain_sourced: Vec<(ExplorerChainSourcedTx, TransactionStats)>,
+    pub mpn_sourced: Vec<(ExplorerMpnSourcedTx, TransactionStats)>,
 }
