@@ -32,6 +32,13 @@ pub struct PrivateKey {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default, Eq, Hash)]
 pub struct PublicKey(pub PointCompressed);
 
+impl Into<Vec<ZkScalar>> for PublicKey {
+    fn into(self) -> Vec<ZkScalar> {
+        let decom = self.0.decompress();
+        [decom.0, decom.1].into()
+    }
+}
+
 impl DeriveMpnAccountIndex for PublicKey {
     fn mpn_account_index(&self, log4_account_capacity: u8) -> u64 {
         u64::from_le_bytes(self.0 .0.to_repr().as_ref()[0..8].try_into().unwrap())
@@ -49,6 +56,12 @@ impl From<PrivateKey> for PublicKey {
 pub struct Signature {
     pub r: PointAffine,
     pub s: ZkScalar,
+}
+
+impl Into<Vec<ZkScalar>> for Signature {
+    fn into(self) -> Vec<ZkScalar> {
+        [self.r.0, self.r.1, self.s].into()
+    }
 }
 
 impl std::fmt::Display for PublicKey {

@@ -184,6 +184,12 @@ where
     pub fn zk_address_index(&self, log4_account_capacity: u8) -> u64 {
         self.zk_address.mpn_account_index(log4_account_capacity)
     }
+    pub fn verify_calldata<ZH: ZkHasher>(&self) -> bool {
+        let mut preimage: Vec<ZkScalar> = self.zk_address.clone().into();
+        preimage.push(self.zk_nonce.clone().into());
+        preimage.extend(&self.zk_sig.clone().into());
+        self.payment.calldata == ZH::hash(&preimage)
+    }
     pub fn verify_signature<ZH: ZkHasher>(&self) -> bool {
         let msg = ZH::hash(&[
             self.payment.fingerprint(),
