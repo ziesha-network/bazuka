@@ -104,15 +104,22 @@ impl MpnWorkPool {
                         next_state: self.works[&i].new_root.clone(),
                         proof: ZkProof::Groth16(Box::new(self.solutions[&i].clone())),
                     },
-                    MpnWorkData::Update(_) => ContractUpdate::FunctionCall {
-                        function_id: 0,
-                        next_state: self.works[&i].new_root.clone(),
-                        proof: ZkProof::Groth16(Box::new(self.solutions[&i].clone())),
-                        fee: Money {
-                            token_id: TokenId::Ziesha,
-                            amount: 0.into(),
-                        },
-                    },
+                    MpnWorkData::Update(trans) => {
+                        assert!(trans.iter().all(|t| t.tx.fee.token_id == TokenId::Ziesha));
+                        let fee_sum = trans
+                            .iter()
+                            .map(|t| Into::<u64>::into(t.tx.fee.amount))
+                            .sum::<u64>();
+                        ContractUpdate::FunctionCall {
+                            function_id: 0,
+                            next_state: self.works[&i].new_root.clone(),
+                            proof: ZkProof::Groth16(Box::new(self.solutions[&i].clone())),
+                            fee: Money {
+                                token_id: TokenId::Ziesha,
+                                amount: fee_sum.into(),
+                            },
+                        }
+                    }
                 });
             }
             let mut update = Transaction {
