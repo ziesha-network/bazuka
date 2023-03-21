@@ -255,6 +255,9 @@ pub fn prepare_works<K: KvStore>(
             &deposits,
         )?;
         log::info!("Made MPN-Deposit block of {} txs.", transitions.len());
+        for (i, tx) in transitions.iter().enumerate() {
+            log::info!("MPN-Deposit tx {}: {:?}", i, tx.tx);
+        }
         works.push(MpnWork {
             config: config.clone(),
             public_inputs,
@@ -278,6 +281,9 @@ pub fn prepare_works<K: KvStore>(
             &withdraws,
         )?;
         log::info!("Made MPN-Withdraw block of {} txs.", transitions.len());
+        for (i, tx) in transitions.iter().enumerate() {
+            log::info!("MPN-Withdraw tx {}: {:?}", i, tx.tx);
+        }
         works.push(MpnWork {
             config: config.clone(),
             public_inputs,
@@ -339,6 +345,9 @@ pub fn prepare_works<K: KvStore>(
             &updates,
         )?;
         log::info!("Made MPN-Update block of {} txs.", transitions.len());
+        for (i, tx) in transitions.iter().enumerate() {
+            log::info!("MPN-Update tx {}: {:?}", i, tx.tx);
+        }
         rewards.clear();
         works.push(MpnWork {
             config: config.clone(),
