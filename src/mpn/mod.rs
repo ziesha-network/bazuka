@@ -254,6 +254,7 @@ pub fn prepare_works<K: KvStore>(
             &mut mirror,
             &deposits,
         )?;
+        log::info!("Made MPN-Deposit block of {} txs.", transitions.len());
         works.push(MpnWork {
             config: config.clone(),
             public_inputs,
@@ -276,6 +277,7 @@ pub fn prepare_works<K: KvStore>(
             &mut mirror,
             &withdraws,
         )?;
+        log::info!("Made MPN-Withdraw block of {} txs.", transitions.len());
         works.push(MpnWork {
             config: config.clone(),
             public_inputs,
@@ -336,6 +338,7 @@ pub fn prepare_works<K: KvStore>(
             &mut mirror,
             &updates,
         )?;
+        log::info!("Made MPN-Update block of {} txs.", transitions.len());
         rewards.clear();
         works.push(MpnWork {
             config: config.clone(),
