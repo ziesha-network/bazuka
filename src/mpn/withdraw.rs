@@ -45,8 +45,8 @@ pub fn withdraw<K: KvStore>(
         };
 
         if (acc.address != Default::default() && tx.zk_address.0.decompress() != acc.address)
-            || tx.verify_calldata::<ZkHasher>()
-            || tx.verify_signature::<ZkHasher>()
+            || !tx.verify_calldata::<ZkHasher>()
+            || !tx.verify_signature::<ZkHasher>()
             || tx.zk_nonce != acc.nonce
             || tx.payment.amount.token_id != acc_token.token_id
             || tx.payment.amount.amount > acc_token.amount
