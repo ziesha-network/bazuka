@@ -56,7 +56,7 @@ impl StringKey {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Blob(Vec<u8>);
+pub struct Blob(pub Vec<u8>);
 
 impl std::fmt::Display for Blob {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
