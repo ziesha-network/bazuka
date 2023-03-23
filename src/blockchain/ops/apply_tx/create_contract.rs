@@ -39,7 +39,7 @@ pub fn create_contract<K: KvStore>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::{Blob, RamKvStore, StringKey, WriteOp};
+    use crate::db::{RamKvStore, WriteOp};
 
     #[test]
     fn test_create_contract() {
@@ -55,9 +55,11 @@ mod tests {
         let state_model = zk::ZkStateModel::Struct {
             field_types: vec![zk::ZkStateModel::Scalar, zk::ZkStateModel::Scalar],
         };
+        let initial_state =
+            zk::ZkCompressedState::empty::<crate::core::ZkHasher>(state_model.clone());
         let contract = zk::ZkContract {
-            state_model: state_model.clone(),
-            initial_state: zk::ZkCompressedState::empty::<crate::core::ZkHasher>(state_model),
+            state_model,
+            initial_state: initial_state.clone(),
             deposit_functions: vec![],
             withdraw_functions: vec![],
             functions: vec![],
@@ -69,29 +71,20 @@ mod tests {
         let expected_ops = vec![
             WriteOp::Put(
                 "CAC-0001020304050607080900010203040506070809000102030405060708090001".into(),
-                Blob(vec![
-                    1, 0, 0, 0, 0, 0, 0, 0, 3, 77, 215, 124, 110, 70, 210, 216, 59, 110, 151, 11,
-                    124, 38, 215, 74, 19, 103, 181, 50, 200, 82, 47, 185, 15, 121, 235, 179, 112,
-                    246, 179, 106, 0, 0, 0, 0, 0, 0, 0, 0,
-                ]),
+                ContractAccount {
+                    height: 1,
+                    compressed_state: initial_state.clone(),
+                }
+                .into(),
             ),
             WriteOp::Put(
                 "CON-0001020304050607080900010203040506070809000102030405060708090001".into(),
-                Blob(vec![
-                    3, 77, 215, 124, 110, 70, 210, 216, 59, 110, 151, 11, 124, 38, 215, 74, 19,
-                    103, 181, 50, 200, 82, 47, 185, 15, 121, 235, 179, 112, 246, 179, 106, 0, 0, 0,
-                    0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                ]),
+                contract.into(),
             ),
             WriteOp::Put(
                 "CSA-0000000001-0001020304050607080900010203040506070809000102030405060708090001"
                     .into(),
-                Blob(vec![
-                    3, 77, 215, 124, 110, 70, 210, 216, 59, 110, 151, 11, 124, 38, 215, 74, 19,
-                    103, 181, 50, 200, 82, 47, 185, 15, 121, 235, 179, 112, 246, 179, 106, 0, 0, 0,
-                    0, 0, 0, 0, 0,
-                ]),
+                initial_state.into(),
             ),
         ];
 
