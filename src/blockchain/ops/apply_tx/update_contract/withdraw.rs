@@ -119,4 +119,104 @@ mod tests {
         assert!(ops.is_empty());
         assert!(exec_fees.is_empty());
     }
+
+    #[test]
+    fn test_single_withdraw() {
+        let mut chain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+
+        let contract_id = chain.config.mpn_config.mpn_contract_id;
+
+        let abc = TxBuilder::new(&Vec::from("ABC"));
+        let mut cont_deposit = ContractDeposit {
+            memo: "".into(),
+            src: abc.get_address(),
+            contract_id,
+            deposit_circuit_id: 0,
+            calldata: zk::ZkScalar::from(888),
+            nonce: 1,
+            amount: Money::ziesha(1000),
+            fee: Money::ziesha(0),
+            sig: None,
+        };
+        abc.sign_deposit(&mut cont_deposit);
+        chain.apply_deposit(&cont_deposit).unwrap();
+
+        let cont_withdraw = ContractWithdraw {
+            memo: "".into(),
+            contract_id,
+            withdraw_circuit_id: 0,
+            calldata: zk::ZkScalar::from(777),
+            dst: abc.get_address(),
+            amount: Money::ziesha(200),
+            fee: Money::ziesha(50),
+        };
+
+        let (ops, ((_, aux_data), exec_fees)) = chain
+            .isolated(|chain| {
+                let mut exec_fees = Vec::new();
+                let contract = chain.get_contract(contract_id)?;
+                Ok((
+                    withdraw(
+                        chain,
+                        &contract_id,
+                        &contract,
+                        &0,
+                        &[cont_withdraw.clone()],
+                        &mut exec_fees,
+                    )?,
+                    exec_fees,
+                ))
+            })
+            .unwrap();
+        let empty_leaf =
+            <crate::core::ZkHasher as crate::zk::ZkHasher>::hash(&[zk::ZkScalar::from(0); 7]);
+
+        let expected_hash = <crate::core::ZkHasher as crate::zk::ZkHasher>::hash(&[
+            <crate::core::ZkHasher as crate::zk::ZkHasher>::hash(&[
+                zk::ZkScalar::from(1),
+                zk::ZkScalar::from(1),
+                zk::ZkScalar::from(200),
+                zk::ZkScalar::from(1),
+                zk::ZkScalar::from(50),
+                zk::ZkScalar::from(cont_withdraw.fingerprint()),
+                zk::ZkScalar::from(777),
+            ]),
+            empty_leaf,
+            empty_leaf,
+            empty_leaf,
+        ]);
+
+        let expected_aux = zk::ZkCompressedState {
+            state_hash: expected_hash,
+            state_size: 7,
+        };
+
+        assert_eq!(aux_data, expected_aux);
+
+        let expected_ops = vec![
+            WriteOp::Put(
+                "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-Ziesha"
+                    .into(),
+                Amount(9200).into(),
+            ),
+            WriteOp::Put(
+                "CAB-1525ced32cb40609838e7dad549014268e4449abc2a1621e485bc8f88a48f223-Ziesha"
+                    .into(),
+                Amount(750).into(),
+            ),
+        ];
+
+        assert_eq!(ops, expected_ops);
+        assert_eq!(
+            exec_fees,
+            vec![Money {
+                token_id: TokenId::Ziesha,
+                amount: Amount(50)
+            }]
+        );
+    }
 }
