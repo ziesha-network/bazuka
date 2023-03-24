@@ -55,3 +55,32 @@ pub fn delegate<K: KvStore>(
     ])?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::{RamKvStore, WriteOp};
+
+    #[test]
+    fn test_delegate_balance_insufficient() {
+        let chain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+        let abc = TxBuilder::new(&Vec::from("ABC")).get_address();
+        let src: Address = "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
+            .parse()
+            .unwrap();
+        let dst: Address = "ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
+            .parse()
+            .unwrap();
+        assert!(matches!(
+            chain.isolated(|chain| {
+                delegate(chain, src.clone(), Amount(123), dst.clone(), false)?;
+                Ok(())
+            }),
+            Err(BlockchainError::BalanceInsufficient)
+        ));
+    }
+}
