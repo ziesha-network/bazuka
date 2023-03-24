@@ -83,23 +83,21 @@ mod tests {
         let empty_compressed =
             zk::ZkCompressedState::empty::<crate::core::ZkHasher>(deposit_state_model);
 
-        let (ops, (_, aux_data)) = chain
+        let (ops, ((_, aux_data), exec_fees)) = chain
             .isolated(|chain| {
+                let mut exec_fees = Vec::new();
                 let contract_id = chain.config.mpn_config.mpn_contract_id;
                 let contract = chain.get_contract(contract_id)?;
-                Ok(deposit(
-                    chain,
-                    &contract_id,
-                    &contract,
-                    &0,
-                    &[],
-                    &mut vec![],
-                )?)
+                Ok((
+                    deposit(chain, &contract_id, &contract, &0, &[], &mut exec_fees)?,
+                    exec_fees,
+                ))
             })
             .unwrap();
 
         assert_eq!(aux_data, empty_compressed);
         assert!(ops.is_empty());
+        assert!(exec_fees.is_empty());
     }
 
     #[test]
