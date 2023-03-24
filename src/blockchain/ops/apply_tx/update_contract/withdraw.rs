@@ -348,12 +348,12 @@ mod tests {
         ];
 
         assert_eq!(ops, expected_ops);
-        /*assert_eq!(
+        assert_eq!(
             exec_fees,
             vec![Money {
                 token_id: TokenId::Ziesha,
-                amount: Amount(50)
+                amount: Amount(444)
             }]
-        );*/
+        );
     }
 }
