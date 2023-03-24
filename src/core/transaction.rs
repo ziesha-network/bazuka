@@ -274,8 +274,8 @@ impl<S: SignatureScheme> Token<S> {
         const MIN_SYMBOL_LEN: usize = 3;
         const MAX_SYMBOL_LEN: usize = 6;
         lazy_static! {
-            static ref RE_NAME: Regex = Regex::new(r"(?:[a-zA-Z0-9]+ )*[a-zA-Z0-9]+").unwrap();
-            static ref RE_SYMBOL: Regex = Regex::new(r"[A-Z][A-Z0-9]*").unwrap();
+            static ref RE_NAME: Regex = Regex::new(r"^(?:[a-zA-Z0-9]+ )*[a-zA-Z0-9]+$").unwrap();
+            static ref RE_SYMBOL: Regex = Regex::new(r"^[A-Z][A-Z0-9]*$").unwrap();
         }
         self.name.len() >= MIN_NAME_LEN
             && self.name.len() <= MAX_NAME_LEN
