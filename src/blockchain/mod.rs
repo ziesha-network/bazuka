@@ -52,7 +52,7 @@ pub struct ZkBlockchainPatch {
     pub patches: HashMap<ContractId, zk::ZkStatePatch>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ZkCompressedStateChange {
     prev_state: zk::ZkCompressedState,
     state: zk::ZkCompressedState,
@@ -65,6 +65,7 @@ pub struct BlockAndPatch {
     pub patch: ZkBlockchainPatch,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum TxSideEffect {
     StateChange {
         contract_id: ContractId,

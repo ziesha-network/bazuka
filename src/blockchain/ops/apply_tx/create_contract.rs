@@ -64,9 +64,21 @@ mod tests {
             withdraw_functions: vec![],
             functions: vec![],
         };
-        let (ops, _) = chain
+        let (ops, out) = chain
             .isolated(|chain| Ok(create_contract(chain, contract_id, &contract)?))
             .unwrap();
+
+        assert_eq!(
+            out,
+            TxSideEffect::StateChange {
+                contract_id,
+                state_change: ZkCompressedStateChange {
+                    prev_height: 0,
+                    prev_state: initial_state.clone(),
+                    state: initial_state.clone(),
+                },
+            }
+        );
 
         let expected_ops = vec![
             WriteOp::Put(
