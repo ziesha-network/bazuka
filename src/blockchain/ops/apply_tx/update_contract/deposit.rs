@@ -55,3 +55,153 @@ pub fn deposit<K: KvStore>(
     let aux_data = state_builder.compress()?;
     Ok((circuit.clone(), aux_data))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::{RamKvStore, WriteOp};
+
+    #[test]
+    fn test_empty_deposit() {
+        let chain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+
+        let deposit_state_model = zk::ZkStateModel::List {
+            item_type: Box::new(zk::ZkStateModel::Struct {
+                field_types: vec![
+                    zk::ZkStateModel::Scalar, // Enabled
+                    zk::ZkStateModel::Scalar, // Token-id
+                    zk::ZkStateModel::Scalar, // Amount
+                    zk::ZkStateModel::Scalar, // Calldata
+                ],
+            }),
+            log4_size: 1,
+        };
+        let empty_compressed =
+            zk::ZkCompressedState::empty::<crate::core::ZkHasher>(deposit_state_model);
+
+        let (ops, (_, aux_data)) = chain
+            .isolated(|chain| {
+                let contract_id = chain.config.mpn_config.mpn_contract_id;
+                let contract = chain.get_contract(contract_id)?;
+                Ok(deposit(
+                    chain,
+                    &contract_id,
+                    &contract,
+                    &0,
+                    &[],
+                    &mut vec![],
+                )?)
+            })
+            .unwrap();
+
+        assert_eq!(aux_data, empty_compressed);
+        assert!(ops.is_empty());
+    }
+
+    #[test]
+    fn test_single_deposit() {
+        let chain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+
+        let deposit_state_model = zk::ZkStateModel::List {
+            item_type: Box::new(zk::ZkStateModel::Struct {
+                field_types: vec![
+                    zk::ZkStateModel::Scalar, // Enabled
+                    zk::ZkStateModel::Scalar, // Token-id
+                    zk::ZkStateModel::Scalar, // Amount
+                    zk::ZkStateModel::Scalar, // Calldata
+                ],
+            }),
+            log4_size: 1,
+        };
+        let empty_compressed =
+            zk::ZkCompressedState::empty::<crate::core::ZkHasher>(deposit_state_model);
+
+        let contract_id = chain.config.mpn_config.mpn_contract_id;
+
+        let abc = TxBuilder::new(&Vec::from("ABC"));
+        let mut cont_deposit = ContractDeposit {
+            memo: "".into(),
+            src: abc.get_address(),
+            contract_id,
+            deposit_circuit_id: 0,
+            calldata: zk::ZkScalar::from(888),
+            nonce: 1,
+            amount: Money::ziesha(123),
+            fee: Money::ziesha(77),
+            sig: None,
+        };
+        abc.sign_deposit(&mut cont_deposit);
+
+        let (ops, ((_, aux_data), exec_fees)) = chain
+            .isolated(|chain| {
+                let mut exec_fees = Vec::new();
+                let contract = chain.get_contract(contract_id)?;
+                Ok((
+                    deposit(
+                        chain,
+                        &contract_id,
+                        &contract,
+                        &0,
+                        &[cont_deposit],
+                        &mut exec_fees,
+                    )?,
+                    exec_fees,
+                ))
+            })
+            .unwrap();
+        let empty_leaf =
+            <crate::core::ZkHasher as crate::zk::ZkHasher>::hash(&[zk::ZkScalar::from(0); 4]);
+        let expected_hash = <crate::core::ZkHasher as crate::zk::ZkHasher>::hash(&[
+            <crate::core::ZkHasher as crate::zk::ZkHasher>::hash(&[
+                zk::ZkScalar::from(1),
+                zk::ZkScalar::from(1),
+                zk::ZkScalar::from(123),
+                zk::ZkScalar::from(888),
+            ]),
+            empty_leaf,
+            empty_leaf,
+            empty_leaf,
+        ]);
+
+        let expected_aux = zk::ZkCompressedState {
+            state_hash: expected_hash,
+            state_size: 4,
+        };
+
+        assert_eq!(aux_data, expected_aux);
+
+        let expected_ops = vec![
+            WriteOp::Put(
+                "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-Ziesha"
+                    .into(),
+                Amount(9800).into(),
+            ),
+            WriteOp::Put(
+                "ACC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a".into(),
+                Account { nonce: 1 }.into(),
+            ),
+            WriteOp::Put(
+                "CAB-1525ced32cb40609838e7dad549014268e4449abc2a1621e485bc8f88a48f223-Ziesha"
+                    .into(),
+                Amount(123).into(),
+            ),
+        ];
+
+        assert_eq!(ops, expected_ops);
+        assert_eq!(
+            exec_fees,
+            vec![Money {
+                token_id: TokenId::Ziesha,
+                amount: Amount(77)
+            }]
+        );
+    }
+}
