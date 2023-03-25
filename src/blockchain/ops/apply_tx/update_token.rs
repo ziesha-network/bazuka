@@ -43,3 +43,222 @@ pub fn update_token<K: KvStore>(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::{RamKvStore, WriteOp};
+
+    #[test]
+    fn test_non_existing_token() {
+        let chain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+        let token_id: TokenId =
+            "0x0001020304050607080900010203040506070809000102030405060708090001"
+                .parse()
+                .unwrap();
+        let addr: Address = "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
+            .parse()
+            .unwrap();
+        assert!(matches!(
+            chain.isolated(|chain| Ok(update_token(
+                chain,
+                addr,
+                &token_id,
+                &TokenUpdate::Mint {
+                    amount: Amount(100)
+                }
+            )?)),
+            Err(BlockchainError::TokenNotFound)
+        ));
+    }
+
+    #[test]
+    fn test_unupdatable_token() {
+        let mut chain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+        let token_id_1: TokenId =
+            "0x0001020304050607080900010203040506070809000102030405060708090001"
+                .parse()
+                .unwrap();
+        let token_id_2: TokenId =
+            "0x0001020304050607080900010203040506070809000102030405060708090002"
+                .parse()
+                .unwrap();
+        let addr_1: Address = "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
+            .parse()
+            .unwrap();
+        let addr_2: Address = "ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
+            .parse()
+            .unwrap();
+        let tkn = Token {
+            name: "KeyvanCoin".into(),
+            symbol: "KIWI".into(),
+            supply: Amount(12345),
+            decimals: 2,
+            minter: None,
+        };
+        super::create_token::create_token(&mut chain, addr_1.clone(), token_id_1, &tkn).unwrap();
+        let tkn2 = Token {
+            name: "KeyvanCoin".into(),
+            symbol: "KIWI".into(),
+            supply: Amount(12345),
+            decimals: 2,
+            minter: Some(addr_2),
+        };
+        super::create_token::create_token(&mut chain, addr_1.clone(), token_id_2, &tkn2).unwrap();
+        assert!(matches!(
+            chain.isolated(|chain| Ok(update_token(
+                chain,
+                addr_1.clone(),
+                &token_id_1,
+                &TokenUpdate::Mint {
+                    amount: Amount(100)
+                }
+            )?)),
+            Err(BlockchainError::TokenNotUpdatable)
+        ));
+        assert!(matches!(
+            chain.isolated(|chain| Ok(update_token(
+                chain,
+                addr_1,
+                &token_id_2,
+                &TokenUpdate::Mint {
+                    amount: Amount(100)
+                }
+            )?)),
+            Err(BlockchainError::TokenUpdatePermissionDenied)
+        ));
+    }
+
+    #[test]
+    fn test_mint_token() {
+        let mut chain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+        let token_id: TokenId =
+            "0x0001020304050607080900010203040506070809000102030405060708090001"
+                .parse()
+                .unwrap();
+        let addr: Address = "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
+            .parse()
+            .unwrap();
+        let tkn = Token {
+            name: "KeyvanCoin".into(),
+            symbol: "KIWI".into(),
+            supply: Amount(12345),
+            decimals: 2,
+            minter: Some(addr.clone()),
+        };
+        super::create_token::create_token(&mut chain, addr.clone(), token_id, &tkn).unwrap();
+
+        let (ops, _) = chain
+            .isolated(|chain| {
+                Ok(update_token(
+                    chain,
+                    addr.clone(),
+                    &token_id,
+                    &TokenUpdate::Mint {
+                        amount: Amount(100),
+                    },
+                )?)
+            })
+            .unwrap();
+
+        let expected_ops = vec![
+            WriteOp::Put(
+                "ACB-edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640-0x0001020304050607080900010203040506070809000102030405060708090001".into(),
+                Amount(12445).into()
+            ),
+            WriteOp::Put(
+                "TKN-0x0001020304050607080900010203040506070809000102030405060708090001"
+                    .into(),
+                (&Token {
+                    name: "KeyvanCoin".into(),
+                    symbol: "KIWI".into(),
+                    supply: Amount(12445),
+                    decimals: 2,
+                    minter: Some(addr),
+                }).into()
+            ),
+        ];
+
+        assert_eq!(ops, expected_ops);
+    }
+
+    #[test]
+    fn test_change_minter() {
+        let mut chain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+        let token_id: TokenId =
+            "0x0001020304050607080900010203040506070809000102030405060708090001"
+                .parse()
+                .unwrap();
+        let addr: Address = "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
+            .parse()
+            .unwrap();
+        let new_addr: Address =
+            "ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
+                .parse()
+                .unwrap();
+        let tkn = Token {
+            name: "KeyvanCoin".into(),
+            symbol: "KIWI".into(),
+            supply: Amount(12345),
+            decimals: 2,
+            minter: Some(addr.clone()),
+        };
+        super::create_token::create_token(&mut chain, addr.clone(), token_id, &tkn).unwrap();
+
+        let (ops, _) = chain
+            .isolated(|chain| {
+                Ok(update_token(
+                    chain,
+                    addr.clone(),
+                    &token_id,
+                    &TokenUpdate::ChangeMinter {
+                        minter: new_addr.clone(),
+                    },
+                )?)
+            })
+            .unwrap();
+
+        let expected_ops = vec![WriteOp::Put(
+            "TKN-0x0001020304050607080900010203040506070809000102030405060708090001".into(),
+            (&Token {
+                name: "KeyvanCoin".into(),
+                symbol: "KIWI".into(),
+                supply: Amount(12345),
+                decimals: 2,
+                minter: Some(new_addr),
+            })
+                .into(),
+        )];
+
+        assert_eq!(ops, expected_ops);
+        chain.database.update(&ops).unwrap();
+
+        assert!(matches!(
+            chain.isolated(|chain| Ok(update_token(
+                chain,
+                addr,
+                &token_id,
+                &TokenUpdate::Mint {
+                    amount: Amount(100)
+                }
+            )?)),
+            Err(BlockchainError::TokenUpdatePermissionDenied)
+        ));
+    }
+}
