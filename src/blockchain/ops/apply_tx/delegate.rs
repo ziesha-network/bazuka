@@ -275,7 +275,6 @@ mod tests {
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
-        let abc = TxBuilder::new(&Vec::from("ABC")).get_address();
         let src: Address = "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
             .parse()
             .unwrap();
