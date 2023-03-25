@@ -44,11 +44,15 @@ pub async fn new_token(
                 },
                 new_nonce,
             );
-            wallet.user(0).add_token(token_id);
-            wallet.user(0).add_rsend(pay.clone());
-            wallet.save(wallet_path).unwrap();
-            println!("Token-Id: {}", token_id);
-            println!("{:#?}", client.transact(pay).await?);
+            if let Some(err) = client.transact(pay.clone()).await?.error {
+                println!("Error: {}", err);
+            } else {
+                wallet.user(0).add_token(token_id);
+                wallet.user(0).add_rsend(pay.clone());
+                wallet.save(wallet_path).unwrap();
+                println!("Sent");
+                println!("Token-Id: {}", token_id);
+            }
             Ok::<(), NodeError>(())
         },
         req_loop
