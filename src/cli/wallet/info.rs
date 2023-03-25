@@ -100,12 +100,14 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
             let mut tokens = HashMap::new();
             let mut token_indices = HashMap::new();
             for (i, tkn) in wallet.user(0).get_tokens().iter().enumerate() {
-                token_indices.insert(*tkn, i);
-                token_balances.insert(
-                    *tkn,
-                    client.get_balance(tx_builder.get_address(), *tkn).await?,
-                );
-                tokens.insert(*tkn, client.get_token(*tkn).await?);
+                if let Some(inf) = client.get_token(*tkn).await?.token {
+                    token_indices.insert(*tkn, i);
+                    token_balances.insert(
+                        *tkn,
+                        client.get_balance(tx_builder.get_address(), *tkn).await?,
+                    );
+                    tokens.insert(*tkn, inf);
+                }
             }
 
             let curr_nonce = wallet.user(0).new_r_nonce().map(|n| n - 1);
@@ -122,13 +124,8 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     println!(
                         "{}\t{}{}",
                         format!("#{} <{}>:", i, inf.name).bright_yellow(),
-                        tokens
-                            .get(id)
-                            .unwrap()
-                            .token
-                            .as_ref()
-                            .map(|t| inf.balance.display_by_decimals(t.decimals))
-                            .unwrap_or("N/A".to_string()),
+                        inf.balance
+                            .display_by_decimals(tokens.get(id).unwrap().decimals),
                         if *id == TokenId::Ziesha {
                             crate::config::SYMBOL.to_string()
                         } else {
