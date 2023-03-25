@@ -20,3 +20,52 @@ pub fn update_staker<K: KvStore>(
     )])?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::{RamKvStore, WriteOp};
+
+    #[test]
+    fn test_update_staker() {
+        let chain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+
+        let abc = TxBuilder::new(&Vec::from("HAHA"));
+
+        let (ops, _) = chain
+            .isolated(|chain| {
+                update_staker(chain, abc.get_address(), abc.get_vrf_public_key(), 10)?;
+                Ok(())
+            })
+            .unwrap();
+        let expected_ops = vec![WriteOp::Put(
+            "SKR-edf7860e4ff620f392165924386a895e9c82b156e65c16f86cb1ce0085455c4d24".into(),
+            Staker {
+                vrf_pub_key: abc.get_vrf_public_key(),
+                commision: 10,
+            }
+            .into(),
+        )];
+        assert_eq!(ops, expected_ops);
+
+        let (ops, _) = chain
+            .isolated(|chain| {
+                update_staker(chain, abc.get_address(), abc.get_vrf_public_key(), 255)?;
+                Ok(())
+            })
+            .unwrap();
+        let expected_ops = vec![WriteOp::Put(
+            "SKR-edf7860e4ff620f392165924386a895e9c82b156e65c16f86cb1ce0085455c4d24".into(),
+            Staker {
+                vrf_pub_key: abc.get_vrf_public_key(),
+                commision: 26,
+            }
+            .into(),
+        )];
+        assert_eq!(ops, expected_ops);
+    }
+}
