@@ -181,7 +181,9 @@ pub struct TransactRequest {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct TransactResponse {}
+pub struct TransactResponse {
+    pub error: Option<String>,
+}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMpnTransactionRequest {
