@@ -43,9 +43,13 @@ pub async fn register_validator(
                 },
                 new_nonce,
             );
-            wallet.validator().add_rsend(tx.clone());
-            wallet.save(wallet_path).unwrap();
-            println!("{:#?}", client.transact(tx).await?);
+            if let Some(err) = client.transact(tx.clone()).await?.error {
+                println!("Error: {}", err);
+            } else {
+                wallet.validator().add_rsend(tx.clone());
+                wallet.save(wallet_path).unwrap();
+                println!("Sent");
+            }
             Ok::<(), NodeError>(())
         },
         req_loop

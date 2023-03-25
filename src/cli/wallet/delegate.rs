@@ -33,9 +33,14 @@ pub async fn delegate(memo: Option<String>, amount: Amount, to: PublicKey, fee: 
                 },
                 new_nonce,
             );
-            wallet.user(0).add_rsend(tx.clone());
-            wallet.save(wallet_path).unwrap();
-            println!("{:#?}", client.transact(tx).await?);
+
+            if let Some(err) = client.transact(tx.clone()).await?.error {
+                println!("Error: {}", err);
+            } else {
+                wallet.user(0).add_rsend(tx.clone());
+                wallet.save(wallet_path).unwrap();
+                println!("Sent");
+            }
             Ok::<(), NodeError>(())
         },
         req_loop
