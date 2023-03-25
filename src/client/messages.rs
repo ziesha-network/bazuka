@@ -385,7 +385,7 @@ pub struct GetTokenInfoRequest {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetTokenInfoResponse {
-    pub token: Token,
+    pub token: Option<Token>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

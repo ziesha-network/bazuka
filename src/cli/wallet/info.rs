@@ -122,8 +122,13 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     println!(
                         "{}\t{}{}",
                         format!("#{} <{}>:", i, inf.name).bright_yellow(),
-                        inf.balance
-                            .display_by_decimals(tokens.get(id).unwrap().token.decimals),
+                        tokens
+                            .get(id)
+                            .unwrap()
+                            .token
+                            .as_ref()
+                            .map(|t| inf.balance.display_by_decimals(t.decimals))
+                            .unwrap_or("N/A".to_string()),
                         if *id == TokenId::Ziesha {
                             crate::config::SYMBOL.to_string()
                         } else {
@@ -191,7 +196,10 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                             println!(
                                 "{}\t{}{}",
                                 format!("#{} <{}>:", token_index, inf.name).bright_yellow(),
-                                money.amount.display_by_decimals(resp.token.decimals),
+                                resp.token
+                                    .as_ref()
+                                    .map(|t| money.amount.display_by_decimals(t.decimals))
+                                    .unwrap_or("N/A".to_string()),
                                 if money.token_id == TokenId::Ziesha {
                                     crate::config::SYMBOL.to_string()
                                 } else {
