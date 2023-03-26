@@ -64,3 +64,63 @@ pub use get_check_tx::*;
 mod generate_block;
 #[cfg(test)]
 pub use generate_block::*;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::blockchain::Blockchain;
+    use crate::blockchain::KvStoreChain;
+    use crate::client::messages::SocialProfiles;
+    use crate::client::NodeRequest;
+    use crate::client::OutgoingSender;
+    use crate::db::RamKvStore;
+    use crate::node::local_timestamp;
+    use crate::node::Mempool;
+    use crate::node::PeerManager;
+    use crate::node::TxBuilder;
+    use std::sync::Arc;
+    use tokio::sync::mpsc;
+    use tokio::sync::RwLock;
+
+    pub fn test_context() -> Arc<RwLock<NodeContext<RamKvStore, KvStoreChain<RamKvStore>>>> {
+        let network: String = "test".into();
+        let opts = crate::config::node::get_simulator_options();
+        let (out_send, _) = mpsc::unbounded_channel::<NodeRequest>();
+        let wallet = TxBuilder::new(&Vec::from("abc"));
+        let blockchain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+        Arc::new(RwLock::new(NodeContext {
+            _phantom: std::marker::PhantomData,
+            firewall: None,
+            opts: opts.clone(),
+            network: network.clone(),
+            social_profiles: SocialProfiles { discord: None },
+            address: None,
+            shutdown: false,
+            outgoing: Arc::new(OutgoingSender {
+                network: network.clone(),
+                chan: out_send,
+                priv_key: wallet.get_priv_key(),
+            }),
+            mpn_workers: Default::default(),
+            mpn_work_pool: None,
+            mempool: Mempool::new(blockchain.config().mpn_config.log4_tree_size),
+            blockchain,
+            validator_wallet: wallet.clone(),
+            user_wallet: wallet.clone(),
+            peer_manager: PeerManager::new(
+                None,
+                Default::default(),
+                local_timestamp(),
+                opts.candidate_remove_threshold,
+            ),
+            timestamp_offset: 0,
+            banned_headers: Default::default(),
+            outdated_since: None,
+            validator_claim: None,
+        }))
+    }
+}

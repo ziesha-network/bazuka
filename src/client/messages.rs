@@ -46,7 +46,7 @@ pub struct GetAccountRequest {
     pub address: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct GetAccountResponse {
     pub account: Account,
 }
@@ -251,7 +251,7 @@ pub struct GetBalanceRequest {
     pub token_id: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct GetBalanceResponse {
     pub balance: Amount,
     pub name: String,
