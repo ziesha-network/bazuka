@@ -22,6 +22,7 @@ pub struct NodeOpts {
     pub addr: u16,
     pub bootstrap: Vec<u16>,
     pub timestamp_offset: i32,
+    pub auto_gen_block: bool,
 }
 
 fn create_test_node(
@@ -31,7 +32,8 @@ fn create_test_node(
     let chain = KvStoreChain::new(RamKvStore::new(), opts.config).unwrap();
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<NodeRequest>();
-    let simulator_options = config::node::get_simulator_options();
+    let mut simulator_options = config::node::get_simulator_options();
+    simulator_options.automatic_block_generation = opts.auto_gen_block;
     let node = node_create(
         simulator_options.clone(),
         "simulator",

@@ -49,6 +49,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
+                auto_gen_block: false,
             },
             NodeOpts {
                 config: conf.clone(),
@@ -56,6 +57,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
+                auto_gen_block: false,
             },
             NodeOpts {
                 config: conf.clone(),
@@ -63,6 +65,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
                 addr: 122,
                 bootstrap: vec![121],
                 timestamp_offset: 15,
+                auto_gen_block: false,
             },
         ],
     );
@@ -103,6 +106,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
+                auto_gen_block: false,
             },
             NodeOpts {
                 config: conf.clone(),
@@ -110,6 +114,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
+                auto_gen_block: false,
             },
             NodeOpts {
                 config: conf.clone(),
@@ -117,6 +122,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
                 addr: 122,
                 bootstrap: vec![121],
                 timestamp_offset: 15,
+                auto_gen_block: false,
             },
         ],
     );
@@ -160,6 +166,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
+                auto_gen_block: false,
             },
             NodeOpts {
                 config: conf.clone(),
@@ -167,6 +174,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
+                auto_gen_block: false,
             },
         ],
     );
@@ -205,6 +213,37 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
 
         for chan in chans.iter() {
             chan.shutdown().await?;
+        }
+
+        Ok::<(), NodeError>(())
+    };
+    tokio::try_join!(node_futs, route_futs, test_logic)?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_auto_block_production() -> Result<(), NodeError> {
+    init();
+
+    let rules = Arc::new(RwLock::new(vec![]));
+
+    let conf = blockchain::get_test_blockchain_config();
+
+    let (node_futs, route_futs, chans) = simulation::test_network(
+        Arc::clone(&rules),
+        vec![NodeOpts {
+            config: conf.clone(),
+            wallet: TxBuilder::new(&Vec::from("VALIDATOR")),
+            addr: 120,
+            bootstrap: vec![],
+            timestamp_offset: 0,
+            auto_gen_block: true,
+        }],
+    );
+    let test_logic = async {
+        for _ in 0..3 {
+            println!("{}", chans[0].stats().await?.height);
+            sleep(Duration::from_millis(1000)).await;
         }
 
         Ok::<(), NodeError>(())
@@ -266,6 +305,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
+                auto_gen_block: false,
             },
             NodeOpts {
                 config: conf.clone(),
@@ -273,6 +313,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
+                auto_gen_block: false,
             },
         ],
     );
@@ -339,6 +380,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
                 addr: 120,
                 bootstrap: vec![],
                 timestamp_offset: 5,
+                auto_gen_block: false,
             },
             NodeOpts {
                 config: conf.clone(),
@@ -346,6 +388,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
                 addr: 121,
                 bootstrap: vec![120],
                 timestamp_offset: 10,
+                auto_gen_block: false,
             },
         ],
     );

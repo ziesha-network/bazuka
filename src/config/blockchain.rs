@@ -262,9 +262,12 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.testnet_height_limit = None;
     conf.chain_start_timestamp = 0;
     conf.check_validator = false;
+    conf.slot_duration = 5;
 
     conf.genesis.block.body[1] = get_test_mpn_contract().tx;
+    conf.genesis.block.body.drain(2..);
     conf.genesis.block.header.proof_of_stake.timestamp = 0;
+
     let abc = TxBuilder::new(&Vec::from("ABC"));
     let validator_1 = TxBuilder::new(&Vec::from("VALIDATOR"));
     let validator_2 = TxBuilder::new(&Vec::from("VALIDATOR2"));
@@ -278,12 +281,30 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
                 amount: Money::ziesha(10000),
             }],
         },
+        nonce: 3,
+        fee: Money::ziesha(0),
+        sig: Signature::Unsigned,
+    });
+
+    let delegator = TxBuilder::new(&Vec::from("DELEGATOR"));
+    conf.genesis.block.body.push(Transaction {
+        memo: "".into(),
+        src: None,
+        data: TransactionData::RegularSend {
+            entries: vec![RegularSendEntry {
+                dst: delegator.get_address(),
+                amount: Money::ziesha(100),
+            }],
+        },
         nonce: 4,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });
 
-    for val in [validator_1, validator_2, validator_3] {
+    for (i, val) in [validator_1, validator_2, validator_3]
+        .into_iter()
+        .enumerate()
+    {
         conf.genesis.block.body.push(
             val.register_validator(
                 "Test validator".into(),
@@ -292,6 +313,18 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
                 1,
             )
             .tx,
+        );
+        conf.genesis.block.body.push(
+            delegator
+                .delegate(
+                    "".into(),
+                    val.get_address(),
+                    Amount(25),
+                    false,
+                    Money::ziesha(0),
+                    (i + 1) as u32,
+                )
+                .tx,
         );
     }
 
