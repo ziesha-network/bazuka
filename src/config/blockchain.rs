@@ -90,21 +90,30 @@ fn get_mpn_contract(
 #[cfg(test)]
 fn get_test_mpn_contract() -> TransactionAndDelta {
     let mut mpn_tx_delta = get_mpn_contract(1, 1, 1);
-    let init_state = zk::ZkDataPairs(
-        [(zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200))]
-            .into_iter()
-            .collect(),
-    );
+    let mpn_state_model = zk::ZkStateModel::List {
+        log4_size: 1,
+        item_type: Box::new(zk::ZkStateModel::Struct {
+            field_types: vec![
+                zk::ZkStateModel::Scalar, // Nonce
+                zk::ZkStateModel::Scalar, // Pub-key X
+                zk::ZkStateModel::Scalar, // Pub-key Y
+                zk::ZkStateModel::List {
+                    log4_size: 1,
+                    item_type: Box::new(zk::ZkStateModel::Struct {
+                        field_types: vec![
+                            zk::ZkStateModel::Scalar, // Token-Id
+                            zk::ZkStateModel::Scalar, // Balance
+                        ],
+                    }),
+                },
+            ],
+        }),
+    };
     match &mut mpn_tx_delta.tx.data {
         TransactionData::CreateContract { contract } => {
-            contract.state_model = zk::ZkStateModel::List {
-                log4_size: 5,
-                item_type: Box::new(zk::ZkStateModel::Scalar),
-            };
-            contract.initial_state = contract
-                .state_model
-                .compress::<ZkHasher>(&init_state)
-                .unwrap();
+            contract.state_model = mpn_state_model;
+            contract.initial_state =
+                zk::ZkCompressedState::empty::<ZkHasher>(contract.state_model.clone());
             contract.deposit_functions = vec![zk::ZkMultiInputVerifierKey {
                 verifier_key: zk::ZkVerifierKey::Dummy,
                 log4_payment_capacity: 1,
@@ -119,7 +128,7 @@ fn get_test_mpn_contract() -> TransactionAndDelta {
         }
         _ => panic!(),
     }
-    mpn_tx_delta.state_delta = Some(init_state.as_delta());
+    mpn_tx_delta.state_delta = Some(zk::ZkDeltaPairs::default());
     mpn_tx_delta
 }
 
