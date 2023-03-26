@@ -84,14 +84,23 @@ mod tests {
 
     pub fn test_context() -> Arc<RwLock<NodeContext<RamKvStore, KvStoreChain<RamKvStore>>>> {
         let network: String = "test".into();
+        const NUM_BLOCKS: usize = 100;
         let opts = crate::config::node::get_simulator_options();
         let (out_send, _) = mpsc::unbounded_channel::<NodeRequest>();
-        let wallet = TxBuilder::new(&Vec::from("abc"));
-        let blockchain = KvStoreChain::new(
+        let validator_wallet = TxBuilder::new(&Vec::from("VALIDATOR"));
+        let user_wallet = TxBuilder::new(&Vec::from("ABC"));
+        let mut blockchain = KvStoreChain::new(
             RamKvStore::new(),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
+        for i in 0..NUM_BLOCKS {
+            let block = blockchain
+                .draft_block((i * 60 + 30) as u32, &[], &validator_wallet, true)
+                .unwrap()
+                .unwrap();
+            blockchain.extend((i + 1) as u64, &[block.block]).unwrap();
+        }
         Arc::new(RwLock::new(NodeContext {
             _phantom: std::marker::PhantomData,
             firewall: None,
@@ -103,14 +112,14 @@ mod tests {
             outgoing: Arc::new(OutgoingSender {
                 network: network.clone(),
                 chan: out_send,
-                priv_key: wallet.get_priv_key(),
+                priv_key: user_wallet.get_priv_key(),
             }),
             mpn_workers: Default::default(),
             mpn_work_pool: None,
             mempool: Mempool::new(blockchain.config().mpn_config.log4_tree_size),
             blockchain,
-            validator_wallet: wallet.clone(),
-            user_wallet: wallet.clone(),
+            validator_wallet: validator_wallet.clone(),
+            user_wallet: user_wallet.clone(),
             peer_manager: PeerManager::new(
                 None,
                 Default::default(),

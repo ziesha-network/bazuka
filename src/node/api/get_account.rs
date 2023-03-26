@@ -54,7 +54,7 @@ mod tests {
         assert_eq!(
             resp_treasury,
             GetAccountResponse {
-                account: Account { nonce: 4 }
+                account: Account { nonce: 104 }
             }
         );
         let resp_invalid = get_account(
