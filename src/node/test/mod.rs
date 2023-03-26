@@ -246,6 +246,10 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
             sleep(Duration::from_millis(1000)).await;
         }
 
+        for chan in chans.iter() {
+            chan.shutdown().await?;
+        }
+
         Ok::<(), NodeError>(())
     };
     tokio::try_join!(node_futs, route_futs, test_logic)?;
