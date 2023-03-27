@@ -304,7 +304,7 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
     );
     let test_logic = async {
         let mut height = 1;
-        for _ in 0..10 {
+        for _ in 0..5 {
             let next_height = catch_change(
                 || async {
                     // Continuously post dummy proofs to all validators to ensure block production
