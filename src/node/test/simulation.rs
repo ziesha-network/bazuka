@@ -4,6 +4,7 @@ use crate::blockchain::{BlockchainConfig, KvStoreChain};
 use crate::client::{messages::SocialProfiles, BazukaClient};
 use crate::config;
 use crate::db::RamKvStore;
+use crate::mpn::MpnWorker;
 use crate::wallet::TxBuilder;
 
 use std::sync::Arc;
@@ -23,6 +24,7 @@ pub struct NodeOpts {
     pub bootstrap: Vec<u16>,
     pub timestamp_offset: i32,
     pub auto_gen_block: bool,
+    pub mpn_workers: Vec<MpnWorker>,
 }
 
 fn create_test_node(
@@ -50,7 +52,7 @@ fn create_test_node(
         inc_recv,
         out_send,
         None,
-        vec![],
+        opts.mpn_workers,
     );
     (
         node,

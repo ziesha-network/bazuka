@@ -50,6 +50,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
                 bootstrap: vec![],
                 timestamp_offset: 5,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -58,6 +59,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
                 bootstrap: vec![120],
                 timestamp_offset: 10,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -66,6 +68,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
                 bootstrap: vec![121],
                 timestamp_offset: 15,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
         ],
     );
@@ -107,6 +110,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
                 bootstrap: vec![],
                 timestamp_offset: 5,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -115,6 +119,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
                 bootstrap: vec![120],
                 timestamp_offset: 10,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -123,6 +128,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
                 bootstrap: vec![121],
                 timestamp_offset: 15,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
         ],
     );
@@ -167,6 +173,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
                 bootstrap: vec![],
                 timestamp_offset: 5,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -175,6 +182,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
                 bootstrap: vec![120],
                 timestamp_offset: 10,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
         ],
     );
@@ -227,7 +235,9 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
 
     let rules = Arc::new(RwLock::new(vec![]));
 
-    let conf = blockchain::get_test_blockchain_config();
+    let mut conf = blockchain::get_test_blockchain_config();
+    conf.slot_duration = 2;
+    let abc = TxBuilder::new(&Vec::from("ABC"));
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&rules),
@@ -238,13 +248,24 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
             bootstrap: vec![],
             timestamp_offset: 0,
             auto_gen_block: true,
+            mpn_workers: vec![MpnWorker {
+                mpn_address: abc.get_mpn_address(),
+            }],
         }],
     );
     let test_logic = async {
-        for _ in 0..3 {
-            println!("{}", chans[0].stats().await?.height);
-            sleep(Duration::from_millis(1000)).await;
-        }
+        assert_eq!(
+            catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
+            2
+        );
+        assert_eq!(
+            catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
+            3
+        );
+        assert_eq!(
+            catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
+            4
+        );
 
         for chan in chans.iter() {
             chan.shutdown().await?;
@@ -304,6 +325,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
                 bootstrap: vec![],
                 timestamp_offset: 5,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -312,6 +334,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
                 bootstrap: vec![120],
                 timestamp_offset: 10,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
         ],
     );
@@ -379,6 +402,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
                 bootstrap: vec![],
                 timestamp_offset: 5,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -387,6 +411,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
                 bootstrap: vec![120],
                 timestamp_offset: 10,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
         ],
     );
