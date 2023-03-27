@@ -3,7 +3,7 @@ use crate::core::{
 };
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
-use crate::zk::{groth16::Groth16Proof, MpnTransaction};
+use crate::zk::{MpnTransaction, ZkProof};
 use hyper::body::{Bytes, HttpBody};
 use hyper::header::HeaderValue;
 use hyper::{Body, Method, Request, Response, StatusCode};
@@ -495,7 +495,7 @@ impl BazukaClient {
 
     pub async fn post_mpn_proof(
         &self,
-        proofs: HashMap<usize, Groth16Proof>,
+        proofs: HashMap<usize, ZkProof>,
     ) -> Result<PostMpnSolutionResponse, NodeError> {
         self.sender
             .bincode_post::<PostMpnSolutionRequest, PostMpnSolutionResponse>(

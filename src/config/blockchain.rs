@@ -227,9 +227,9 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             mpn_num_update_batches: 1,
             mpn_num_deposit_batches: 1,
             mpn_num_withdraw_batches: 1,
-            deposit_vk: MPN_DEPOSIT_VK.clone(),
-            withdraw_vk: MPN_WITHDRAW_VK.clone(),
-            update_vk: MPN_UPDATE_VK.clone(),
+            deposit_vk: zk::ZkVerifierKey::Groth16(Box::new(MPN_DEPOSIT_VK.clone())),
+            withdraw_vk: zk::ZkVerifierKey::Groth16(Box::new(MPN_WITHDRAW_VK.clone())),
+            update_vk: zk::ZkVerifierKey::Groth16(Box::new(MPN_UPDATE_VK.clone())),
         },
 
         ziesha_token_id,
@@ -276,9 +276,9 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
         mpn_num_update_batches: 0,
         mpn_num_deposit_batches: 0,
         mpn_num_withdraw_batches: 0,
-        deposit_vk: conf.mpn_config.deposit_vk.clone(), // TODO: Switch from Groth16Proof to general ZkVerifierKey
-        withdraw_vk: conf.mpn_config.withdraw_vk.clone(),
-        update_vk: conf.mpn_config.update_vk.clone(),
+        deposit_vk: zk::ZkVerifierKey::Dummy,
+        withdraw_vk: zk::ZkVerifierKey::Dummy,
+        update_vk: zk::ZkVerifierKey::Dummy,
     };
     conf.testnet_height_limit = None;
     conf.chain_start_timestamp = 0;

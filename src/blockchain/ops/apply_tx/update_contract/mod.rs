@@ -79,9 +79,9 @@ pub fn update_contract<K: KvStore>(
         if !zk::check_proof(
             &circuit,
             prev_account.height,
-            &cont_account.compressed_state,
-            &aux_data,
-            &next_state,
+            cont_account.compressed_state.state_hash,
+            aux_data.state_hash,
+            next_state.state_hash,
             &proof,
         ) {
             return Err(BlockchainError::IncorrectZkProof);
