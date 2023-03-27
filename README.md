@@ -20,11 +20,10 @@ decentralized protocol compared to similar projects.
 
 ### How to run a Bazuka node?
 
-If you only want to run a Ziesha node and do not want to execute Zero Contract or
-mine Ziesha, you will only need to install `bazuka` (This repo). In case you also
-want to mine Ziesha, you will need to install ![zoro](https://github.com/ziesha-network/zoro)
-(The Main Payment Network executor) and also the ![uzi-miner](https://github.com/ziesha-network/uzi-miner)
-(A RandomX CPU miner).
+If you only want to run a Ziesha node and/or validate blocks (Without generating proofs yourself), 
+you will only need to install `bazuka` (This repo). In case you also want to contribute in proof generation, 
+you will also need to install ![zoro](https://github.com/ziesha-network/zoro) (The Main Payment Network executor) 
+as well!
 
 **How to install `bazuka`?**
 
@@ -51,12 +50,11 @@ want to mine Ziesha, you will need to install ![zoro](https://github.com/ziesha-
     cargo install --path .
     ```
 
-Now if you want to join the `debug` testnet, you first have to initialize your
-node. If you have already initialized bazuka for another network, you first need
+If you have already initialized bazuka for and older testnet in an abandoned network, you first need
 to remove your previous initialization by running:
 
 ```sh
-rm -rf ~/.bazuka ~/.bazuka-wallet ~/.bazuka.yaml ~/.zoro-history
+rm -rf ~/.bazuka ~/.bazuka-wallet ~/.bazuka.yaml
 ```
 
 Then initialize:
