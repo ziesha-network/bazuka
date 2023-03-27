@@ -11,7 +11,7 @@ use crate::db::{KvStore, WriteOp};
 use crate::wallet::TxBuilder;
 use crate::zk::{
     groth16::groth16_verify, groth16::Groth16Proof, groth16::Groth16VerifyingKey, MpnAccount,
-    MpnTransaction, ZkCompressedState, ZkDeltaPairs, ZkProof, ZkScalar,
+    MpnTransaction, ZkCompressedState, ZkDeltaPairs, ZkProof, ZkScalar, ZkStateModel,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -158,6 +158,30 @@ pub struct MpnConfig {
     pub deposit_vk: Groth16VerifyingKey,
     pub withdraw_vk: Groth16VerifyingKey,
     pub update_vk: Groth16VerifyingKey,
+}
+
+impl MpnConfig {
+    pub fn state_model(&self) -> ZkStateModel {
+        ZkStateModel::List {
+            log4_size: self.log4_tree_size,
+            item_type: Box::new(ZkStateModel::Struct {
+                field_types: vec![
+                    ZkStateModel::Scalar, // Nonce
+                    ZkStateModel::Scalar, // Pub-key X
+                    ZkStateModel::Scalar, // Pub-key Y
+                    ZkStateModel::List {
+                        log4_size: self.log4_token_tree_size,
+                        item_type: Box::new(ZkStateModel::Struct {
+                            field_types: vec![
+                                ZkStateModel::Scalar, // Token-Id
+                                ZkStateModel::Scalar, // Balance
+                            ],
+                        }),
+                    },
+                ],
+            }),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

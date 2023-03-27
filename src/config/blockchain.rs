@@ -33,12 +33,13 @@ lazy_static! {
 }
 
 fn get_mpn_contract(
+    log4_tree_size: u8,
     log4_token_tree_size: u8,
     log4_deposit_batch_size: u8,
     log4_withdraw_batch_size: u8,
 ) -> TransactionAndDelta {
     let mpn_state_model = zk::ZkStateModel::List {
-        log4_size: MPN_LOG4_TREE_SIZE,
+        log4_size: log4_tree_size,
         item_type: Box::new(zk::ZkStateModel::Struct {
             field_types: vec![
                 zk::ZkStateModel::Scalar, // Nonce
@@ -89,7 +90,7 @@ fn get_mpn_contract(
 
 #[cfg(test)]
 fn get_test_mpn_contract() -> TransactionAndDelta {
-    let mut mpn_tx_delta = get_mpn_contract(1, 1, 1);
+    let mut mpn_tx_delta = get_mpn_contract(1, 1, 1, 1);
     let mpn_state_model = zk::ZkStateModel::List {
         log4_size: 1,
         item_type: Box::new(zk::ZkStateModel::Struct {
@@ -153,6 +154,7 @@ fn get_ziesha_token_creation_tx() -> Transaction {
 
 pub fn get_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_mpn_contract(
+        MPN_LOG4_TREE_SIZE,
         MPN_LOG4_TOKENS_TREE_SIZE,
         MPN_LOG4_DEPOSIT_BATCH_SIZE,
         MPN_LOG4_WITHDRAW_BATCH_SIZE,
@@ -264,10 +266,20 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
 
     let mut conf = get_blockchain_config();
     conf.limited_miners = None;
-    conf.mpn_config.mpn_num_update_batches = 0;
-    conf.mpn_config.mpn_num_deposit_batches = 0;
-    conf.mpn_config.mpn_num_withdraw_batches = 0;
-    conf.mpn_config.mpn_contract_id = mpn_contract_id;
+    conf.mpn_config = MpnConfig {
+        mpn_contract_id,
+        log4_tree_size: 1,
+        log4_token_tree_size: 1,
+        log4_deposit_batch_size: 1,
+        log4_withdraw_batch_size: 1,
+        log4_update_batch_size: 1,
+        mpn_num_update_batches: 0,
+        mpn_num_deposit_batches: 0,
+        mpn_num_withdraw_batches: 0,
+        deposit_vk: conf.mpn_config.deposit_vk.clone(), // TODO: Switch from Groth16Proof to general ZkVerifierKey
+        withdraw_vk: conf.mpn_config.withdraw_vk.clone(),
+        update_vk: conf.mpn_config.update_vk.clone(),
+    };
     conf.testnet_height_limit = None;
     conf.chain_start_timestamp = 0;
     conf.check_validator = false;
