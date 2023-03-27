@@ -14,6 +14,7 @@ use crate::client::{
     NETWORK_HEADER, SIGNATURE_HEADER,
 };
 use crate::common::*;
+use crate::core::Amount;
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::db::KvStore;
@@ -536,7 +537,10 @@ pub async fn node_create<K: KvStore, B: Blockchain<K>>(
             .map(|w| (w.mpn_address.clone(), w))
             .collect(),
         mpn_work_pool: None,
-        mempool: Mempool::new(blockchain.config().mpn_config.log4_tree_size),
+        mempool: Mempool::new(
+            blockchain.config().mpn_config.log4_tree_size,
+            Amount(1_000_000_000),
+        ),
         blockchain,
         validator_wallet,
         user_wallet,

@@ -1,5 +1,5 @@
 use super::{Blockchain, BlockchainError, TransactionStats};
-use crate::core::{Account, Address, ChainSourcedTx, MpnAddress, MpnSourcedTx, TokenId};
+use crate::core::{Account, Address, Amount, ChainSourcedTx, MpnAddress, MpnSourcedTx, TokenId};
 use crate::db::KvStore;
 use crate::zk;
 use std::collections::{HashMap, VecDeque};
@@ -123,6 +123,7 @@ impl AccountMempool {
 
 #[derive(Clone, Debug)]
 pub struct Mempool {
+    min_balance_per_tx: Amount,
     mpn_log4_account_capacity: u8,
     chain_sourced: HashMap<Address, AccountMempool>,
     rejected_chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
@@ -131,9 +132,10 @@ pub struct Mempool {
 }
 
 impl Mempool {
-    pub fn new(mpn_log4_account_capacity: u8) -> Self {
+    pub fn new(mpn_log4_account_capacity: u8, min_balance_per_tx: Amount) -> Self {
         Self {
             mpn_log4_account_capacity,
+            min_balance_per_tx,
             chain_sourced: Default::default(),
             rejected_chain_sourced: Default::default(),
             mpn_sourced: Default::default(),
@@ -213,7 +215,10 @@ impl Mempool {
             // Allow 1tx in mempool per Ziesha
             // Min: 1 Max: 1000
             let limit = std::cmp::max(
-                std::cmp::min(Into::<u64>::into(ziesha_balance) / 1000000000, 1000),
+                std::cmp::min(
+                    Into::<u64>::into(ziesha_balance) / self.min_balance_per_tx.0,
+                    1000,
+                ),
                 1,
             ) as usize;
 
@@ -272,7 +277,10 @@ impl Mempool {
                 // Allow 1tx in mempool per Ziesha
                 // Min: 1 Max: 1000
                 let limit = std::cmp::max(
-                    std::cmp::min(Into::<u64>::into(money.amount) / 1000000000, 1000),
+                    std::cmp::min(
+                        Into::<u64>::into(money.amount) / self.min_balance_per_tx.0,
+                        1000,
+                    ),
                     1,
                 ) as usize;
 
@@ -297,5 +305,95 @@ impl Mempool {
     }
     pub fn mpn_sourced(&self) -> impl Iterator<Item = &(MpnSourcedTx, TransactionStats)> {
         self.mpn_sourced.iter().map(|(_, c)| c.txs.iter()).flatten()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::blockchain::KvStoreChain;
+    use crate::core::Money;
+    use crate::db::RamKvStore;
+    use crate::wallet::TxBuilder;
+
+    fn dummy_tx(wallet: &TxBuilder, nonce: u32) -> ChainSourcedTx {
+        ChainSourcedTx::TransactionAndDelta(wallet.create_transaction(
+            "".into(),
+            wallet.get_address(),
+            Money::ziesha(200),
+            Money::ziesha(0),
+            nonce,
+        ))
+    }
+
+    #[test]
+    fn test_mempool_check_correct_account_nonce() {
+        let chain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+        let abc = TxBuilder::new(&Vec::from("ABC"));
+
+        for i in 0..5 {
+            let mut mempool = Mempool::new(30, Amount(1));
+            mempool
+                .add_chain_sourced(&chain, dummy_tx(&abc, i), false, 0)
+                .unwrap();
+
+            let snapshot = mempool.chain_sourced().collect::<Vec<_>>();
+            // Tx is only added if nonce is correct based on its account on the blockchain
+            assert_eq!(snapshot.len(), if i == 1 { 1 } else { 0 });
+        }
+    }
+
+    #[test]
+    fn test_mempool_consecutive_nonces() {
+        let chain = KvStoreChain::new(
+            RamKvStore::new(),
+            crate::config::blockchain::get_test_blockchain_config(),
+        )
+        .unwrap();
+        let abc = TxBuilder::new(&Vec::from("ABC"));
+        let other = TxBuilder::new(&Vec::from("DELEGATOR"));
+        let mut mempool = Mempool::new(30, Amount(1));
+
+        mempool
+            .add_chain_sourced(&chain, dummy_tx(&abc, 1), false, 0)
+            .unwrap();
+        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 1);
+        mempool
+            .add_chain_sourced(&chain, dummy_tx(&abc, 2), false, 0)
+            .unwrap();
+        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 2);
+        mempool
+            .add_chain_sourced(&chain, dummy_tx(&abc, 4), false, 0)
+            .unwrap();
+        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 2);
+        mempool
+            .add_chain_sourced(&chain, dummy_tx(&abc, 3), false, 0)
+            .unwrap();
+        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 3);
+        mempool
+            .add_chain_sourced(&chain, dummy_tx(&abc, 4), false, 0)
+            .unwrap();
+        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 4);
+
+        mempool
+            .add_chain_sourced(&chain, dummy_tx(&other, 1), false, 0)
+            .unwrap();
+        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 4);
+        mempool
+            .add_chain_sourced(&chain, dummy_tx(&other, 4), false, 0)
+            .unwrap();
+        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 5);
+        mempool
+            .add_chain_sourced(&chain, dummy_tx(&other, 6), false, 0)
+            .unwrap();
+        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 5);
+        mempool
+            .add_chain_sourced(&chain, dummy_tx(&other, 5), false, 0)
+            .unwrap();
+        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 6);
     }
 }

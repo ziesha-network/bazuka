@@ -73,6 +73,7 @@ mod tests {
     use crate::client::messages::SocialProfiles;
     use crate::client::NodeRequest;
     use crate::client::OutgoingSender;
+    use crate::core::Amount;
     use crate::db::RamKvStore;
     use crate::node::local_timestamp;
     use crate::node::Mempool;
@@ -116,7 +117,10 @@ mod tests {
             }),
             mpn_workers: Default::default(),
             mpn_work_pool: None,
-            mempool: Mempool::new(blockchain.config().mpn_config.log4_tree_size),
+            mempool: Mempool::new(
+                blockchain.config().mpn_config.log4_tree_size,
+                Amount(1_000_000_000),
+            ),
             blockchain,
             validator_wallet: validator_wallet.clone(),
             user_wallet: user_wallet.clone(),
