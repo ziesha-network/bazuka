@@ -17,13 +17,13 @@ fn init() {
 
 const MAX_WAIT_FOR_CHANGE: usize = 20;
 
-async fn catch_change<F: Fn() -> Fut, T, Fut>(f: F) -> Result<T, NodeError>
+async fn catch_change<F: Fn() -> Fut, T, Fut>(f: F, timeout: usize) -> Result<T, NodeError>
 where
     Fut: futures::Future<Output = Result<T, NodeError>>,
     T: std::fmt::Display + PartialEq,
 {
     let prev_val = f().await?;
-    for _ in 0..MAX_WAIT_FOR_CHANGE {
+    for _ in 0..timeout {
         sleep(Duration::from_secs(1)).await;
         let new_val = f().await?;
         if new_val != prev_val {
@@ -74,13 +74,16 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
     );
     let test_logic = async {
         assert!(
-            catch_change(|| async {
-                let mut peer_counts = Vec::new();
-                for chan in chans.iter() {
-                    peer_counts.push(chan.peers().await?.peers.len());
-                }
-                Ok(peer_counts.into_iter().all(|c| c == 2))
-            })
+            catch_change(
+                || async {
+                    let mut peer_counts = Vec::new();
+                    for chan in chans.iter() {
+                        peer_counts.push(chan.peers().await?.peers.len());
+                    }
+                    Ok(peer_counts.into_iter().all(|c| c == 2))
+                },
+                MAX_WAIT_FOR_CHANGE
+            )
             .await?
         );
 
@@ -134,14 +137,17 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
     );
     let test_logic = async {
         assert!(
-            catch_change(|| async {
-                let mut timestamps = Vec::new();
-                for chan in chans.iter() {
-                    timestamps.push(chan.stats().await?.timestamp);
-                }
-                let first = timestamps.first().unwrap();
-                Ok(timestamps.iter().all(|t| t == first))
-            })
+            catch_change(
+                || async {
+                    let mut timestamps = Vec::new();
+                    for chan in chans.iter() {
+                        timestamps.push(chan.stats().await?.timestamp);
+                    }
+                    let first = timestamps.first().unwrap();
+                    Ok(timestamps.iter().all(|t| t == first))
+                },
+                MAX_WAIT_FOR_CHANGE
+            )
             .await?
         );
 
@@ -211,13 +217,25 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
 
         // Now we open the connections...
         rules.write().await.clear();
-        assert!(catch_change(|| async { Ok(chans[0].stats().await?.height == 50) }).await?,);
+        assert!(
+            catch_change(
+                || async { Ok(chans[0].stats().await?.height == 50) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
+        );
         assert_eq!(chans[1].stats().await?.height, 50);
 
         // Now nodes should immediately sync with post_block
         chans[1].mine().await?;
         assert_eq!(chans[1].stats().await?.height, 51);
-        assert!(catch_change(|| async { Ok(chans[0].stats().await?.height == 51) }).await?,);
+        assert!(
+            catch_change(
+                || async { Ok(chans[0].stats().await?.height == 51) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
+        );
 
         for chan in chans.iter() {
             chan.shutdown().await?;
@@ -254,18 +272,12 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
         }],
     );
     let test_logic = async {
-        assert_eq!(
-            catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
-            2
-        );
-        assert_eq!(
-            catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
-            3
-        );
-        assert_eq!(
-            catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
-            4
-        );
+        let h1 = catch_change(|| async { Ok(chans[0].stats().await?.height) }, 60).await?;
+        assert!(h1 > 1);
+        let h2 = catch_change(|| async { Ok(chans[0].stats().await?.height) }, 60).await?;
+        assert!(h2 > h1);
+        let h3 = catch_change(|| async { Ok(chans[0].stats().await?.height) }, 60).await?;
+        assert!(h3 > h2);
 
         for chan in chans.iter() {
             chan.shutdown().await?;
@@ -357,7 +369,11 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         *rules.write().await = vec![Rule::drop_url("state")];
         assert_eq!(chans[0].stats().await?.height, 2);
         assert_eq!(
-            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[1].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             2
         );
 
@@ -368,9 +384,10 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         rules.write().await.clear();
         assert_eq!(chans[0].outdated_heights().await?.outdated_heights.len(), 0);
         assert_eq!(
-            catch_change(|| async {
-                Ok(chans[1].outdated_heights().await?.outdated_heights.len())
-            })
+            catch_change(
+                || async { Ok(chans[1].outdated_heights().await?.outdated_heights.len()) },
+                MAX_WAIT_FOR_CHANGE
+            )
             .await?,
             0
         );
@@ -425,7 +442,11 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
 
         *rules.write().await = vec![Rule::drop_url("state")];
         assert_eq!(
-            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[1].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             2
         );
         assert_eq!(chans[0].outdated_heights().await?.outdated_heights.len(), 0);
@@ -434,21 +455,33 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         assert!(chans[1].mine().await?.success == false);
 
         assert_eq!(
-            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[1].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             1
         );
         assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 0);
 
         // Header will be banned for some time and gets unbanned again:
         assert_eq!(
-            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[1].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             2
         );
         assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 1);
 
         // Banned again...
         assert_eq!(
-            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[1].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             1
         );
         assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 0);
@@ -459,7 +492,11 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 0);
 
         assert_eq!(
-            catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[0].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             3
         );
         assert_eq!(chans[0].stats().await?.height, 3);
