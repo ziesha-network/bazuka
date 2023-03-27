@@ -10,8 +10,8 @@ use crate::core::{
 use crate::db::{KvStore, WriteOp};
 use crate::wallet::TxBuilder;
 use crate::zk::{
-    groth16::groth16_verify, groth16::Groth16Proof, groth16::Groth16VerifyingKey, MpnAccount,
-    MpnTransaction, ZkCompressedState, ZkDeltaPairs, ZkProof, ZkScalar,
+    check_proof, MpnAccount, MpnTransaction, ZkCompressedState, ZkDeltaPairs, ZkProof, ZkScalar,
+    ZkStateModel, ZkVerifierKey,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -54,7 +54,7 @@ pub struct MpnWorkPool {
     config: MpnConfig,
     final_delta: ZkDeltaPairs,
     works: HashMap<usize, MpnWork>,
-    solutions: HashMap<usize, Groth16Proof>,
+    solutions: HashMap<usize, ZkProof>,
 }
 
 impl MpnWorkPool {
@@ -71,7 +71,7 @@ impl MpnWorkPool {
             .filter(|(_, v)| v.worker.mpn_address == mpn_address)
             .collect()
     }
-    pub fn prove(&mut self, id: usize, proof: &Groth16Proof) -> bool {
+    pub fn prove(&mut self, id: usize, proof: &ZkProof) -> bool {
         if !self.solutions.contains_key(&id) {
             if let Some(work) = self.works.get(&id) {
                 if work.verify(proof) {
@@ -96,13 +96,13 @@ impl MpnWorkPool {
                         deposit_circuit_id: 0,
                         deposits: trans.into_iter().map(|t| t.tx.payment.clone()).collect(),
                         next_state: self.works[&i].new_root.clone(),
-                        proof: ZkProof::Groth16(Box::new(self.solutions[&i].clone())),
+                        proof: self.solutions[&i].clone(),
                     },
                     MpnWorkData::Withdraw(trans) => ContractUpdate::Withdraw {
                         withdraw_circuit_id: 0,
                         withdraws: trans.into_iter().map(|t| t.tx.payment.clone()).collect(),
                         next_state: self.works[&i].new_root.clone(),
-                        proof: ZkProof::Groth16(Box::new(self.solutions[&i].clone())),
+                        proof: self.solutions[&i].clone(),
                     },
                     MpnWorkData::Update(trans) => {
                         assert!(trans.iter().all(|t| t.tx.fee.token_id == TokenId::Ziesha));
@@ -113,7 +113,7 @@ impl MpnWorkPool {
                         ContractUpdate::FunctionCall {
                             function_id: 0,
                             next_state: self.works[&i].new_root.clone(),
-                            proof: ZkProof::Groth16(Box::new(self.solutions[&i].clone())),
+                            proof: self.solutions[&i].clone(),
                             fee: Money {
                                 token_id: TokenId::Ziesha,
                                 amount: fee_sum.into(),
@@ -155,9 +155,33 @@ pub struct MpnConfig {
     pub mpn_num_update_batches: usize,
     pub mpn_num_deposit_batches: usize,
     pub mpn_num_withdraw_batches: usize,
-    pub deposit_vk: Groth16VerifyingKey,
-    pub withdraw_vk: Groth16VerifyingKey,
-    pub update_vk: Groth16VerifyingKey,
+    pub deposit_vk: ZkVerifierKey,
+    pub withdraw_vk: ZkVerifierKey,
+    pub update_vk: ZkVerifierKey,
+}
+
+impl MpnConfig {
+    pub fn state_model(&self) -> ZkStateModel {
+        ZkStateModel::List {
+            log4_size: self.log4_tree_size,
+            item_type: Box::new(ZkStateModel::Struct {
+                field_types: vec![
+                    ZkStateModel::Scalar, // Nonce
+                    ZkStateModel::Scalar, // Pub-key X
+                    ZkStateModel::Scalar, // Pub-key Y
+                    ZkStateModel::List {
+                        log4_size: self.log4_token_tree_size,
+                        item_type: Box::new(ZkStateModel::Struct {
+                            field_types: vec![
+                                ZkStateModel::Scalar, // Token-Id
+                                ZkStateModel::Scalar, // Balance
+                            ],
+                        }),
+                    },
+                ],
+            }),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -190,7 +214,7 @@ pub struct MpnWork {
 }
 
 impl MpnWork {
-    pub fn vk(&self) -> Groth16VerifyingKey {
+    pub fn vk(&self) -> ZkVerifierKey {
         match &self.data {
             MpnWorkData::Deposit(_) => &self.config.deposit_vk,
             MpnWorkData::Withdraw(_) => &self.config.withdraw_vk,
@@ -198,9 +222,9 @@ impl MpnWork {
         }
         .clone()
     }
-    pub fn verify(&self, proof: &Groth16Proof) -> bool {
+    pub fn verify(&self, proof: &ZkProof) -> bool {
         let vk = self.vk();
-        groth16_verify(
+        check_proof(
             &vk,
             self.public_inputs.height,
             self.public_inputs.state,

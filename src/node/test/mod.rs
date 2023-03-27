@@ -259,23 +259,14 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
 fn sample_contract_call() -> TransactionAndDelta {
     let updater = TxBuilder::new(&Vec::from("ABC"));
 
-    let cid = blockchain::get_test_blockchain_config()
-        .mpn_config
-        .mpn_contract_id;
-    let state_model = zk::ZkStateModel::List {
-        item_type: Box::new(zk::ZkStateModel::Scalar),
-        log4_size: 5,
-    };
+    let mpn_conf = blockchain::get_test_blockchain_config().mpn_config;
+    let cid = mpn_conf.mpn_contract_id;
     let mut full_state = zk::ZkState {
         rollbacks: vec![],
-        data: zk::ZkDataPairs(
-            [(zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200))]
-                .into_iter()
-                .collect(),
-        ),
+        data: zk::ZkDataPairs(Default::default()),
     };
     let state_delta = zk::ZkDeltaPairs(
-        [(zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(234)))]
+        [(zk::ZkDataLocator(vec![0, 0]), Some(zk::ZkScalar::from(234)))]
             .into_iter()
             .collect(),
     );
@@ -285,7 +276,10 @@ fn sample_contract_call() -> TransactionAndDelta {
         cid,
         0,
         state_delta.clone(),
-        state_model.compress::<ZkHasher>(&full_state.data).unwrap(),
+        mpn_conf
+            .state_model()
+            .compress::<ZkHasher>(&full_state.data)
+            .unwrap(),
         zk::ZkProof::Dummy(true),
         Money::ziesha(0),
         Money::ziesha(0),
