@@ -259,25 +259,53 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&rules),
-        vec![NodeOpts {
-            config: conf.clone(),
-            wallet: TxBuilder::new(&Vec::from("VALIDATOR")),
-            addr: 120,
-            bootstrap: vec![],
-            timestamp_offset: 0,
-            auto_gen_block: true,
-            mpn_workers: vec![MpnWorker {
-                mpn_address: abc.get_mpn_address(),
-            }],
-        }],
+        vec![
+            NodeOpts {
+                config: conf.clone(),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR")),
+                addr: 120,
+                bootstrap: vec![121, 122],
+                timestamp_offset: 0,
+                auto_gen_block: true,
+                mpn_workers: vec![MpnWorker {
+                    mpn_address: abc.get_mpn_address(),
+                }],
+            },
+            NodeOpts {
+                config: conf.clone(),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR2")),
+                addr: 121,
+                bootstrap: vec![120, 122],
+                timestamp_offset: 0,
+                auto_gen_block: true,
+                mpn_workers: vec![MpnWorker {
+                    mpn_address: abc.get_mpn_address(),
+                }],
+            },
+            NodeOpts {
+                config: conf.clone(),
+                wallet: TxBuilder::new(&Vec::from("VALIDATOR3")),
+                addr: 122,
+                bootstrap: vec![120, 121],
+                timestamp_offset: 0,
+                auto_gen_block: true,
+                mpn_workers: vec![MpnWorker {
+                    mpn_address: abc.get_mpn_address(),
+                }],
+            },
+        ],
     );
     let test_logic = async {
-        let h1 = catch_change(|| async { Ok(chans[0].stats().await?.height) }, 60).await?;
-        assert!(h1 > 1);
-        let h2 = catch_change(|| async { Ok(chans[0].stats().await?.height) }, 60).await?;
-        assert!(h2 > h1);
-        let h3 = catch_change(|| async { Ok(chans[0].stats().await?.height) }, 60).await?;
-        assert!(h3 > h2);
+        let mut height = 1;
+        for _ in 0..10 {
+            let next_height = catch_change(
+                || async { Ok(chans[0].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE,
+            )
+            .await?;
+            assert!(next_height > height);
+            height = next_height;
+        }
 
         for chan in chans.iter() {
             chan.shutdown().await?;
