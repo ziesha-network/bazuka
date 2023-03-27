@@ -90,9 +90,9 @@ fn get_mpn_contract(
 
 #[cfg(test)]
 fn get_test_mpn_contract() -> TransactionAndDelta {
-    let mut mpn_tx_delta = get_mpn_contract(1, 1, 1, 1);
+    let mut mpn_tx_delta = get_mpn_contract(30, 1, 1, 1);
     let mpn_state_model = zk::ZkStateModel::List {
-        log4_size: 1,
+        log4_size: 30,
         item_type: Box::new(zk::ZkStateModel::Struct {
             field_types: vec![
                 zk::ZkStateModel::Scalar, // Nonce
@@ -268,7 +268,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.limited_miners = None;
     conf.mpn_config = MpnConfig {
         mpn_contract_id,
-        log4_tree_size: 1,
+        log4_tree_size: 30,
         log4_token_tree_size: 1,
         log4_deposit_batch_size: 1,
         log4_withdraw_batch_size: 1,

@@ -173,7 +173,7 @@ mod tests {
                 Account { nonce: 1 }.into(),
             ),
             WriteOp::Put(
-                "CAB-e97e9d34b101f5e98805dba10de8ad91fc61139d571cf4966fe36c7a56d6138b-Ziesha"
+                "CAB-6dbbef663ee3bf666f6a4789ad5cdfbd7c97a1f79fb8ef1412e8fffc09fc2855-Ziesha"
                     .into(),
                 Amount(123).into(),
             ),
@@ -283,7 +283,7 @@ mod tests {
                 Account { nonce: 2 }.into(),
             ),
             WriteOp::Put(
-                "CAB-e97e9d34b101f5e98805dba10de8ad91fc61139d571cf4966fe36c7a56d6138b-0x113c5707d6ab03dd78c9f8455f3b4096c8c5e9312076aafe38d79c4d8eb2d096"
+                "CAB-6dbbef663ee3bf666f6a4789ad5cdfbd7c97a1f79fb8ef1412e8fffc09fc2855-0x113c5707d6ab03dd78c9f8455f3b4096c8c5e9312076aafe38d79c4d8eb2d096"
                     .into(),
                 Amount(10000).into(),
             ),

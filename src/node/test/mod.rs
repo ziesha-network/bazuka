@@ -255,14 +255,21 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
 
     let mut conf = blockchain::get_test_blockchain_config();
     conf.slot_duration = 2;
+    conf.mpn_config.mpn_num_deposit_batches = 1;
+    conf.mpn_config.mpn_num_withdraw_batches = 1;
+    conf.mpn_config.mpn_num_update_batches = 1;
     let abc = TxBuilder::new(&Vec::from("ABC"));
+
+    let val1 = TxBuilder::new(&Vec::from("VALIDATOR"));
+    let val2 = TxBuilder::new(&Vec::from("VALIDATOR2"));
+    let val3 = TxBuilder::new(&Vec::from("VALIDATOR3"));
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&rules),
         vec![
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("VALIDATOR")),
+                wallet: val1.clone(),
                 addr: 120,
                 bootstrap: vec![121, 122],
                 timestamp_offset: 0,
@@ -273,7 +280,7 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("VALIDATOR2")),
+                wallet: val2.clone(),
                 addr: 121,
                 bootstrap: vec![120, 122],
                 timestamp_offset: 0,
@@ -284,7 +291,7 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
             },
             NodeOpts {
                 config: conf.clone(),
-                wallet: TxBuilder::new(&Vec::from("VALIDATOR3")),
+                wallet: val3.clone(),
                 addr: 122,
                 bootstrap: vec![120, 121],
                 timestamp_offset: 0,
@@ -299,7 +306,22 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
         let mut height = 1;
         for _ in 0..10 {
             let next_height = catch_change(
-                || async { Ok(chans[0].stats().await?.height) },
+                || async {
+                    // Continuously post dummy proofs to all validators to ensure block production
+                    for ch in chans.iter() {
+                        ch.post_mpn_proof(
+                            [
+                                (0, zk::ZkProof::Dummy(true)),
+                                (1, zk::ZkProof::Dummy(true)),
+                                (2, zk::ZkProof::Dummy(true)),
+                            ]
+                            .into_iter()
+                            .collect(),
+                        )
+                        .await?;
+                    }
+                    Ok(chans[0].stats().await?.height)
+                },
                 MAX_WAIT_FOR_CHANGE,
             )
             .await?;
