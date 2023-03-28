@@ -82,7 +82,7 @@ mod tests {
     use tokio::sync::mpsc;
     use tokio::sync::RwLock;
 
-    pub fn test_context() -> Arc<RwLock<NodeContext<RamKvStore, KvStoreChain<RamKvStore>>>> {
+    pub fn test_context() -> Arc<RwLock<NodeContext<KvStoreChain>>> {
         let network: String = "test".into();
         const NUM_BLOCKS: usize = 100;
         let opts = crate::config::node::get_simulator_options();
@@ -90,7 +90,7 @@ mod tests {
         let validator_wallet = TxBuilder::new(&Vec::from("VALIDATOR"));
         let user_wallet = TxBuilder::new(&Vec::from("ABC"));
         let mut blockchain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();

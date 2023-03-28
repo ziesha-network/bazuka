@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn create_contract<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn create_contract(
+    chain: &mut KvStoreChain,
     contract_id: ContractId,
     contract: &zk::ZkContract,
 ) -> Result<TxSideEffect, BlockchainError> {
@@ -44,7 +44,7 @@ mod tests {
     #[test]
     fn test_create_contract() {
         let chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();

@@ -22,11 +22,11 @@ use tokio::sync::{RwLock, RwLockWriteGuard};
 
 pub async fn make_loop<
     K: KvStore,
-    B: Blockchain<K>,
+    B: Blockchain,
     Fut: futures::Future<Output = Result<(), NodeError>>,
-    F: Fn(&Arc<RwLock<NodeContext<K, B>>>) -> Fut,
+    F: Fn(&Arc<RwLock<NodeContext<B>>>) -> Fut,
 >(
-    context: &Arc<RwLock<NodeContext<K, B>>>,
+    context: &Arc<RwLock<NodeContext<B>>>,
     func: F,
     interval: Duration,
 ) {
@@ -41,8 +41,8 @@ pub async fn make_loop<
     }
 }
 
-pub async fn heartbeater<K: KvStore, B: Blockchain<K>>(
-    ctx: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn heartbeater<B: Blockchain>(
+    ctx: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ints = ctx.read().await.opts.heartbeat_intervals.clone();
     tokio::join!(
@@ -88,8 +88,8 @@ pub async fn heartbeater<K: KvStore, B: Blockchain<K>>(
     Ok(())
 }
 
-fn punish_non_responding<K: KvStore, B: Blockchain<K>, R: Clone, E>(
-    ctx: &mut RwLockWriteGuard<'_, NodeContext<K, B>>,
+fn punish_non_responding<B: Blockchain, R: Clone, E>(
+    ctx: &mut RwLockWriteGuard<'_, NodeContext<B>>,
     resps: &[(Peer, Result<R, E>)],
 ) -> Vec<(PeerAddress, R)> {
     resps

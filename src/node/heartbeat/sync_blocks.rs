@@ -1,8 +1,8 @@
 use super::*;
 use crate::common::*;
 
-pub async fn sync_blocks<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn sync_blocks<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
     let net = ctx.outgoing.clone();

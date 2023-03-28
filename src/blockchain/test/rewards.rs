@@ -15,7 +15,7 @@ fn test_correct_rewards() -> Result<(), BlockchainError> {
     let validator = TxBuilder::new(&Vec::from("VALIDATOR"));
     let delegator = TxBuilder::new(&Vec::from("ABC"));
     let mut chain = KvStoreChain::new(
-        db::RamKvStore::new(),
+        Box::new(db::RamKvStore::new()),
         blockchain::get_test_blockchain_config(),
     )?;
 

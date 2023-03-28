@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn delegate<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn delegate(
+    chain: &mut KvStoreChain,
     tx_src: Address,
     amount: Amount,
     to: Address,
@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn test_delegate() {
         let mut chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
@@ -271,7 +271,7 @@ mod tests {
     #[test]
     fn test_delegate_balance_insufficient() {
         let chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();

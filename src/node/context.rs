@@ -11,7 +11,7 @@ use crate::wallet::TxBuilder;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub struct NodeContext<K: KvStore, B: Blockchain<K>> {
+pub struct NodeContext<B: Blockchain> {
     pub firewall: Option<Firewall>,
     pub social_profiles: SocialProfiles,
     pub opts: NodeOptions,
@@ -33,10 +33,10 @@ pub struct NodeContext<K: KvStore, B: Blockchain<K>> {
 
     pub outdated_since: Option<Timestamp>,
     pub banned_headers: HashMap<Header, Timestamp>,
-    pub _phantom: std::marker::PhantomData<K>,
+    pub _phantom: std::marker::PhantomData<dyn KvStore>,
 }
 
-impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
+impl<B: Blockchain> NodeContext<B> {
     pub fn local_timestamp(&self) -> u32 {
         utils::local_timestamp()
     }

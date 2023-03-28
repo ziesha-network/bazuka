@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn function_call<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn function_call(
+    chain: &mut KvStoreChain,
     contract_id: &ContractId,
     contract: &zk::ZkContract,
     function_id: &u32,

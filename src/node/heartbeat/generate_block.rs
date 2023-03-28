@@ -3,8 +3,8 @@ use crate::core::{Amount, ChainSourcedTx, MpnAddress, MpnSourcedTx};
 use crate::mpn;
 use std::collections::HashSet;
 
-pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn generate_block<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let mut ctx = context.write().await;
     let timestamp = ctx.network_timestamp();

@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn pay_validator_and_delegators<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn pay_validator_and_delegators(
+    chain: &mut KvStoreChain,
     validator: Address,
     fee_sum: Amount,
 ) -> Result<Amount, BlockchainError> {

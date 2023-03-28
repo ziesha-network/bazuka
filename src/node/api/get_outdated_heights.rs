@@ -5,8 +5,8 @@ use crate::db::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_outdated_heights<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn get_outdated_heights<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     _req: GetOutdatedHeightsRequest,
 ) -> Result<GetOutdatedHeightsResponse, NodeError> {
     let context = context.read().await;

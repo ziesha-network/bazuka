@@ -303,11 +303,11 @@ pub trait KvStore {
     fn get(&self, k: StringKey) -> Result<Option<Blob>, KvStoreError>;
     fn update(&mut self, ops: &[WriteOp]) -> Result<(), KvStoreError>;
     fn pairs(&self, prefix: StringKey) -> Result<QueryResult, KvStoreError>;
-    fn mirror(&self) -> RamMirrorKvStore<'_, Self>
+    fn mirror(self: Box<Self>) -> RamMirrorKvStore<'static, Self>
     where
         Self: Sized,
     {
-        RamMirrorKvStore::new(self)
+        RamMirrorKvStore::new(&*self)
     }
 }
 

@@ -5,8 +5,8 @@ use crate::node::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_explorer_stakers<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn get_explorer_stakers<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     _req: GetExplorerStakersRequest,
 ) -> Result<GetExplorerStakersResponse, NodeError> {
     let context = context.read().await;

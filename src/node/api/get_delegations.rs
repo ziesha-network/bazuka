@@ -1,12 +1,11 @@
 use super::messages::{GetDelegationsRequest, GetDelegationsResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
-use crate::db::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_delegations<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn get_delegations<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     req: GetDelegationsRequest,
 ) -> Result<GetDelegationsResponse, NodeError> {
     let context = context.read().await;

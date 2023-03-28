@@ -6,8 +6,8 @@ use crate::mpn::MpnWorker;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn post_mpn_worker<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn post_mpn_worker<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     req: PostMpnWorkerRequest,
 ) -> Result<PostMpnWorkerResponse, NodeError> {
     let mut context = context.write().await;

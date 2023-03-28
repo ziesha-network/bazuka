@@ -74,8 +74,8 @@ pub enum TxSideEffect {
     Nothing,
 }
 
-pub trait Blockchain<K: KvStore> {
-    fn database(&self) -> &K;
+pub trait Blockchain {
+    fn database(&self) -> &Box<dyn KvStore>;
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self) -> Result<Vec<(Address, Amount)>, BlockchainError>;
@@ -175,17 +175,17 @@ pub trait Blockchain<K: KvStore> {
     fn check_tx(&self, tx: &Transaction) -> Result<(), BlockchainError>;
 }
 
-pub struct KvStoreChain<K: KvStore> {
+pub struct KvStoreChain {
     config: BlockchainConfig,
-    database: K,
+    database: Box<dyn KvStore>,
 }
 
-impl<K: KvStore> KvStoreChain<K> {
-    pub fn db(&self) -> &K {
+impl KvStoreChain {
+    pub fn db(&self) -> &Box<dyn KvStore> {
         &self.database
     }
-    pub fn new(database: K, config: BlockchainConfig) -> Result<KvStoreChain<K>, BlockchainError> {
-        let mut chain = KvStoreChain::<K> {
+    pub fn new(database: Box<dyn KvStore>, config: BlockchainConfig) -> Result<KvStoreChain, BlockchainError> {
+        let mut chain = KvStoreChain {
             database,
             config: config.clone(),
         };
@@ -199,7 +199,7 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok(chain)
     }
 
-    pub fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
+    pub fn fork_on_ram(&self) -> KvStoreChain {
         KvStoreChain {
             database: self.database.mirror(),
             config: self.config.clone(),
@@ -208,7 +208,7 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn isolated<F, R>(&self, f: F) -> Result<(Vec<WriteOp>, R), BlockchainError>
     where
-        F: FnOnce(&mut KvStoreChain<RamMirrorKvStore<'_, K>>) -> Result<R, BlockchainError>,
+        F: FnOnce(&mut KvStoreChain) -> Result<R, BlockchainError>,
     {
         let mut mirror = self.fork_on_ram();
         let result = f(&mut mirror)?;
@@ -288,7 +288,7 @@ impl<K: KvStore> KvStoreChain<K> {
     }
 }
 
-impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
+impl Blockchain for KvStoreChain {
     fn db_checksum(&self) -> Result<String, BlockchainError> {
         Ok(hex::encode(
             self.database.pairs("".into())?.checksum::<Hasher>()?,
@@ -426,7 +426,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
 
     fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError> {
         Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_account(
-            &self.database,
+            self.database,
             self.config.mpn_config.mpn_contract_id,
             index,
         )?)
@@ -438,7 +438,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         page_size: usize,
     ) -> Result<Vec<(u64, zk::MpnAccount)>, BlockchainError> {
         Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_accounts(
-            &self.database,
+            self.database,
             self.config.mpn_config.mpn_contract_id,
             page,
             page_size,
@@ -546,7 +546,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         locator: zk::ZkDataLocator,
     ) -> Result<zk::ZkScalar, BlockchainError> {
         Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_data(
-            &self.database,
+            self.database,
             contract_id,
             &locator,
         )?)
@@ -778,7 +778,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         (epoch_number, slot_number % self.config.slot_per_epoch)
     }
 
-    fn database(&self) -> &K {
+    fn database(&self) -> &Box<dyn KvStore> {
         &self.database
     }
     fn min_validator_reward(&self, validator: Address) -> Result<Amount, BlockchainError> {

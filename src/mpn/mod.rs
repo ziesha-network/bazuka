@@ -211,9 +211,9 @@ impl MpnWork {
     }
 }
 
-pub fn prepare_works<K: KvStore>(
+pub fn prepare_works(
     config: &MpnConfig,
-    db: &K,
+    db: &dyn KvStore,
     workers: &HashMap<MpnAddress, MpnWorker>,
     mut deposits: Vec<MpnDeposit>,
     withdraws: Vec<MpnWithdraw>,

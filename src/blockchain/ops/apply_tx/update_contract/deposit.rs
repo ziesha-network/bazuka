@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn deposit<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn deposit(
+    chain: &mut KvStoreChain,
     contract_id: &ContractId,
     contract: &zk::ZkContract,
     deposit_circuit_id: &u32,
@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn test_empty_deposit() {
         let chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn test_single_deposit() {
         let chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn test_custom_token_deposit() {
         let mut chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();

@@ -7,9 +7,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn transact<K: KvStore, B: Blockchain<K>>(
+pub async fn transact<B: Blockchain>(
     client: Option<SocketAddr>,
-    context: Arc<RwLock<NodeContext<K, B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
     req: TransactRequest,
 ) -> Result<TransactResponse, NodeError> {
     let mut ctx = context.write().await;

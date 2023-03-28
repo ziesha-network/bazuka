@@ -8,12 +8,12 @@ use crate::zk::{
 };
 use std::collections::HashSet;
 
-pub fn deposit<K: KvStore>(
+pub fn deposit(
     mpn_contract_id: ContractId,
     mpn_log4_account_capacity: u8,
     log4_token_tree_size: u8,
     log4_batch_size: u8,
-    db: &mut K,
+    db: &mut dyn KvStore,
     txs: &[MpnDeposit],
 ) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<DepositTransition>), BlockchainError> {
     let mut mirror = db.mirror();
@@ -33,7 +33,7 @@ pub fn deposit<K: KvStore>(
             break;
         }
         let acc = KvStoreStateManager::<ZkHasher>::get_mpn_account(
-            &mirror,
+            mirror,
             mpn_contract_id,
             tx.zk_address_index(mpn_log4_account_capacity),
         )
@@ -60,14 +60,14 @@ pub fn deposit<K: KvStore>(
                 .amount += tx.payment.amount.amount;
 
             let balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 3]),
                 tx.zk_token_index,
             )
             .unwrap();
             let proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
                 tx.zk_address_index(mpn_log4_account_capacity),
@@ -95,7 +95,7 @@ pub fn deposit<K: KvStore>(
         }
     }
     let next_state =
-        KvStoreStateManager::<ZkHasher>::get_data(&mirror, mpn_contract_id, &ZkDataLocator(vec![]))
+        KvStoreStateManager::<ZkHasher>::get_data(mirror, mpn_contract_id, &ZkDataLocator(vec![]))
             .unwrap();
     let new_root = ZkCompressedState {
         state_hash: next_state,

@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn generate_state_patch<K: KvStore>(
-    chain: &KvStoreChain<K>,
+pub fn generate_state_patch(
+    chain: &KvStoreChain,
     heights: HashMap<ContractId, u64>,
     to: <Hasher as Hash>::Output,
 ) -> Result<ZkBlockchainPatch, BlockchainError> {
@@ -28,12 +28,12 @@ pub fn generate_state_patch<K: KvStore>(
             blockchain_patch.patches.insert(
                 cid,
                 if let Some(delta) =
-                    zk::KvStoreStateManager::<CoreZkHasher>::delta_of(&chain.database, cid, away)?
+                    zk::KvStoreStateManager::<CoreZkHasher>::delta_of(chain.database, cid, away)?
                 {
                     zk::ZkStatePatch::Delta(delta)
                 } else {
                     zk::ZkStatePatch::Full(zk::KvStoreStateManager::<CoreZkHasher>::get_full_state(
-                        &chain.database,
+                        chain.database,
                         cid,
                     )?)
                 },

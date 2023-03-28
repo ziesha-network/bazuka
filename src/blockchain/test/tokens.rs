@@ -7,7 +7,7 @@ fn test_token_balances() -> Result<(), BlockchainError> {
     let bob = TxBuilder::new(&Vec::from("DCBA"));
 
     let mut chain = KvStoreChain::new(
-        db::RamKvStore::new(),
+        Box::new(db::RamKvStore::new()),
         blockchain::get_test_blockchain_config(),
     )?;
 

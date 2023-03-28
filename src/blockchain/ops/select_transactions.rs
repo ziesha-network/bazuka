@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn select_transactions<K: KvStore>(
-    chain: &KvStoreChain<K>,
+pub fn select_transactions(
+    chain: &KvStoreChain,
     validator: Address,
     txs: &[TransactionAndDelta],
     check: bool,

@@ -7,9 +7,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_peers<K: KvStore, B: Blockchain<K>>(
+pub async fn get_peers<B: Blockchain>(
     client: Option<SocketAddr>,
-    context: Arc<RwLock<NodeContext<K, B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
     _req: GetPeersRequest,
 ) -> Result<GetPeersResponse, NodeError> {
     let context = context.read().await;

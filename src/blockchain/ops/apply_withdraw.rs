@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn apply_withdraw<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn apply_withdraw(
+    chain: &mut KvStoreChain,
     withdraw: &ContractWithdraw,
 ) -> Result<(), BlockchainError> {
     let (ops, _) = chain.isolated(|chain| {

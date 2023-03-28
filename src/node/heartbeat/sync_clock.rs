@@ -2,8 +2,8 @@ use super::*;
 use crate::common::*;
 use std::time::{Duration, Instant};
 
-pub async fn sync_clock<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn sync_clock<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
 

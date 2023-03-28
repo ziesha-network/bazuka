@@ -2,8 +2,8 @@ use super::*;
 use crate::core::{Address, Vrf};
 use crate::crypto::VerifiableRandomFunction;
 
-pub fn update_staker<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn update_staker(
+    chain: &mut KvStoreChain,
     tx_src: Address,
     vrf_pub_key: <Vrf as VerifiableRandomFunction>::Pub,
     commision: u8,
@@ -29,7 +29,7 @@ mod tests {
     #[test]
     fn test_update_staker() {
         let chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();

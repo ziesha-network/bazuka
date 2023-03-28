@@ -5,8 +5,8 @@ use crate::node::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn shutdown<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn shutdown<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     _req: ShutdownRequest,
 ) -> Result<ShutdownResponse, NodeError> {
     context.write().await.shutdown = true;

@@ -1,12 +1,11 @@
 use super::messages::{GenerateBlockRequest, GenerateBlockResponse};
 use super::{promote_block, NodeContext, NodeError};
 use crate::blockchain::Blockchain;
-use crate::db::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn generate_block<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     _req: GenerateBlockRequest,
 ) -> Result<GenerateBlockResponse, NodeError> {
     let mut ctx = context.write().await;

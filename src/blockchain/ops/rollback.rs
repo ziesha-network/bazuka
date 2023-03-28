@@ -1,6 +1,6 @@
 use super::*;
 
-pub fn rollback<K: KvStore>(chain: &mut KvStoreChain<K>) -> Result<(), BlockchainError> {
+pub fn rollback(chain: &mut KvStoreChain) -> Result<(), BlockchainError> {
     let (ops, _) = chain.isolated(|chain| {
         let height = chain.get_height()?;
 
@@ -40,7 +40,7 @@ pub fn rollback<K: KvStore>(chain: &mut KvStoreChain<K>) -> Result<(), Blockchai
                 }
             } else {
                 let local_compressed_state =
-                    zk::KvStoreStateManager::<CoreZkHasher>::root(&chain.database, cid)?;
+                    zk::KvStoreStateManager::<CoreZkHasher>::root(chain.database, cid)?;
                 let local_height =
                     zk::KvStoreStateManager::<CoreZkHasher>::height_of(&chain.database, cid)?;
                 if local_compressed_state == comp.prev_state && local_height == comp.prev_height {

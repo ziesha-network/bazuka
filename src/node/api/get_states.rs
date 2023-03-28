@@ -6,8 +6,8 @@ use crate::db::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_states<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn get_states<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     req: GetStatesRequest,
 ) -> Result<GetStatesResponse, NodeError> {
     let context = context.read().await;

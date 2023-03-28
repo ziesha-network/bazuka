@@ -29,7 +29,7 @@ fn create_test_node(
     opts: NodeOpts,
 ) -> (impl futures::Future<Output = Result<(), NodeError>>, Node) {
     let addr = PeerAddress(SocketAddr::from(([123, 234, 123, opts.addr as u8], 8765)));
-    let chain = KvStoreChain::new(RamKvStore::new(), opts.config).unwrap();
+    let chain = KvStoreChain::new(Box::new(RamKvStore::new()), opts.config).unwrap();
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let (out_send, out_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let mut simulator_options = config::node::get_simulator_options();

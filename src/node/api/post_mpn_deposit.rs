@@ -7,9 +7,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn post_mpn_deposit<K: KvStore, B: Blockchain<K>>(
+pub async fn post_mpn_deposit<B: Blockchain>(
     client: Option<SocketAddr>,
-    context: Arc<RwLock<NodeContext<K, B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
     req: PostMpnDepositRequest,
 ) -> Result<PostMpnDepositResponse, NodeError> {
     let mut context = context.write().await;

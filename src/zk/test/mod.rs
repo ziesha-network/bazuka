@@ -71,7 +71,7 @@ fn test_zk_list_membership_proof() {
 
 #[test]
 fn test_state_manager_scalar() -> Result<(), StateManagerError> {
-    let mut db = RamKvStore::new();
+    let mut db: Box<dyn KvStore> = Box::new(RamKvStore::new());
 
     let c0 =
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
@@ -98,7 +98,7 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
 
 #[test]
 fn test_state_manager_struct() -> Result<(), StateManagerError> {
-    let mut db = RamKvStore::new();
+    let mut db: Box<dyn KvStore> = Box::new(RamKvStore::new());
 
     let c0 =
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
@@ -175,7 +175,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
 
 #[test]
 fn test_state_manager_list() -> Result<(), StateManagerError> {
-    let mut db = RamKvStore::new();
+    let mut db: Box<dyn KvStore> = Box::new(RamKvStore::new());
 
     let c0 =
         ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
@@ -194,7 +194,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
         .into(),
     )])?;
 
-    roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
+    roots.push(KvStoreStateManager::<PoseidonHasher>::root(db, c0)?);
 
     KvStoreStateManager::<PoseidonHasher>::update_contract(
         &mut db,
@@ -206,7 +206,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
         ),
         1,
     )?;
-    roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
+    roots.push(KvStoreStateManager::<PoseidonHasher>::root(db, c0)?);
 
     KvStoreStateManager::<PoseidonHasher>::update_contract(
         &mut db,
@@ -218,7 +218,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
         ),
         1,
     )?;
-    roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
+    roots.push(KvStoreStateManager::<PoseidonHasher>::root(db, c0)?);
 
     KvStoreStateManager::<PoseidonHasher>::update_contract(
         &mut db,
@@ -230,7 +230,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
         ),
         1,
     )?;
-    roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
+    roots.push(KvStoreStateManager::<PoseidonHasher>::root(db, c0)?);
 
     KvStoreStateManager::<PoseidonHasher>::update_contract(
         &mut db,
@@ -242,7 +242,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
         ),
         1,
     )?;
-    roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
+    roots.push(KvStoreStateManager::<PoseidonHasher>::root(db, c0)?);
 
     KvStoreStateManager::<PoseidonHasher>::update_contract(
         &mut db,
@@ -254,7 +254,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
         ),
         1,
     )?;
-    roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
+    roots.push(KvStoreStateManager::<PoseidonHasher>::root(db, c0)?);
 
     KvStoreStateManager::<PoseidonHasher>::update_contract(
         &mut db,
@@ -269,7 +269,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
         ),
         1,
     )?;
-    roots.push(KvStoreStateManager::<PoseidonHasher>::root(&db, c0)?);
+    roots.push(KvStoreStateManager::<PoseidonHasher>::root(db, c0)?);
 
     KvStoreStateManager::<PoseidonHasher>::update_contract(
         &mut db,

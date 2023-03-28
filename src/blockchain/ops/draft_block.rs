@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn draft_block<K: KvStore>(
-    chain: &KvStoreChain<K>,
+pub fn draft_block(
+    chain: &KvStoreChain,
     timestamp: u32,
     mempool: &[TransactionAndDelta],
     wallet: &TxBuilder,

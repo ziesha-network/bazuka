@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn update_token<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn update_token(
+    chain: &mut KvStoreChain,
     tx_src: Address,
     token_id: &TokenId,
     update: &TokenUpdate,
@@ -52,7 +52,7 @@ mod tests {
     #[test]
     fn test_non_existing_token() {
         let chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
@@ -79,7 +79,7 @@ mod tests {
     #[test]
     fn test_unupdatable_token() {
         let mut chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
@@ -140,7 +140,7 @@ mod tests {
     #[test]
     fn test_mint_token() {
         let mut chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
@@ -197,7 +197,7 @@ mod tests {
     #[test]
     fn test_change_minter() {
         let mut chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();

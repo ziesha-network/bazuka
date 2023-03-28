@@ -7,12 +7,12 @@ use crate::zk::{
     ZkStateModel,
 };
 
-pub fn withdraw<K: KvStore>(
+pub fn withdraw(
     mpn_contract_id: ContractId,
     mpn_log4_account_capacity: u8,
     log4_token_tree_size: u8,
     log4_batch_size: u8,
-    db: &mut K,
+    db: &mut dyn KvStore,
     txs: &[MpnWithdraw],
 ) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<WithdrawTransition>), BlockchainError> {
     let mut mirror = db.mirror();
@@ -20,7 +20,7 @@ pub fn withdraw<K: KvStore>(
     let mut transitions = Vec::new();
     let mut rejected = Vec::new();
     let mut accepted = Vec::new();
-    let height = KvStoreStateManager::<ZkHasher>::height_of(db, mpn_contract_id).unwrap();
+    let height = KvStoreStateManager::<ZkHasher>::height_of(&Box::new(*db), mpn_contract_id).unwrap();
     let root = KvStoreStateManager::<ZkHasher>::root(db, mpn_contract_id).unwrap();
 
     let state = root.state_hash;
@@ -31,7 +31,7 @@ pub fn withdraw<K: KvStore>(
             break;
         }
         let acc = KvStoreStateManager::<ZkHasher>::get_mpn_account(
-            &mirror,
+            mirror,
             mpn_contract_id,
             tx.zk_address_index(mpn_log4_account_capacity),
         )
@@ -63,7 +63,7 @@ pub fn withdraw<K: KvStore>(
 
             let before_token_hash = updated_acc.tokens_hash::<ZkHasher>(log4_token_tree_size);
             let token_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 3]),
                 tx.zk_token_index,
@@ -85,7 +85,7 @@ pub fn withdraw<K: KvStore>(
             .unwrap();
 
             let fee_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 3]),
                 tx.zk_fee_token_index,
@@ -113,7 +113,7 @@ pub fn withdraw<K: KvStore>(
                 .amount -= tx.payment.fee.amount;
 
             let proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
                 tx.zk_address_index(mpn_log4_account_capacity),
@@ -143,7 +143,7 @@ pub fn withdraw<K: KvStore>(
         }
     }
     let next_state =
-        KvStoreStateManager::<ZkHasher>::get_data(&mirror, mpn_contract_id, &ZkDataLocator(vec![]))
+        KvStoreStateManager::<ZkHasher>::get_data(mirror, mpn_contract_id, &ZkDataLocator(vec![]))
             .unwrap();
     let new_root = ZkCompressedState {
         state_hash: next_state,

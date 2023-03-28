@@ -5,8 +5,8 @@ use crate::db::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn post_mpn_solution<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn post_mpn_solution<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     req: PostMpnSolutionRequest,
 ) -> Result<PostMpnSolutionResponse, NodeError> {
     let mut ctx = context.write().await;

@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn apply_block<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn apply_block(
+    chain: &mut KvStoreChain,
     block: &Block,
 ) -> Result<(), BlockchainError> {
     let (ops, _) = chain.isolated(|chain| {

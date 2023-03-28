@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn update_states<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn update_states(
+    chain: &mut KvStoreChain,
     patch: &ZkBlockchainPatch,
 ) -> Result<(), BlockchainError> {
     let (ops, _) = chain.isolated(|chain| {
@@ -40,7 +40,7 @@ pub fn update_states<K: KvStore>(
                 }
             };
 
-            if zk::KvStoreStateManager::<CoreZkHasher>::root(&chain.database, cid)?
+            if zk::KvStoreStateManager::<CoreZkHasher>::root(chain.database, cid)?
                 != contract_account.compressed_state
             {
                 return Err(BlockchainError::FullStateNotValid);

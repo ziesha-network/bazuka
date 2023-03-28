@@ -8,8 +8,8 @@ mod update_token;
 
 use super::*;
 
-pub fn apply_tx<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn apply_tx(
+    chain: &mut KvStoreChain,
     tx: &Transaction,
     allow_treasury: bool,
 ) -> Result<TxSideEffect, BlockchainError> {

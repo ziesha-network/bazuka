@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn regular_send<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn regular_send(
+    chain: &mut KvStoreChain,
     tx_src: Address,
     entries: &[RegularSendEntry],
 ) -> Result<(), BlockchainError> {

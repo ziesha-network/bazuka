@@ -2,8 +2,8 @@ use super::*;
 
 use colored::Colorize;
 
-pub async fn log_info<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn log_info<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
 ) -> Result<(), NodeError> {
     let ctx = context.read().await;
     let mut inf = Vec::new();

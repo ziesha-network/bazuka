@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn withdraw<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn withdraw(
+    chain: &mut KvStoreChain,
     contract_id: &ContractId,
     contract: &zk::ZkContract,
     withdraw_circuit_id: &u32,
@@ -81,7 +81,7 @@ mod tests {
     #[test]
     fn test_empty_withdraw() {
         let chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
@@ -123,7 +123,7 @@ mod tests {
     #[test]
     fn test_single_withdraw() {
         let mut chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
@@ -223,7 +223,7 @@ mod tests {
     #[test]
     fn test_custom_token_withdraw() {
         let mut chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();

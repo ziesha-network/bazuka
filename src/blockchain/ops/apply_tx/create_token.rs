@@ -1,7 +1,7 @@
 use super::*;
 
-pub fn create_token<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn create_token(
+    chain: &mut KvStoreChain,
     tx_src: Address,
     token_id: TokenId,
     token: &Token,
@@ -31,7 +31,7 @@ mod tests {
     #[test]
     fn test_create_token() {
         let chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
@@ -70,7 +70,7 @@ mod tests {
     #[test]
     fn test_already_exists() {
         let chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn test_bad_name_symbol() {
         let chain = KvStoreChain::new(
-            RamKvStore::new(),
+            Box::new(RamKvStore::new()),
             crate::config::blockchain::get_test_blockchain_config(),
         )
         .unwrap();

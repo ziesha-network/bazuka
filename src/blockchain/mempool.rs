@@ -144,9 +144,9 @@ impl Mempool {
 
 impl Mempool {
     #[allow(dead_code)]
-    pub fn refresh<K: KvStore, B: Blockchain<K>>(
+    pub fn refresh(
         &mut self,
-        _blockchain: &B,
+        _blockchain: &dyn Blockchain,
         _local_ts: u32,
         _max_time_alive: Option<u32>,
         _max_time_remember: Option<u32>,
@@ -162,9 +162,9 @@ impl Mempool {
     pub fn chain_sourced_len(&self) -> usize {
         self.chain_sourced.values().map(|c| c.len()).sum()
     }
-    pub fn add_chain_sourced<K: KvStore, B: Blockchain<K>>(
+    pub fn add_chain_sourced(
         &mut self,
-        blockchain: &B,
+        blockchain: &dyn Blockchain,
         tx: ChainSourcedTx,
         is_local: bool,
         now: u32,
@@ -228,9 +228,9 @@ impl Mempool {
         }
         Ok(())
     }
-    pub fn add_mpn_sourced<K: KvStore, B: Blockchain<K>>(
+    pub fn add_mpn_sourced(
         &mut self,
-        blockchain: &B,
+        blockchain: &dyn Blockchain,
         tx: MpnSourcedTx,
         is_local: bool,
         now: u32,

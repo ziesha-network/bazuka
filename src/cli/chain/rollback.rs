@@ -6,7 +6,7 @@ use crate::{
 
 pub async fn rollback(conf: &BazukaConfig) {
     let mut chain = KvStoreChain::new(
-        LevelDbKvStore::new(&conf.db, 64).unwrap(),
+        Box::new(LevelDbKvStore::new(&conf.db, 64).unwrap()),
         get_blockchain_config(),
     )
     .unwrap();

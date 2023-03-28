@@ -5,20 +5,20 @@ use crate::db::{keys, KvStore, WriteOp};
 use crate::zk::{KvStoreStateManager, ZkCompressedState, ZkDataLocator, ZkScalar};
 use rayon::prelude::*;
 
-pub fn update<K: KvStore>(
+pub fn update(
     mpn_contract_id: ContractId,
     mpn_log4_account_capacity: u8,
     log4_token_tree_size: u8,
     log4_batch_size: u8,
     fee_token: TokenId,
-    db: &mut K,
+    db: &mut dyn KvStore,
     txs: &[MpnTransaction],
 ) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<UpdateTransition>), BlockchainError> {
     let mut rejected = Vec::new();
     let mut accepted = Vec::new();
     let mut transitions = Vec::new();
 
-    let root = KvStoreStateManager::<ZkHasher>::root(db, mpn_contract_id).unwrap();
+    let root = KvStoreStateManager::<ZkHasher>::root(Box::new(*db), mpn_contract_id).unwrap();
     let height = KvStoreStateManager::<ZkHasher>::height_of(db, mpn_contract_id).unwrap();
 
     let state = root.state_hash;
@@ -40,13 +40,13 @@ pub fn update<K: KvStore>(
             break;
         }
         let src_before = KvStoreStateManager::<ZkHasher>::get_mpn_account(
-            &mirror,
+            mirror,
             mpn_contract_id,
             tx.src_index(mpn_log4_account_capacity),
         )
         .unwrap();
         let dst_before = KvStoreStateManager::<ZkHasher>::get_mpn_account(
-            &mirror,
+            mirror,
             mpn_contract_id,
             tx.dst_index(mpn_log4_account_capacity),
         )
@@ -70,7 +70,7 @@ pub fn update<K: KvStore>(
             continue;
         } else {
             let src_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
                 tx.src_index(mpn_log4_account_capacity),
@@ -84,7 +84,7 @@ pub fn update<K: KvStore>(
             };
 
             let src_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.src_index(mpn_log4_account_capacity), 3]),
                 tx.src_token_index,
@@ -119,7 +119,7 @@ pub fn update<K: KvStore>(
             }
 
             let src_fee_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.src_index(mpn_log4_account_capacity), 3]),
                 tx.src_fee_token_index,
@@ -141,14 +141,14 @@ pub fn update<K: KvStore>(
             .unwrap();
 
             let dst_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
                 tx.dst_index(mpn_log4_account_capacity),
             )
             .unwrap();
             let dst_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.dst_index(mpn_log4_account_capacity), 3]),
                 tx.dst_token_index,
@@ -156,7 +156,7 @@ pub fn update<K: KvStore>(
             .unwrap();
 
             let dst_before = KvStoreStateManager::<ZkHasher>::get_mpn_account(
-                &mirror,
+                mirror,
                 mpn_contract_id,
                 tx.dst_index(mpn_log4_account_capacity),
             )
@@ -202,7 +202,7 @@ pub fn update<K: KvStore>(
     }
 
     let next_state =
-        KvStoreStateManager::<ZkHasher>::get_data(&mirror, mpn_contract_id, &ZkDataLocator(vec![]))
+        KvStoreStateManager::<ZkHasher>::get_data(mirror, mpn_contract_id, &ZkDataLocator(vec![]))
             .unwrap();
     let new_root = ZkCompressedState {
         state_hash: next_state,

@@ -263,6 +263,11 @@ async fn run_node(
 
     // 60 request per minute / 4GB per 15min
     let firewall = Firewall::new(360, 4 * GB);
+    let blockchain = KvStoreChain::new(
+        Box::new(LevelDbKvStore::new(&bazuka_dir, 64).unwrap()),
+        config::blockchain::get_blockchain_config(),
+    )
+    .unwrap();
 
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
@@ -271,11 +276,7 @@ async fn run_node(
         &bazuka_config.network,
         address,
         bootstrap_nodes,
-        KvStoreChain::new(
-            LevelDbKvStore::new(&bazuka_dir, 64).unwrap(),
-            config::blockchain::get_blockchain_config(),
-        )
-        .unwrap(),
+        &blockchain,
         0,
         wallet.validator_builder(),
         wallet.user_builder(0),

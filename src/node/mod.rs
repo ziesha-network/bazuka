@@ -89,8 +89,8 @@ fn fetch_signature(
     Ok(None)
 }
 
-async fn promote_block<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+async fn promote_block<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     block_and_patch: BlockAndPatch,
 ) {
     let context = context.read().await;
@@ -111,8 +111,8 @@ async fn promote_block<K: KvStore, B: Blockchain<K>>(
     });
 }
 
-async fn promote_validator_claim<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+async fn promote_validator_claim<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     validator_claim: ValidatorClaim,
 ) {
     let context = context.read().await;
@@ -132,9 +132,9 @@ async fn promote_validator_claim<K: KvStore, B: Blockchain<K>>(
     });
 }
 
-async fn node_service<K: KvStore, B: Blockchain<K>>(
+async fn node_service<B: Blockchain>(
     client: Option<SocketAddr>,
-    context: Arc<RwLock<NodeContext<K, B>>>,
+    context: Arc<RwLock<NodeContext<B>>>,
     req: Request<Body>,
 ) -> Result<Response<Body>, NodeError> {
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(true);
@@ -503,7 +503,7 @@ async fn node_service<K: KvStore, B: Blockchain<K>>(
 
 use tokio::sync::mpsc;
 
-pub async fn node_create<K: KvStore, B: Blockchain<K>>(
+pub async fn node_create<B: Blockchain>(
     opts: NodeOptions,
     network: &str,
     address: Option<PeerAddress>,

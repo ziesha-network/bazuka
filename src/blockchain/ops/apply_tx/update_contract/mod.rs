@@ -4,8 +4,8 @@ mod withdraw;
 
 use super::*;
 
-pub fn update_contract<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
+pub fn update_contract(
+    chain: &mut KvStoreChain,
     tx_src: Address,
     contract_id: &ContractId,
     updates: &[ContractUpdate],

@@ -5,8 +5,8 @@ use crate::db::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn get_explorer_mpn_accounts<K: KvStore, B: Blockchain<K>>(
-    context: Arc<RwLock<NodeContext<K, B>>>,
+pub async fn get_explorer_mpn_accounts<B: Blockchain>(
+    context: Arc<RwLock<NodeContext<B>>>,
     req: GetExplorerMpnAccountsRequest,
 ) -> Result<GetExplorerMpnAccountsResponse, NodeError> {
     let context = context.read().await;

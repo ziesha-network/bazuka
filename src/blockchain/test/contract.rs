@@ -6,7 +6,7 @@ fn test_contract_create_patch() -> Result<(), BlockchainError> {
     let miner = TxBuilder::new(&Vec::from("VALIDATOR"));
     let alice = TxBuilder::new(&Vec::from("ABC"));
     let mut chain = KvStoreChain::new(
-        db::RamKvStore::new(),
+        Box::new(db::RamKvStore::new()),
         blockchain::get_test_blockchain_config(),
     )?;
 
@@ -55,7 +55,7 @@ fn test_contract_update() -> Result<(), BlockchainError> {
     let alice = TxBuilder::new(&Vec::from("ABC"));
 
     let mut chain = KvStoreChain::new(
-        db::RamKvStore::new(),
+        Box::new(db::RamKvStore::new()),
         blockchain::get_test_blockchain_config(),
     )?;
 

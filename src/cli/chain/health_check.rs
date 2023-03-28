@@ -14,7 +14,7 @@ pub fn health_check(conf: &BazukaConfig) {
         .mpn_contract_id;
     let rdb = ReadOnlyLevelDbKvStore::read_only(&conf.db, 64).unwrap();
     let db = rdb.snapshot();
-    let chain = KvStoreChain::new(db, crate::config::blockchain::get_blockchain_config()).unwrap();
+    let chain = KvStoreChain::new(Box::new(db), crate::config::blockchain::get_blockchain_config()).unwrap();
     let mut fork = chain.fork_on_ram();
     while fork.get_height().unwrap() != 0 {
         fork.rollback().unwrap();
