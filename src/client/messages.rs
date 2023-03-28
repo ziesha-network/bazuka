@@ -176,22 +176,15 @@ pub struct GetHeadersResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct TransactRequest {
-    pub tx_delta: TransactionAndDelta,
+pub enum TransactRequest {
+    ChainSourcedTx(ChainSourcedTx),
+    MpnSourcedTx(MpnSourcedTx),
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct TransactResponse {
     pub error: Option<String>,
 }
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct PostMpnTransactionRequest {
-    pub tx: zk::MpnTransaction,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct PostMpnTransactionResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ShutdownRequest {}
@@ -210,22 +203,6 @@ pub struct GetZeroMempoolResponse {
     pub deposits: Vec<MpnDeposit>,
     pub withdraws: Vec<MpnWithdraw>,
 }
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct PostMpnDepositRequest {
-    pub tx: MpnDeposit,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct PostMpnDepositResponse {}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct PostMpnWithdrawRequest {
-    pub tx: MpnWithdraw,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct PostMpnWithdrawResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMempoolRequest {}
@@ -290,11 +267,11 @@ pub struct PostJsonMpnTransactionRequest {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct PostJsonMpnTransactionResponse {}
 
-impl TryInto<PostMpnTransactionRequest> for PostJsonMpnTransactionRequest {
+impl TryInto<TransactRequest> for PostJsonMpnTransactionRequest {
     type Error = InputError;
-    fn try_into(self) -> Result<PostMpnTransactionRequest, Self::Error> {
-        Ok(PostMpnTransactionRequest {
-            tx: zk::MpnTransaction {
+    fn try_into(self) -> Result<TransactRequest, Self::Error> {
+        Ok(TransactRequest::MpnSourcedTx(MpnSourcedTx::MpnTransaction(
+            zk::MpnTransaction {
                 nonce: self.tx.nonce,
                 src_pub_key: self
                     .tx
@@ -333,7 +310,7 @@ impl TryInto<PostMpnTransactionRequest> for PostJsonMpnTransactionRequest {
                 )
                 .map_err(|_| Self::Error::Invalid)?,
             },
-        })
+        )))
     }
 }
 

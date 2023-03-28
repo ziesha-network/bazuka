@@ -307,45 +307,15 @@ async fn node_service<K: KvStore, B: Blockchain<K>>(
                     .await?,
                 )?);
             }
-            (Method::POST, "/bincode/transact/zero") => {
-                *response.body_mut() = Body::from(bincode::serialize(
-                    &api::post_mpn_transaction(
-                        client,
-                        Arc::clone(&context),
-                        bincode::deserialize(&body_bytes)?,
-                    )
-                    .await?,
-                )?);
-            }
             (Method::POST, "/transact/zero") => {
                 *response.body_mut() = Body::from(bincode::serialize(
-                    &api::post_mpn_transaction(
+                    &api::transact(
                         client,
                         Arc::clone(&context),
                         serde_json::from_slice::<
                             crate::client::messages::PostJsonMpnTransactionRequest,
                         >(&body_bytes)?
                         .try_into()?,
-                    )
-                    .await?,
-                )?);
-            }
-            (Method::POST, "/bincode/transact/deposit") => {
-                *response.body_mut() = Body::from(bincode::serialize(
-                    &api::post_mpn_deposit(
-                        client,
-                        Arc::clone(&context),
-                        bincode::deserialize(&body_bytes)?,
-                    )
-                    .await?,
-                )?);
-            }
-            (Method::POST, "/bincode/transact/withdraw") => {
-                *response.body_mut() = Body::from(bincode::serialize(
-                    &api::post_mpn_withdraw(
-                        client,
-                        Arc::clone(&context),
-                        bincode::deserialize(&body_bytes)?,
                     )
                     .await?,
                 )?);

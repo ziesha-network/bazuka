@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use tokio::try_join;
 
 use crate::cli::BazukaConfig;
-use crate::client::{BazukaClient, NodeError};
-use crate::core::{Amount, Money, TokenId};
+use crate::client::{messages::TransactRequest, BazukaClient, NodeError};
+use crate::core::{Amount, ChainSourcedTx, Money, TokenId};
 use crate::wallet::WalletCollection;
 
 pub async fn register_validator(
@@ -43,7 +43,13 @@ pub async fn register_validator(
                 },
                 new_nonce,
             );
-            if let Some(err) = client.transact(tx.clone()).await?.error {
+            if let Some(err) = client
+                .transact(TransactRequest::ChainSourcedTx(
+                    ChainSourcedTx::TransactionAndDelta(tx.clone()),
+                ))
+                .await?
+                .error
+            {
                 println!("Error: {}", err);
             } else {
                 wallet.validator().add_rsend(tx.clone());
