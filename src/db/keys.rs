@@ -34,6 +34,10 @@ pub fn account(address: &Address) -> StringKey {
     format!("ACC-{}", address).into()
 }
 
+pub fn deposit_nonce(address: &Address, contract_id: &ContractId) -> StringKey {
+    format!("DNC-{}-{}", address, contract_id).into()
+}
+
 pub fn staker(address: &Address) -> StringKey {
     format!("SKR-{}", address).into()
 }

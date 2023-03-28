@@ -134,6 +134,12 @@ pub trait Blockchain<K: KvStore> {
         page_size: usize,
     ) -> Result<Vec<(u64, zk::MpnAccount)>, BlockchainError>;
 
+    fn get_deposit_nonce(
+        &self,
+        addr: Address,
+        contract_id: ContractId,
+    ) -> Result<u32, BlockchainError>;
+
     fn get_contract_account(
         &self,
         contract_id: ContractId,
@@ -402,6 +408,22 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             Some(b) => b.try_into()?,
             None => Account { nonce: 0 },
         })
+    }
+
+    fn get_deposit_nonce(
+        &self,
+        addr: Address,
+        contract_id: ContractId,
+    ) -> Result<u32, BlockchainError> {
+        Ok(
+            match self
+                .database
+                .get(keys::deposit_nonce(&addr, &contract_id))?
+            {
+                Some(b) => b.try_into()?,
+                None => 0,
+            },
+        )
     }
 
     fn get_staker(&self, addr: Address) -> Result<Option<Staker>, BlockchainError> {

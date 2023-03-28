@@ -9,14 +9,15 @@ pub fn apply_deposit<K: KvStore>(
             return Err(BlockchainError::InvalidContractPaymentSignature);
         }
 
-        let mut addr_account = chain.get_account(deposit.src.clone())?;
-        if deposit.nonce != addr_account.nonce + 1 {
+        let mut deposit_nonce =
+            chain.get_deposit_nonce(deposit.src.clone(), deposit.contract_id.clone())?;
+        if deposit.nonce != deposit_nonce + 1 {
             return Err(BlockchainError::InvalidTransactionNonce);
         }
-        addr_account.nonce += 1;
+        deposit_nonce += 1;
         chain.database.update(&[WriteOp::Put(
-            keys::account(&deposit.src.clone()),
-            addr_account.into(),
+            keys::deposit_nonce(&deposit.src, &deposit.contract_id),
+            deposit_nonce.into(),
         )])?;
 
         if deposit.amount.token_id == deposit.fee.token_id {
