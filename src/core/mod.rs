@@ -86,6 +86,43 @@ impl FromStr for ZieshaAddress {
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub enum GeneralTransaction {
+    TransactionAndDelta(TransactionAndDelta),
+    MpnDeposit(MpnDeposit),
+    MpnTransaction(MpnTransaction),
+    MpnWithdraw(MpnWithdraw),
+}
+
+impl GeneralTransaction {
+    pub fn verify_signature(&self) -> bool {
+        match self {
+            GeneralTransaction::TransactionAndDelta(tx_delta) => tx_delta.tx.verify_signature(),
+            GeneralTransaction::MpnDeposit(mpn_deposit) => mpn_deposit.payment.verify_signature(),
+            GeneralTransaction::MpnTransaction(mpn_tx) => mpn_tx.verify_signature(),
+            GeneralTransaction::MpnWithdraw(mpn_withdraw) => {
+                mpn_withdraw.verify_signature::<ZkHasher>()
+            }
+        }
+    }
+}
+
+impl PartialEq<GeneralTransaction> for GeneralTransaction {
+    fn eq(&self, other: &Self) -> bool {
+        bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
+    }
+}
+impl Eq for GeneralTransaction {}
+impl std::hash::Hash for GeneralTransaction {
+    fn hash<Hasher>(&self, state: &mut Hasher)
+    where
+        Hasher: std::hash::Hasher,
+    {
+        state.write(&bincode::serialize(self).unwrap());
+        state.finish();
+    }
+}
+
 // Transactions initiated from chain accounts
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum ChainSourcedTx {
