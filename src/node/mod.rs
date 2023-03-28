@@ -7,7 +7,6 @@ mod firewall;
 mod heartbeat;
 mod http;
 mod peer_manager;
-pub mod seeds;
 use crate::blockchain::{BlockAndPatch, Blockchain, Mempool};
 use crate::client::{
     messages::*, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, Timestamp,
