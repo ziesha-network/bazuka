@@ -276,7 +276,7 @@ async fn run_node(
         &bazuka_config.network,
         address,
         bootstrap_nodes,
-        &blockchain,
+        blockchain,
         0,
         wallet.validator_builder(),
         wallet.user_builder(0),

@@ -1,10 +1,6 @@
 use super::{Blockchain, BlockchainError, TransactionStats};
-<<<<<<< HEAD
-use crate::core::{Account, Address, ChainSourcedTx, MpnAddress, MpnSourcedTx, TokenId};
-=======
-use crate::core::{Account, Address, Amount, ChainSourcedTx, MpnAddress, MpnSourcedTx, TokenId};
+use crate::core::{Account, Amount, Address, ChainSourcedTx, MpnAddress, MpnSourcedTx, TokenId};
 use crate::db::KvStore;
->>>>>>> master
 use crate::zk;
 use std::collections::{HashMap, VecDeque};
 
