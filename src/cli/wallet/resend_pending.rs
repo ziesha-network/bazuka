@@ -1,10 +1,7 @@
 use crate::cli::{get_conf, get_wallet_collection, get_wallet_path, BazukaConfig};
-use crate::client::BazukaClient;
-use crate::client::NodeError;
+use crate::client::{messages::TransactRequest, BazukaClient, NodeError};
 use crate::config::blockchain;
-use crate::core::MpnAddress;
-use crate::core::{Amount, MpnSourcedTx};
-use crate::core::{ChainSourcedTx, Money, TokenId};
+use crate::core::{Amount, Money, MpnAddress, MpnSourcedTx, TokenId};
 use crate::wallet::WalletCollection;
 use tokio::try_join;
 
@@ -46,14 +43,9 @@ async fn resend_all_wallet_txs(
             }
             for tx in wallet.user(0).chain_sourced_txs.iter() {
                 if tx.nonce() >= curr_nonce {
-                    match tx {
-                        ChainSourcedTx::TransactionAndDelta(tx) => {
-                            client.transact(tx.clone()).await?;
-                        }
-                        ChainSourcedTx::MpnDeposit(tx) => {
-                            client.transact_contract_deposit(tx.clone()).await?;
-                        }
-                    }
+                    client
+                        .transact(TransactRequest::ChainSourcedTx(tx.clone()))
+                        .await?;
                 }
             }
             for acc in wallet.user(0).mpn_sourced_txs.values() {
@@ -78,18 +70,17 @@ async fn resend_all_wallet_txs(
                                     },
                                     curr_mpn_nonce,
                                 );
-                                client.zero_transact(filler).await?;
+                                client
+                                    .transact(TransactRequest::MpnSourcedTx(
+                                        MpnSourcedTx::MpnTransaction(filler),
+                                    ))
+                                    .await?;
                                 curr_mpn_nonce += 1;
                             }
                         }
-                        match tx {
-                            MpnSourcedTx::MpnTransaction(tx) => {
-                                client.zero_transact(tx.clone()).await?;
-                            }
-                            MpnSourcedTx::MpnWithdraw(tx) => {
-                                client.transact_contract_withdraw(tx.clone()).await?;
-                            }
-                        }
+                        client
+                            .transact(TransactRequest::MpnSourcedTx(tx.clone()))
+                            .await?;
                     }
                 }
             }

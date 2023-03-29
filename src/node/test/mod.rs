@@ -4,7 +4,7 @@ mod simulation;
 use simulation::*;
 
 use crate::config::blockchain;
-use crate::core::{Money, TransactionAndDelta, ZkHasher};
+use crate::core::{ChainSourcedTx, Money, TransactionAndDelta, ZkHasher};
 use crate::zk;
 use std::sync::Arc;
 use std::time::Duration;
@@ -17,13 +17,13 @@ fn init() {
 
 const MAX_WAIT_FOR_CHANGE: usize = 20;
 
-async fn catch_change<F: Fn() -> Fut, T, Fut>(f: F) -> Result<T, NodeError>
+async fn catch_change<F: Fn() -> Fut, T, Fut>(f: F, timeout: usize) -> Result<T, NodeError>
 where
     Fut: futures::Future<Output = Result<T, NodeError>>,
     T: std::fmt::Display + PartialEq,
 {
     let prev_val = f().await?;
-    for _ in 0..MAX_WAIT_FOR_CHANGE {
+    for _ in 0..timeout {
         sleep(Duration::from_secs(1)).await;
         let new_val = f().await?;
         if new_val != prev_val {
@@ -50,6 +50,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
                 bootstrap: vec![],
                 timestamp_offset: 5,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -58,6 +59,7 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
                 bootstrap: vec![120],
                 timestamp_offset: 10,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -66,18 +68,22 @@ async fn test_peers_find_each_other() -> Result<(), NodeError> {
                 bootstrap: vec![121],
                 timestamp_offset: 15,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
         ],
     );
     let test_logic = async {
         assert!(
-            catch_change(|| async {
-                let mut peer_counts = Vec::new();
-                for chan in chans.iter() {
-                    peer_counts.push(chan.peers().await?.peers.len());
-                }
-                Ok(peer_counts.into_iter().all(|c| c == 2))
-            })
+            catch_change(
+                || async {
+                    let mut peer_counts = Vec::new();
+                    for chan in chans.iter() {
+                        peer_counts.push(chan.peers().await?.peers.len());
+                    }
+                    Ok(peer_counts.into_iter().all(|c| c == 2))
+                },
+                MAX_WAIT_FOR_CHANGE
+            )
             .await?
         );
 
@@ -107,6 +113,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
                 bootstrap: vec![],
                 timestamp_offset: 5,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -115,6 +122,7 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
                 bootstrap: vec![120],
                 timestamp_offset: 10,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -123,19 +131,23 @@ async fn test_timestamps_are_sync() -> Result<(), NodeError> {
                 bootstrap: vec![121],
                 timestamp_offset: 15,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
         ],
     );
     let test_logic = async {
         assert!(
-            catch_change(|| async {
-                let mut timestamps = Vec::new();
-                for chan in chans.iter() {
-                    timestamps.push(chan.stats().await?.timestamp);
-                }
-                let first = timestamps.first().unwrap();
-                Ok(timestamps.iter().all(|t| t == first))
-            })
+            catch_change(
+                || async {
+                    let mut timestamps = Vec::new();
+                    for chan in chans.iter() {
+                        timestamps.push(chan.stats().await?.timestamp);
+                    }
+                    let first = timestamps.first().unwrap();
+                    Ok(timestamps.iter().all(|t| t == first))
+                },
+                MAX_WAIT_FOR_CHANGE
+            )
             .await?
         );
 
@@ -167,6 +179,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
                 bootstrap: vec![],
                 timestamp_offset: 5,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -175,6 +188,7 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
                 bootstrap: vec![120],
                 timestamp_offset: 10,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
         ],
     );
@@ -203,13 +217,25 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
 
         // Now we open the connections...
         rules.write().await.clear();
-        assert!(catch_change(|| async { Ok(chans[0].stats().await?.height == 50) }).await?,);
+        assert!(
+            catch_change(
+                || async { Ok(chans[0].stats().await?.height == 50) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
+        );
         assert_eq!(chans[1].stats().await?.height, 50);
 
         // Now nodes should immediately sync with post_block
         chans[1].mine().await?;
         assert_eq!(chans[1].stats().await?.height, 51);
-        assert!(catch_change(|| async { Ok(chans[0].stats().await?.height == 51) }).await?,);
+        assert!(
+            catch_change(
+                || async { Ok(chans[0].stats().await?.height == 51) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
+        );
 
         for chan in chans.iter() {
             chan.shutdown().await?;
@@ -227,23 +253,80 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
 
     let rules = Arc::new(RwLock::new(vec![]));
 
-    let conf = blockchain::get_test_blockchain_config();
+    let mut conf = blockchain::get_test_blockchain_config();
+    conf.slot_duration = 2;
+    conf.mpn_config.mpn_num_deposit_batches = 1;
+    conf.mpn_config.mpn_num_withdraw_batches = 1;
+    conf.mpn_config.mpn_num_update_batches = 1;
+    let abc = TxBuilder::new(&Vec::from("ABC"));
+
+    let val1 = TxBuilder::new(&Vec::from("VALIDATOR"));
+    let val2 = TxBuilder::new(&Vec::from("VALIDATOR2"));
+    let val3 = TxBuilder::new(&Vec::from("VALIDATOR3"));
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&rules),
-        vec![NodeOpts {
-            config: conf.clone(),
-            wallet: TxBuilder::new(&Vec::from("VALIDATOR")),
-            addr: 120,
-            bootstrap: vec![],
-            timestamp_offset: 0,
-            auto_gen_block: true,
-        }],
+        vec![
+            NodeOpts {
+                config: conf.clone(),
+                wallet: val1.clone(),
+                addr: 120,
+                bootstrap: vec![121, 122],
+                timestamp_offset: 0,
+                auto_gen_block: true,
+                mpn_workers: vec![MpnWorker {
+                    mpn_address: abc.get_mpn_address(),
+                }],
+            },
+            NodeOpts {
+                config: conf.clone(),
+                wallet: val2.clone(),
+                addr: 121,
+                bootstrap: vec![120, 122],
+                timestamp_offset: 0,
+                auto_gen_block: true,
+                mpn_workers: vec![MpnWorker {
+                    mpn_address: abc.get_mpn_address(),
+                }],
+            },
+            NodeOpts {
+                config: conf.clone(),
+                wallet: val3.clone(),
+                addr: 122,
+                bootstrap: vec![120, 121],
+                timestamp_offset: 0,
+                auto_gen_block: true,
+                mpn_workers: vec![MpnWorker {
+                    mpn_address: abc.get_mpn_address(),
+                }],
+            },
+        ],
     );
     let test_logic = async {
-        for _ in 0..3 {
-            println!("{}", chans[0].stats().await?.height);
-            sleep(Duration::from_millis(1000)).await;
+        let mut height = 1;
+        for _ in 0..5 {
+            let next_height = catch_change(
+                || async {
+                    // Continuously post dummy proofs to all validators to ensure block production
+                    for ch in chans.iter() {
+                        ch.post_mpn_proof(
+                            [
+                                (0, zk::ZkProof::Dummy(true)),
+                                (1, zk::ZkProof::Dummy(true)),
+                                (2, zk::ZkProof::Dummy(true)),
+                            ]
+                            .into_iter()
+                            .collect(),
+                        )
+                        .await?;
+                    }
+                    Ok(chans[0].stats().await?.height)
+                },
+                MAX_WAIT_FOR_CHANGE,
+            )
+            .await?;
+            assert!(next_height > height);
+            height = next_height;
         }
 
         for chan in chans.iter() {
@@ -259,23 +342,14 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
 fn sample_contract_call() -> TransactionAndDelta {
     let updater = TxBuilder::new(&Vec::from("ABC"));
 
-    let cid = blockchain::get_test_blockchain_config()
-        .mpn_config
-        .mpn_contract_id;
-    let state_model = zk::ZkStateModel::List {
-        item_type: Box::new(zk::ZkStateModel::Scalar),
-        log4_size: 5,
-    };
+    let mpn_conf = blockchain::get_test_blockchain_config().mpn_config;
+    let cid = mpn_conf.mpn_contract_id;
     let mut full_state = zk::ZkState {
         rollbacks: vec![],
-        data: zk::ZkDataPairs(
-            [(zk::ZkDataLocator(vec![100]), zk::ZkScalar::from(200))]
-                .into_iter()
-                .collect(),
-        ),
+        data: zk::ZkDataPairs(Default::default()),
     };
     let state_delta = zk::ZkDeltaPairs(
-        [(zk::ZkDataLocator(vec![123]), Some(zk::ZkScalar::from(234)))]
+        [(zk::ZkDataLocator(vec![0, 0]), Some(zk::ZkScalar::from(234)))]
             .into_iter()
             .collect(),
     );
@@ -285,7 +359,10 @@ fn sample_contract_call() -> TransactionAndDelta {
         cid,
         0,
         state_delta.clone(),
-        state_model.compress::<ZkHasher>(&full_state.data).unwrap(),
+        mpn_conf
+            .state_model()
+            .compress::<ZkHasher>(&full_state.data)
+            .unwrap(),
         zk::ZkProof::Dummy(true),
         Money::ziesha(0),
         Money::ziesha(0),
@@ -310,6 +387,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
                 bootstrap: vec![],
                 timestamp_offset: 5,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -318,13 +396,18 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
                 bootstrap: vec![120],
                 timestamp_offset: 10,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
         ],
     );
     let test_logic = async {
         let tx_delta = sample_contract_call();
 
-        chans[0].transact(tx_delta).await?;
+        chans[0]
+            .transact(TransactRequest::ChainSourcedTx(
+                ChainSourcedTx::TransactionAndDelta(tx_delta),
+            ))
+            .await?;
 
         chans[0].mine().await?;
         assert_eq!(chans[0].stats().await?.height, 2);
@@ -340,7 +423,11 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         *rules.write().await = vec![Rule::drop_url("state")];
         assert_eq!(chans[0].stats().await?.height, 2);
         assert_eq!(
-            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[1].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             2
         );
 
@@ -351,9 +438,10 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
         rules.write().await.clear();
         assert_eq!(chans[0].outdated_heights().await?.outdated_heights.len(), 0);
         assert_eq!(
-            catch_change(|| async {
-                Ok(chans[1].outdated_heights().await?.outdated_heights.len())
-            })
+            catch_change(
+                || async { Ok(chans[1].outdated_heights().await?.outdated_heights.len()) },
+                MAX_WAIT_FOR_CHANGE
+            )
             .await?,
             0
         );
@@ -385,6 +473,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
                 bootstrap: vec![],
                 timestamp_offset: 5,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
             NodeOpts {
                 config: conf.clone(),
@@ -393,20 +482,29 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
                 bootstrap: vec![120],
                 timestamp_offset: 10,
                 auto_gen_block: false,
+                mpn_workers: vec![],
             },
         ],
     );
     let test_logic = async {
         let tx_delta = sample_contract_call();
 
-        chans[0].transact(tx_delta).await?;
+        chans[0]
+            .transact(TransactRequest::ChainSourcedTx(
+                ChainSourcedTx::TransactionAndDelta(tx_delta),
+            ))
+            .await?;
 
         chans[0].mine().await?;
         assert_eq!(chans[0].stats().await?.height, 2);
 
         *rules.write().await = vec![Rule::drop_url("state")];
         assert_eq!(
-            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[1].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             2
         );
         assert_eq!(chans[0].outdated_heights().await?.outdated_heights.len(), 0);
@@ -415,21 +513,33 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         assert!(chans[1].mine().await?.success == false);
 
         assert_eq!(
-            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[1].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             1
         );
         assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 0);
 
         // Header will be banned for some time and gets unbanned again:
         assert_eq!(
-            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[1].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             2
         );
         assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 1);
 
         // Banned again...
         assert_eq!(
-            catch_change(|| async { Ok(chans[1].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[1].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             1
         );
         assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 0);
@@ -440,7 +550,11 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
         assert_eq!(chans[1].outdated_heights().await?.outdated_heights.len(), 0);
 
         assert_eq!(
-            catch_change(|| async { Ok(chans[0].stats().await?.height) }).await?,
+            catch_change(
+                || async { Ok(chans[0].stats().await?.height) },
+                MAX_WAIT_FOR_CHANGE
+            )
+            .await?,
             3
         );
         assert_eq!(chans[0].stats().await?.height, 3);

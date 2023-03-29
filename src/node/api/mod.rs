@@ -22,12 +22,6 @@ mod get_headers;
 pub use get_headers::*;
 mod transact;
 pub use transact::*;
-mod post_mpn_transaction;
-pub use post_mpn_transaction::*;
-mod post_mpn_deposit;
-pub use post_mpn_deposit::*;
-mod post_mpn_withdraw;
-pub use post_mpn_withdraw::*;
 mod shutdown;
 pub use shutdown::*;
 mod get_account;
@@ -73,6 +67,7 @@ mod tests {
     use crate::client::messages::SocialProfiles;
     use crate::client::NodeRequest;
     use crate::client::OutgoingSender;
+    use crate::core::Amount;
     use crate::db::RamKvStore;
     use crate::node::local_timestamp;
     use crate::node::Mempool;
@@ -116,7 +111,10 @@ mod tests {
             }),
             mpn_workers: Default::default(),
             mpn_work_pool: None,
-            mempool: Mempool::new(blockchain.config().mpn_config.log4_tree_size),
+            mempool: Mempool::new(
+                blockchain.config().mpn_config.log4_tree_size,
+                Amount(1_000_000_000),
+            ),
             blockchain,
             validator_wallet: validator_wallet.clone(),
             user_wallet: user_wallet.clone(),

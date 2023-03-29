@@ -19,3 +19,28 @@ pub async fn get_explorer_mpn_accounts<B: Blockchain>(
             .collect(),
     })
 }
+
+#[cfg(test)]
+use super::tests::*;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_get_explorer_mpn_accounts() {
+        // TODO: Test cases where MPN-accounts are not empty!
+        let expected = "GetExplorerMpnAccountsResponse { accounts: {} }";
+        let ctx = test_context();
+        let resp = get_explorer_mpn_accounts(
+            ctx.clone(),
+            GetExplorerMpnAccountsRequest {
+                page: 0,
+                page_size: 30,
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(format!("{:?}", resp), expected);
+    }
+}

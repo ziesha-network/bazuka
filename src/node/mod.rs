@@ -7,13 +7,13 @@ mod firewall;
 mod heartbeat;
 mod http;
 mod peer_manager;
-pub mod seeds;
 use crate::blockchain::{BlockAndPatch, Blockchain, Mempool};
 use crate::client::{
     messages::*, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, Timestamp,
     NETWORK_HEADER, SIGNATURE_HEADER,
 };
 use crate::common::*;
+use crate::core::Amount;
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::db::KvStore;
@@ -307,45 +307,15 @@ async fn node_service<B: Blockchain>(
                     .await?,
                 )?);
             }
-            (Method::POST, "/bincode/transact/zero") => {
-                *response.body_mut() = Body::from(bincode::serialize(
-                    &api::post_mpn_transaction(
-                        client,
-                        Arc::clone(&context),
-                        bincode::deserialize(&body_bytes)?,
-                    )
-                    .await?,
-                )?);
-            }
             (Method::POST, "/transact/zero") => {
                 *response.body_mut() = Body::from(bincode::serialize(
-                    &api::post_mpn_transaction(
+                    &api::transact(
                         client,
                         Arc::clone(&context),
                         serde_json::from_slice::<
                             crate::client::messages::PostJsonMpnTransactionRequest,
                         >(&body_bytes)?
                         .try_into()?,
-                    )
-                    .await?,
-                )?);
-            }
-            (Method::POST, "/bincode/transact/deposit") => {
-                *response.body_mut() = Body::from(bincode::serialize(
-                    &api::post_mpn_deposit(
-                        client,
-                        Arc::clone(&context),
-                        bincode::deserialize(&body_bytes)?,
-                    )
-                    .await?,
-                )?);
-            }
-            (Method::POST, "/bincode/transact/withdraw") => {
-                *response.body_mut() = Body::from(bincode::serialize(
-                    &api::post_mpn_withdraw(
-                        client,
-                        Arc::clone(&context),
-                        bincode::deserialize(&body_bytes)?,
                     )
                     .await?,
                 )?);
@@ -536,7 +506,10 @@ pub async fn node_create<B: Blockchain>(
             .map(|w| (w.mpn_address.clone(), w))
             .collect(),
         mpn_work_pool: None,
-        mempool: Mempool::new(blockchain.config().mpn_config.log4_tree_size),
+        mempool: Mempool::new(
+            blockchain.config().mpn_config.log4_tree_size,
+            Amount(1_000_000_000),
+        ),
         blockchain,
         validator_wallet,
         user_wallet,

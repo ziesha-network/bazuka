@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use crate::cli::BazukaConfig;
 use crate::wallet::WalletCollection;
 use crate::{
-    client::{BazukaClient, NodeError},
+    client::{messages::TransactRequest, BazukaClient, NodeError},
     config,
-    core::{Amount, Money, TokenId, ZieshaAddress},
+    core::{Amount, ChainSourcedTx, Money, MpnSourcedTx, TokenId, ZieshaAddress},
 };
 use tokio::try_join;
 
@@ -72,7 +72,13 @@ pub async fn send(
                                 new_nonce,
                             );
 
-                            if let Some(err) = client.transact(tx.clone()).await?.error {
+                            if let Some(err) = client
+                                .transact(TransactRequest::ChainSourcedTx(
+                                    ChainSourcedTx::TransactionAndDelta(tx.clone()),
+                                ))
+                                .await?
+                                .error
+                            {
                                 println!("Error: {}", err);
                             } else {
                                 wallet.user(0).add_rsend(tx.clone());
@@ -122,7 +128,14 @@ pub async fn send(
                             );
                             wallet.user(0).add_deposit(pay.clone());
                             wallet.save(wallet_path).unwrap();
-                            println!("{:#?}", client.transact_contract_deposit(pay).await?);
+                            println!(
+                                "{:#?}",
+                                client
+                                    .transact(TransactRequest::ChainSourcedTx(
+                                        ChainSourcedTx::MpnDeposit(pay.clone()),
+                                    ))
+                                    .await?
+                            );
                             Ok::<(), NodeError>(())
                         },
                         req_loop
@@ -176,7 +189,14 @@ pub async fn send(
                             );
                             wallet.user(0).add_withdraw(pay.clone());
                             wallet.save(wallet_path).unwrap();
-                            println!("{:#?}", client.transact_contract_withdraw(pay).await?);
+                            println!(
+                                "{:#?}",
+                                client
+                                    .transact(TransactRequest::MpnSourcedTx(
+                                        MpnSourcedTx::MpnWithdraw(pay.clone()),
+                                    ))
+                                    .await?
+                            );
                             Ok::<(), NodeError>(())
                         },
                         req_loop
@@ -236,7 +256,14 @@ pub async fn send(
                             );
                             wallet.user(0).add_zsend(tx.clone());
                             wallet.save(wallet_path).unwrap();
-                            println!("{:#?}", client.zero_transact(tx).await?);
+                            println!(
+                                "{:#?}",
+                                client
+                                    .transact(TransactRequest::MpnSourcedTx(
+                                        MpnSourcedTx::MpnTransaction(tx.clone()),
+                                    ))
+                                    .await?
+                            );
                             Ok::<(), NodeError>(())
                         },
                         req_loop

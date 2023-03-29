@@ -156,9 +156,9 @@ pub trait ZkHasher: Clone {
 pub fn check_proof(
     vk: &ZkVerifierKey,
     prev_height: u64,
-    prev_state: &ZkCompressedState,
-    calldata: &ZkCompressedState,
-    next_state: &ZkCompressedState,
+    prev_state: ZkScalar,
+    calldata: ZkScalar,
+    next_state: ZkScalar,
     proof: &ZkProof,
 ) -> bool {
     match vk {
@@ -166,14 +166,7 @@ pub fn check_proof(
         {
             #[allow(irrefutable_let_patterns)]
             if let ZkProof::Groth16(proof) = proof {
-                groth16::groth16_verify(
-                    vk,
-                    prev_height,
-                    prev_state.state_hash,
-                    calldata.state_hash,
-                    next_state.state_hash,
-                    proof,
-                )
+                groth16::groth16_verify(vk, prev_height, prev_state, calldata, next_state, proof)
             } else {
                 false
             }

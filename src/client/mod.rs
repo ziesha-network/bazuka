@@ -1,9 +1,7 @@
-use crate::core::{
-    Address, MpnAddress, MpnDeposit, MpnWithdraw, Signer, TokenId, TransactionAndDelta,
-};
+use crate::core::{Address, MpnAddress, Signer, TokenId};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
-use crate::zk::{groth16::Groth16Proof, MpnTransaction};
+use crate::zk::ZkProof;
 use hyper::body::{Bytes, HttpBody};
 use hyper::header::HeaderValue;
 use hyper::{Body, Method, Request, Response, StatusCode};
@@ -327,32 +325,6 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn transact_contract_deposit(
-        &self,
-        tx: MpnDeposit,
-    ) -> Result<PostMpnDepositResponse, NodeError> {
-        self.sender
-            .bincode_post::<PostMpnDepositRequest, PostMpnDepositResponse>(
-                format!("http://{}/bincode/transact/deposit", self.peer),
-                PostMpnDepositRequest { tx },
-                Limit::default(),
-            )
-            .await
-    }
-
-    pub async fn transact_contract_withdraw(
-        &self,
-        tx: MpnWithdraw,
-    ) -> Result<PostMpnWithdrawResponse, NodeError> {
-        self.sender
-            .bincode_post::<PostMpnWithdrawRequest, PostMpnWithdrawResponse>(
-                format!("http://{}/bincode/transact/withdraw", self.peer),
-                PostMpnWithdrawRequest { tx },
-                Limit::default(),
-            )
-            .await
-    }
-
     pub async fn outdated_heights(&self) -> Result<GetOutdatedHeightsResponse, NodeError> {
         self.sender
             .bincode_get::<GetOutdatedHeightsRequest, GetOutdatedHeightsResponse>(
@@ -431,27 +403,11 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn transact(
-        &self,
-        tx_delta: TransactionAndDelta,
-    ) -> Result<TransactResponse, NodeError> {
+    pub async fn transact(&self, req: TransactRequest) -> Result<TransactResponse, NodeError> {
         self.sender
             .bincode_post::<TransactRequest, TransactResponse>(
                 format!("http://{}/bincode/transact", self.peer),
-                TransactRequest { tx_delta },
-                Limit::default(),
-            )
-            .await
-    }
-
-    pub async fn zero_transact(
-        &self,
-        tx: MpnTransaction,
-    ) -> Result<PostMpnTransactionResponse, NodeError> {
-        self.sender
-            .bincode_post::<PostMpnTransactionRequest, PostMpnTransactionResponse>(
-                format!("http://{}/bincode/transact/zero", self.peer),
-                PostMpnTransactionRequest { tx },
+                req,
                 Limit::default(),
             )
             .await
@@ -495,7 +451,7 @@ impl BazukaClient {
 
     pub async fn post_mpn_proof(
         &self,
-        proofs: HashMap<usize, Groth16Proof>,
+        proofs: HashMap<usize, ZkProof>,
     ) -> Result<PostMpnSolutionResponse, NodeError> {
         self.sender
             .bincode_post::<PostMpnSolutionRequest, PostMpnSolutionResponse>(

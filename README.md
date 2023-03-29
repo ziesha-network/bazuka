@@ -2,6 +2,9 @@
 
 [![Bazuka](https://github.com/ziesha-network/bazuka/actions/workflows/actions.yml/badge.svg)](https://github.com/ziesha-network/bazuka/actions/workflows/actions.yml)
 [![codecov](https://codecov.io/gh/ziesha-network/bazuka/branch/master/graph/badge.svg?token=8XTLET5GQN)](https://codecov.io/gh/ziesha-network/bazuka)
+![GitHub](https://img.shields.io/github/license/ziesha-network/bazuka)
+![GitHub top language](https://img.shields.io/github/languages/top/ziesha-network/bazuka)
+![GitHub issues](https://img.shields.io/github/issues/ziesha-network/bazuka)
 
 Bazuka is a wallet and node software for the Ziesha (ℤ) Protocol. Ziesha is a novel
 layer-1 cryptocurrency which uses Zero-Knowledge proofs as the backend of its
@@ -16,15 +19,14 @@ decentralized protocol compared to similar projects.
  - Website: https://ziesha.network
  - Twitter: https://twitter.com/ZieshaNetwork
  - Whitepaper: http://hackmd.io/@geusebetel/ziesha
- - Discord: https://discord.gg/4gbf9gZh8H
+ - Discord: https://discord.gg/zieshanetwork
 
 ### How to run a Bazuka node?
 
-If you only want to run a Ziesha node and do not want to execute Zero Contract or
-mine Ziesha, you will only need to install `bazuka` (This repo). In case you also
-want to mine Ziesha, you will need to install ![zoro](https://github.com/ziesha-network/zoro)
-(The Main Payment Network executor) and also the ![uzi-miner](https://github.com/ziesha-network/uzi-miner)
-(A RandomX CPU miner).
+If you only want to run a Ziesha node and/or validate blocks (Without generating proofs yourself), 
+you will only need to install `bazuka` (This repo). In case you also want to contribute in proof generation, 
+you will also need to install ![zoro](https://github.com/ziesha-network/zoro) (The Main Payment Network executor) 
+as well!
 
 **How to install `bazuka`?**
 
@@ -51,12 +53,11 @@ want to mine Ziesha, you will need to install ![zoro](https://github.com/ziesha-
     cargo install --path .
     ```
 
-Now if you want to join the `debug` testnet, you first have to initialize your
-node. If you have already initialized bazuka for another network, you first need
+If you have already initialized bazuka for and older testnet in an abandoned network, you first need
 to remove your previous initialization by running:
 
 ```sh
-rm -rf ~/.bazuka ~/.bazuka-wallet ~/.bazuka.yaml ~/.zoro-history
+rm -rf ~/.bazuka ~/.bazuka-wallet ~/.bazuka.yaml
 ```
 
 Then initialize:

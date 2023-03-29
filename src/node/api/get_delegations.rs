@@ -24,3 +24,63 @@ pub async fn get_delegations<B: Blockchain>(
             .collect(),
     })
 }
+
+#[cfg(test)]
+use super::tests::*;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::Amount;
+    use crate::wallet::TxBuilder;
+
+    #[tokio::test]
+    async fn test_get_delegations_delegators() {
+        let validator = TxBuilder::new(&Vec::from("VALIDATOR"));
+        let delegator = TxBuilder::new(&Vec::from("DELEGATOR"));
+        let ctx = test_context();
+        let resp = get_delegations(
+            ctx.clone(),
+            GetDelegationsRequest {
+                address: validator.get_address().to_string(),
+                top: 100,
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(resp.delegatees.len(), 0);
+        assert_eq!(resp.delegators.len(), 1);
+        assert_eq!(
+            resp.delegators
+                .get(&delegator.get_address().to_string())
+                .cloned(),
+            Some(Amount(25))
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_delegations_delegatees() {
+        let validator1 = TxBuilder::new(&Vec::from("VALIDATOR"));
+        let validator2 = TxBuilder::new(&Vec::from("VALIDATOR2"));
+        let validator3 = TxBuilder::new(&Vec::from("VALIDATOR3"));
+        let delegator = TxBuilder::new(&Vec::from("DELEGATOR"));
+        let ctx = test_context();
+        let resp = get_delegations(
+            ctx.clone(),
+            GetDelegationsRequest {
+                address: delegator.get_address().to_string(),
+                top: 100,
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(resp.delegatees.len(), 3);
+        assert_eq!(resp.delegators.len(), 0);
+        for val in [validator1, validator2, validator3] {
+            assert_eq!(
+                resp.delegatees.get(&val.get_address().to_string()).cloned(),
+                Some(Amount(25))
+            );
+        }
+    }
+}

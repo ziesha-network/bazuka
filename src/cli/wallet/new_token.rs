@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use crate::cli::BazukaConfig;
-use crate::client::{BazukaClient, NodeError};
-use crate::core::{Amount, Money, TokenId};
+use crate::client::{messages::TransactRequest, BazukaClient, NodeError};
+use crate::core::{Amount, ChainSourcedTx, Money, TokenId};
 use crate::wallet::WalletCollection;
 use tokio::try_join;
 
@@ -44,7 +44,13 @@ pub async fn new_token(
                 },
                 new_nonce,
             );
-            if let Some(err) = client.transact(pay.clone()).await?.error {
+            if let Some(err) = client
+                .transact(TransactRequest::ChainSourcedTx(
+                    ChainSourcedTx::TransactionAndDelta(pay.clone()),
+                ))
+                .await?
+                .error
+            {
                 println!("Error: {}", err);
             } else {
                 wallet.user(0).add_token(token_id);

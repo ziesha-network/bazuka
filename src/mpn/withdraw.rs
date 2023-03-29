@@ -226,3 +226,94 @@ pub fn withdraw(
         transitions,
     ))
 }
+
+#[cfg(test)]
+use super::tests::*;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::wallet::TxBuilder;
+
+    #[test]
+    fn test_withdraw_empty() {
+        let conf = crate::config::blockchain::get_blockchain_config().mpn_config;
+        let (mut db, mpn_contract_id) = fresh_db(conf.clone());
+        withdraw(
+            mpn_contract_id,
+            conf.log4_tree_size,
+            conf.log4_token_tree_size,
+            conf.log4_withdraw_batch_size,
+            &mut db,
+            &[],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn test_withdraw() {
+        let conf = crate::config::blockchain::get_blockchain_config().mpn_config;
+        let (mut db, mpn_contract_id) = fresh_db(conf.clone());
+        let abc = TxBuilder::new(&Vec::from("ABC"));
+        let initial_dep = abc.deposit_mpn(
+            "".into(),
+            mpn_contract_id,
+            abc.get_mpn_address(),
+            3,
+            1,
+            Money {
+                amount: Amount(10056),
+                token_id: TokenId::Custom(123.into()),
+            },
+            Money::ziesha(0),
+        );
+
+        // An initial amount to be withdrawn
+        assert_eq!(
+            deposit::deposit(
+                mpn_contract_id,
+                conf.log4_tree_size,
+                conf.log4_token_tree_size,
+                conf.log4_deposit_batch_size,
+                &mut db,
+                &[initial_dep],
+            )
+            .unwrap()
+            .2
+            .len(),
+            1
+        );
+
+        let withdrawal = abc.withdraw_mpn(
+            "".into(),
+            mpn_contract_id,
+            0,
+            3,
+            Money {
+                amount: Amount(30),
+                token_id: TokenId::Custom(123.into()),
+            },
+            3,
+            Money {
+                amount: Amount(26),
+                token_id: TokenId::Custom(123.into()),
+            },
+            abc.get_address(),
+        );
+
+        assert_eq!(
+            withdraw(
+                mpn_contract_id,
+                conf.log4_tree_size,
+                conf.log4_token_tree_size,
+                conf.log4_withdraw_batch_size,
+                &mut db,
+                &[withdrawal],
+            )
+            .unwrap()
+            .2
+            .len(),
+            1
+        );
+    }
+}

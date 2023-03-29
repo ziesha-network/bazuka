@@ -22,12 +22,12 @@ impl Firewall {
         }
     }
     pub fn refresh(&mut self, now: u32) {
-        if now - self.request_count_last_reset > 60 {
+        if now.saturating_sub(self.request_count_last_reset) > 60 {
             self.request_count.clear();
             self.request_count_last_reset = now;
         }
 
-        if now - self.traffic_last_reset > 900 {
+        if now.saturating_sub(self.traffic_last_reset) > 900 {
             self.traffic.clear();
             self.traffic_last_reset = now;
         }
@@ -46,11 +46,47 @@ impl Firewall {
         }
 
         let cnt = self.request_count.entry(client.ip()).or_insert(0);
-        if *cnt > self.request_count_limit_per_minute {
+        if *cnt >= self.request_count_limit_per_minute {
             return false;
         }
 
         *cnt += 1;
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_request_limit() {
+        let mut firewall = Firewall::new(10, 1000);
+        firewall.refresh(1234);
+        let client: SocketAddr = "123.234.56.78:12345".parse().unwrap();
+        for _ in 0..10 {
+            assert!(firewall.incoming_permitted(client));
+        }
+        // Do not allow after 10 reqs
+        assert!(!firewall.incoming_permitted(client));
+
+        // Not allowed before timer reset
+        firewall.refresh(1235);
+        assert!(!firewall.incoming_permitted(client));
+        firewall.refresh(1240);
+        assert!(!firewall.incoming_permitted(client));
+
+        // Go back in time
+        firewall.refresh(1230);
+        assert!(!firewall.incoming_permitted(client));
+
+        firewall.refresh(1293);
+        assert!(!firewall.incoming_permitted(client));
+        firewall.refresh(1294);
+        assert!(!firewall.incoming_permitted(client));
+
+        // Reset! Allowed again :)
+        firewall.refresh(1295);
+        assert!(firewall.incoming_permitted(client));
     }
 }
