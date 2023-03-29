@@ -1,6 +1,5 @@
 use super::{Blockchain, BlockchainError, TransactionStats};
 use crate::core::{Account, Address, ChainSourcedTx, MpnAddress, MpnSourcedTx, TokenId};
-use crate::db::KvStore;
 use crate::zk;
 use std::collections::{HashMap, VecDeque};
 
@@ -146,7 +145,7 @@ impl Mempool {
     #[allow(dead_code)]
     pub fn refresh(
         &mut self,
-        _blockchain: &dyn Blockchain,
+        _blockchain: Box<dyn Blockchain>,
         _local_ts: u32,
         _max_time_alive: Option<u32>,
         _max_time_remember: Option<u32>,

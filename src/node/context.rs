@@ -110,7 +110,7 @@ impl<B: Blockchain> NodeContext<B> {
         self.outdated_since = None;
         let local_ts = self.local_timestamp();
         self.mempool.refresh(
-            &self.blockchain,
+            Box::new(self.blockchain),
             local_ts,
             self.opts.tx_max_time_alive,
             self.opts.tx_max_time_alive,
