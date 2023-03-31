@@ -2,7 +2,7 @@ use tokio::try_join;
 
 use crate::cli::{get_conf, get_wallet_collection, get_wallet_path};
 use crate::client::{messages::TransactRequest, BazukaClient, NodeError};
-use crate::core::{Amount, ChainSourcedTx, Money, TokenId};
+use crate::core::{Amount, GeneralTransaction, Money, TokenId};
 use crate::crypto::ed25519::PublicKey;
 
 pub async fn delegate(memo: Option<String>, amount: Amount, to: PublicKey, fee: Amount) -> () {
@@ -21,7 +21,7 @@ pub async fn delegate(memo: Option<String>, amount: Amount, to: PublicKey, fee: 
                 .account
                 .nonce;
 
-            let new_nonce = wallet.user(0).new_r_nonce().unwrap_or(curr_nonce + 1);
+            let new_nonce = wallet.user(0).new_nonce().unwrap_or(curr_nonce + 1);
             let tx = tx_builder.delegate(
                 memo.unwrap_or_default(),
                 to,
@@ -34,16 +34,10 @@ pub async fn delegate(memo: Option<String>, amount: Amount, to: PublicKey, fee: 
                 new_nonce,
             );
 
-            if let Some(err) = client
-                .transact(TransactRequest::ChainSourcedTx(
-                    ChainSourcedTx::TransactionAndDelta(tx.clone()),
-                ))
-                .await?
-                .error
-            {
+            if let Some(err) = client.transact(tx.clone().into()).await?.error {
                 println!("Error: {}", err);
             } else {
-                wallet.user(0).add_rsend(tx.clone());
+                wallet.user(0).add_tx(tx.clone().into());
                 wallet.save(wallet_path).unwrap();
                 println!("Sent");
             }

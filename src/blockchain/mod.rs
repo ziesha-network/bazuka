@@ -7,8 +7,8 @@ pub use config::BlockchainConfig;
 mod ops;
 
 use crate::core::{
-    hash::Hash, Account, Address, Amount, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
-    ContractId, ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, ProofOfStake,
+    hash::Hash, Account, Address, Amount, Block, ContractAccount, ContractDeposit, ContractId,
+    ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, ProofOfStake,
     RegularSendEntry, Signature, Staker, Token, TokenId, TokenUpdate, Transaction,
     TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkHasher as CoreZkHasher,
 };
@@ -89,10 +89,6 @@ pub trait Blockchain<K: KvStore> {
         delegatee: Address,
         top: Option<usize>,
     ) -> Result<Vec<(Address, Amount)>, BlockchainError>;
-    fn cleanup_chain_mempool(
-        &self,
-        txs: &[ChainSourcedTx],
-    ) -> Result<Vec<ChainSourcedTx>, BlockchainError>;
     fn is_validator(
         &self,
         timestamp: u32,
@@ -666,35 +662,6 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         } else {
             Ok(ValidatorProof::Unproven)
         }
-    }
-
-    fn cleanup_chain_mempool(
-        &self,
-        txs: &[ChainSourcedTx],
-    ) -> Result<Vec<ChainSourcedTx>, BlockchainError> {
-        let (_, result) = self.isolated(|chain| {
-            let mut result = Vec::new();
-            for tx in txs.iter() {
-                match &tx {
-                    ChainSourcedTx::TransactionAndDelta(tx_delta) => {
-                        if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
-                            log::info!("Rejecting transaction: {}", e);
-                        } else {
-                            result.push(tx.clone());
-                        }
-                    }
-                    ChainSourcedTx::MpnDeposit(mpn_deposit) => {
-                        if let Err(e) = chain.apply_deposit(&mpn_deposit.payment) {
-                            log::info!("Rejecting mpn-deposit: {}", e);
-                        } else {
-                            result.push(tx.clone());
-                        }
-                    }
-                }
-            }
-            Ok(result)
-        })?;
-        Ok(result)
     }
 
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError> {

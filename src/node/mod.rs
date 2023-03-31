@@ -60,8 +60,7 @@ pub struct NodeOptions {
     pub max_punish: u32,
     pub state_unavailable_ban_time: u32,
     pub candidate_remove_threshold: u32,
-    pub chain_mempool_max_fetch: usize,
-    pub mpn_mempool_max_fetch: usize,
+    pub mempool_max_fetch: usize,
     pub max_block_time_difference: u32,
     pub automatic_block_generation: bool,
 }
@@ -379,25 +378,21 @@ async fn node_service<K: KvStore, B: Blockchain<K>>(
             }
             (Method::GET, "/mempool") => {
                 let req: GetJsonMempoolRequest = serde_qs::from_str(&qs)?;
-                let mpn_address = req.mpn_address.parse()?;
-                *response.body_mut() =
-                    Body::from(serde_json::to_vec(&Into::<GetJsonMempoolResponse>::into(
-                        api::get_mempool(
-                            Arc::clone(&context),
-                            GetMempoolRequest {},
-                            Some(mpn_address),
-                        )
-                        .await?,
-                    ))?);
+                let filter = if let Some(filter) = req.filter {
+                    Some(filter.parse()?)
+                } else {
+                    None
+                };
+                *response.body_mut() = Body::from(serde_json::to_vec(&Into::<
+                    GetJsonMempoolResponse,
+                >::into(
+                    api::get_mempool(Arc::clone(&context), GetMempoolRequest { filter }).await?,
+                ))?);
             }
             (Method::GET, "/bincode/mempool") => {
                 *response.body_mut() = Body::from(bincode::serialize(
-                    &api::get_mempool(
-                        Arc::clone(&context),
-                        bincode::deserialize(&body_bytes)?,
-                        None,
-                    )
-                    .await?,
+                    &api::get_mempool(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
+                        .await?,
                 )?);
             }
             (Method::POST, "/claim") => {

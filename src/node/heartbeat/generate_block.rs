@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::{Amount, ChainSourcedTx, MpnAddress, MpnSourcedTx};
+use crate::core::{Amount, MpnAddress};
 use crate::mpn;
 
 pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
@@ -17,10 +17,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                 let nonce = ctx.blockchain.get_account(wallet.get_address())?.nonce;
                 if let Some(tx_delta) = work_pool.ready(&wallet, nonce + 1) {
                     log::info!("All MPN-proofs ready!");
-                    ctx.mempool_add_chain_sourced(
-                        true,
-                        ChainSourcedTx::TransactionAndDelta(tx_delta),
-                    )?;
+                    ctx.mempool_add_tx(true, tx_delta.into())?;
                     if let Some(draft) = ctx.try_produce(wallet)? {
                         ctx.mpn_work_pool = None;
                         drop(ctx);
@@ -35,29 +32,18 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
         if ctx.update_validator_claim(claim.clone())? {
             let mempool = ctx.mempool.clone();
 
-            let mut updates = Vec::new();
-            let mut deposits = Vec::new();
-            let mut withdraws = Vec::new();
-
-            for (tx, _) in mempool.chain_sourced() {
-                match tx {
-                    ChainSourcedTx::MpnDeposit(mpn_dep) => {
-                        deposits.push(mpn_dep.clone());
-                    }
-                    _ => {}
-                }
-            }
-
-            for (tx, _) in mempool.mpn_sourced() {
-                match &tx {
-                    MpnSourcedTx::MpnTransaction(mpn_tx) => {
-                        updates.push(mpn_tx.clone());
-                    }
-                    MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
-                        withdraws.push(mpn_withdraw.clone());
-                    }
-                }
-            }
+            let updates = mempool
+                .mpn_txs()
+                .map(|(tx, _)| tx.clone())
+                .collect::<Vec<_>>();
+            let deposits = mempool
+                .mpn_deposits()
+                .map(|(tx, _)| tx.clone())
+                .collect::<Vec<_>>();
+            let withdraws = mempool
+                .mpn_withdraws()
+                .map(|(tx, _)| tx.clone())
+                .collect::<Vec<_>>();
 
             let validator_reward = ctx
                 .blockchain

@@ -1,10 +1,8 @@
 mod tx_builder;
 pub use tx_builder::TxBuilder;
 
-use crate::core::{
-    ChainSourcedTx, MpnAddress, MpnDeposit, MpnSourcedTx, MpnWithdraw, TokenId, TransactionAndDelta,
-};
-use crate::zk::MpnTransaction;
+use crate::core::{GeneralTransaction, NonceGroup, TokenId};
+
 use bip39::Mnemonic;
 use rand_core_mnemonic::{CryptoRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -95,38 +93,19 @@ impl WalletCollection {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Wallet {
     pub tokens: Vec<TokenId>,
-    pub chain_sourced_txs: Vec<ChainSourcedTx>,
-    pub mpn_sourced_txs: HashMap<MpnAddress, Vec<MpnSourcedTx>>,
+    pub txs: HashMap<NonceGroup, Vec<GeneralTransaction>>,
 }
 
 impl Default for Wallet {
     fn default() -> Self {
         Self {
-            chain_sourced_txs: Vec::new(),
-            mpn_sourced_txs: HashMap::new(),
+            txs: HashMap::new(),
             tokens: vec![TokenId::Ziesha],
         }
     }
 }
 
 impl Wallet {
-    pub fn delete_chain_tx(&mut self, nonce: u32, resigner: TxBuilder) {
-        self.chain_sourced_txs.retain(|t| t.nonce() != nonce);
-        for tx in self.chain_sourced_txs.iter_mut() {
-            if tx.nonce() > nonce {
-                match tx {
-                    ChainSourcedTx::TransactionAndDelta(tx_delta) => {
-                        tx_delta.tx.nonce -= 1;
-                        resigner.sign_tx(&mut tx_delta.tx);
-                    }
-                    ChainSourcedTx::MpnDeposit(mpn_deposit) => {
-                        mpn_deposit.payment.nonce -= 1;
-                        resigner.sign_deposit(&mut mpn_deposit.payment);
-                    }
-                }
-            }
-        }
-    }
     pub fn add_token(&mut self, token_id: TokenId) {
         if !self.tokens.contains(&token_id) {
             self.tokens.push(token_id);
@@ -136,45 +115,17 @@ impl Wallet {
         &self.tokens
     }
     pub fn reset(&mut self) {
-        self.chain_sourced_txs = Vec::new();
-        self.mpn_sourced_txs.iter_mut().for_each(|(_, v)| {
+        self.txs.iter_mut().for_each(|(_, v)| {
             *v = Vec::new();
         });
     }
-    pub fn add_rsend(&mut self, tx: TransactionAndDelta) {
-        self.chain_sourced_txs
-            .push(ChainSourcedTx::TransactionAndDelta(tx));
+    pub fn add_tx(&mut self, tx: GeneralTransaction) {
+        self.txs.entry(tx.nonce_group()).or_default().push(tx);
     }
-    pub fn add_deposit(&mut self, tx: MpnDeposit) {
-        self.chain_sourced_txs.push(ChainSourcedTx::MpnDeposit(tx));
-    }
-    pub fn add_withdraw(&mut self, tx: MpnWithdraw) {
-        self.mpn_sourced_txs
-            .entry(MpnAddress {
-                pub_key: tx.zk_address.clone(),
-            })
-            .or_default()
-            .push(MpnSourcedTx::MpnWithdraw(tx));
-    }
-    pub fn add_zsend(&mut self, tx: MpnTransaction) {
-        self.mpn_sourced_txs
-            .entry(MpnAddress {
-                pub_key: tx.src_pub_key.clone(),
-            })
-            .or_default()
-            .push(MpnSourcedTx::MpnTransaction(tx));
-    }
-    pub fn new_r_nonce(&self) -> Option<u32> {
-        self.chain_sourced_txs
-            .iter()
-            .map(|tx| tx.nonce())
-            .max()
-            .map(|n| n + 1)
-    }
-    pub fn new_z_nonce(&self, addr: &MpnAddress) -> Option<u64> {
+    pub fn new_nonce(&self, addr: NonceGroup) -> Option<u64> {
         if let Some(Some(n)) = self
-            .mpn_sourced_txs
-            .get(addr)
+            .txs
+            .get(&addr)
             .map(|it| it.iter().map(|tx| tx.nonce()).max())
         {
             Some(n + 1)

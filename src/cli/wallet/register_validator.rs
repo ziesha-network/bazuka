@@ -4,7 +4,7 @@ use tokio::try_join;
 
 use crate::cli::BazukaConfig;
 use crate::client::{messages::TransactRequest, BazukaClient, NodeError};
-use crate::core::{Amount, ChainSourcedTx, Money, TokenId};
+use crate::core::{Amount, GeneralTransaction, Money, TokenId};
 use crate::wallet::WalletCollection;
 
 pub async fn register_validator(
@@ -33,7 +33,7 @@ pub async fn register_validator(
                 .account
                 .nonce;
 
-            let new_nonce = wallet.validator().new_r_nonce().unwrap_or(curr_nonce + 1);
+            let new_nonce = wallet.validator().new_nonce().unwrap_or(curr_nonce + 1);
             let tx = tx_builder.register_validator(
                 memo.unwrap_or_default(),
                 commision_u8,
@@ -43,16 +43,10 @@ pub async fn register_validator(
                 },
                 new_nonce,
             );
-            if let Some(err) = client
-                .transact(TransactRequest::ChainSourcedTx(
-                    ChainSourcedTx::TransactionAndDelta(tx.clone()),
-                ))
-                .await?
-                .error
-            {
+            if let Some(err) = client.transact(tx.clone().into()).await?.error {
                 println!("Error: {}", err);
             } else {
-                wallet.validator().add_rsend(tx.clone());
+                wallet.validator().add_tx(tx.clone().into());
                 wallet.save(wallet_path).unwrap();
                 println!("Sent");
             }

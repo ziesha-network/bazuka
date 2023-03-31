@@ -16,7 +16,7 @@ use {
 use {
     crate::client::{NodeError, PeerAddress},
     crate::config,
-    crate::core::{Address, Amount, MpnAddress, TokenId, ZieshaAddress},
+    crate::core::{Address, Amount, GeneralAddress, MpnAddress, TokenId},
     crate::mpn::MpnWorker,
     crate::wallet::WalletCollection,
     colored::Colorize,
@@ -111,9 +111,9 @@ enum WalletOptions {
         #[structopt(long)]
         memo: Option<String>,
         #[structopt(long)]
-        from: ZieshaAddress,
+        from: GeneralAddress,
         #[structopt(long)]
-        to: ZieshaAddress,
+        to: GeneralAddress,
         #[structopt(long)]
         token: Option<usize>,
         #[structopt(long)]
@@ -157,12 +157,7 @@ enum WalletOptions {
     /// Get info and balances of the wallet
     Info {},
     /// Resend pending transactions
-    ResendPending {
-        #[structopt(long)]
-        fill_gaps: bool,
-        #[structopt(long)]
-        shift: bool,
-    },
+    ResendPending {},
 }
 
 #[derive(StructOpt)]
@@ -534,8 +529,8 @@ pub async fn initialize_cli() {
             } => {
                 crate::cli::wallet::delegate(memo, amount, to, fee).await;
             }
-            WalletOptions::ResendPending { fill_gaps, shift } => {
-                crate::cli::wallet::resend_pending(fill_gaps, shift).await;
+            WalletOptions::ResendPending {} => {
+                crate::cli::wallet::resend_pending().await;
             }
             WalletOptions::Info {} => {
                 crate::cli::wallet::info(get_conf(), get_wallet_collection()).await;

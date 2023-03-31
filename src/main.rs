@@ -1,3 +1,6 @@
+/*#[cfg(not(tarpaulin_include))]
+pub mod cli;
+
 use bazuka::cli::initialize_cli;
 
 #[cfg(feature = "client")]
@@ -14,3 +17,8 @@ async fn main() -> Result<(), NodeError> {
 
 #[cfg(not(feature = "client"))]
 fn main() {}
+*/
+
+fn main() {
+    println!("Hey!");
+}

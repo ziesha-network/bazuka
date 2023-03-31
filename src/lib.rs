@@ -3,9 +3,6 @@ extern crate lazy_static;
 
 pub mod blockchain;
 
-#[cfg(not(tarpaulin_include))]
-pub mod cli;
-
 pub mod common;
 pub mod config;
 pub mod core;

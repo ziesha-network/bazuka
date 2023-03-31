@@ -169,13 +169,13 @@ mod tests {
                 Amount(9800).into(),
             ),
             WriteOp::Put(
-                "ACC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a".into(),
-                Account { nonce: 1 }.into(),
-            ),
-            WriteOp::Put(
                 "CAB-6dbbef663ee3bf666f6a4789ad5cdfbd7c97a1f79fb8ef1412e8fffc09fc2855-Ziesha"
                     .into(),
                 Amount(123).into(),
+            ),
+            WriteOp::Put(
+                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-6dbbef663ee3bf666f6a4789ad5cdfbd7c97a1f79fb8ef1412e8fffc09fc2855".into(),
+                1u32.into(),
             ),
         ];
 
@@ -219,7 +219,7 @@ mod tests {
             contract_id,
             deposit_circuit_id: 0,
             calldata: zk::ZkScalar::from(888),
-            nonce: 2,
+            nonce: 1,
             amount: Money {
                 token_id: kiwi_token_id,
                 amount: Amount(10000),
@@ -279,13 +279,13 @@ mod tests {
                 Amount(9679).into(),
             ),
             WriteOp::Put(
-                "ACC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a".into(),
-                Account { nonce: 2 }.into(),
-            ),
-            WriteOp::Put(
                 "CAB-6dbbef663ee3bf666f6a4789ad5cdfbd7c97a1f79fb8ef1412e8fffc09fc2855-0x113c5707d6ab03dd78c9f8455f3b4096c8c5e9312076aafe38d79c4d8eb2d096"
                     .into(),
                 Amount(10000).into(),
+            ),
+            WriteOp::Put(
+                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-6dbbef663ee3bf666f6a4789ad5cdfbd7c97a1f79fb8ef1412e8fffc09fc2855".into(),
+                1u32.into(),
             ),
         ];
 

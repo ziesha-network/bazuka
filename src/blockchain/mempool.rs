@@ -1,91 +1,90 @@
 use super::{Blockchain, BlockchainError, TransactionStats};
-use crate::core::{Account, Address, Amount, ChainSourcedTx, MpnAddress, MpnSourcedTx, TokenId};
+use crate::core::{
+    Address, Amount, GeneralTransaction, MpnDeposit, MpnWithdraw, NonceGroup, TransactionAndDelta,
+};
 use crate::db::KvStore;
-use crate::zk;
+use crate::zk::MpnTransaction;
 use std::collections::{HashMap, VecDeque};
 
-#[derive(Debug, Clone)]
-pub struct MpnAccountMempool {
-    account: zk::MpnAccount,
-    txs: VecDeque<(MpnSourcedTx, TransactionStats)>,
+trait Nonced {
+    fn nonce(&self) -> u64;
 }
 
-impl MpnAccountMempool {
-    fn new(account: zk::MpnAccount) -> Self {
+impl Nonced for MpnTransaction {
+    fn nonce(&self) -> u64 {
+        self.nonce
+    }
+}
+
+impl Nonced for MpnWithdraw {
+    fn nonce(&self) -> u64 {
+        self.zk_nonce
+    }
+}
+
+impl Nonced for MpnDeposit {
+    fn nonce(&self) -> u64 {
+        self.payment.nonce as u64
+    }
+}
+
+impl Nonced for TransactionAndDelta {
+    fn nonce(&self) -> u64 {
+        self.tx.nonce as u64
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SingleMempool {
+    nonce: u64,
+    txs: VecDeque<(GeneralTransaction, TransactionStats)>,
+}
+
+impl SingleMempool {
+    fn new(nonce: u64) -> Self {
         Self {
-            account,
+            nonce,
             txs: Default::default(),
         }
     }
     fn len(&self) -> usize {
         self.txs.len()
     }
+    fn first_tx(&self) -> Option<&(GeneralTransaction, TransactionStats)> {
+        self.txs.front()
+    }
     fn first_nonce(&self) -> Option<u64> {
-        self.txs.front().map(|(tx, _)| tx.nonce())
+        self.first_tx().map(|(tx, _)| tx.nonce())
     }
     fn last_nonce(&self) -> Option<u64> {
         self.txs.back().map(|(tx, _)| tx.nonce())
     }
-    fn applicable(&self, tx: &MpnSourcedTx) -> bool {
+    fn applicable(&self, tx: &GeneralTransaction) -> bool {
         if let Some(last_nonce) = self.last_nonce() {
             tx.nonce() == last_nonce + 1
         } else {
-            self.account.nonce == tx.nonce()
+            self.nonce + 1 == tx.nonce()
         }
     }
-    fn insert(&mut self, tx: MpnSourcedTx, stats: TransactionStats) {
+    fn insert(&mut self, tx: GeneralTransaction, stats: TransactionStats) {
         if self.applicable(&tx) {
             self.txs.push_back((tx, stats));
         }
     }
-    fn update_account(&mut self, account: zk::MpnAccount) {
+    fn update_nonce(&mut self, nonce: u64) {
         while let Some(first_nonce) = self.first_nonce() {
-            if first_nonce < account.nonce {
+            if first_nonce <= nonce {
                 self.txs.pop_front();
             } else {
                 break;
             }
         }
-        if self.first_nonce() != Some(account.nonce) {
+        if self.first_nonce() != Some(nonce + 1) {
             self.txs.clear();
         }
-        self.account = account;
+        self.nonce = nonce;
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct AccountMempool {
-    account: Account,
-    txs: VecDeque<(ChainSourcedTx, TransactionStats)>,
-}
-
-impl AccountMempool {
-    fn new(account: Account) -> Self {
-        Self {
-            account,
-            txs: Default::default(),
-        }
-    }
-    fn len(&self) -> usize {
-        self.txs.len()
-    }
-    fn first_tx(&self) -> Option<&(ChainSourcedTx, TransactionStats)> {
-        self.txs.front()
-    }
-    fn first_nonce(&self) -> Option<u32> {
-        self.txs.front().map(|(tx, _)| tx.nonce())
-    }
-    fn last_nonce(&self) -> Option<u32> {
-        self.txs.back().map(|(tx, _)| tx.nonce())
-    }
-    fn applicable(&self, tx: &ChainSourcedTx) -> bool {
-        if let Some(last_nonce) = self.last_nonce() {
-            tx.nonce() == last_nonce + 1
-        } else {
-            self.account.nonce + 1 == tx.nonce()
-        }
-    }
-    fn reset(&mut self, nonce: u32) {
+    fn reset(&mut self, nonce: u64) {
         if nonce == 0 {
             self.txs.clear();
             return;
@@ -101,34 +100,14 @@ impl AccountMempool {
             self.txs.clear();
         }
     }
-    fn insert(&mut self, tx: ChainSourcedTx, stats: TransactionStats) {
-        if self.applicable(&tx) {
-            self.txs.push_back((tx, stats));
-        }
-    }
-    fn update_account(&mut self, account: Account) {
-        while let Some(first_nonce) = self.first_nonce() {
-            if first_nonce <= account.nonce {
-                self.txs.pop_front();
-            } else {
-                break;
-            }
-        }
-        if self.first_nonce() != Some(account.nonce + 1) {
-            self.txs.clear();
-        }
-        self.account = account;
-    }
 }
 
 #[derive(Clone, Debug)]
 pub struct Mempool {
     min_balance_per_tx: Amount,
     mpn_log4_account_capacity: u8,
-    chain_sourced: HashMap<Address, AccountMempool>,
-    rejected_chain_sourced: HashMap<ChainSourcedTx, TransactionStats>,
-    mpn_sourced: HashMap<MpnAddress, MpnAccountMempool>,
-    rejected_mpn_sourced: HashMap<MpnSourcedTx, TransactionStats>,
+    txs: HashMap<NonceGroup, SingleMempool>,
+    rejected: HashMap<GeneralTransaction, TransactionStats>,
 }
 
 impl Mempool {
@@ -136,10 +115,8 @@ impl Mempool {
         Self {
             mpn_log4_account_capacity,
             min_balance_per_tx,
-            chain_sourced: Default::default(),
-            rejected_chain_sourced: Default::default(),
-            mpn_sourced: Default::default(),
-            rejected_mpn_sourced: Default::default(),
+            txs: Default::default(),
+            rejected: Default::default(),
         }
     }
 }
@@ -158,153 +135,163 @@ impl Mempool {
     pub fn chain_address_limit(&self, _addr: Address) -> usize {
         100
     }
-    pub fn mpn_sourced_len(&self) -> usize {
-        self.mpn_sourced.values().map(|c| c.len()).sum()
-    }
-    pub fn chain_sourced_len(&self) -> usize {
-        self.chain_sourced.values().map(|c| c.len()).sum()
-    }
-    pub fn add_chain_sourced<K: KvStore, B: Blockchain<K>>(
+    pub fn add_tx<K: KvStore, B: Blockchain<K>>(
         &mut self,
         blockchain: &B,
-        tx: ChainSourcedTx,
+        tx: GeneralTransaction,
         is_local: bool,
         now: u32,
     ) -> Result<(), BlockchainError> {
+        let mpn_contract_id = blockchain.config().mpn_config.mpn_contract_id;
         if is_local {
-            self.rejected_chain_sourced.remove(&tx);
+            self.rejected.remove(&tx);
         }
-        if !self.rejected_chain_sourced.contains_key(&tx) {
-            if !tx.verify_signature() {
-                return Ok(());
+        if self.rejected.contains_key(&tx) || !tx.verify_signature() {
+            return Ok(());
+        }
+        let nonce = match tx.nonce_group() {
+            NonceGroup::TransactionAndDelta(addr) => blockchain.get_account(addr)?.nonce as u64,
+            NonceGroup::MpnDeposit(addr) => {
+                blockchain.get_deposit_nonce(addr, mpn_contract_id)? as u64
             }
-            let chain_acc = blockchain.get_account(tx.sender())?;
-            if self
-                .chain_sourced
-                .get_mut(&tx.sender())
-                .map(|all| {
-                    all.update_account(chain_acc.clone());
-                    if is_local && !all.applicable(&tx) {
+            NonceGroup::MpnTransaction(addr) => {
+                blockchain
+                    .get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?
+                    .nonce
+            }
+            _ => unimplemented!(),
+        };
+        if self
+            .txs
+            .get_mut(&tx.nonce_group())
+            .map(|all| {
+                all.update_nonce(nonce);
+                if is_local && !all.applicable(&tx) {
+                    all.reset(tx.nonce());
+                }
+                if let Some((first_tx, stats)) = all.first_tx() {
+                    // TODO: config.replace_tx_threshold instead of 60
+                    if now > stats.first_seen + 60 && first_tx != &tx {
+                        log::info!(
+                            "{} replaced its transaction on nonce {}",
+                            tx.sender(),
+                            tx.nonce()
+                        );
                         all.reset(tx.nonce());
                     }
-                    if let Some((first_tx, stats)) = all.first_tx() {
-                        // TODO: config.replace_tx_threshold instead of 60
-                        if now > stats.first_seen + 60 && first_tx != &tx {
-                            log::info!(
-                                "{} replaced its transaction on nonce {}",
-                                tx.sender(),
-                                tx.nonce()
-                            );
-                            all.reset(tx.nonce());
-                        }
-                    }
-                    !all.applicable(&tx)
-                })
-                .unwrap_or_default()
-            {
-                return Ok(());
-            }
+                }
+                !all.applicable(&tx)
+            })
+            .unwrap_or_default()
+        {
+            return Ok(());
+        }
 
-            // Do not accept old txs in the mempool
-            if tx.nonce() <= chain_acc.nonce {
-                return Ok(());
-            }
+        // Do not accept old txs in the mempool
+        if tx.nonce() <= nonce {
+            return Ok(());
+        }
 
-            let ziesha_balance = blockchain.get_balance(tx.sender(), TokenId::Ziesha)?;
+        let count_limit = false;
+        /*let ziesha_balance = blockchain.get_balance(tx.sender(), TokenId::Ziesha)?;
 
-            // Allow 1tx in mempool per Ziesha
-            // Min: 1 Max: 1000
-            let limit = std::cmp::max(
-                std::cmp::min(
-                    Into::<u64>::into(ziesha_balance) / self.min_balance_per_tx.0,
-                    1000,
-                ),
-                1,
-            ) as usize;
+        // Allow 1tx in mempool per Ziesha
+        // Min: 1 Max: 1000
+        let limit = std::cmp::max(
+            std::cmp::min(
+                Into::<u64>::into(ziesha_balance) / self.min_balance_per_tx.0,
+                1000,
+            ),
+            1,
+        ) as usize;*/
 
-            let all = self
-                .chain_sourced
-                .entry(tx.sender().clone())
-                .or_insert(AccountMempool::new(chain_acc));
+        let all = self
+            .txs
+            .entry(tx.nonce_group().clone())
+            .or_insert(SingleMempool::new(nonce));
 
-            if is_local || all.len() < limit {
-                all.insert(tx.clone(), TransactionStats::new(is_local, now));
-            }
+        if is_local || !count_limit {
+            all.insert(tx.clone(), TransactionStats::new(is_local, now));
         }
         Ok(())
     }
-    pub fn add_mpn_sourced<K: KvStore, B: Blockchain<K>>(
-        &mut self,
-        blockchain: &B,
-        tx: MpnSourcedTx,
-        is_local: bool,
-        now: u32,
-    ) -> Result<(), BlockchainError> {
-        if is_local {
-            self.rejected_mpn_sourced.remove(&tx);
-        }
-        if !self.rejected_mpn_sourced.contains_key(&tx) {
-            let mpn_acc = blockchain
-                .get_mpn_account(tx.sender().account_index(self.mpn_log4_account_capacity))?;
-            if self
-                .mpn_sourced
-                .get_mut(&tx.sender())
-                .map(|all| {
-                    all.update_account(mpn_acc.clone());
-                    !all.applicable(&tx)
-                })
-                .unwrap_or_default()
-            {
-                return Ok(());
-            }
-
-            // Do not accept txs from non-existing accounts
-            if tx.sender().pub_key.0.decompress() != mpn_acc.address {
-                return Ok(());
-            }
-
-            // Do not accept old txs in the mempool
-            if tx.nonce() < mpn_acc.nonce {
-                return Ok(());
-            }
-
-            // Do not accept txs coming from accounts that their 0th slot has no Ziesha
-            if let Some(money) = mpn_acc.tokens.get(&0) {
-                if money.token_id != TokenId::Ziesha {
-                    return Ok(());
-                }
-
-                // Allow 1tx in mempool per Ziesha
-                // Min: 1 Max: 1000
-                let limit = std::cmp::max(
-                    std::cmp::min(
-                        Into::<u64>::into(money.amount) / self.min_balance_per_tx.0,
-                        1000,
-                    ),
-                    1,
-                ) as usize;
-
-                let all = self
-                    .mpn_sourced
-                    .entry(tx.sender().clone())
-                    .or_insert(MpnAccountMempool::new(mpn_acc));
-                if tx.verify_signature() {
-                    if is_local || all.len() < limit {
-                        all.insert(tx.clone(), TransactionStats::new(is_local, now));
-                    }
-                }
-            }
-        }
-        Ok(())
+    pub fn all(&self) -> impl Iterator<Item = &(GeneralTransaction, TransactionStats)> {
+        self.txs.iter().map(|(_, c)| c.txs.iter()).flatten()
     }
-    pub fn chain_sourced(&self) -> impl Iterator<Item = &(ChainSourcedTx, TransactionStats)> {
-        self.chain_sourced
+    pub fn tx_deltas(&self) -> impl Iterator<Item = (&TransactionAndDelta, &TransactionStats)> {
+        self.txs
             .iter()
-            .map(|(_, c)| c.txs.iter())
+            .filter(|(n, _)| match n {
+                NonceGroup::TransactionAndDelta(_) => true,
+                _ => false,
+            })
+            .map(|(_, c)| {
+                c.txs.iter().filter_map(|(t, s)| {
+                    if let GeneralTransaction::TransactionAndDelta(tx) = t {
+                        Some((tx, s))
+                    } else {
+                        None
+                    }
+                })
+            })
             .flatten()
     }
-    pub fn mpn_sourced(&self) -> impl Iterator<Item = &(MpnSourcedTx, TransactionStats)> {
-        self.mpn_sourced.iter().map(|(_, c)| c.txs.iter()).flatten()
+    pub fn mpn_deposits(&self) -> impl Iterator<Item = (&MpnDeposit, &TransactionStats)> {
+        self.txs
+            .iter()
+            .filter(|(n, _)| match n {
+                NonceGroup::TransactionAndDelta(_) => true,
+                _ => false,
+            })
+            .map(|(_, c)| {
+                c.txs.iter().filter_map(|(t, s)| {
+                    if let GeneralTransaction::MpnDeposit(tx) = t {
+                        Some((tx, s))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .flatten()
+    }
+    pub fn mpn_withdraws(&self) -> impl Iterator<Item = (&MpnWithdraw, &TransactionStats)> {
+        self.txs
+            .iter()
+            .filter(|(n, _)| match n {
+                NonceGroup::MpnWithdraw(_) => true,
+                _ => false,
+            })
+            .map(|(_, c)| {
+                c.txs.iter().filter_map(|(t, s)| {
+                    if let GeneralTransaction::MpnWithdraw(tx) = t {
+                        Some((tx, s))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .flatten()
+    }
+    pub fn mpn_txs(&self) -> impl Iterator<Item = (&MpnTransaction, &TransactionStats)> {
+        self.txs
+            .iter()
+            .filter(|(n, _)| match n {
+                NonceGroup::MpnTransaction(_) => true,
+                _ => false,
+            })
+            .map(|(_, c)| {
+                c.txs.iter().filter_map(|(t, s)| {
+                    if let GeneralTransaction::MpnTransaction(tx) = t {
+                        Some((tx, s))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .flatten()
+    }
+    pub fn len(&self) -> usize {
+        self.txs.values().map(|c| c.len()).sum()
     }
 }
 
@@ -316,8 +303,8 @@ mod tests {
     use crate::db::RamKvStore;
     use crate::wallet::TxBuilder;
 
-    fn dummy_tx(wallet: &TxBuilder, nonce: u32) -> ChainSourcedTx {
-        ChainSourcedTx::TransactionAndDelta(wallet.create_transaction(
+    fn dummy_tx(wallet: &TxBuilder, nonce: u32) -> GeneralTransaction {
+        GeneralTransaction::TransactionAndDelta(wallet.create_transaction(
             "".into(),
             wallet.get_address(),
             Money::ziesha(200),
@@ -337,11 +324,9 @@ mod tests {
 
         for i in 0..5 {
             let mut mempool = Mempool::new(30, Amount(1));
-            mempool
-                .add_chain_sourced(&chain, dummy_tx(&abc, i), false, 0)
-                .unwrap();
+            mempool.add_tx(&chain, dummy_tx(&abc, i), false, 0).unwrap();
 
-            let snapshot = mempool.chain_sourced().collect::<Vec<_>>();
+            let snapshot = mempool.all().collect::<Vec<_>>();
             // Tx is only added if nonce is correct based on its account on the blockchain
             assert_eq!(snapshot.len(), if i == 1 { 1 } else { 0 });
         }
@@ -358,42 +343,32 @@ mod tests {
         let other = TxBuilder::new(&Vec::from("DELEGATOR"));
         let mut mempool = Mempool::new(30, Amount(1));
 
-        mempool
-            .add_chain_sourced(&chain, dummy_tx(&abc, 1), false, 0)
-            .unwrap();
-        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 1);
-        mempool
-            .add_chain_sourced(&chain, dummy_tx(&abc, 2), false, 0)
-            .unwrap();
-        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 2);
-        mempool
-            .add_chain_sourced(&chain, dummy_tx(&abc, 4), false, 0)
-            .unwrap();
-        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 2);
-        mempool
-            .add_chain_sourced(&chain, dummy_tx(&abc, 3), false, 0)
-            .unwrap();
-        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 3);
-        mempool
-            .add_chain_sourced(&chain, dummy_tx(&abc, 4), false, 0)
-            .unwrap();
-        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 4);
+        mempool.add_tx(&chain, dummy_tx(&abc, 1), false, 0).unwrap();
+        assert_eq!(mempool.all().collect::<Vec<_>>().len(), 1);
+        mempool.add_tx(&chain, dummy_tx(&abc, 2), false, 0).unwrap();
+        assert_eq!(mempool.all().collect::<Vec<_>>().len(), 2);
+        mempool.add_tx(&chain, dummy_tx(&abc, 4), false, 0).unwrap();
+        assert_eq!(mempool.all().collect::<Vec<_>>().len(), 2);
+        mempool.add_tx(&chain, dummy_tx(&abc, 3), false, 0).unwrap();
+        assert_eq!(mempool.all().collect::<Vec<_>>().len(), 3);
+        mempool.add_tx(&chain, dummy_tx(&abc, 4), false, 0).unwrap();
+        assert_eq!(mempool.all().collect::<Vec<_>>().len(), 4);
 
         mempool
-            .add_chain_sourced(&chain, dummy_tx(&other, 1), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 1), false, 0)
             .unwrap();
-        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 4);
+        assert_eq!(mempool.all().collect::<Vec<_>>().len(), 4);
         mempool
-            .add_chain_sourced(&chain, dummy_tx(&other, 4), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 4), false, 0)
             .unwrap();
-        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 5);
+        assert_eq!(mempool.all().collect::<Vec<_>>().len(), 5);
         mempool
-            .add_chain_sourced(&chain, dummy_tx(&other, 6), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 6), false, 0)
             .unwrap();
-        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 5);
+        assert_eq!(mempool.all().collect::<Vec<_>>().len(), 5);
         mempool
-            .add_chain_sourced(&chain, dummy_tx(&other, 5), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 5), false, 0)
             .unwrap();
-        assert_eq!(mempool.chain_sourced().collect::<Vec<_>>().len(), 6);
+        assert_eq!(mempool.all().collect::<Vec<_>>().len(), 6);
     }
 }

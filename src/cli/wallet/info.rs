@@ -110,7 +110,7 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                 }
             }
 
-            let curr_nonce = wallet.user(0).new_r_nonce().map(|n| n - 1);
+            let curr_nonce = wallet.user(0).new_nonce().map(|n| n - 1);
 
             println!();
             println!("{}", "Main-chain\n---------".bright_green());
@@ -157,7 +157,7 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     .get_mpn_account(addr.account_index(mpn_log4_account_capacity))
                     .await?
                     .account;
-                let curr_z_nonce = wallet.user(0).new_z_nonce(&addr);
+                let curr_z_nonce = wallet.user(0).new_nonce(&addr);
                 if !resp.address.is_on_curve() {
                     println!(
                         "{}\t{}",
