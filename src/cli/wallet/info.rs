@@ -1,9 +1,9 @@
 use tokio::try_join;
 
 use crate::cli::BazukaConfig;
-use crate::client::NodeError;
+use bazuka::client::NodeError;
 use bazuka::config;
-use bazuka::core::MpnAddress;
+use bazuka::core::{MpnAddress, NonceGroup};
 use bazuka::wallet::WalletCollection;
 use bazuka::{client::BazukaClient, core::TokenId};
 use colored::Colorize;
@@ -15,7 +15,7 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
         .log4_tree_size;
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let val_tx_builder = wallet.validator().tx_builder();
-    let tx_builder = wallet.user().tx_builder();
+    let tx_builder = wallet.user(0).tx_builder();
 
     let (req_loop, client) =
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
@@ -110,7 +110,10 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                 }
             }
 
-            let curr_nonce = wallet.user(0).new_nonce().map(|n| n - 1);
+            let curr_nonce = wallet
+                .user(0)
+                .new_nonce(NonceGroup::TransactionAndDelta(tx_builder.get_address()))
+                .map(|n| n - 1);
 
             println!();
             println!("{}", "Main-chain\n---------".bright_green());
@@ -157,7 +160,7 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     .get_mpn_account(addr.account_index(mpn_log4_account_capacity))
                     .await?
                     .account;
-                let curr_z_nonce = wallet.user(0).new_nonce(&addr);
+                let curr_z_nonce = wallet.user(0).new_nonce(NonceGroup::MpnTransaction(addr));
                 if !resp.address.is_on_curve() {
                     println!(
                         "{}\t{}",

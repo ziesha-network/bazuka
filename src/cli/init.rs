@@ -36,7 +36,7 @@ pub async fn init(
     }
 
     if conf.is_none() {
-        let public_ip = crate::client::utils::get_public_ip().await.unwrap();
+        let public_ip = bazuka::client::utils::get_public_ip().await.unwrap();
         std::fs::write(
             conf_path,
             serde_yaml::to_string(&BazukaConfig {

@@ -1,7 +1,7 @@
 #[cfg(feature = "node")]
 use {
-    crate::client::{messages::SocialProfiles, Limit, NodeRequest},
     bazuka::blockchain::KvStoreChain,
+    bazuka::client::{messages::SocialProfiles, Limit, NodeRequest},
     bazuka::common::*,
     bazuka::db::LevelDbKvStore,
     bazuka::node::{node_create, Firewall},
@@ -14,7 +14,7 @@ use {
 
 #[cfg(feature = "client")]
 use {
-    crate::client::{NodeError, PeerAddress},
+    bazuka::client::{NodeError, PeerAddress},
     bazuka::config,
     bazuka::core::{Address, Amount, GeneralAddress, MpnAddress, TokenId},
     bazuka::mpn::MpnWorker,
@@ -272,8 +272,8 @@ async fn run_node(
         )
         .unwrap(),
         0,
-        wallet.validator().tx_builder(),
-        wallet.user().tx_builder(),
+        wallet.clone().validator().tx_builder(),
+        wallet.clone().user(0).tx_builder(),
         social_profiles,
         inc_recv,
         out_send,

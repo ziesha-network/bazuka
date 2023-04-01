@@ -1,9 +1,7 @@
 use std::path::PathBuf;
 
-use bazuka::{
-    cli::{BazukaConfig, BazukaConfigMpnWorker},
-    core::MpnAddress,
-};
+use crate::cli::{BazukaConfig, BazukaConfigMpnWorker};
+use bazuka::core::MpnAddress;
 
 pub async fn add_mpn_worker(
     conf_path: &PathBuf,

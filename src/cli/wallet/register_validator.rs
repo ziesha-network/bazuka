@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use tokio::try_join;
 
 use crate::cli::BazukaConfig;
-use crate::client::{messages::TransactRequest, BazukaClient, NodeError};
-use bazuka::core::{Amount, GeneralTransaction, Money, NonceGroup, TokenId};
+use bazuka::client::{BazukaClient, NodeError};
+use bazuka::core::{Amount, Money, NonceGroup, TokenId};
 use bazuka::wallet::WalletCollection;
 
 pub async fn register_validator(

@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use crate::cli::BazukaConfig;
 use bazuka::wallet::WalletCollection;
 use bazuka::{
-    client::{messages::TransactRequest, BazukaClient, NodeError},
+    client::{BazukaClient, NodeError},
     config,
-    core::{Amount, GeneralAddress, GeneralTransaction, Money, NonceGroup, TokenId},
+    core::{Amount, GeneralAddress, Money, NonceGroup, TokenId},
 };
 use tokio::try_join;
 
@@ -21,7 +21,7 @@ pub async fn send(
     wallet_path: &PathBuf,
 ) {
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-    let tx_builder = wallet.user().tx_builder();
+    let tx_builder = wallet.user(0).tx_builder();
     let log4_token_tree_size = config::blockchain::get_blockchain_config()
         .mpn_config
         .log4_token_tree_size;
@@ -56,7 +56,7 @@ pub async fn send(
                                 .get_account(tx_builder.get_address())
                                 .await?
                                 .account
-                                .nonce as u64;
+                                .nonce;
                             let new_nonce = wallet
                                 .user(0)
                                 .new_nonce(NonceGroup::TransactionAndDelta(
@@ -97,7 +97,7 @@ pub async fn send(
                                 .get_account(tx_builder.get_address())
                                 .await?
                                 .account
-                                .nonce as u64;
+                                .nonce;
                             let dst_acc = client
                                 .get_mpn_account(to.account_index(mpn_log4_account_capacity))
                                 .await?

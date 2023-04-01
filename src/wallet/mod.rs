@@ -60,20 +60,15 @@ impl WalletCollection {
             wallets: Default::default(),
         }
     }
-    fn seed(&self, wallet_type: WalletType) -> [u8; 64] {
-        self.mnemonic.to_seed(&wallet_type.bip39_passphrase())
-    }
-    pub fn user_builder(&self, index: usize) -> TxBuilder {
-        TxBuilder::new(&self.seed(WalletType::User(index)))
-    }
-    pub fn validator_builder(&self) -> TxBuilder {
-        TxBuilder::new(&self.seed(WalletType::Validator))
-    }
     pub fn user(&mut self, index: usize) -> &mut Wallet {
-        self.wallets.entry(WalletType::User(index)).or_default()
+        self.wallets
+            .entry(WalletType::User(index))
+            .or_insert(Wallet::new(WalletType::User(index), self.mnemonic.clone()))
     }
     pub fn validator(&mut self) -> &mut Wallet {
-        self.wallets.entry(WalletType::Validator).or_default()
+        self.wallets
+            .entry(WalletType::Validator)
+            .or_insert(Wallet::new(WalletType::Validator, self.mnemonic.clone()))
     }
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Option<Self>, WalletError> {
         if let Ok(mut f) = File::open(&path) {
@@ -92,20 +87,27 @@ impl WalletCollection {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Wallet {
+    pub mnemonic: Mnemonic,
+    pub wallet_type: WalletType,
     pub tokens: Vec<TokenId>,
     pub txs: HashMap<NonceGroup, Vec<GeneralTransaction>>,
 }
 
-impl Default for Wallet {
-    fn default() -> Self {
+impl Wallet {
+    pub fn new(wallet_type: WalletType, mnemonic: Mnemonic) -> Self {
         Self {
             txs: HashMap::new(),
             tokens: vec![TokenId::Ziesha],
+            wallet_type,
+            mnemonic,
         }
     }
-}
-
-impl Wallet {
+    fn seed(&self) -> [u8; 64] {
+        self.mnemonic.to_seed(&self.wallet_type.bip39_passphrase())
+    }
+    pub fn tx_builder(&self) -> TxBuilder {
+        TxBuilder::new(&self.seed())
+    }
     pub fn add_token(&mut self, token_id: TokenId) {
         if !self.tokens.contains(&token_id) {
             self.tokens.push(token_id);
