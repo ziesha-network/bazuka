@@ -1,18 +1,18 @@
 use std::path::PathBuf;
 
 use crate::cli::BazukaConfig;
-use crate::wallet::WalletCollection;
-use crate::{
-    client::{messages::TransactRequest, BazukaClient, NodeError},
+use bazuka::wallet::WalletCollection;
+use bazuka::{
+    client::{BazukaClient, NodeError},
     config,
-    core::{Amount, ChainSourcedTx, Money, MpnSourcedTx, TokenId, ZieshaAddress},
+    core::{Amount, GeneralAddress, Money, NonceGroup, TokenId},
 };
 use tokio::try_join;
 
 pub async fn send(
     memo: Option<String>,
-    from: ZieshaAddress,
-    to: ZieshaAddress,
+    from: GeneralAddress,
+    to: GeneralAddress,
     amount: Amount,
     fee: Amount,
     token: Option<usize>,
@@ -21,7 +21,7 @@ pub async fn send(
     wallet_path: &PathBuf,
 ) {
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-    let tx_builder = wallet.user_builder(0);
+    let tx_builder = wallet.user(0).tx_builder();
     let log4_token_tree_size = config::blockchain::get_blockchain_config()
         .mpn_config
         .log4_token_tree_size;
@@ -44,12 +44,12 @@ pub async fn send(
         TokenId::Ziesha
     };
     match from {
-        ZieshaAddress::ChainAddress(from) => {
+        GeneralAddress::ChainAddress(from) => {
             if tx_builder.get_address() != from {
                 panic!("Source address doesn't exist in your wallet!");
             }
             match to {
-                ZieshaAddress::ChainAddress(to) => {
+                GeneralAddress::ChainAddress(to) => {
                     try_join!(
                         async move {
                             let curr_nonce = client
@@ -57,7 +57,12 @@ pub async fn send(
                                 .await?
                                 .account
                                 .nonce;
-                            let new_nonce = wallet.user(0).new_r_nonce().unwrap_or(curr_nonce + 1);
+                            let new_nonce = wallet
+                                .user(0)
+                                .new_nonce(NonceGroup::TransactionAndDelta(
+                                    tx_builder.get_address(),
+                                ))
+                                .unwrap_or(curr_nonce + 1);
                             let tx = tx_builder.create_transaction(
                                 memo.unwrap_or_default(),
                                 to,
@@ -72,16 +77,10 @@ pub async fn send(
                                 new_nonce,
                             );
 
-                            if let Some(err) = client
-                                .transact(TransactRequest::ChainSourcedTx(
-                                    ChainSourcedTx::TransactionAndDelta(tx.clone()),
-                                ))
-                                .await?
-                                .error
-                            {
+                            if let Some(err) = client.transact(tx.clone().into()).await?.error {
                                 println!("Error: {}", err);
                             } else {
-                                wallet.user(0).add_rsend(tx.clone());
+                                wallet.user(0).add_tx(tx.clone().into());
                                 wallet.save(wallet_path).unwrap();
                                 println!("Sent");
                             }
@@ -91,7 +90,7 @@ pub async fn send(
                     )
                     .unwrap();
                 }
-                ZieshaAddress::MpnAddress(to) => {
+                GeneralAddress::MpnAddress(to) => {
                     try_join!(
                         async move {
                             let curr_nonce = client
@@ -110,7 +109,10 @@ pub async fn send(
                             } else {
                                 panic!("Cannot find empty token slot in your MPN account!");
                             };
-                            let new_nonce = wallet.user(0).new_r_nonce().unwrap_or(curr_nonce + 1);
+                            let new_nonce = wallet
+                                .user(0)
+                                .new_nonce(NonceGroup::MpnDeposit(tx_builder.get_address()))
+                                .unwrap_or(curr_nonce + 1);
                             let pay = tx_builder.deposit_mpn(
                                 memo.unwrap_or_default(),
                                 mpn_contract_id,
@@ -126,16 +128,9 @@ pub async fn send(
                                     token_id: TokenId::Ziesha,
                                 },
                             );
-                            wallet.user(0).add_deposit(pay.clone());
+                            wallet.user(0).add_tx(pay.clone().into());
                             wallet.save(wallet_path).unwrap();
-                            println!(
-                                "{:#?}",
-                                client
-                                    .transact(TransactRequest::ChainSourcedTx(
-                                        ChainSourcedTx::MpnDeposit(pay.clone()),
-                                    ))
-                                    .await?
-                            );
+                            println!("{:#?}", client.transact(pay.clone().into()).await?);
                             Ok::<(), NodeError>(())
                         },
                         req_loop
@@ -144,12 +139,12 @@ pub async fn send(
                 }
             }
         }
-        ZieshaAddress::MpnAddress(from) => {
+        GeneralAddress::MpnAddress(from) => {
             if tx_builder.get_zk_address() != from.pub_key {
                 panic!("Source address doesn't exist in your wallet!");
             }
             match to {
-                ZieshaAddress::ChainAddress(to) => {
+                GeneralAddress::ChainAddress(to) => {
                     try_join!(
                         async move {
                             let acc = client
@@ -170,7 +165,10 @@ pub async fn send(
                             } else {
                                 panic!("Token not found in your account!");
                             };
-                            let new_nonce = wallet.user(0).new_z_nonce(&from).unwrap_or(acc.nonce);
+                            let new_nonce = wallet
+                                .user(0)
+                                .new_nonce(NonceGroup::MpnWithdraw(tx_builder.get_mpn_address()))
+                                .unwrap_or(acc.nonce);
                             let pay = tx_builder.withdraw_mpn(
                                 memo.unwrap_or_default(),
                                 mpn_contract_id,
@@ -187,23 +185,16 @@ pub async fn send(
                                 },
                                 to.to_string().parse().unwrap(), // TODO: WTH :D
                             );
-                            wallet.user(0).add_withdraw(pay.clone());
+                            wallet.user(0).add_tx(pay.clone().into());
                             wallet.save(wallet_path).unwrap();
-                            println!(
-                                "{:#?}",
-                                client
-                                    .transact(TransactRequest::MpnSourcedTx(
-                                        MpnSourcedTx::MpnWithdraw(pay.clone()),
-                                    ))
-                                    .await?
-                            );
+                            println!("{:#?}", client.transact(pay.clone().into()).await?);
                             Ok::<(), NodeError>(())
                         },
                         req_loop
                     )
                     .unwrap();
                 }
-                ZieshaAddress::MpnAddress(to) => {
+                GeneralAddress::MpnAddress(to) => {
                     try_join!(
                         async move {
                             if memo.is_some() {
@@ -238,7 +229,10 @@ pub async fn send(
                             } else {
                                 panic!("Token not found in your account!");
                             };
-                            let new_nonce = wallet.user(0).new_z_nonce(&from).unwrap_or(acc.nonce);
+                            let new_nonce = wallet
+                                .user(0)
+                                .new_nonce(NonceGroup::MpnTransaction(tx_builder.get_mpn_address()))
+                                .unwrap_or(acc.nonce);
                             let tx = tx_builder.create_mpn_transaction(
                                 token_index,
                                 to,
@@ -254,16 +248,9 @@ pub async fn send(
                                 },
                                 new_nonce,
                             );
-                            wallet.user(0).add_zsend(tx.clone());
+                            wallet.user(0).add_tx(tx.clone().into());
                             wallet.save(wallet_path).unwrap();
-                            println!(
-                                "{:#?}",
-                                client
-                                    .transact(TransactRequest::MpnSourcedTx(
-                                        MpnSourcedTx::MpnTransaction(tx.clone()),
-                                    ))
-                                    .await?
-                            );
+                            println!("{:#?}", client.transact(tx.clone().into()).await?);
                             Ok::<(), NodeError>(())
                         },
                         req_loop

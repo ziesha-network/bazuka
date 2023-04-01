@@ -1,7 +1,7 @@
 use crate::core::{
-    Address, Amount, Block, ChainSourcedTx, ContractDeposit, ContractUpdate, ContractWithdraw,
-    Header, Money, MpnDeposit, MpnSourcedTx, MpnWithdraw, ProofOfStake, Token, TokenUpdate,
-    Transaction, TransactionData,
+    Address, Amount, Block, ContractDeposit, ContractUpdate, ContractWithdraw, GeneralTransaction,
+    Header, Money, MpnDeposit, MpnWithdraw, ProofOfStake, Token, TokenUpdate, Transaction,
+    TransactionData,
 };
 use crate::crypto::jubjub::*;
 use crate::zk::{
@@ -28,7 +28,7 @@ impl From<Money> for ExplorerMoney {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerMpnAccount {
-    pub nonce: u64,
+    pub nonce: u32,
     pub address: String,
     pub tokens: HashMap<u64, ExplorerMoney>,
 }
@@ -481,7 +481,7 @@ pub struct ExplorerMpnWithdraw {
     pub zk_address: String,
     pub zk_token_index: u64,
     pub zk_fee_token_index: u64,
-    pub zk_nonce: u64,
+    pub zk_nonce: u32,
     pub zk_sig: String,
     pub payment: ExplorerContractWithdraw,
 }
@@ -501,7 +501,7 @@ impl From<&MpnWithdraw> for ExplorerMpnWithdraw {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerMpnTransaction {
-    pub nonce: u64,
+    pub nonce: u32,
     pub src_pub_key: String,
     pub dst_pub_key: String,
 
@@ -533,33 +533,22 @@ impl From<&MpnTransaction> for ExplorerMpnTransaction {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub enum ExplorerChainSourcedTx {
+pub enum ExplorerGeneralTransaction {
     TransactionAndDelta(ExplorerTransaction),
     MpnDeposit(ExplorerMpnDeposit),
-}
-
-impl From<&ChainSourcedTx> for ExplorerChainSourcedTx {
-    fn from(obj: &ChainSourcedTx) -> Self {
-        match obj {
-            ChainSourcedTx::TransactionAndDelta(tx_delta) => {
-                Self::TransactionAndDelta((&tx_delta.tx).into())
-            }
-            ChainSourcedTx::MpnDeposit(mpn_deposit) => Self::MpnDeposit(mpn_deposit.into()),
-        }
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub enum ExplorerMpnSourcedTx {
     MpnTransaction(ExplorerMpnTransaction),
     MpnWithdraw(ExplorerMpnWithdraw),
 }
 
-impl From<&MpnSourcedTx> for ExplorerMpnSourcedTx {
-    fn from(obj: &MpnSourcedTx) -> Self {
+impl From<&GeneralTransaction> for ExplorerGeneralTransaction {
+    fn from(obj: &GeneralTransaction) -> Self {
         match obj {
-            MpnSourcedTx::MpnTransaction(mpn_tx) => Self::MpnTransaction(mpn_tx.into()),
-            MpnSourcedTx::MpnWithdraw(mpn_withdraw) => Self::MpnWithdraw(mpn_withdraw.into()),
+            GeneralTransaction::MpnTransaction(mpn_tx) => Self::MpnTransaction(mpn_tx.into()),
+            GeneralTransaction::MpnWithdraw(mpn_withdraw) => Self::MpnWithdraw(mpn_withdraw.into()),
+            GeneralTransaction::TransactionAndDelta(tx_delta) => {
+                Self::TransactionAndDelta((&tx_delta.tx).into())
+            }
+            GeneralTransaction::MpnDeposit(mpn_deposit) => Self::MpnDeposit(mpn_deposit.into()),
         }
     }
 }

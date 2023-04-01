@@ -1,10 +1,10 @@
 #[cfg(feature = "node")]
 use {
-    crate::blockchain::KvStoreChain,
-    crate::client::{messages::SocialProfiles, Limit, NodeRequest},
-    crate::common::*,
-    crate::db::LevelDbKvStore,
-    crate::node::{node_create, Firewall},
+    bazuka::blockchain::KvStoreChain,
+    bazuka::client::{messages::SocialProfiles, Limit, NodeRequest},
+    bazuka::common::*,
+    bazuka::db::LevelDbKvStore,
+    bazuka::node::{node_create, Firewall},
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
     hyper::{Body, Client, Request, Response, Server, StatusCode},
@@ -14,11 +14,11 @@ use {
 
 #[cfg(feature = "client")]
 use {
-    crate::client::{NodeError, PeerAddress},
-    crate::config,
-    crate::core::{Address, Amount, MpnAddress, TokenId, ZieshaAddress},
-    crate::mpn::MpnWorker,
-    crate::wallet::WalletCollection,
+    bazuka::client::{NodeError, PeerAddress},
+    bazuka::config,
+    bazuka::core::{Address, Amount, GeneralAddress, MpnAddress, TokenId},
+    bazuka::mpn::MpnWorker,
+    bazuka::wallet::WalletCollection,
     colored::Colorize,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
@@ -111,9 +111,9 @@ enum WalletOptions {
         #[structopt(long)]
         memo: Option<String>,
         #[structopt(long)]
-        from: ZieshaAddress,
+        from: GeneralAddress,
         #[structopt(long)]
-        to: ZieshaAddress,
+        to: GeneralAddress,
         #[structopt(long)]
         token: Option<usize>,
         #[structopt(long)]
@@ -157,12 +157,7 @@ enum WalletOptions {
     /// Get info and balances of the wallet
     Info {},
     /// Resend pending transactions
-    ResendPending {
-        #[structopt(long)]
-        fill_gaps: bool,
-        #[structopt(long)]
-        shift: bool,
-    },
+    ResendPending {},
 }
 
 #[derive(StructOpt)]
@@ -277,8 +272,8 @@ async fn run_node(
         )
         .unwrap(),
         0,
-        wallet.validator_builder(),
-        wallet.user_builder(0),
+        wallet.clone().validator().tx_builder(),
+        wallet.clone().user(0).tx_builder(),
         social_profiles,
         inc_recv,
         out_send,
@@ -534,8 +529,8 @@ pub async fn initialize_cli() {
             } => {
                 crate::cli::wallet::delegate(memo, amount, to, fee).await;
             }
-            WalletOptions::ResendPending { fill_gaps, shift } => {
-                crate::cli::wallet::resend_pending(fill_gaps, shift).await;
+            WalletOptions::ResendPending {} => {
+                crate::cli::wallet::resend_pending().await;
             }
             WalletOptions::Info {} => {
                 crate::cli::wallet::info(get_conf(), get_wallet_collection()).await;

@@ -1,8 +1,6 @@
-use crate::{
-    cli::{run_node, BazukaConfig},
-    client::messages::SocialProfiles,
-    wallet::WalletCollection,
-};
+use crate::cli::{run_node, BazukaConfig};
+
+use bazuka::{client::messages::SocialProfiles, wallet::WalletCollection};
 
 pub async fn start(
     discord_handle: Option<String>,

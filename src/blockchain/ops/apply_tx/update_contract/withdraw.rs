@@ -249,7 +249,7 @@ mod tests {
             contract_id,
             deposit_circuit_id: 0,
             calldata: zk::ZkScalar::from(888),
-            nonce: 2,
+            nonce: 1,
             amount: Money::ziesha(1000),
             fee: Money::ziesha(0),
             sig: None,
@@ -263,7 +263,7 @@ mod tests {
             contract_id,
             deposit_circuit_id: 0,
             calldata: zk::ZkScalar::from(888),
-            nonce: 3,
+            nonce: 2,
             amount: Money {
                 token_id: kiwi_token_id,
                 amount: Amount(1000),

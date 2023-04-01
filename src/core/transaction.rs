@@ -163,7 +163,7 @@ pub struct MpnWithdraw<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub zk_address: ZS::Pub,
     pub zk_token_index: u64,
     pub zk_fee_token_index: u64,
-    pub zk_nonce: u64,
+    pub zk_nonce: u32,
     pub zk_sig: ZS::Sig,
     pub payment: ContractWithdraw<H, S>,
 }
@@ -186,7 +186,7 @@ where
     }
     pub fn verify_calldata<ZH: ZkHasher>(&self) -> bool {
         let mut preimage: Vec<ZkScalar> = self.zk_address.clone().into();
-        preimage.push(self.zk_nonce.clone().into());
+        preimage.push((self.zk_nonce as u64).into());
         preimage.extend(&self.zk_sig.clone().into());
         self.payment.calldata == ZH::hash(&preimage)
     }

@@ -1,4 +1,4 @@
-use crate::core::{Address, MpnAddress, Signer, TokenId};
+use crate::core::{Address, GeneralTransaction, MpnAddress, Signer, TokenId};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::zk::ZkProof;
@@ -315,16 +315,6 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn get_zero_mempool(&self) -> Result<GetZeroMempoolResponse, NodeError> {
-        self.sender
-            .bincode_get::<GetZeroMempoolRequest, GetZeroMempoolResponse>(
-                format!("http://{}/bincode/mempool/zero", self.peer),
-                GetZeroMempoolRequest {},
-                Limit::default(),
-            )
-            .await
-    }
-
     pub async fn outdated_heights(&self) -> Result<GetOutdatedHeightsResponse, NodeError> {
         self.sender
             .bincode_get::<GetOutdatedHeightsRequest, GetOutdatedHeightsResponse>(
@@ -403,11 +393,11 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn transact(&self, req: TransactRequest) -> Result<TransactResponse, NodeError> {
+    pub async fn transact(&self, tx: GeneralTransaction) -> Result<TransactResponse, NodeError> {
         self.sender
             .bincode_post::<TransactRequest, TransactResponse>(
                 format!("http://{}/bincode/transact", self.peer),
-                req,
+                TransactRequest { tx },
                 Limit::default(),
             )
             .await

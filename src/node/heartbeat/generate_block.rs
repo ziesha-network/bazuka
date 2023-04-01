@@ -1,7 +1,6 @@
 use super::*;
-use crate::core::{Amount, ChainSourcedTx, MpnAddress, MpnSourcedTx};
+use crate::core::{Amount, MpnAddress};
 use crate::mpn;
-use std::collections::HashSet;
 
 pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
     context: Arc<RwLock<NodeContext<K, B>>>,
@@ -18,10 +17,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                 let nonce = ctx.blockchain.get_account(wallet.get_address())?.nonce;
                 if let Some(tx_delta) = work_pool.ready(&wallet, nonce + 1) {
                     log::info!("All MPN-proofs ready!");
-                    ctx.mempool_add_chain_sourced(
-                        true,
-                        ChainSourcedTx::TransactionAndDelta(tx_delta),
-                    )?;
+                    ctx.mempool_add_tx(true, tx_delta.into())?;
                     if let Some(draft) = ctx.try_produce(wallet)? {
                         ctx.mpn_work_pool = None;
                         drop(ctx);
@@ -36,60 +32,27 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
         if ctx.update_validator_claim(claim.clone())? {
             let mempool = ctx.mempool.clone();
 
-            let mut updates = Vec::new();
-            let mut deposits = Vec::new();
-            let mut withdraws = Vec::new();
-
-            let mut has_tx_delta_before_mpn = HashSet::new();
-            let mut chain_sourced_sorted = mempool
-                .chain_sourced()
+            let updates = mempool
+                .mpn_txs()
                 .map(|(tx, _)| tx.clone())
                 .collect::<Vec<_>>();
-            chain_sourced_sorted.sort_unstable_by_key(|t| t.nonce());
-            chain_sourced_sorted = ctx
-                .blockchain
-                .cleanup_chain_mempool(&chain_sourced_sorted)?;
-            for tx in chain_sourced_sorted {
-                match tx {
-                    ChainSourcedTx::MpnDeposit(mpn_dep) => {
-                        if !has_tx_delta_before_mpn.contains(&mpn_dep.payment.src) {
-                            deposits.push(mpn_dep.clone());
-                        }
-                    }
-                    ChainSourcedTx::TransactionAndDelta(tx_delta) => {
-                        // Make sure there are no regular transactions before any MpnDeposit
-                        // Since MPN-update transaction comes first, processing any regular
-                        // transaction could invalidate MPN-update (Because of the invalid nonce)
-                        // TODO: Is there a better solution?
-                        has_tx_delta_before_mpn.insert(tx_delta.tx.src.clone().unwrap_or_default());
-                    }
-                }
-            }
-
-            let mut mpn_sourced_sorted = mempool
-                .mpn_sourced()
+            let deposits = mempool
+                .mpn_deposits()
                 .map(|(tx, _)| tx.clone())
                 .collect::<Vec<_>>();
-            mpn_sourced_sorted.sort_unstable_by_key(|t| t.nonce());
-            for tx in mpn_sourced_sorted {
-                match &tx {
-                    MpnSourcedTx::MpnTransaction(mpn_tx) => {
-                        updates.push(mpn_tx.clone());
-                    }
-                    MpnSourcedTx::MpnWithdraw(mpn_withdraw) => {
-                        withdraws.push(mpn_withdraw.clone());
-                    }
-                }
-            }
+            let withdraws = mempool
+                .mpn_withdraws()
+                .map(|(tx, _)| tx.clone())
+                .collect::<Vec<_>>();
 
             let validator_reward = ctx
                 .blockchain
                 .min_validator_reward(ctx.validator_wallet.get_address())?;
 
-            let nonce = ctx
-                .blockchain
-                .get_account(ctx.validator_wallet.get_address())?
-                .nonce;
+            let deposit_nonce = ctx.blockchain.get_deposit_nonce(
+                ctx.validator_wallet.get_address(),
+                ctx.blockchain.config().mpn_config.mpn_contract_id,
+            )?;
             let mpn_nonce = ctx
                 .blockchain
                 .get_mpn_account(
@@ -110,7 +73,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                 Amount(100_000_000_000), // TODO: Remove Hardcoded rewards
                 Amount(100_000_000_000),
                 Amount(300_000_000_000),
-                nonce,
+                deposit_nonce,
                 mpn_nonce,
                 ctx.validator_wallet.clone(),
                 ctx.user_wallet.clone(),

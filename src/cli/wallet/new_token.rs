@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use crate::cli::BazukaConfig;
-use crate::client::{messages::TransactRequest, BazukaClient, NodeError};
-use crate::core::{Amount, ChainSourcedTx, Money, TokenId};
-use crate::wallet::WalletCollection;
+use bazuka::client::{BazukaClient, NodeError};
+use bazuka::core::{Amount, Money, NonceGroup, TokenId};
+use bazuka::wallet::WalletCollection;
 use tokio::try_join;
 
 pub async fn new_token(
@@ -19,7 +19,7 @@ pub async fn new_token(
     wallet_path: &PathBuf,
 ) -> () {
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-    let tx_builder = wallet.user_builder(0);
+    let tx_builder = wallet.user(0).tx_builder();
     let (req_loop, client) =
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
     try_join!(
@@ -30,7 +30,10 @@ pub async fn new_token(
                 .account
                 .nonce;
 
-            let new_nonce = wallet.user(0).new_r_nonce().unwrap_or(curr_nonce + 1);
+            let new_nonce = wallet
+                .user(0)
+                .new_nonce(NonceGroup::TransactionAndDelta(tx_builder.get_address()))
+                .unwrap_or(curr_nonce + 1);
             let (pay, token_id) = tx_builder.create_token(
                 memo.unwrap_or_default(),
                 name,
@@ -44,17 +47,11 @@ pub async fn new_token(
                 },
                 new_nonce,
             );
-            if let Some(err) = client
-                .transact(TransactRequest::ChainSourcedTx(
-                    ChainSourcedTx::TransactionAndDelta(pay.clone()),
-                ))
-                .await?
-                .error
-            {
+            if let Some(err) = client.transact(pay.clone().into()).await?.error {
                 println!("Error: {}", err);
             } else {
                 wallet.user(0).add_token(token_id);
-                wallet.user(0).add_rsend(pay.clone());
+                wallet.user(0).add_tx(pay.clone().into());
                 wallet.save(wallet_path).unwrap();
                 println!("Sent");
                 println!("Token-Id: {}", token_id);

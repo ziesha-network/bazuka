@@ -168,7 +168,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         acc: MpnAccount,
         size_diff: &mut u64,
     ) -> Result<(), StateManagerError> {
-        let vals = [acc.nonce.into(), acc.address.0, acc.address.1];
+        let vals = [(acc.nonce as u64).into(), acc.address.0, acc.address.1];
         vals.into_iter()
             .enumerate()
             .map(|(i, val)| {

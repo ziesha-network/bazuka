@@ -3,7 +3,7 @@ use super::{
 };
 use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, Mempool};
 use crate::client::messages::{SocialProfiles, ValidatorClaim};
-use crate::core::{ChainSourcedTx, Header, MpnAddress, MpnSourcedTx, TransactionAndDelta};
+use crate::core::{GeneralTransaction, Header, MpnAddress, TransactionAndDelta};
 use crate::mpn::{MpnWorkPool, MpnWorker};
 use crate::node::KvStore;
 use crate::utils;
@@ -83,25 +83,14 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
         Ok(())
     }
 
-    pub fn mempool_add_chain_sourced(
+    pub fn mempool_add_tx(
         &mut self,
         is_local: bool,
-        tx: ChainSourcedTx,
+        tx: GeneralTransaction,
     ) -> Result<(), BlockchainError> {
         let local_ts = self.local_timestamp();
         self.mempool
-            .add_chain_sourced(&self.blockchain, tx, is_local, local_ts)?;
-        Ok(())
-    }
-
-    pub fn mempool_add_mpn_sourced(
-        &mut self,
-        is_local: bool,
-        tx: MpnSourcedTx,
-    ) -> Result<(), BlockchainError> {
-        let local_ts = self.local_timestamp();
-        self.mempool
-            .add_mpn_sourced(&self.blockchain, tx, is_local, local_ts)?;
+            .add_tx(&self.blockchain, tx, is_local, local_ts)?;
         Ok(())
     }
 
@@ -150,17 +139,8 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
         wallet: TxBuilder,
     ) -> Result<Option<BlockAndPatch>, BlockchainError> {
         let ts = self.network_timestamp();
-        let raw_txs: Vec<TransactionAndDelta> = self
-            .mempool
-            .chain_sourced()
-            .filter_map(|(tx, _)| {
-                if let ChainSourcedTx::TransactionAndDelta(tx) = tx {
-                    Some(tx.clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
+        let raw_txs: Vec<TransactionAndDelta> =
+            self.mempool.tx_deltas().map(|(tx, _)| tx.clone()).collect();
         match self.blockchain.draft_block(ts, &raw_txs, &wallet, true) {
             Ok(draft) => {
                 if let Some(draft) = draft {

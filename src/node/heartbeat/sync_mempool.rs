@@ -17,7 +17,7 @@ pub async fn sync_mempool<K: KvStore, B: Blockchain<K>>(
         http::group_request(&peer_addresses, |peer| {
             net.bincode_get::<GetMempoolRequest, GetMempoolResponse>(
                 format!("http://{}/bincode/mempool", peer.address),
-                GetMempoolRequest {},
+                GetMempoolRequest { filter: None },
                 Limit::default().size(10 * MB).time(10 * SECOND),
             )
         })
@@ -27,19 +27,11 @@ pub async fn sync_mempool<K: KvStore, B: Blockchain<K>>(
         let mut ctx = context.write().await;
         let resps = punish_non_responding(&mut ctx, &peer_responses)
             .into_iter()
-            .map(|(_, r)| (r.chain_sourced, r.mpn_sourced))
+            .map(|(_, r)| r.mempool)
             .collect::<Vec<_>>();
-        for (mut chain_sourced_txs, mut mpn_sourced_txs) in resps {
-            chain_sourced_txs.sort_unstable_by_key(|t| t.nonce());
-            mpn_sourced_txs.sort_unstable_by_key(|t| t.nonce());
-            for tx in chain_sourced_txs
-                .into_iter()
-                .take(opts.chain_mempool_max_fetch)
-            {
-                ctx.mempool_add_chain_sourced(false, tx)?;
-            }
-            for tx in mpn_sourced_txs.into_iter().take(opts.mpn_mempool_max_fetch) {
-                ctx.mempool_add_mpn_sourced(false, tx)?;
+        for txs in resps {
+            for tx in txs.into_iter().take(opts.mempool_max_fetch) {
+                ctx.mempool_add_tx(false, tx)?;
             }
         }
     }
