@@ -2,10 +2,10 @@ use tokio::try_join;
 
 use crate::cli::BazukaConfig;
 use crate::client::NodeError;
-use crate::config;
-use crate::core::MpnAddress;
-use crate::wallet::WalletCollection;
-use crate::{client::BazukaClient, core::TokenId};
+use bazuka::config;
+use bazuka::core::MpnAddress;
+use bazuka::wallet::WalletCollection;
+use bazuka::{client::BazukaClient, core::TokenId};
 use colored::Colorize;
 use std::collections::HashMap;
 
@@ -14,8 +14,8 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
         .mpn_config
         .log4_tree_size;
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-    let val_tx_builder = wallet.validator_builder();
-    let tx_builder = wallet.user_builder(0);
+    let val_tx_builder = wallet.validator().tx_builder();
+    let tx_builder = wallet.user().tx_builder();
 
     let (req_loop, client) =
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
@@ -36,8 +36,8 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
             println!(
                 "{}\t{}{}",
                 "Validator main-chain balance:".bright_yellow(),
-                validator_ziesha.display_by_decimals(crate::config::UNIT_ZEROS),
-                crate::config::SYMBOL
+                validator_ziesha.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                bazuka::config::SYMBOL
             );
 
             let validator_mpn_ziesha = client
@@ -61,8 +61,8 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
             println!(
                 "{}\t{}{}",
                 "Validator MPN balance:".bright_yellow(),
-                validator_mpn_ziesha.display_by_decimals(crate::config::UNIT_ZEROS),
-                crate::config::SYMBOL
+                validator_mpn_ziesha.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                bazuka::config::SYMBOL
             );
 
             let delegations = client
@@ -76,8 +76,8 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     println!(
                         "{} -> You ({}{})",
                         addr,
-                        amount.display_by_decimals(crate::config::UNIT_ZEROS),
-                        crate::config::SYMBOL
+                        amount.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                        bazuka::config::SYMBOL
                     );
                 }
             }
@@ -89,8 +89,8 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     println!(
                         "You -> {} ({}{})",
                         addr,
-                        amount.display_by_decimals(crate::config::UNIT_ZEROS),
-                        crate::config::SYMBOL
+                        amount.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                        bazuka::config::SYMBOL
                     );
                 }
             }
@@ -127,7 +127,7 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                         inf.balance
                             .display_by_decimals(tokens.get(id).unwrap().decimals),
                         if *id == TokenId::Ziesha {
-                            crate::config::SYMBOL.to_string()
+                            bazuka::config::SYMBOL.to_string()
                         } else {
                             format!(" {} (Token-Id: {})", inf.symbol, id)
                         }
@@ -168,7 +168,7 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     );
                     println!("Waiting to be activated... (Send some funds to it!)")
                 } else {
-                    let acc_pk = crate::crypto::jubjub::PublicKey(resp.address.compress());
+                    let acc_pk = bazuka::crypto::jubjub::PublicKey(resp.address.compress());
                     if acc_pk != tx_builder.get_zk_address() {
                         println!(
                             "{} {}",
@@ -198,7 +198,7 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                                     .map(|t| money.amount.display_by_decimals(t.decimals))
                                     .unwrap_or("N/A".to_string()),
                                 if money.token_id == TokenId::Ziesha {
-                                    crate::config::SYMBOL.to_string()
+                                    bazuka::config::SYMBOL.to_string()
                                 } else {
                                     format!(" {}", inf.symbol)
                                 }

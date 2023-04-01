@@ -229,7 +229,7 @@ impl TxBuilder {
         amount: Money,
         fee_token_index: u64,
         fee: Money,
-        nonce: u64,
+        nonce: u32,
     ) -> zk::MpnTransaction {
         let mut tx = zk::MpnTransaction {
             nonce,
@@ -356,7 +356,7 @@ impl TxBuilder {
         &self,
         memo: String,
         contract_id: ContractId,
-        nonce: u64,
+        nonce: u32,
         token_index: u64,
         amount: Money,
         fee_token_index: u64,

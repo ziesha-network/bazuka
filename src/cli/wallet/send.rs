@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
 use crate::cli::BazukaConfig;
-use crate::wallet::WalletCollection;
-use crate::{
+use bazuka::wallet::WalletCollection;
+use bazuka::{
     client::{messages::TransactRequest, BazukaClient, NodeError},
     config,
-    core::{Amount, GeneralAddress, GeneralTransaction, Money, TokenId},
+    core::{Amount, GeneralAddress, GeneralTransaction, Money, NonceGroup, TokenId},
 };
 use tokio::try_join;
 
@@ -21,7 +21,7 @@ pub async fn send(
     wallet_path: &PathBuf,
 ) {
     let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-    let tx_builder = wallet.user_builder(0);
+    let tx_builder = wallet.user().tx_builder();
     let log4_token_tree_size = config::blockchain::get_blockchain_config()
         .mpn_config
         .log4_token_tree_size;
@@ -56,8 +56,13 @@ pub async fn send(
                                 .get_account(tx_builder.get_address())
                                 .await?
                                 .account
-                                .nonce;
-                            let new_nonce = wallet.user(0).new_nonce().unwrap_or(curr_nonce + 1);
+                                .nonce as u64;
+                            let new_nonce = wallet
+                                .user(0)
+                                .new_nonce(NonceGroup::TransactionAndDelta(
+                                    tx_builder.get_address(),
+                                ))
+                                .unwrap_or(curr_nonce + 1);
                             let tx = tx_builder.create_transaction(
                                 memo.unwrap_or_default(),
                                 to,
@@ -92,7 +97,7 @@ pub async fn send(
                                 .get_account(tx_builder.get_address())
                                 .await?
                                 .account
-                                .nonce;
+                                .nonce as u64;
                             let dst_acc = client
                                 .get_mpn_account(to.account_index(mpn_log4_account_capacity))
                                 .await?
@@ -104,7 +109,10 @@ pub async fn send(
                             } else {
                                 panic!("Cannot find empty token slot in your MPN account!");
                             };
-                            let new_nonce = wallet.user(0).new_nonce().unwrap_or(curr_nonce + 1);
+                            let new_nonce = wallet
+                                .user(0)
+                                .new_nonce(NonceGroup::MpnDeposit(tx_builder.get_address()))
+                                .unwrap_or(curr_nonce + 1);
                             let pay = tx_builder.deposit_mpn(
                                 memo.unwrap_or_default(),
                                 mpn_contract_id,
@@ -157,7 +165,10 @@ pub async fn send(
                             } else {
                                 panic!("Token not found in your account!");
                             };
-                            let new_nonce = wallet.user(0).new_nonce(&from).unwrap_or(acc.nonce);
+                            let new_nonce = wallet
+                                .user(0)
+                                .new_nonce(NonceGroup::MpnWithdraw(tx_builder.get_mpn_address()))
+                                .unwrap_or(acc.nonce);
                             let pay = tx_builder.withdraw_mpn(
                                 memo.unwrap_or_default(),
                                 mpn_contract_id,
@@ -218,7 +229,10 @@ pub async fn send(
                             } else {
                                 panic!("Token not found in your account!");
                             };
-                            let new_nonce = wallet.user(0).new_nonce(&from).unwrap_or(acc.nonce);
+                            let new_nonce = wallet
+                                .user(0)
+                                .new_nonce(NonceGroup::MpnTransaction(tx_builder.get_mpn_address()))
+                                .unwrap_or(acc.nonce);
                             let tx = tx_builder.create_mpn_transaction(
                                 token_index,
                                 to,

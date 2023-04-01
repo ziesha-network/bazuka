@@ -1,10 +1,10 @@
 #[cfg(feature = "node")]
 use {
-    crate::blockchain::KvStoreChain,
     crate::client::{messages::SocialProfiles, Limit, NodeRequest},
-    crate::common::*,
-    crate::db::LevelDbKvStore,
-    crate::node::{node_create, Firewall},
+    bazuka::blockchain::KvStoreChain,
+    bazuka::common::*,
+    bazuka::db::LevelDbKvStore,
+    bazuka::node::{node_create, Firewall},
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
     hyper::{Body, Client, Request, Response, Server, StatusCode},
@@ -15,10 +15,10 @@ use {
 #[cfg(feature = "client")]
 use {
     crate::client::{NodeError, PeerAddress},
-    crate::config,
-    crate::core::{Address, Amount, GeneralAddress, MpnAddress, TokenId},
-    crate::mpn::MpnWorker,
-    crate::wallet::WalletCollection,
+    bazuka::config,
+    bazuka::core::{Address, Amount, GeneralAddress, MpnAddress, TokenId},
+    bazuka::mpn::MpnWorker,
+    bazuka::wallet::WalletCollection,
     colored::Colorize,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
@@ -272,8 +272,8 @@ async fn run_node(
         )
         .unwrap(),
         0,
-        wallet.validator_builder(),
-        wallet.user_builder(0),
+        wallet.validator().tx_builder(),
+        wallet.user().tx_builder(),
         social_profiles,
         inc_recv,
         out_send,

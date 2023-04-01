@@ -1,10 +1,10 @@
 /*#[cfg(not(tarpaulin_include))]
 pub mod cli;
 
-use bazuka::cli::initialize_cli;
+use crate::cli::initialize_cli;
 
 #[cfg(feature = "client")]
-use bazuka::client::NodeError;
+use crate::client::NodeError;
 
 #[cfg(not(tarpaulin_include))]
 #[cfg(feature = "client")]
@@ -18,7 +18,3 @@ async fn main() -> Result<(), NodeError> {
 #[cfg(not(feature = "client"))]
 fn main() {}
 */
-
-fn main() {
-    println!("Hey!");
-}

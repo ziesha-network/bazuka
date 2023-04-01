@@ -122,7 +122,7 @@ impl Wallet {
     pub fn add_tx(&mut self, tx: GeneralTransaction) {
         self.txs.entry(tx.nonce_group()).or_default().push(tx);
     }
-    pub fn new_nonce(&self, addr: NonceGroup) -> Option<u64> {
+    pub fn new_nonce(&self, addr: NonceGroup) -> Option<u32> {
         if let Some(Some(n)) = self
             .txs
             .get(&addr)

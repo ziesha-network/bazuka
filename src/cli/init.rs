@@ -1,5 +1,5 @@
 use super::{BazukaConfig, DEFAULT_PORT};
-use crate::{client::PeerAddress, wallet::WalletCollection};
+use bazuka::{client::PeerAddress, wallet::WalletCollection};
 use bip39::Mnemonic;
 use colored::Colorize;
 use std::{

@@ -7,41 +7,41 @@ use crate::zk::MpnTransaction;
 use std::collections::{HashMap, VecDeque};
 
 trait Nonced {
-    fn nonce(&self) -> u64;
+    fn nonce(&self) -> u32;
 }
 
 impl Nonced for MpnTransaction {
-    fn nonce(&self) -> u64 {
+    fn nonce(&self) -> u32 {
         self.nonce
     }
 }
 
 impl Nonced for MpnWithdraw {
-    fn nonce(&self) -> u64 {
+    fn nonce(&self) -> u32 {
         self.zk_nonce
     }
 }
 
 impl Nonced for MpnDeposit {
-    fn nonce(&self) -> u64 {
-        self.payment.nonce as u64
+    fn nonce(&self) -> u32 {
+        self.payment.nonce
     }
 }
 
 impl Nonced for TransactionAndDelta {
-    fn nonce(&self) -> u64 {
-        self.tx.nonce as u64
+    fn nonce(&self) -> u32 {
+        self.tx.nonce
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct SingleMempool {
-    nonce: u64,
+    nonce: u32,
     txs: VecDeque<(GeneralTransaction, TransactionStats)>,
 }
 
 impl SingleMempool {
-    fn new(nonce: u64) -> Self {
+    fn new(nonce: u32) -> Self {
         Self {
             nonce,
             txs: Default::default(),
@@ -53,10 +53,10 @@ impl SingleMempool {
     fn first_tx(&self) -> Option<&(GeneralTransaction, TransactionStats)> {
         self.txs.front()
     }
-    fn first_nonce(&self) -> Option<u64> {
+    fn first_nonce(&self) -> Option<u32> {
         self.first_tx().map(|(tx, _)| tx.nonce())
     }
-    fn last_nonce(&self) -> Option<u64> {
+    fn last_nonce(&self) -> Option<u32> {
         self.txs.back().map(|(tx, _)| tx.nonce())
     }
     fn applicable(&self, tx: &GeneralTransaction) -> bool {
@@ -71,7 +71,7 @@ impl SingleMempool {
             self.txs.push_back((tx, stats));
         }
     }
-    fn update_nonce(&mut self, nonce: u64) {
+    fn update_nonce(&mut self, nonce: u32) {
         while let Some(first_nonce) = self.first_nonce() {
             if first_nonce <= nonce {
                 self.txs.pop_front();
@@ -84,7 +84,7 @@ impl SingleMempool {
         }
         self.nonce = nonce;
     }
-    fn reset(&mut self, nonce: u64) {
+    fn reset(&mut self, nonce: u32) {
         if nonce == 0 {
             self.txs.clear();
             return;
@@ -150,10 +150,8 @@ impl Mempool {
             return Ok(());
         }
         let nonce = match tx.nonce_group() {
-            NonceGroup::TransactionAndDelta(addr) => blockchain.get_account(addr)?.nonce as u64,
-            NonceGroup::MpnDeposit(addr) => {
-                blockchain.get_deposit_nonce(addr, mpn_contract_id)? as u64
-            }
+            NonceGroup::TransactionAndDelta(addr) => blockchain.get_account(addr)?.nonce,
+            NonceGroup::MpnDeposit(addr) => blockchain.get_deposit_nonce(addr, mpn_contract_id)?,
             NonceGroup::MpnTransaction(addr) => {
                 blockchain
                     .get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?

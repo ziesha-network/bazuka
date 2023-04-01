@@ -222,7 +222,7 @@ pub struct GetBalanceResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct JsonMpnTransaction {
-    pub nonce: u64,
+    pub nonce: u32,
     pub src_pub_key: String,
     pub dst_pub_key: String,
 

@@ -129,10 +129,10 @@ impl GeneralTransaction {
             }
         }
     }
-    pub fn nonce(&self) -> u64 {
+    pub fn nonce(&self) -> u32 {
         match self {
-            GeneralTransaction::TransactionAndDelta(tx_delta) => tx_delta.tx.nonce as u64,
-            GeneralTransaction::MpnDeposit(mpn_deposit) => mpn_deposit.payment.nonce as u64,
+            GeneralTransaction::TransactionAndDelta(tx_delta) => tx_delta.tx.nonce,
+            GeneralTransaction::MpnDeposit(mpn_deposit) => mpn_deposit.payment.nonce,
             GeneralTransaction::MpnTransaction(mpn_tx) => mpn_tx.nonce,
             GeneralTransaction::MpnWithdraw(mpn_withdraw) => mpn_withdraw.zk_nonce,
         }

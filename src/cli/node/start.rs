@@ -1,4 +1,4 @@
-use crate::{
+use bazuka::{
     cli::{run_node, BazukaConfig},
     client::messages::SocialProfiles,
     wallet::WalletCollection,

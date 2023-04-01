@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::{
+use bazuka::{
     cli::{BazukaConfig, BazukaConfigMpnWorker},
     core::MpnAddress,
 };

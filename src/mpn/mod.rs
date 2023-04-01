@@ -247,7 +247,7 @@ pub fn prepare_works<K: KvStore>(
     withdraw_reward: Amount,
     update_reward: Amount,
     validator_tx_builder_deposit_nonce: u32,
-    mut validator_tx_builder_mpn_nonce: u64,
+    mut validator_tx_builder_mpn_nonce: u32,
     validator_tx_builder: TxBuilder,
     user_tx_builder: TxBuilder,
 ) -> Result<MpnWorkPool, MpnError> {

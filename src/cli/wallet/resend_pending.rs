@@ -1,8 +1,8 @@
 use crate::cli::{get_conf, get_wallet_collection, get_wallet_path, BazukaConfig};
 use crate::client::{messages::TransactRequest, BazukaClient, NodeError};
-use crate::config::blockchain;
-use crate::core::{Amount, GeneralTransaction, Money, MpnAddress, TokenId};
-use crate::wallet::WalletCollection;
+use bazuka::config::blockchain;
+use bazuka::core::{Amount, GeneralTransaction, Money, MpnAddress, TokenId};
+use bazuka::wallet::WalletCollection;
 use tokio::try_join;
 
 #[cfg(feature = "client")]
@@ -11,7 +11,7 @@ async fn resend_all_wallet_txs(
     conf: BazukaConfig,
     wallet: &mut WalletCollection,
 ) -> Result<(), NodeError> {
-    let tx_builder = wallet.user_builder(0);
+    let tx_builder = wallet.user().tx_builder();
     let (req_loop, client) =
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
     try_join!(
