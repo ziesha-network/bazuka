@@ -49,10 +49,10 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                 .blockchain
                 .min_validator_reward(ctx.validator_wallet.get_address())?;
 
-            let nonce = ctx
-                .blockchain
-                .get_account(ctx.validator_wallet.get_address())?
-                .nonce;
+            let deposit_nonce = ctx.blockchain.get_deposit_nonce(
+                ctx.validator_wallet.get_address(),
+                ctx.blockchain.config().mpn_config.mpn_contract_id,
+            )?;
             let mpn_nonce = ctx
                 .blockchain
                 .get_mpn_account(
@@ -73,7 +73,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                 Amount(100_000_000_000), // TODO: Remove Hardcoded rewards
                 Amount(100_000_000_000),
                 Amount(300_000_000_000),
-                nonce,
+                deposit_nonce,
                 mpn_nonce,
                 ctx.validator_wallet.clone(),
                 ctx.user_wallet.clone(),

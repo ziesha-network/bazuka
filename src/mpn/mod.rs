@@ -246,7 +246,7 @@ pub fn prepare_works<K: KvStore>(
     deposit_reward: Amount,
     withdraw_reward: Amount,
     update_reward: Amount,
-    validator_tx_builder_nonce: u32,
+    validator_tx_builder_deposit_nonce: u32,
     mut validator_tx_builder_mpn_nonce: u64,
     validator_tx_builder: TxBuilder,
     user_tx_builder: TxBuilder,
@@ -267,7 +267,7 @@ pub fn prepare_works<K: KvStore>(
             config.mpn_contract_id,
             validator_tx_builder.get_mpn_address(),
             0,
-            validator_tx_builder_nonce + 2,
+            validator_tx_builder_deposit_nonce + 1,
             Money {
                 token_id: TokenId::Ziesha,
                 amount: block_reward,
