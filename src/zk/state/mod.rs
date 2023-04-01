@@ -94,14 +94,14 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         mpn_contract_id: ContractId,
         index: u64,
     ) -> Result<MpnAccount, StateManagerError> {
-        let cells = (0..3)
+        let cells = (0..4)
             .map(|i| Self::get_data(db, mpn_contract_id, &ZkDataLocator(vec![index, i as u64])))
             .collect::<Result<Vec<ZkScalar>, StateManagerError>>()?;
         let mut token_indices = HashSet::new();
         for (k, _) in db
             .pairs(keys::local_value(
                 &mpn_contract_id,
-                &ZkDataLocator(vec![index, 3]),
+                &ZkDataLocator(vec![index, 4]),
                 true,
             ))?
             .into_iter()
@@ -116,12 +116,12 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             let tok = Self::get_data(
                 db,
                 mpn_contract_id,
-                &ZkDataLocator(vec![index, 3, i as u64, 0]),
+                &ZkDataLocator(vec![index, 4, i as u64, 0]),
             )?;
             let bal = Self::get_data(
                 db,
                 mpn_contract_id,
-                &ZkDataLocator(vec![index, 3, i as u64, 1]),
+                &ZkDataLocator(vec![index, 4, i as u64, 1]),
             )?;
             let tok_is_zero: bool = tok.is_zero().into();
             if !tok_is_zero {
@@ -129,8 +129,9 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             }
         }
         Ok(MpnAccount {
-            nonce: cells[0].try_into()?,
-            address: jubjub::PointAffine(cells[1], cells[2]),
+            tx_nonce: cells[0].try_into()?,
+            withdraw_nonce: cells[1].try_into()?,
+            address: jubjub::PointAffine(cells[2], cells[3]),
             tokens,
         })
     }
@@ -168,7 +169,12 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         acc: MpnAccount,
         size_diff: &mut u64,
     ) -> Result<(), StateManagerError> {
-        let vals = [(acc.nonce as u64).into(), acc.address.0, acc.address.1];
+        let vals = [
+            (acc.tx_nonce as u64).into(),
+            (acc.withdraw_nonce as u64).into(),
+            acc.address.0,
+            acc.address.1,
+        ];
         vals.into_iter()
             .enumerate()
             .map(|(i, val)| {
@@ -185,14 +191,14 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
             Self::set_data(
                 db,
                 mpn_contract_id,
-                ZkDataLocator(vec![index, 3, *ind as u64, 0]),
+                ZkDataLocator(vec![index, 4, *ind as u64, 0]),
                 money.token_id.into(),
                 size_diff,
             )?;
             Self::set_data(
                 db,
                 mpn_contract_id,
-                ZkDataLocator(vec![index, 3, *ind as u64, 1]),
+                ZkDataLocator(vec![index, 4, *ind as u64, 1]),
                 ZkScalar::from(money.amount),
                 size_diff,
             )?;

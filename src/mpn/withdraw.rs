@@ -47,25 +47,27 @@ pub fn withdraw<K: KvStore>(
         if (acc.address != Default::default() && tx.zk_address.0.decompress() != acc.address)
             || !tx.verify_calldata::<ZkHasher>()
             || !tx.verify_signature::<ZkHasher>()
-            || tx.zk_nonce != acc.nonce
+            || tx.zk_nonce != acc.withdraw_nonce + 1
             || tx.payment.amount.token_id != acc_token.token_id
             || tx.payment.amount.amount > acc_token.amount
             || tx.zk_address_index(mpn_log4_account_capacity) > 0x3fffffff
         {
+            println!("{} {}", tx.zk_nonce, acc.withdraw_nonce);
             rejected.push(tx.clone());
             continue;
         } else {
             let mut updated_acc = MpnAccount {
                 address: tx.zk_address.0.decompress(),
                 tokens: acc.tokens.clone(),
-                nonce: acc.nonce + 1,
+                tx_nonce: acc.tx_nonce,
+                withdraw_nonce: acc.withdraw_nonce + 1,
             };
 
             let before_token_hash = updated_acc.tokens_hash::<ZkHasher>(log4_token_tree_size);
             let token_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 &mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 3]),
+                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
                 tx.zk_token_index,
             )
             .unwrap();
@@ -87,7 +89,7 @@ pub fn withdraw<K: KvStore>(
             let fee_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 &mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 3]),
+                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
                 tx.zk_fee_token_index,
             )
             .unwrap();
@@ -287,7 +289,7 @@ mod tests {
         let withdrawal = abc.withdraw_mpn(
             "".into(),
             mpn_contract_id,
-            0,
+            1,
             3,
             Money {
                 amount: Amount(30),

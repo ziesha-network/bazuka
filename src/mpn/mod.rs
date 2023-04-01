@@ -166,7 +166,8 @@ impl MpnConfig {
             log4_size: self.log4_tree_size,
             item_type: Box::new(ZkStateModel::Struct {
                 field_types: vec![
-                    ZkStateModel::Scalar, // Nonce
+                    ZkStateModel::Scalar, // Tx-Nonce
+                    ZkStateModel::Scalar, // Withdraw-Nonce
                     ZkStateModel::Scalar, // Pub-key X
                     ZkStateModel::Scalar, // Pub-key Y
                     ZkStateModel::List {

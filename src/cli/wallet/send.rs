@@ -168,7 +168,7 @@ pub async fn send(
                             let new_nonce = wallet
                                 .user(0)
                                 .new_nonce(NonceGroup::MpnWithdraw(tx_builder.get_mpn_address()))
-                                .unwrap_or(acc.nonce);
+                                .unwrap_or(acc.withdraw_nonce + 1);
                             let pay = tx_builder.withdraw_mpn(
                                 memo.unwrap_or_default(),
                                 mpn_contract_id,
@@ -232,7 +232,7 @@ pub async fn send(
                             let new_nonce = wallet
                                 .user(0)
                                 .new_nonce(NonceGroup::MpnTransaction(tx_builder.get_mpn_address()))
-                                .unwrap_or(acc.nonce);
+                                .unwrap_or(acc.tx_nonce + 1);
                             let tx = tx_builder.create_mpn_transaction(
                                 token_index,
                                 to,

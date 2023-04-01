@@ -155,9 +155,13 @@ impl Mempool {
             NonceGroup::MpnTransaction(addr) => {
                 blockchain
                     .get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?
-                    .nonce
+                    .tx_nonce
             }
-            _ => unimplemented!(),
+            NonceGroup::MpnWithdraw(addr) => {
+                blockchain
+                    .get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?
+                    .withdraw_nonce
+            }
         };
         if self
             .txs

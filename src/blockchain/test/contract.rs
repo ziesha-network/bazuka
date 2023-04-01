@@ -113,7 +113,7 @@ fn test_mpn_contract_patching() {
 
     let state_delta = zk::ZkDeltaPairs(
         [(
-            zk::ZkDataLocator(vec![2, 3, 1, 0]),
+            zk::ZkDataLocator(vec![2, 4, 1, 0]),
             Some(zk::ZkScalar::from(234)),
         )]
         .into_iter()
@@ -153,7 +153,7 @@ fn test_mpn_contract_patching() {
                 cid,
                 zk::ZkStatePatch::Delta(zk::ZkDeltaPairs(
                     [(
-                        zk::ZkDataLocator(vec![2, 3, 1, 0]),
+                        zk::ZkDataLocator(vec![2, 4, 1, 0]),
                         Some(zk::ZkScalar::from(321))
                     )]
                     .into_iter()
@@ -207,7 +207,7 @@ fn test_mpn_contract_patching() {
                     data: zk::ZkDataPairs(
                         [
                             (zk::ZkDataLocator(vec![1, 0]), zk::ZkScalar::from(200)),
-                            (zk::ZkDataLocator(vec![2, 3, 1, 0]), zk::ZkScalar::from(234)),
+                            (zk::ZkDataLocator(vec![2, 4, 1, 0]), zk::ZkScalar::from(234)),
                         ]
                         .into_iter()
                         .collect(),
@@ -228,7 +228,7 @@ fn test_mpn_contract_patching() {
                     data: zk::ZkDataPairs(
                         [
                             (zk::ZkDataLocator(vec![1, 0]), zk::ZkScalar::from(200)),
-                            (zk::ZkDataLocator(vec![2, 3, 1, 0]), zk::ZkScalar::from(234)),
+                            (zk::ZkDataLocator(vec![2, 4, 1, 0]), zk::ZkScalar::from(234)),
                         ]
                         .into_iter()
                         .collect(),
@@ -255,7 +255,7 @@ fn test_mpn_contract_patching() {
                 cid,
                 zk::ZkStatePatch::Delta(zk::ZkDeltaPairs(
                     [(
-                        zk::ZkDataLocator(vec![2, 3, 1, 0]),
+                        zk::ZkDataLocator(vec![2, 4, 1, 0]),
                         Some(zk::ZkScalar::from(234)),
                     )]
                     .into_iter()

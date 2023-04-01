@@ -51,7 +51,8 @@ pub fn deposit<K: KvStore>(
             let mut updated_acc = MpnAccount {
                 address: tx.zk_address.0.decompress(),
                 tokens: acc.tokens.clone(),
-                nonce: acc.nonce,
+                withdraw_nonce: acc.withdraw_nonce,
+                tx_nonce: acc.tx_nonce,
             };
             updated_acc
                 .tokens
@@ -62,7 +63,7 @@ pub fn deposit<K: KvStore>(
             let balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 &mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 3]),
+                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
                 tx.zk_token_index,
             )
             .unwrap();

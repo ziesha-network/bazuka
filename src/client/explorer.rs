@@ -28,7 +28,8 @@ impl From<Money> for ExplorerMoney {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerMpnAccount {
-    pub nonce: u32,
+    pub tx_nonce: u32,
+    pub withdraw_nonce: u32,
     pub address: String,
     pub tokens: HashMap<u64, ExplorerMoney>,
 }
@@ -36,7 +37,8 @@ pub struct ExplorerMpnAccount {
 impl From<&MpnAccount> for ExplorerMpnAccount {
     fn from(obj: &MpnAccount) -> Self {
         Self {
-            nonce: obj.nonce,
+            tx_nonce: obj.tx_nonce,
+            withdraw_nonce: obj.withdraw_nonce,
             address: PublicKey(obj.address.compress()).to_string(),
             tokens: obj
                 .tokens

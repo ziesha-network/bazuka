@@ -160,7 +160,11 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     .get_mpn_account(addr.account_index(mpn_log4_account_capacity))
                     .await?
                     .account;
-                let curr_z_nonce = wallet.user(0).new_nonce(NonceGroup::MpnTransaction(addr));
+                let curr_mpn_tx_nonce = wallet
+                    .user(0)
+                    .new_nonce(NonceGroup::MpnTransaction(addr.clone()));
+                let curr_mpn_withdraw_nonce =
+                    wallet.user(0).new_nonce(NonceGroup::MpnWithdraw(addr));
                 if !resp.address.is_on_curve() {
                     println!(
                         "{}\t{}",
@@ -209,9 +213,14 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                         }
                     }
                 }
-                if let Some(nonce) = curr_z_nonce {
-                    if nonce > resp.nonce {
-                        println!("(Pending transactions: {})", nonce - resp.nonce);
+                if let Some(nonce) = curr_mpn_tx_nonce {
+                    if nonce > resp.tx_nonce + 1 {
+                        println!("(Pending transactions: {})", nonce - resp.tx_nonce - 1);
+                    }
+                }
+                if let Some(nonce) = curr_mpn_withdraw_nonce {
+                    if nonce > resp.withdraw_nonce + 1 {
+                        println!("(Pending withdrawals: {})", nonce - resp.withdraw_nonce - 1);
                     }
                 }
                 println!();

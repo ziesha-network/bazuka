@@ -58,7 +58,8 @@ impl<K: std::hash::Hash + Clone + Eq + std::fmt::Debug, V: std::fmt::Debug> LruC
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct MpnAccount {
-    pub nonce: u32,
+    pub tx_nonce: u32,       // Increased on MpnTransactions
+    pub withdraw_nonce: u32, // Increased on MpnWithdrawals
     pub address: jubjub::PointAffine,
     pub tokens: HashMap<u64, Money>,
 }

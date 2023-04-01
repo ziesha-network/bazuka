@@ -42,7 +42,8 @@ fn get_mpn_contract(
         log4_size: log4_tree_size,
         item_type: Box::new(zk::ZkStateModel::Struct {
             field_types: vec![
-                zk::ZkStateModel::Scalar, // Nonce
+                zk::ZkStateModel::Scalar, // Tx-Nonce
+                zk::ZkStateModel::Scalar, // Withdraw-Nonce
                 zk::ZkStateModel::Scalar, // Pub-key X
                 zk::ZkStateModel::Scalar, // Pub-key Y
                 zk::ZkStateModel::List {
@@ -95,7 +96,8 @@ fn get_test_mpn_contract() -> TransactionAndDelta {
         log4_size: 30,
         item_type: Box::new(zk::ZkStateModel::Struct {
             field_types: vec![
-                zk::ZkStateModel::Scalar, // Nonce
+                zk::ZkStateModel::Scalar, // Tx-Nonce
+                zk::ZkStateModel::Scalar, // Withdraw-Nonce
                 zk::ZkStateModel::Scalar, // Pub-key X
                 zk::ZkStateModel::Scalar, // Pub-key Y
                 zk::ZkStateModel::List {

@@ -61,7 +61,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                     }
                     .account_index(ctx.blockchain.config().mpn_config.log4_tree_size),
                 )?
-                .nonce;
+                .tx_nonce;
             ctx.mpn_work_pool = Some(mpn::prepare_works(
                 &ctx.blockchain.config().mpn_config,
                 ctx.blockchain.database(),
