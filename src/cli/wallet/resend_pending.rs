@@ -1,7 +1,6 @@
 use crate::cli::{get_conf, get_wallet_collection, get_wallet_path, BazukaConfig};
 use bazuka::client::{BazukaClient, NodeError};
 
-
 use bazuka::wallet::WalletCollection;
 use tokio::try_join;
 
