@@ -12,6 +12,10 @@ pub async fn get_account<K: KvStore, B: Blockchain<K>>(
     let context = context.read().await;
     Ok(GetAccountResponse {
         account: context.blockchain.get_account(req.address.parse()?)?,
+        mpn_deposit_nonce: context.blockchain.get_deposit_nonce(
+            req.address.parse()?,
+            context.blockchain.config().mpn_config.mpn_contract_id,
+        )?,
     })
 }
 
@@ -48,13 +52,15 @@ mod tests {
         assert_eq!(
             resp,
             GetAccountResponse {
-                account: Account { nonce: 0 }
+                account: Account { nonce: 0 },
+                mpn_deposit_nonce: 0
             }
         );
         assert_eq!(
             resp_treasury,
             GetAccountResponse {
-                account: Account { nonce: 204 }
+                account: Account { nonce: 204 },
+                mpn_deposit_nonce: 0
             }
         );
         let resp_invalid = get_account(

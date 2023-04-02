@@ -114,6 +114,10 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                 .user(0)
                 .new_nonce(NonceGroup::TransactionAndDelta(tx_builder.get_address()))
                 .map(|n| n - 1);
+            let curr_mpn_deposit_nonce = wallet
+                .user(0)
+                .new_nonce(NonceGroup::MpnDeposit(tx_builder.get_address()))
+                .map(|n| n - 1);
 
             println!();
             println!("{}", "Main-chain\n---------".bright_green());
@@ -142,6 +146,11 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
             if let Some(nonce) = curr_nonce {
                 if nonce > acc.account.nonce {
                     println!("(Pending transactions: {})", nonce - acc.account.nonce);
+                }
+            }
+            if let Some(nonce) = curr_mpn_deposit_nonce {
+                if nonce > acc.mpn_deposit_nonce {
+                    println!("(Pending deposits: {})", nonce - acc.mpn_deposit_nonce);
                 }
             }
 

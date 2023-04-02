@@ -46,6 +46,7 @@ pub struct GetAccountRequest {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct GetAccountResponse {
     pub account: Account,
+    pub mpn_deposit_nonce: u32,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
