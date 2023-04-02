@@ -80,7 +80,7 @@ pub fn update<K: KvStore>(
             let mut src_after = MpnAccount {
                 address: src_before.address.clone(),
                 tokens: src_before.tokens.clone(),
-                withdraw_nonce: src_before.withdraw_nonce + 1,
+                withdraw_nonce: src_before.withdraw_nonce,
                 tx_nonce: src_before.tx_nonce + 1,
             };
 
