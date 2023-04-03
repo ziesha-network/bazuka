@@ -409,16 +409,25 @@ pub async fn initialize_cli() {
                 crate::cli::node::start(
                     discord_handle,
                     client_only,
-                    &conf.expect(BAZUKA_NOT_INITILIZED),
-                    &wallet.expect(BAZUKA_NOT_INITILIZED),
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
                 )
                 .await;
             }
             NodeCliOptions::Status {} => {
-                crate::cli::node::status(get_conf(), get_wallet_collection()).await;
+                crate::cli::node::status(
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
+                )
+                .await;
             }
             NodeCliOptions::AddMpnWorker { mpn_address } => {
-                crate::cli::node::add_mpn_worker(&conf_path, get_conf(), mpn_address).await;
+                crate::cli::node::add_mpn_worker(
+                    &conf_path,
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    mpn_address,
+                )
+                .await;
             }
         },
         #[cfg(feature = "client")]
@@ -452,7 +461,7 @@ pub async fn initialize_cli() {
             WalletOptions::AddToken { id } => {
                 crate::cli::wallet::add_token(
                     id,
-                    &mut wallet.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
                     &wallet_path,
                 );
             }
@@ -473,8 +482,8 @@ pub async fn initialize_cli() {
                     decimals,
                     mintable,
                     fee,
-                    get_conf(),
-                    get_wallet_collection(),
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
                     &wallet_path,
                 )
                 .await;
@@ -494,14 +503,14 @@ pub async fn initialize_cli() {
                     amount,
                     fee,
                     token,
-                    conf,
-                    wallet,
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
                     &wallet_path,
                 )
                 .await;
             }
             WalletOptions::Reset {} => {
-                crate::cli::wallet::reset(&mut wallet.expect(BAZUKA_NOT_INITILIZED), &wallet_path);
+                crate::cli::wallet::reset(wallet.expect(BAZUKA_NOT_INITILIZED), &wallet_path);
             }
             WalletOptions::RegisterValidator {
                 memo,
@@ -512,9 +521,9 @@ pub async fn initialize_cli() {
                     memo,
                     commision,
                     fee,
-                    get_conf(),
-                    get_wallet_collection(),
-                    &get_wallet_path(),
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
+                    &wallet_path,
                 )
                 .await;
             }
@@ -533,7 +542,11 @@ pub async fn initialize_cli() {
                 crate::cli::wallet::resend_pending().await;
             }
             WalletOptions::Info {} => {
-                crate::cli::wallet::info(get_conf(), get_wallet_collection()).await;
+                crate::cli::wallet::info(
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
+                )
+                .await;
             }
         },
     }

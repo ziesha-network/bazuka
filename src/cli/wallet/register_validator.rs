@@ -11,8 +11,8 @@ pub async fn register_validator(
     memo: Option<String>,
     commision: f32,
     fee: Amount,
-    conf: Option<BazukaConfig>,
-    wallet: Option<WalletCollection>,
+    conf: BazukaConfig,
+    mut wallet: WalletCollection,
     wallet_path: &PathBuf,
 ) -> () {
     // TODO: Dirty code!
@@ -21,7 +21,6 @@ pub async fn register_validator(
     }
 
     let commision_u8 = (commision * (u8::MAX as f32)) as u8;
-    let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = wallet.validator().tx_builder();
     let (req_loop, client) =
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);

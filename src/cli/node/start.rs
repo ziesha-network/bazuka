@@ -5,8 +5,8 @@ use bazuka::{client::messages::SocialProfiles, wallet::WalletCollection};
 pub async fn start(
     discord_handle: Option<String>,
     client_only: bool,
-    conf: &BazukaConfig,
-    wallet: &WalletCollection,
+    conf: BazukaConfig,
+    wallet: WalletCollection,
 ) {
     run_node(
         conf.clone(),

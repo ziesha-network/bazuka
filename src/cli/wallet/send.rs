@@ -16,11 +16,10 @@ pub async fn send(
     amount: Amount,
     fee: Amount,
     token: Option<usize>,
-    conf: Option<BazukaConfig>,
-    wallet: Option<WalletCollection>,
+    conf: BazukaConfig,
+    mut wallet: WalletCollection,
     wallet_path: &PathBuf,
 ) {
-    let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = wallet.user(0).tx_builder();
     let log4_token_tree_size = config::blockchain::get_blockchain_config()
         .mpn_config

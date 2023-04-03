@@ -14,11 +14,10 @@ pub async fn new_token(
     decimals: u8,
     mintable: bool,
     fee: Amount,
-    conf: Option<BazukaConfig>,
-    wallet: Option<WalletCollection>,
+    conf: BazukaConfig,
+    mut wallet: WalletCollection,
     wallet_path: &PathBuf,
 ) -> () {
-    let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let tx_builder = wallet.user(0).tx_builder();
     let (req_loop, client) =
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);

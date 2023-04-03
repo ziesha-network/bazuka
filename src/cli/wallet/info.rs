@@ -9,11 +9,10 @@ use bazuka::{client::BazukaClient, core::TokenId};
 use colored::Colorize;
 use std::collections::HashMap;
 
-pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) -> () {
+pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection) -> () {
     let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
         .mpn_config
         .log4_tree_size;
-    let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
     let val_tx_builder = wallet.validator().tx_builder();
     let tx_builder = wallet.user(0).tx_builder();
 
