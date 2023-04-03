@@ -125,11 +125,31 @@ impl Mempool {
     #[allow(dead_code)]
     pub fn refresh<K: KvStore, B: Blockchain<K>>(
         &mut self,
-        _blockchain: &B,
+        blockchain: &B,
         _local_ts: u32,
         _max_time_alive: Option<u32>,
         _max_time_remember: Option<u32>,
     ) -> Result<(), BlockchainError> {
+        let mpn_contract_id = blockchain.config().mpn_config.mpn_contract_id;
+        for (ng, mempool) in self.txs.iter_mut() {
+            let nonce = match ng.clone() {
+                NonceGroup::TransactionAndDelta(addr) => blockchain.get_account(addr)?.nonce,
+                NonceGroup::MpnDeposit(addr) => {
+                    blockchain.get_deposit_nonce(addr, mpn_contract_id)?
+                }
+                NonceGroup::MpnTransaction(addr) => {
+                    blockchain
+                        .get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?
+                        .tx_nonce
+                }
+                NonceGroup::MpnWithdraw(addr) => {
+                    blockchain
+                        .get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?
+                        .withdraw_nonce
+                }
+            };
+            mempool.update_nonce(nonce);
+        }
         Ok(())
     }
     pub fn chain_address_limit(&self, _addr: Address) -> usize {
