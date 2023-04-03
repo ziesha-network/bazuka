@@ -96,8 +96,7 @@ pub async fn send(
                             let curr_nonce = client
                                 .get_account(tx_builder.get_address())
                                 .await?
-                                .account
-                                .nonce;
+                                .mpn_deposit_nonce;
                             let dst_acc = client
                                 .get_mpn_account(to.account_index(mpn_log4_account_capacity))
                                 .await?
