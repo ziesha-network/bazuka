@@ -402,7 +402,10 @@ impl BazukaClient {
         self.sender
             .bincode_post::<TransactRequest, TransactResponse>(
                 format!("http://{}/bincode/transact", self.peer),
-                TransactRequest { tx },
+                TransactRequest {
+                    tx,
+                    timestamp_commit: None,
+                },
                 Limit::default(),
             )
             .await

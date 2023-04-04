@@ -1,10 +1,20 @@
 use super::{Blockchain, BlockchainError, TransactionStats};
 use crate::core::{
-    Address, Amount, GeneralTransaction, MpnDeposit, MpnWithdraw, NonceGroup, TransactionAndDelta,
+    Address, Amount, GeneralTransaction, MpnDeposit, MpnWithdraw, NonceGroup, Signature,
+    TransactionAndDelta,
 };
 use crate::db::KvStore;
 use crate::zk::MpnTransaction;
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
+
+// Allow transaction senders to commit on the time they submitted their transaction, as a
+// solution for selecting the next tx from the sender in case there are txs with equal nonces.
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct TimestampCommit {
+    pub timestamp: u32,
+    pub sig: Signature,
+}
 
 trait Nonced {
     fn nonce(&self) -> u32;

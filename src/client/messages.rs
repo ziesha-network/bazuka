@@ -1,4 +1,4 @@
-use crate::blockchain::{TransactionStats, ZkBlockchainPatch};
+use crate::blockchain::{TimestampCommit, TransactionStats, ZkBlockchainPatch};
 use crate::core::{
     Address, Amount, Block, ContractId, GeneralAddress, GeneralTransaction, Header, Money,
     MpnAddress, Signature, Token, TransactionAndDelta, ValidatorProof,
@@ -176,6 +176,7 @@ pub struct GetHeadersResponse {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TransactRequest {
     pub tx: GeneralTransaction,
+    pub timestamp_commit: Option<TimestampCommit>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -257,6 +258,7 @@ impl TryInto<TransactRequest> for PostJsonMpnTransactionRequest {
     type Error = InputError;
     fn try_into(self) -> Result<TransactRequest, Self::Error> {
         Ok(TransactRequest {
+            timestamp_commit: None,
             tx: GeneralTransaction::MpnTransaction(zk::MpnTransaction {
                 nonce: self.tx.nonce,
                 src_pub_key: self
