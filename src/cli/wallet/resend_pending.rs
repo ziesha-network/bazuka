@@ -1,7 +1,8 @@
-use crate::cli::{get_conf, get_wallet_collection, get_wallet_path, BazukaConfig};
+use crate::cli::BazukaConfig;
 use bazuka::client::{BazukaClient, NodeError};
 
 use bazuka::wallet::WalletCollection;
+use std::path::PathBuf;
 use tokio::try_join;
 
 #[cfg(feature = "client")]
@@ -29,11 +30,11 @@ async fn resend_all_wallet_txs(
     Ok(())
 }
 
-pub async fn resend_pending() -> () {
-    let wallet = get_wallet_collection();
-    let wallet_path = get_wallet_path();
-    let conf = get_conf();
-    let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+pub async fn resend_pending(
+    conf: BazukaConfig,
+    mut wallet: WalletCollection,
+    wallet_path: &PathBuf,
+) -> () {
     resend_all_wallet_txs(conf, &mut wallet).await.unwrap();
     wallet.save(wallet_path).unwrap();
 }

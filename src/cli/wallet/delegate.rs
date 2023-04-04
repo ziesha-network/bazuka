@@ -1,15 +1,21 @@
+use std::path::PathBuf;
 use tokio::try_join;
 
-use crate::cli::{get_conf, get_wallet_collection, get_wallet_path};
+use crate::cli::BazukaConfig;
 use bazuka::client::{BazukaClient, NodeError};
 use bazuka::core::{Amount, Money, NonceGroup, TokenId};
 use bazuka::crypto::ed25519::PublicKey;
+use bazuka::wallet::WalletCollection;
 
-pub async fn delegate(memo: Option<String>, amount: Amount, to: PublicKey, fee: Amount) -> () {
-    let wallet = get_wallet_collection();
-    let wallet_path = get_wallet_path();
-    let conf = get_conf();
-    let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
+pub async fn delegate(
+    conf: BazukaConfig,
+    mut wallet: WalletCollection,
+    wallet_path: &PathBuf,
+    memo: Option<String>,
+    amount: Amount,
+    to: PublicKey,
+    fee: Amount,
+) -> () {
     let tx_builder = wallet.user(0).tx_builder();
     let (req_loop, client) =
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);

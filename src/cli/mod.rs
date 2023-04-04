@@ -536,10 +536,24 @@ pub async fn initialize_cli() {
                 to,
                 fee,
             } => {
-                crate::cli::wallet::delegate(memo, amount, to, fee).await;
+                crate::cli::wallet::delegate(
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
+                    &wallet_path,
+                    memo,
+                    amount,
+                    to,
+                    fee,
+                )
+                .await;
             }
             WalletOptions::ResendPending {} => {
-                crate::cli::wallet::resend_pending().await;
+                crate::cli::wallet::resend_pending(
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
+                    &wallet_path,
+                )
+                .await;
             }
             WalletOptions::Info {} => {
                 crate::cli::wallet::info(

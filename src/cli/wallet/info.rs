@@ -2,7 +2,6 @@ use tokio::try_join;
 
 use crate::cli::BazukaConfig;
 use bazuka::client::NodeError;
-use bazuka::config;
 use bazuka::core::{MpnAddress, NonceGroup};
 use bazuka::wallet::WalletCollection;
 use bazuka::{client::BazukaClient, core::TokenId};
