@@ -111,10 +111,7 @@ mod tests {
             }),
             mpn_workers: Default::default(),
             mpn_work_pool: None,
-            mempool: Mempool::new(
-                blockchain.config().mpn_config.log4_tree_size,
-                Amount(1_000_000_000),
-            ),
+            mempool: Mempool::new(Amount(1_000_000_000)),
             blockchain,
             validator_wallet: validator_wallet.clone(),
             user_wallet: user_wallet.clone(),

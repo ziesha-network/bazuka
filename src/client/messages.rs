@@ -63,7 +63,7 @@ pub struct GetDelegationsResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMpnAccountRequest {
-    pub index: u64,
+    pub address: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

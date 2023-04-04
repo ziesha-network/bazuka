@@ -118,4 +118,6 @@ pub enum BlockchainError {
     InvalidNumberOfRollbacks,
     #[error("error while parsing db-key: {0}")]
     ParseDbKeyError(#[from] ParseDbKeyError),
+    #[error("mpn-address cannot be used")]
+    MpnAddressCannotBeUsed,
 }

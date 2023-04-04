@@ -10,9 +10,6 @@ use colored::Colorize;
 use std::collections::HashMap;
 
 pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection) -> () {
-    let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
-        .mpn_config
-        .log4_tree_size;
     let val_tx_builder = wallet.validator().tx_builder();
     let tx_builder = wallet.user(0).tx_builder();
 
@@ -40,11 +37,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection) -> () {
             );
 
             let validator_mpn_ziesha = client
-                .get_mpn_account(
-                    val_tx_builder
-                        .get_mpn_address()
-                        .account_index(mpn_log4_account_capacity),
-                )
+                .get_mpn_account(val_tx_builder.get_mpn_address())
                 .await?
                 .account
                 .tokens
@@ -164,10 +157,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection) -> () {
                     "{}",
                     format!("MPN Account #{}\n---------", i).bright_green()
                 );
-                let resp = client
-                    .get_mpn_account(addr.account_index(mpn_log4_account_capacity))
-                    .await?
-                    .account;
+                let resp = client.get_mpn_account(addr.clone()).await?.account;
                 let curr_mpn_tx_nonce = wallet
                     .user(0)
                     .new_nonce(NonceGroup::MpnTransaction(addr.clone()));

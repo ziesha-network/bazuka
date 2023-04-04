@@ -24,9 +24,6 @@ pub async fn send(
     let log4_token_tree_size = config::blockchain::get_blockchain_config()
         .mpn_config
         .log4_token_tree_size;
-    let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
-        .mpn_config
-        .log4_tree_size;
     let mpn_contract_id = config::blockchain::get_blockchain_config()
         .mpn_config
         .mpn_contract_id;
@@ -93,10 +90,7 @@ pub async fn send(
                                 .get_account(tx_builder.get_address())
                                 .await?
                                 .mpn_deposit_nonce;
-                            let dst_acc = client
-                                .get_mpn_account(to.account_index(mpn_log4_account_capacity))
-                                .await?
-                                .account;
+                            let dst_acc = client.get_mpn_account(to.clone()).await?.account;
                             let to_token_index = if let Some(ind) =
                                 dst_acc.find_token_index(log4_token_tree_size, tkn, true)
                             {
@@ -142,10 +136,7 @@ pub async fn send(
                 GeneralAddress::ChainAddress(to) => {
                     try_join!(
                         async move {
-                            let acc = client
-                                .get_mpn_account(from.account_index(mpn_log4_account_capacity))
-                                .await?
-                                .account;
+                            let acc = client.get_mpn_account(from.clone()).await?.account;
                             let token_index = if let Some(ind) =
                                 acc.find_token_index(log4_token_tree_size, tkn, false)
                             {
@@ -195,14 +186,8 @@ pub async fn send(
                             if memo.is_some() {
                                 panic!("Cannot assign a memo to a MPN-to-MPN transaction!");
                             }
-                            let acc = client
-                                .get_mpn_account(from.account_index(mpn_log4_account_capacity))
-                                .await?
-                                .account;
-                            let dst_acc = client
-                                .get_mpn_account(to.account_index(mpn_log4_account_capacity))
-                                .await?
-                                .account;
+                            let acc = client.get_mpn_account(from).await?.account;
+                            let dst_acc = client.get_mpn_account(to.clone()).await?.account;
                             let to_token_index = if let Some(ind) =
                                 dst_acc.find_token_index(log4_token_tree_size, tkn, true)
                             {

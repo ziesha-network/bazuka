@@ -55,12 +55,9 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
             )?;
             let mpn_nonce = ctx
                 .blockchain
-                .get_mpn_account(
-                    MpnAddress {
-                        pub_key: ctx.validator_wallet.get_zk_address(),
-                    }
-                    .account_index(ctx.blockchain.config().mpn_config.log4_tree_size),
-                )?
+                .get_mpn_account(MpnAddress {
+                    pub_key: ctx.validator_wallet.get_zk_address(),
+                })?
                 .tx_nonce;
             ctx.mpn_work_pool = Some(mpn::prepare_works(
                 &ctx.blockchain.config().mpn_config,

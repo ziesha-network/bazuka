@@ -105,15 +105,13 @@ impl SingleMempool {
 #[derive(Clone, Debug)]
 pub struct Mempool {
     min_balance_per_tx: Amount,
-    mpn_log4_account_capacity: u8,
     txs: HashMap<NonceGroup, SingleMempool>,
     rejected: HashMap<GeneralTransaction, TransactionStats>,
 }
 
 impl Mempool {
-    pub fn new(mpn_log4_account_capacity: u8, min_balance_per_tx: Amount) -> Self {
+    pub fn new(min_balance_per_tx: Amount) -> Self {
         Self {
-            mpn_log4_account_capacity,
             min_balance_per_tx,
             txs: Default::default(),
             rejected: Default::default(),
@@ -137,16 +135,8 @@ impl Mempool {
                 NonceGroup::MpnDeposit(addr) => {
                     blockchain.get_deposit_nonce(addr, mpn_contract_id)?
                 }
-                NonceGroup::MpnTransaction(addr) => {
-                    blockchain
-                        .get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?
-                        .tx_nonce
-                }
-                NonceGroup::MpnWithdraw(addr) => {
-                    blockchain
-                        .get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?
-                        .withdraw_nonce
-                }
+                NonceGroup::MpnTransaction(addr) => blockchain.get_mpn_account(addr)?.tx_nonce,
+                NonceGroup::MpnWithdraw(addr) => blockchain.get_mpn_account(addr)?.withdraw_nonce,
             };
             mempool.update_nonce(nonce);
         }
@@ -172,16 +162,8 @@ impl Mempool {
         let nonce = match tx.nonce_group() {
             NonceGroup::TransactionAndDelta(addr) => blockchain.get_nonce(addr)?,
             NonceGroup::MpnDeposit(addr) => blockchain.get_deposit_nonce(addr, mpn_contract_id)?,
-            NonceGroup::MpnTransaction(addr) => {
-                blockchain
-                    .get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?
-                    .tx_nonce
-            }
-            NonceGroup::MpnWithdraw(addr) => {
-                blockchain
-                    .get_mpn_account(addr.account_index(self.mpn_log4_account_capacity))?
-                    .withdraw_nonce
-            }
+            NonceGroup::MpnTransaction(addr) => blockchain.get_mpn_account(addr)?.tx_nonce,
+            NonceGroup::MpnWithdraw(addr) => blockchain.get_mpn_account(addr)?.withdraw_nonce,
         };
         if self
             .txs
@@ -345,7 +327,7 @@ mod tests {
         let abc = TxBuilder::new(&Vec::from("ABC"));
 
         for i in 0..5 {
-            let mut mempool = Mempool::new(30, Amount(1));
+            let mut mempool = Mempool::new(Amount(1));
             mempool.add_tx(&chain, dummy_tx(&abc, i), false, 0).unwrap();
 
             let snapshot = mempool.all().collect::<Vec<_>>();
@@ -363,7 +345,7 @@ mod tests {
         .unwrap();
         let abc = TxBuilder::new(&Vec::from("ABC"));
         let other = TxBuilder::new(&Vec::from("DELEGATOR"));
-        let mut mempool = Mempool::new(30, Amount(1));
+        let mut mempool = Mempool::new(Amount(1));
 
         mempool.add_tx(&chain, dummy_tx(&abc, 1), false, 0).unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 1);

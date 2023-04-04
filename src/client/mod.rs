@@ -383,11 +383,16 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn get_mpn_account(&self, index: u64) -> Result<GetMpnAccountResponse, NodeError> {
+    pub async fn get_mpn_account(
+        &self,
+        mpn_address: MpnAddress,
+    ) -> Result<GetMpnAccountResponse, NodeError> {
         self.sender
             .json_get::<GetMpnAccountRequest, GetMpnAccountResponse>(
                 format!("http://{}/mpn/account", self.peer),
-                GetMpnAccountRequest { index },
+                GetMpnAccountRequest {
+                    address: mpn_address.to_string(),
+                },
                 Limit::default(),
             )
             .await

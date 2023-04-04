@@ -8,7 +8,7 @@ mod ops;
 
 use crate::core::{
     hash::Hash, Address, Amount, Block, ContractAccount, ContractDeposit, ContractId,
-    ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, ProofOfStake,
+    ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, MpnAddress, ProofOfStake,
     RegularSendEntry, Signature, Staker, Token, TokenId, TokenUpdate, Transaction,
     TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkHasher as CoreZkHasher,
 };
@@ -123,7 +123,7 @@ pub trait Blockchain<K: KvStore> {
     ) -> Result<Delegate, BlockchainError>;
     fn get_staker(&self, addr: Address) -> Result<Option<Staker>, BlockchainError>;
     fn get_nonce(&self, addr: Address) -> Result<u32, BlockchainError>;
-    fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError>;
+    fn get_mpn_account(&self, addr: MpnAddress) -> Result<zk::MpnAccount, BlockchainError>;
     fn get_mpn_accounts(
         &self,
         page: usize,
@@ -447,12 +447,17 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         )
     }
 
-    fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError> {
-        Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_account(
+    fn get_mpn_account(&self, addr: MpnAddress) -> Result<zk::MpnAccount, BlockchainError> {
+        let index = addr.account_index(self.config().mpn_config.log4_tree_size);
+        let acc = zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_account(
             &self.database,
             self.config.mpn_config.mpn_contract_id,
             index,
-        )?)
+        )?;
+        if acc.address.is_on_curve() && acc.address != addr.pub_key.0.decompress() {
+            return Err(BlockchainError::MpnAddressCannotBeUsed);
+        }
+        Ok(acc)
     }
 
     fn get_mpn_accounts(
