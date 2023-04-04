@@ -14,7 +14,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
         if ctx.opts.automatic_block_generation {
             if let Some(work_pool) = &ctx.mpn_work_pool {
                 let wallet = ctx.validator_wallet.clone();
-                let nonce = ctx.blockchain.get_account(wallet.get_address())?.nonce;
+                let nonce = ctx.blockchain.get_nonce(wallet.get_address())?;
                 if let Some(tx_delta) = work_pool.ready(&wallet, nonce + 1) {
                     log::info!("All MPN-proofs ready!");
                     ctx.mempool_add_tx(true, tx_delta.into())?;

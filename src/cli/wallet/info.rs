@@ -143,8 +143,8 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection) -> () {
                 }
             }
             if let Some(nonce) = curr_nonce {
-                if nonce > acc.account.nonce {
-                    println!("(Pending transactions: {})", nonce - acc.account.nonce);
+                if nonce > acc.nonce {
+                    println!("(Pending transactions: {})", nonce - acc.nonce);
                 }
             }
             if let Some(nonce) = curr_mpn_deposit_nonce {

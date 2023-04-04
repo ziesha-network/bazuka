@@ -7,7 +7,7 @@ pub use config::BlockchainConfig;
 mod ops;
 
 use crate::core::{
-    hash::Hash, Account, Address, Amount, Block, ContractAccount, ContractDeposit, ContractId,
+    hash::Hash, Address, Amount, Block, ContractAccount, ContractDeposit, ContractId,
     ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, ProofOfStake,
     RegularSendEntry, Signature, Staker, Token, TokenId, TokenUpdate, Transaction,
     TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkHasher as CoreZkHasher,
@@ -122,7 +122,7 @@ pub trait Blockchain<K: KvStore> {
         delegatee: Address,
     ) -> Result<Delegate, BlockchainError>;
     fn get_staker(&self, addr: Address) -> Result<Option<Staker>, BlockchainError>;
-    fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
+    fn get_nonce(&self, addr: Address) -> Result<u32, BlockchainError>;
     fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError>;
     fn get_mpn_accounts(
         &self,
@@ -404,10 +404,10 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         )
     }
 
-    fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {
-        Ok(match self.database.get(keys::account(&addr))? {
+    fn get_nonce(&self, addr: Address) -> Result<u32, BlockchainError> {
+        Ok(match self.database.get(keys::nonce(&addr))? {
             Some(b) => b.try_into()?,
-            None => Account { nonce: 0 },
+            None => 0,
         })
     }
 

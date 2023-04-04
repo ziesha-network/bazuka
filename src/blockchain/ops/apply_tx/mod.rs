@@ -30,10 +30,10 @@ pub fn apply_tx<K: KvStore>(
 
         let tx_src = tx.src.clone().unwrap_or_default(); // Default is treasury account!
 
-        let mut acc_src = chain.get_account(tx_src.clone())?;
+        let mut acc_nonce = chain.get_nonce(tx_src.clone())?;
         let mut acc_bal = chain.get_balance(tx_src.clone(), tx.fee.token_id)?;
 
-        if tx.nonce != acc_src.nonce + 1 {
+        if tx.nonce != acc_nonce + 1 {
             return Err(BlockchainError::InvalidTransactionNonce);
         }
 
@@ -42,11 +42,11 @@ pub fn apply_tx<K: KvStore>(
         }
 
         acc_bal -= tx.fee.amount;
-        acc_src.nonce += 1;
+        acc_nonce += 1;
 
         chain
             .database
-            .update(&[WriteOp::Put(keys::account(&tx_src), acc_src.into())])?;
+            .update(&[WriteOp::Put(keys::nonce(&tx_src), acc_nonce.into())])?;
         chain.database.update(&[WriteOp::Put(
             keys::account_balance(&tx_src, tx.fee.token_id),
             acc_bal.into(),

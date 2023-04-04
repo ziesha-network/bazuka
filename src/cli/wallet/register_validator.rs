@@ -26,11 +26,7 @@ pub async fn register_validator(
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
     try_join!(
         async move {
-            let curr_nonce = client
-                .get_account(tx_builder.get_address())
-                .await?
-                .account
-                .nonce;
+            let curr_nonce = client.get_account(tx_builder.get_address()).await?.nonce;
 
             let new_nonce = wallet
                 .validator()

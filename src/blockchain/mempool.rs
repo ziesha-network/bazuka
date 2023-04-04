@@ -133,7 +133,7 @@ impl Mempool {
         let mpn_contract_id = blockchain.config().mpn_config.mpn_contract_id;
         for (ng, mempool) in self.txs.iter_mut() {
             let nonce = match ng.clone() {
-                NonceGroup::TransactionAndDelta(addr) => blockchain.get_account(addr)?.nonce,
+                NonceGroup::TransactionAndDelta(addr) => blockchain.get_nonce(addr)?,
                 NonceGroup::MpnDeposit(addr) => {
                     blockchain.get_deposit_nonce(addr, mpn_contract_id)?
                 }
@@ -170,7 +170,7 @@ impl Mempool {
             return Ok(());
         }
         let nonce = match tx.nonce_group() {
-            NonceGroup::TransactionAndDelta(addr) => blockchain.get_account(addr)?.nonce,
+            NonceGroup::TransactionAndDelta(addr) => blockchain.get_nonce(addr)?,
             NonceGroup::MpnDeposit(addr) => blockchain.get_deposit_nonce(addr, mpn_contract_id)?,
             NonceGroup::MpnTransaction(addr) => {
                 blockchain

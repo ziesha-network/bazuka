@@ -1,6 +1,6 @@
 use crate::blockchain::{TransactionStats, ZkBlockchainPatch};
 use crate::core::{
-    Account, Address, Amount, Block, ContractId, GeneralAddress, GeneralTransaction, Header, Money,
+    Address, Amount, Block, ContractId, GeneralAddress, GeneralTransaction, Header, Money,
     MpnAddress, Signature, Token, TransactionAndDelta, ValidatorProof,
 };
 use crate::mpn::MpnWork;
@@ -45,7 +45,7 @@ pub struct GetAccountRequest {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct GetAccountResponse {
-    pub account: Account,
+    pub nonce: u32,
     pub mpn_deposit_nonce: u32,
 }
 

@@ -31,8 +31,8 @@ pub fn compressed_state_at(contract_id: &ContractId, at: u64) -> StringKey {
     format!("CSA-{:010}-{}", at, contract_id).into()
 }
 
-pub fn account(address: &Address) -> StringKey {
-    format!("ACC-{}", address).into()
+pub fn nonce(address: &Address) -> StringKey {
+    format!("NNC-{}", address).into()
 }
 
 pub fn deposit_nonce(address: &Address, contract_id: &ContractId) -> StringKey {

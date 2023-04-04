@@ -51,11 +51,8 @@ pub async fn send(
                 GeneralAddress::ChainAddress(to) => {
                     try_join!(
                         async move {
-                            let curr_nonce = client
-                                .get_account(tx_builder.get_address())
-                                .await?
-                                .account
-                                .nonce;
+                            let curr_nonce =
+                                client.get_account(tx_builder.get_address()).await?.nonce;
                             let new_nonce = wallet
                                 .user(0)
                                 .new_nonce(NonceGroup::TransactionAndDelta(
