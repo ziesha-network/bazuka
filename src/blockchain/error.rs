@@ -112,4 +112,8 @@ pub enum BlockchainError {
     SingleUpdateAllowedPerContract,
     #[error("validator is not registered")]
     ValidatorNotRegistered,
+    #[error("blockchain is empty")]
+    BlockchainEmpty,
+    #[error("invalid number of rollbacks in the patch")]
+    InvalidNumberOfRollbacks,
 }

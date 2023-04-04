@@ -347,7 +347,12 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         })
     }
     fn get_tip(&self) -> Result<Header, BlockchainError> {
-        self.get_header(self.get_height()? - 1)
+        let height = self.get_height()?;
+        if height == 0 {
+            Err(BlockchainError::BlockchainEmpty)
+        } else {
+            self.get_header(height - 1)
+        }
     }
     fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError> {
         Ok(self

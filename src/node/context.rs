@@ -71,7 +71,7 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
         self.peer_manager.refresh(local_ts);
 
         for (h, banned_at) in self.banned_headers.clone().into_iter() {
-            if local_ts - banned_at > self.opts.state_unavailable_ban_time {
+            if local_ts.saturating_sub(banned_at) > self.opts.state_unavailable_ban_time {
                 self.banned_headers.remove(&h);
             }
         }

@@ -6,6 +6,9 @@ pub fn generate_state_patch<K: KvStore>(
     to: <Hasher as Hash>::Output,
 ) -> Result<ZkBlockchainPatch, BlockchainError> {
     let height = chain.get_height()?;
+    if height == 0 {
+        return Err(BlockchainError::BlockchainEmpty);
+    }
     let last_header = chain.get_header(height - 1)?;
 
     if last_header.hash() != to {
@@ -24,20 +27,26 @@ pub fn generate_state_patch<K: KvStore>(
             if height > local_height {
                 return Err(BlockchainError::StatesUnavailable);
             }
-            let away = local_height - height;
-            blockchain_patch.patches.insert(
-                cid,
-                if let Some(delta) =
-                    zk::KvStoreStateManager::<CoreZkHasher>::delta_of(&chain.database, cid, away)?
-                {
-                    zk::ZkStatePatch::Delta(delta)
-                } else {
-                    zk::ZkStatePatch::Full(zk::KvStoreStateManager::<CoreZkHasher>::get_full_state(
+            if local_height > height {
+                let away = local_height - height;
+                blockchain_patch.patches.insert(
+                    cid,
+                    if let Some(delta) = zk::KvStoreStateManager::<CoreZkHasher>::delta_of(
                         &chain.database,
                         cid,
-                    )?)
-                },
-            );
+                        away,
+                    )? {
+                        zk::ZkStatePatch::Delta(delta)
+                    } else {
+                        zk::ZkStatePatch::Full(
+                            zk::KvStoreStateManager::<CoreZkHasher>::get_full_state(
+                                &chain.database,
+                                cid,
+                            )?,
+                        )
+                    },
+                );
+            }
         }
     }
 
