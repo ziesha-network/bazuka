@@ -355,38 +355,15 @@ async fn run_node(
     Ok(())
 }
 
-fn get_wallet_collection() -> Option<WalletCollection> {
-    let wallet_path = get_wallet_path();
-    let wallet = WalletCollection::open(wallet_path.clone()).unwrap();
-    wallet
-}
-
-fn get_wallet_path() -> PathBuf {
-    let wallet_path = home::home_dir().unwrap().join(Path::new(".bazuka-wallet"));
-    wallet_path
-}
-
-fn get_conf_path() -> PathBuf {
-    let conf_path = home::home_dir().unwrap().join(Path::new(".bazuka.yaml"));
-    conf_path
-}
-
-fn get_conf() -> Option<BazukaConfig> {
-    let conf_path = get_conf_path();
-    let conf: Option<BazukaConfig> = std::fs::File::open(conf_path.clone())
-        .ok()
-        .map(|f| serde_yaml::from_reader(f).unwrap());
-    conf
-}
-
 pub async fn initialize_cli() {
     let opts = CliOptions::from_args();
 
-    let conf_path = get_conf_path();
-
-    let conf = get_conf();
-    let wallet = get_wallet_collection();
-    let wallet_path = get_wallet_path();
+    let conf_path = home::home_dir().unwrap().join(Path::new(".bazuka.yaml"));
+    let conf: Option<BazukaConfig> = std::fs::File::open(conf_path.clone())
+        .ok()
+        .map(|f| serde_yaml::from_reader(f).unwrap());
+    let wallet_path = home::home_dir().unwrap().join(Path::new(".bazuka-wallet"));
+    let wallet = WalletCollection::open(wallet_path.clone()).unwrap();
 
     match opts {
         CliOptions::Chain(chain_opts) => match chain_opts {
