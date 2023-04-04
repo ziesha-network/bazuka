@@ -680,19 +680,12 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         let mut stakers = Vec::new();
         for (k, _) in self
             .database
-            .pairs(keys::staker_rank_prefix().into())?
+            .pairs(keys::StakerRankDbKey::prefix().into())?
             .into_iter()
         {
-            let stake = Amount(
-                u64::MAX
-                    - u64::from_str_radix(&k.0[4..20], 16)
-                        .map_err(|_| BlockchainError::Inconsistency)?,
-            );
-            let pk: Address = k.0[21..]
-                .parse()
-                .map_err(|_| BlockchainError::Inconsistency)?;
-            if self.get_staker(pk.clone())?.is_some() {
-                stakers.push((pk, stake));
+            let staker_rank = keys::StakerRankDbKey::try_from(k)?;
+            if self.get_staker(staker_rank.address.clone())?.is_some() {
+                stakers.push((staker_rank.address, staker_rank.amount));
             }
         }
         Ok(stakers)
@@ -706,22 +699,11 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         let mut delegators = Vec::new();
         for (k, _) in self
             .database
-            .pairs(keys::delegator_rank_prefix(&delegatee).into())?
+            .pairs(keys::DelegatorRankDbKey::prefix(&delegatee).into())?
             .into_iter()
         {
-            let splitted = k.0.split("-").collect::<Vec<_>>();
-            if splitted.len() != 4 {
-                return Err(BlockchainError::Inconsistency);
-            }
-            let stake = Amount(
-                u64::MAX
-                    - u64::from_str_radix(&splitted[2], 16)
-                        .map_err(|_| BlockchainError::Inconsistency)?,
-            );
-            let pk: Address = splitted[3]
-                .parse()
-                .map_err(|_| BlockchainError::Inconsistency)?;
-            delegators.push((pk, stake));
+            let delegator_rank = keys::DelegatorRankDbKey::try_from(k)?;
+            delegators.push((delegator_rank.delegator, delegator_rank.amount));
             if let Some(top) = top {
                 if delegators.len() >= top {
                     break;
@@ -739,22 +721,11 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         let mut delegatees = Vec::new();
         for (k, _) in self
             .database
-            .pairs(keys::delegatee_rank_prefix(&delegator).into())?
+            .pairs(keys::DelegateeRankDbKey::prefix(&delegator).into())?
             .into_iter()
         {
-            let splitted = k.0.split("-").collect::<Vec<_>>();
-            if splitted.len() != 4 {
-                return Err(BlockchainError::Inconsistency);
-            }
-            let stake = Amount(
-                u64::MAX
-                    - u64::from_str_radix(&splitted[2], 16)
-                        .map_err(|_| BlockchainError::Inconsistency)?,
-            );
-            let pk: Address = splitted[3]
-                .parse()
-                .map_err(|_| BlockchainError::Inconsistency)?;
-            delegatees.push((pk, stake));
+            let delegatee_rank = keys::DelegateeRankDbKey::try_from(k)?;
+            delegatees.push((delegatee_rank.delegatee, delegatee_rank.amount));
             if let Some(top) = top {
                 if delegatees.len() >= top {
                     break;

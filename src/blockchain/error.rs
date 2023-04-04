@@ -1,4 +1,4 @@
-use crate::db::KvStoreError;
+use crate::db::{keys::ParseDbKeyError, KvStoreError};
 use crate::zk::{StateManagerError, ZkError};
 use thiserror::Error;
 
@@ -116,4 +116,6 @@ pub enum BlockchainError {
     BlockchainEmpty,
     #[error("invalid number of rollbacks in the patch")]
     InvalidNumberOfRollbacks,
+    #[error("error while parsing db-key: {0}")]
+    ParseDbKeyError(#[from] ParseDbKeyError),
 }

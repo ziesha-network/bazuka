@@ -39,18 +39,55 @@ pub fn delegate<K: KvStore>(
     let old_stake = chain.get_stake(to.clone())?;
     let new_stake = old_stake + amount;
     chain.database.update(&[
-        WriteOp::Remove(keys::delegatee_rank(&tx_src, old_delegate, &to)),
+        WriteOp::Remove(
+            keys::DelegateeRankDbKey {
+                delegator: tx_src.clone(),
+                delegatee: to.clone(),
+                amount: old_delegate,
+            }
+            .into(),
+        ),
         WriteOp::Put(
-            keys::delegatee_rank(&tx_src, delegate.amount, &to),
+            keys::DelegateeRankDbKey {
+                delegator: tx_src.clone(),
+                delegatee: to.clone(),
+                amount: delegate.amount,
+            }
+            .into(),
             ().into(),
         ),
-        WriteOp::Remove(keys::delegator_rank(&to, old_delegate, &tx_src)),
+        WriteOp::Remove(
+            keys::DelegatorRankDbKey {
+                delegator: tx_src.clone(),
+                delegatee: to.clone(),
+                amount: old_delegate,
+            }
+            .into(),
+        ),
         WriteOp::Put(
-            keys::delegator_rank(&to, delegate.amount, &tx_src),
+            keys::DelegatorRankDbKey {
+                delegator: tx_src.clone(),
+                delegatee: to.clone(),
+                amount: delegate.amount,
+            }
+            .into(),
             ().into(),
         ),
-        WriteOp::Remove(keys::staker_rank(old_stake, &to)),
-        WriteOp::Put(keys::staker_rank(new_stake, &to), ().into()),
+        WriteOp::Remove(
+            keys::StakerRankDbKey {
+                address: to.clone(),
+                amount: old_stake,
+            }
+            .into(),
+        ),
+        WriteOp::Put(
+            keys::StakerRankDbKey {
+                address: to.clone(),
+                amount: new_stake,
+            }
+            .into(),
+            ().into(),
+        ),
         WriteOp::Put(keys::stake(&to), new_stake.into()),
     ])?;
     Ok(())
