@@ -37,7 +37,17 @@ pub fn withdraw<K: KvStore>(
         )
         .unwrap();
 
-        let acc_token = if let Some(acc_token) = acc.tokens.get(&tx.zk_token_index) {
+        let (zk_token_index, zk_fee_token_index) = if let Some((ind, fee_ind)) = acc
+            .find_token_index(mpn_log4_account_capacity, tx.payment.amount.token_id, false)
+            .zip(acc.find_token_index(mpn_log4_account_capacity, tx.payment.fee.token_id, false))
+        {
+            (ind, fee_ind)
+        } else {
+            rejected.push(tx.clone());
+            continue;
+        };
+
+        let acc_token = if let Some(acc_token) = acc.tokens.get(&zk_token_index) {
             acc_token.clone()
         } else {
             rejected.push(tx.clone());
@@ -68,15 +78,11 @@ pub fn withdraw<K: KvStore>(
                 &mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
-                tx.zk_token_index,
+                zk_token_index,
             )
             .unwrap();
 
-            updated_acc
-                .tokens
-                .get_mut(&tx.zk_token_index)
-                .unwrap()
-                .amount -= tx.payment.amount.amount;
+            updated_acc.tokens.get_mut(&zk_token_index).unwrap().amount -= tx.payment.amount.amount;
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut mirror,
                 mpn_contract_id,
@@ -90,12 +96,12 @@ pub fn withdraw<K: KvStore>(
                 &mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
-                tx.zk_fee_token_index,
+                zk_fee_token_index,
             )
             .unwrap();
 
             let acc_fee_token =
-                if let Some(src_fee_token) = updated_acc.tokens.get(&tx.zk_fee_token_index) {
+                if let Some(src_fee_token) = updated_acc.tokens.get(&zk_fee_token_index) {
                     src_fee_token.clone()
                 } else {
                     rejected.push(tx.clone());
@@ -110,7 +116,7 @@ pub fn withdraw<K: KvStore>(
 
             updated_acc
                 .tokens
-                .get_mut(&tx.zk_fee_token_index)
+                .get_mut(&zk_fee_token_index)
                 .unwrap()
                 .amount -= tx.payment.fee.amount;
 
@@ -261,7 +267,6 @@ mod tests {
             "".into(),
             mpn_contract_id,
             abc.get_mpn_address(),
-            3,
             1,
             Money {
                 amount: Amount(10056),
@@ -290,12 +295,10 @@ mod tests {
             "".into(),
             mpn_contract_id,
             1,
-            3,
             Money {
                 amount: Amount(30),
                 token_id: TokenId::Custom(123.into()),
             },
-            3,
             Money {
                 amount: Amount(26),
                 token_id: TokenId::Custom(123.into()),

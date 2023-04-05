@@ -267,7 +267,6 @@ pub fn prepare_works<K: KvStore>(
             "".into(),
             config.mpn_contract_id,
             validator_tx_builder.get_mpn_address(),
-            0,
             validator_tx_builder_deposit_nonce + 1,
             Money {
                 token_id: TokenId::Ziesha,
@@ -337,14 +336,11 @@ pub fn prepare_works<K: KvStore>(
         let mut update_txs = Vec::new();
         for (addr, amount) in rewards.iter() {
             update_txs.push(validator_tx_builder.create_mpn_transaction(
-                0,
                 addr.clone(),
-                0,
                 Money {
                     token_id: TokenId::Ziesha,
                     amount: *amount,
                 },
-                0,
                 Money::ziesha(0),
                 validator_tx_builder_mpn_nonce,
             ));
@@ -352,14 +348,11 @@ pub fn prepare_works<K: KvStore>(
         }
         if i == config.mpn_num_update_batches - 1 {
             update_txs.push(validator_tx_builder.create_mpn_transaction(
-                0,
                 user_tx_builder.get_mpn_address(),
-                0,
                 Money {
                     token_id: TokenId::Ziesha,
                     amount: block_reward,
                 },
-                0,
                 Money::ziesha(0),
                 validator_tx_builder_mpn_nonce,
             ));

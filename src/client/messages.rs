@@ -228,10 +228,6 @@ pub struct JsonMpnTransaction {
     pub src_pub_key: String,
     pub dst_pub_key: String,
 
-    pub src_token_index: u64,
-    pub src_fee_token_index: u64,
-    pub dst_token_index: u64,
-
     pub amount_token_id: String,
     pub amount: Amount,
     pub fee_token_id: String,
@@ -271,10 +267,6 @@ impl TryInto<TransactRequest> for PostJsonMpnTransactionRequest {
                     .dst_pub_key
                     .parse()
                     .map_err(|_| Self::Error::Invalid)?,
-
-                src_token_index: self.tx.src_token_index,
-                src_fee_token_index: self.tx.src_fee_token_index,
-                dst_token_index: self.tx.dst_token_index,
 
                 amount: Money {
                     token_id: self
@@ -319,9 +311,6 @@ impl Into<GetJsonMempoolResponse> for GetMempoolResponse {
                     nonce: t.nonce,
                     src_pub_key: t.src_pub_key.to_string(),
                     dst_pub_key: t.dst_pub_key.to_string(),
-                    src_token_index: t.src_token_index,
-                    src_fee_token_index: t.src_fee_token_index,
-                    dst_token_index: t.dst_token_index,
                     amount_token_id: t.amount.token_id.to_string(),
                     amount: t.amount.amount,
                     fee_token_id: t.fee.token_id.to_string(),
