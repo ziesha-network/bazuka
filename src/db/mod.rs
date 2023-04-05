@@ -2,8 +2,7 @@ pub mod keys;
 
 use crate::blockchain::{ZkBlockchainPatch, ZkCompressedStateChange};
 use crate::core::{
-    hash::Hash, Account, Amount, Block, ContractAccount, ContractId, Delegate, Hasher, Header,
-    Staker, Token,
+    hash::Hash, Amount, Block, ContractAccount, ContractId, Delegate, Hasher, Header, Staker, Token,
 };
 use crate::crypto::merkle::MerkleTree;
 use crate::zk::{
@@ -94,7 +93,6 @@ gen_try_into!(
     u64,
     u128,
     usize,
-    Account,
     Delegate,
     Staker,
     ContractAccount,
@@ -122,7 +120,6 @@ gen_from!(
     u64,
     u128,
     usize,
-    Account,
     Delegate,
     Staker,
     ContractAccount,

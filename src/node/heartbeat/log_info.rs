@@ -18,8 +18,7 @@ pub async fn log_info<B: Blockchain>(
         ("Peer count", ctx.peer_manager.get_peers().len().to_string()),
     ]);
 
-    inf.push(("Chain Pool", ctx.mempool.chain_sourced_len().to_string()));
-    inf.push(("MPN Pool", ctx.mempool.mpn_sourced_len().to_string()));
+    inf.push(("Mempool", ctx.mempool.len().to_string()));
 
     let wallet_addr = ctx.validator_wallet.get_address();
     let tkn = ctx

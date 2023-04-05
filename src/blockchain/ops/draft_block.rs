@@ -8,6 +8,9 @@ pub fn draft_block(
     check: bool,
 ) -> Result<Option<BlockAndPatch>, BlockchainError> {
     let height = chain.get_height()?;
+    if height == 0 {
+        return Err(BlockchainError::BlockchainEmpty);
+    }
 
     let validator_status = chain.validator_status(timestamp, wallet)?;
     if chain.config.check_validator && validator_status.is_unproven() {

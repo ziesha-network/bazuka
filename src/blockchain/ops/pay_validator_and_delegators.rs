@@ -9,7 +9,7 @@ pub fn pay_validator_and_delegators(
         .get_staker(validator.clone())?
         .ok_or(BlockchainError::ValidatorNotRegistered)?;
 
-    let treasury_nonce = chain.get_account(Default::default())?.nonce;
+    let treasury_nonce = chain.get_nonce(Default::default())?;
 
     let next_reward = chain.next_reward()? + fee_sum;
     let stakers_reward =

@@ -204,7 +204,7 @@ mod tests {
                 Amount(9200).into(),
             ),
             WriteOp::Put(
-                "CAB-6dbbef663ee3bf666f6a4789ad5cdfbd7c97a1f79fb8ef1412e8fffc09fc2855-Ziesha"
+                "CAB-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6-Ziesha"
                     .into(),
                 Amount(750).into(),
             ),
@@ -249,7 +249,7 @@ mod tests {
             contract_id,
             deposit_circuit_id: 0,
             calldata: zk::ZkScalar::from(888),
-            nonce: 2,
+            nonce: 1,
             amount: Money::ziesha(1000),
             fee: Money::ziesha(0),
             sig: None,
@@ -263,7 +263,7 @@ mod tests {
             contract_id,
             deposit_circuit_id: 0,
             calldata: zk::ZkScalar::from(888),
-            nonce: 3,
+            nonce: 2,
             amount: Money {
                 token_id: kiwi_token_id,
                 amount: Amount(1000),
@@ -336,12 +336,12 @@ mod tests {
                 Amount(99333).into(),
             ),
             WriteOp::Put(
-                "CAB-6dbbef663ee3bf666f6a4789ad5cdfbd7c97a1f79fb8ef1412e8fffc09fc2855-0x113c5707d6ab03dd78c9f8455f3b4096c8c5e9312076aafe38d79c4d8eb2d096"
+                "CAB-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6-0x113c5707d6ab03dd78c9f8455f3b4096c8c5e9312076aafe38d79c4d8eb2d096"
                     .into(),
                 Amount(667).into(),
             ),
             WriteOp::Put(
-                "CAB-6dbbef663ee3bf666f6a4789ad5cdfbd7c97a1f79fb8ef1412e8fffc09fc2855-Ziesha"
+                "CAB-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6-Ziesha"
                     .into(),
                 Amount(556).into(),
             )

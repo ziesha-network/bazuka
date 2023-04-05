@@ -10,7 +10,11 @@ pub async fn get_account<B: Blockchain>(
 ) -> Result<GetAccountResponse, NodeError> {
     let context = context.read().await;
     Ok(GetAccountResponse {
-        account: context.blockchain.get_account(req.address.parse()?)?,
+        nonce: context.blockchain.get_nonce(req.address.parse()?)?,
+        mpn_deposit_nonce: context.blockchain.get_deposit_nonce(
+            req.address.parse()?,
+            context.blockchain.config().mpn_config.mpn_contract_id,
+        )?,
     })
 }
 
@@ -20,7 +24,7 @@ use super::tests::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::{Account, Address};
+    use crate::core::Address;
     use crate::node::TxBuilder;
 
     #[tokio::test]
@@ -47,13 +51,15 @@ mod tests {
         assert_eq!(
             resp,
             GetAccountResponse {
-                account: Account { nonce: 0 }
+                nonce: 0,
+                mpn_deposit_nonce: 0
             }
         );
         assert_eq!(
             resp_treasury,
             GetAccountResponse {
-                account: Account { nonce: 204 }
+                nonce: 204,
+                mpn_deposit_nonce: 0
             }
         );
         let resp_invalid = get_account(

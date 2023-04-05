@@ -10,19 +10,12 @@ pub async fn get_explorer_mempool<B: Blockchain>(
     _req: GetExplorerMempoolRequest,
 ) -> Result<GetExplorerMempoolResponse, NodeError> {
     let context = context.read().await;
-    let chain_sourced = context
-        .mempool
-        .chain_sourced()
-        .map(|(tx, stats)| (tx.into(), stats.clone()))
-        .collect::<Vec<_>>();
-    let mpn_sourced = context
-        .mempool
-        .mpn_sourced()
-        .map(|(tx, stats)| (tx.into(), stats.clone()))
-        .collect::<Vec<_>>();
     Ok(GetExplorerMempoolResponse {
-        chain_sourced,
-        mpn_sourced,
+        mempool: context
+            .mempool
+            .all()
+            .map(|(tx, stats)| (tx.into(), stats.clone()))
+            .collect::<Vec<_>>(),
     })
 }
 
@@ -36,7 +29,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_explorer_mempool_empty() {
         // TODO: Test cases where mempool is not empty!
-        let expected = "GetExplorerMempoolResponse { chain_sourced: [], mpn_sourced: [] }";
+        let expected = "GetExplorerMempoolResponse { mempool: [] }";
         let ctx = test_context();
         let resp = get_explorer_mempool(ctx.clone(), GetExplorerMempoolRequest {})
             .await

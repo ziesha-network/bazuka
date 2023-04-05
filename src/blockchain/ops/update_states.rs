@@ -17,10 +17,14 @@ pub fn update_states(
                 zk::ZkStatePatch::Full(full) => {
                     let mut expected_delta_targets = Vec::new();
                     for i in 0..full.rollbacks.len() {
-                        expected_delta_targets.push(chain.get_compressed_state_at(
-                            cid,
-                            contract_account.height - 1 - i as u64,
-                        )?);
+                        if contract_account.height >= (i + 1) as u64 {
+                            expected_delta_targets.push(chain.get_compressed_state_at(
+                                cid,
+                                contract_account.height - 1 - i as u64,
+                            )?);
+                        } else {
+                            return Err(BlockchainError::InvalidNumberOfRollbacks);
+                        }
                     }
                     zk::KvStoreStateManager::<CoreZkHasher>::reset_contract(
                         &mut chain.database,

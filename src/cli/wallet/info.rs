@@ -1,21 +1,16 @@
 use tokio::try_join;
 
 use crate::cli::BazukaConfig;
-use crate::client::NodeError;
-use crate::config;
-use crate::core::MpnAddress;
-use crate::wallet::WalletCollection;
-use crate::{client::BazukaClient, core::TokenId};
+use bazuka::client::NodeError;
+use bazuka::core::{MpnAddress, NonceGroup};
+use bazuka::wallet::WalletCollection;
+use bazuka::{client::BazukaClient, core::TokenId};
 use colored::Colorize;
 use std::collections::HashMap;
 
-pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) -> () {
-    let mpn_log4_account_capacity = config::blockchain::get_blockchain_config()
-        .mpn_config
-        .log4_tree_size;
-    let (conf, mut wallet) = conf.zip(wallet).expect("Bazuka is not initialized!");
-    let val_tx_builder = wallet.validator_builder();
-    let tx_builder = wallet.user_builder(0);
+pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection) -> () {
+    let val_tx_builder = wallet.validator().tx_builder();
+    let tx_builder = wallet.user(0).tx_builder();
 
     let (req_loop, client) =
         BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
@@ -36,16 +31,12 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
             println!(
                 "{}\t{}{}",
                 "Validator main-chain balance:".bright_yellow(),
-                validator_ziesha.display_by_decimals(crate::config::UNIT_ZEROS),
-                crate::config::SYMBOL
+                validator_ziesha.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                bazuka::config::SYMBOL
             );
 
             let validator_mpn_ziesha = client
-                .get_mpn_account(
-                    val_tx_builder
-                        .get_mpn_address()
-                        .account_index(mpn_log4_account_capacity),
-                )
+                .get_mpn_account(val_tx_builder.get_mpn_address())
                 .await?
                 .account
                 .tokens
@@ -61,8 +52,8 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
             println!(
                 "{}\t{}{}",
                 "Validator MPN balance:".bright_yellow(),
-                validator_mpn_ziesha.display_by_decimals(crate::config::UNIT_ZEROS),
-                crate::config::SYMBOL
+                validator_mpn_ziesha.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                bazuka::config::SYMBOL
             );
 
             let delegations = client
@@ -76,8 +67,8 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     println!(
                         "{} -> You ({}{})",
                         addr,
-                        amount.display_by_decimals(crate::config::UNIT_ZEROS),
-                        crate::config::SYMBOL
+                        amount.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                        bazuka::config::SYMBOL
                     );
                 }
             }
@@ -89,8 +80,8 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     println!(
                         "You -> {} ({}{})",
                         addr,
-                        amount.display_by_decimals(crate::config::UNIT_ZEROS),
-                        crate::config::SYMBOL
+                        amount.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                        bazuka::config::SYMBOL
                     );
                 }
             }
@@ -110,7 +101,14 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                 }
             }
 
-            let curr_nonce = wallet.user(0).new_r_nonce().map(|n| n - 1);
+            let curr_nonce = wallet
+                .user(0)
+                .new_nonce(NonceGroup::TransactionAndDelta(tx_builder.get_address()))
+                .map(|n| n - 1);
+            let curr_mpn_deposit_nonce = wallet
+                .user(0)
+                .new_nonce(NonceGroup::MpnDeposit(tx_builder.get_address()))
+                .map(|n| n - 1);
 
             println!();
             println!("{}", "Main-chain\n---------".bright_green());
@@ -127,7 +125,7 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                         inf.balance
                             .display_by_decimals(tokens.get(id).unwrap().decimals),
                         if *id == TokenId::Ziesha {
-                            crate::config::SYMBOL.to_string()
+                            bazuka::config::SYMBOL.to_string()
                         } else {
                             format!(" {} (Token-Id: {})", inf.symbol, id)
                         }
@@ -137,8 +135,13 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                 }
             }
             if let Some(nonce) = curr_nonce {
-                if nonce > acc.account.nonce {
-                    println!("(Pending transactions: {})", nonce - acc.account.nonce);
+                if nonce > acc.nonce {
+                    println!("(Pending transactions: {})", nonce - acc.nonce);
+                }
+            }
+            if let Some(nonce) = curr_mpn_deposit_nonce {
+                if nonce > acc.mpn_deposit_nonce {
+                    println!("(Pending deposits: {})", nonce - acc.mpn_deposit_nonce);
                 }
             }
 
@@ -153,11 +156,12 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     "{}",
                     format!("MPN Account #{}\n---------", i).bright_green()
                 );
-                let resp = client
-                    .get_mpn_account(addr.account_index(mpn_log4_account_capacity))
-                    .await?
-                    .account;
-                let curr_z_nonce = wallet.user(0).new_z_nonce(&addr);
+                let resp = client.get_mpn_account(addr.clone()).await?.account;
+                let curr_mpn_tx_nonce = wallet
+                    .user(0)
+                    .new_nonce(NonceGroup::MpnTransaction(addr.clone()));
+                let curr_mpn_withdraw_nonce =
+                    wallet.user(0).new_nonce(NonceGroup::MpnWithdraw(addr));
                 if !resp.address.is_on_curve() {
                     println!(
                         "{}\t{}",
@@ -168,7 +172,7 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                     );
                     println!("Waiting to be activated... (Send some funds to it!)")
                 } else {
-                    let acc_pk = crate::crypto::jubjub::PublicKey(resp.address.compress());
+                    let acc_pk = bazuka::crypto::jubjub::PublicKey(resp.address.compress());
                     if acc_pk != tx_builder.get_zk_address() {
                         println!(
                             "{} {}",
@@ -198,7 +202,7 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                                     .map(|t| money.amount.display_by_decimals(t.decimals))
                                     .unwrap_or("N/A".to_string()),
                                 if money.token_id == TokenId::Ziesha {
-                                    crate::config::SYMBOL.to_string()
+                                    bazuka::config::SYMBOL.to_string()
                                 } else {
                                     format!(" {}", inf.symbol)
                                 }
@@ -206,9 +210,14 @@ pub async fn info(conf: Option<BazukaConfig>, wallet: Option<WalletCollection>) 
                         }
                     }
                 }
-                if let Some(nonce) = curr_z_nonce {
-                    if nonce > resp.nonce {
-                        println!("(Pending transactions: {})", nonce - resp.nonce);
+                if let Some(nonce) = curr_mpn_tx_nonce {
+                    if nonce > resp.tx_nonce + 1 {
+                        println!("(Pending transactions: {})", nonce - resp.tx_nonce - 1);
+                    }
+                }
+                if let Some(nonce) = curr_mpn_withdraw_nonce {
+                    if nonce > resp.withdraw_nonce + 1 {
+                        println!("(Pending withdrawals: {})", nonce - resp.withdraw_nonce - 1);
                     }
                 }
                 println!();

@@ -1,7 +1,7 @@
-use crate::blockchain::Blockchain;
 use crate::cli::BazukaConfig;
-use crate::db::KvStore;
-use crate::{
+use bazuka::blockchain::Blockchain;
+use bazuka::db::KvStore;
+use bazuka::{
     blockchain::KvStoreChain,
     core::{Amount, TokenId},
     db::ReadOnlyLevelDbKvStore,
@@ -9,12 +9,12 @@ use crate::{
 use colored::Colorize;
 
 pub fn health_check(conf: &BazukaConfig) {
-    let mpn_contract_id = crate::config::blockchain::get_blockchain_config()
+    let mpn_contract_id = bazuka::config::blockchain::get_blockchain_config()
         .mpn_config
         .mpn_contract_id;
     let rdb = ReadOnlyLevelDbKvStore::read_only(&conf.db, 64).unwrap();
     let db = rdb.snapshot();
-    let chain = KvStoreChain::new(Box::new(db), crate::config::blockchain::get_blockchain_config()).unwrap();
+    let chain = KvStoreChain::new(Box::new(db), bazuka::config::blockchain::get_blockchain_config()).unwrap();
     let mut fork = chain.fork_on_ram();
     while fork.get_height().unwrap() != 0 {
         fork.rollback().unwrap();

@@ -11,6 +11,6 @@ pub async fn get_mpn_account<B: Blockchain>(
 ) -> Result<GetMpnAccountResponse, NodeError> {
     let context = context.read().await;
     Ok(GetMpnAccountResponse {
-        account: context.blockchain.get_mpn_account(req.index)?,
+        account: context.blockchain.get_mpn_account(req.address.parse()?)?,
     })
 }

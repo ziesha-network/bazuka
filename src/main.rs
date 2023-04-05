@@ -1,4 +1,7 @@
-use bazuka::cli::initialize_cli;
+#[cfg(not(tarpaulin_include))]
+pub mod cli;
+
+use crate::cli::initialize_cli;
 
 #[cfg(feature = "client")]
 use bazuka::client::NodeError;

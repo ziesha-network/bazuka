@@ -66,7 +66,7 @@ fn test_correct_rewards() {
                         amount: 0.into(),
                         token_id: TokenId::Ziesha,
                     },
-                    chain.get_account(validator.get_address()).unwrap().nonce + 1,
+                    chain.get_nonce(validator.get_address()).unwrap() + 1,
                 ),
             ],
             &validator,

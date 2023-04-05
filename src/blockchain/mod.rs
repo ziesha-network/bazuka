@@ -7,8 +7,8 @@ pub use config::BlockchainConfig;
 mod ops;
 
 use crate::core::{
-    hash::Hash, Account, Address, Amount, Block, ChainSourcedTx, ContractAccount, ContractDeposit,
-    ContractId, ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, ProofOfStake,
+    hash::Hash, Address, Amount, Block, ContractAccount, ContractDeposit, ContractId,
+    ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, MpnAddress, ProofOfStake,
     RegularSendEntry, Signature, Staker, Token, TokenId, TokenUpdate, Transaction,
     TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkHasher as CoreZkHasher,
 };
@@ -89,10 +89,6 @@ pub trait Blockchain {
         delegatee: Address,
         top: Option<usize>,
     ) -> Result<Vec<(Address, Amount)>, BlockchainError>;
-    fn cleanup_chain_mempool(
-        &self,
-        txs: &[ChainSourcedTx],
-    ) -> Result<Vec<ChainSourcedTx>, BlockchainError>;
     fn is_validator(
         &self,
         timestamp: u32,
@@ -126,13 +122,19 @@ pub trait Blockchain {
         delegatee: Address,
     ) -> Result<Delegate, BlockchainError>;
     fn get_staker(&self, addr: Address) -> Result<Option<Staker>, BlockchainError>;
-    fn get_account(&self, addr: Address) -> Result<Account, BlockchainError>;
-    fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError>;
+    fn get_nonce(&self, addr: Address) -> Result<u32, BlockchainError>;
+    fn get_mpn_account(&self, addr: MpnAddress) -> Result<zk::MpnAccount, BlockchainError>;
     fn get_mpn_accounts(
         &self,
         page: usize,
         page_size: usize,
     ) -> Result<Vec<(u64, zk::MpnAccount)>, BlockchainError>;
+
+    fn get_deposit_nonce(
+        &self,
+        addr: Address,
+        contract_id: ContractId,
+    ) -> Result<u32, BlockchainError>;
 
     fn get_contract_account(
         &self,
@@ -345,7 +347,12 @@ impl Blockchain for KvStoreChain {
         })
     }
     fn get_tip(&self) -> Result<Header, BlockchainError> {
-        self.get_header(self.get_height()? - 1)
+        let height = self.get_height()?;
+        if height == 0 {
+            Err(BlockchainError::BlockchainEmpty)
+        } else {
+            self.get_header(height - 1)
+        }
     }
     fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError> {
         Ok(self
@@ -397,11 +404,27 @@ impl Blockchain for KvStoreChain {
         )
     }
 
-    fn get_account(&self, addr: Address) -> Result<Account, BlockchainError> {
-        Ok(match self.database.get(keys::account(&addr))? {
+    fn get_nonce(&self, addr: Address) -> Result<u32, BlockchainError> {
+        Ok(match self.database.get(keys::nonce(&addr))? {
             Some(b) => b.try_into()?,
-            None => Account { nonce: 0 },
+            None => 0,
         })
+    }
+
+    fn get_deposit_nonce(
+        &self,
+        addr: Address,
+        contract_id: ContractId,
+    ) -> Result<u32, BlockchainError> {
+        Ok(
+            match self
+                .database
+                .get(keys::deposit_nonce(&addr, &contract_id))?
+            {
+                Some(b) => b.try_into()?,
+                None => 0,
+            },
+        )
     }
 
     fn get_staker(&self, addr: Address) -> Result<Option<Staker>, BlockchainError> {
@@ -424,12 +447,17 @@ impl Blockchain for KvStoreChain {
         )
     }
 
-    fn get_mpn_account(&self, index: u64) -> Result<zk::MpnAccount, BlockchainError> {
-        Ok(zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_account(
-            self.database,
+    fn get_mpn_account(&self, addr: MpnAddress) -> Result<zk::MpnAccount, BlockchainError> {
+        let index = addr.account_index(self.config().mpn_config.log4_tree_size);
+        let acc = zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_account(
+            &self.database,
             self.config.mpn_config.mpn_contract_id,
             index,
-        )?)
+        )?;
+        if acc.address.is_on_curve() && acc.address != addr.pub_key.0.decompress() {
+            return Err(BlockchainError::MpnAddressCannotBeUsed);
+        }
+        Ok(acc)
     }
 
     fn get_mpn_accounts(
@@ -646,35 +674,6 @@ impl Blockchain for KvStoreChain {
         }
     }
 
-    fn cleanup_chain_mempool(
-        &self,
-        txs: &[ChainSourcedTx],
-    ) -> Result<Vec<ChainSourcedTx>, BlockchainError> {
-        let (_, result) = self.isolated(|chain| {
-            let mut result = Vec::new();
-            for tx in txs.iter() {
-                match &tx {
-                    ChainSourcedTx::TransactionAndDelta(tx_delta) => {
-                        if let Err(e) = chain.apply_tx(&tx_delta.tx, false) {
-                            log::info!("Rejecting transaction: {}", e);
-                        } else {
-                            result.push(tx.clone());
-                        }
-                    }
-                    ChainSourcedTx::MpnDeposit(mpn_deposit) => {
-                        if let Err(e) = chain.apply_deposit(&mpn_deposit.payment) {
-                            log::info!("Rejecting mpn-deposit: {}", e);
-                        } else {
-                            result.push(tx.clone());
-                        }
-                    }
-                }
-            }
-            Ok(result)
-        })?;
-        Ok(result)
-    }
-
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError> {
         Ok(match self.database.get(keys::stake(&addr))? {
             Some(b) => b.try_into()?,
@@ -686,19 +685,12 @@ impl Blockchain for KvStoreChain {
         let mut stakers = Vec::new();
         for (k, _) in self
             .database
-            .pairs(keys::staker_rank_prefix().into())?
+            .pairs(keys::StakerRankDbKey::prefix().into())?
             .into_iter()
         {
-            let stake = Amount(
-                u64::MAX
-                    - u64::from_str_radix(&k.0[4..20], 16)
-                        .map_err(|_| BlockchainError::Inconsistency)?,
-            );
-            let pk: Address = k.0[21..]
-                .parse()
-                .map_err(|_| BlockchainError::Inconsistency)?;
-            if self.get_staker(pk.clone())?.is_some() {
-                stakers.push((pk, stake));
+            let staker_rank = keys::StakerRankDbKey::try_from(k)?;
+            if self.get_staker(staker_rank.address.clone())?.is_some() {
+                stakers.push((staker_rank.address, staker_rank.amount));
             }
         }
         Ok(stakers)
@@ -712,22 +704,11 @@ impl Blockchain for KvStoreChain {
         let mut delegators = Vec::new();
         for (k, _) in self
             .database
-            .pairs(keys::delegator_rank_prefix(&delegatee).into())?
+            .pairs(keys::DelegatorRankDbKey::prefix(&delegatee).into())?
             .into_iter()
         {
-            let splitted = k.0.split("-").collect::<Vec<_>>();
-            if splitted.len() != 4 {
-                return Err(BlockchainError::Inconsistency);
-            }
-            let stake = Amount(
-                u64::MAX
-                    - u64::from_str_radix(&splitted[2], 16)
-                        .map_err(|_| BlockchainError::Inconsistency)?,
-            );
-            let pk: Address = splitted[3]
-                .parse()
-                .map_err(|_| BlockchainError::Inconsistency)?;
-            delegators.push((pk, stake));
+            let delegator_rank = keys::DelegatorRankDbKey::try_from(k)?;
+            delegators.push((delegator_rank.delegator, delegator_rank.amount));
             if let Some(top) = top {
                 if delegators.len() >= top {
                     break;
@@ -745,22 +726,11 @@ impl Blockchain for KvStoreChain {
         let mut delegatees = Vec::new();
         for (k, _) in self
             .database
-            .pairs(keys::delegatee_rank_prefix(&delegator).into())?
+            .pairs(keys::DelegateeRankDbKey::prefix(&delegator).into())?
             .into_iter()
         {
-            let splitted = k.0.split("-").collect::<Vec<_>>();
-            if splitted.len() != 4 {
-                return Err(BlockchainError::Inconsistency);
-            }
-            let stake = Amount(
-                u64::MAX
-                    - u64::from_str_radix(&splitted[2], 16)
-                        .map_err(|_| BlockchainError::Inconsistency)?,
-            );
-            let pk: Address = splitted[3]
-                .parse()
-                .map_err(|_| BlockchainError::Inconsistency)?;
-            delegatees.push((pk, stake));
+            let delegatee_rank = keys::DelegateeRankDbKey::try_from(k)?;
+            delegatees.push((delegatee_rank.delegatee, delegatee_rank.amount));
             if let Some(top) = top {
                 if delegatees.len() >= top {
                     break;

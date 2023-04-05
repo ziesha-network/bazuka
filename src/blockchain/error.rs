@@ -1,4 +1,4 @@
-use crate::db::KvStoreError;
+use crate::db::{keys::ParseDbKeyError, KvStoreError};
 use crate::zk::{StateManagerError, ZkError};
 use thiserror::Error;
 
@@ -112,4 +112,12 @@ pub enum BlockchainError {
     SingleUpdateAllowedPerContract,
     #[error("validator is not registered")]
     ValidatorNotRegistered,
+    #[error("blockchain is empty")]
+    BlockchainEmpty,
+    #[error("invalid number of rollbacks in the patch")]
+    InvalidNumberOfRollbacks,
+    #[error("error while parsing db-key: {0}")]
+    ParseDbKeyError(#[from] ParseDbKeyError),
+    #[error("mpn-address cannot be used")]
+    MpnAddressCannotBeUsed,
 }

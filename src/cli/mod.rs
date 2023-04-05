@@ -1,10 +1,10 @@
 #[cfg(feature = "node")]
 use {
-    crate::blockchain::KvStoreChain,
-    crate::client::{messages::SocialProfiles, Limit, NodeRequest},
-    crate::common::*,
-    crate::db::LevelDbKvStore,
-    crate::node::{node_create, Firewall},
+    bazuka::blockchain::KvStoreChain,
+    bazuka::client::{messages::SocialProfiles, Limit, NodeRequest},
+    bazuka::common::*,
+    bazuka::db::LevelDbKvStore,
+    bazuka::node::{node_create, Firewall},
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
     hyper::{Body, Client, Request, Response, Server, StatusCode},
@@ -14,11 +14,11 @@ use {
 
 #[cfg(feature = "client")]
 use {
-    crate::client::{NodeError, PeerAddress},
-    crate::config,
-    crate::core::{Address, Amount, MpnAddress, TokenId, ZieshaAddress},
-    crate::mpn::MpnWorker,
-    crate::wallet::WalletCollection,
+    bazuka::client::{NodeError, PeerAddress},
+    bazuka::config,
+    bazuka::core::{Address, Amount, GeneralAddress, MpnAddress, TokenId},
+    bazuka::mpn::MpnWorker,
+    bazuka::wallet::WalletCollection,
     colored::Colorize,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
@@ -111,9 +111,9 @@ enum WalletOptions {
         #[structopt(long)]
         memo: Option<String>,
         #[structopt(long)]
-        from: ZieshaAddress,
+        from: GeneralAddress,
         #[structopt(long)]
-        to: ZieshaAddress,
+        to: GeneralAddress,
         #[structopt(long)]
         token: Option<usize>,
         #[structopt(long)]
@@ -157,12 +157,7 @@ enum WalletOptions {
     /// Get info and balances of the wallet
     Info {},
     /// Resend pending transactions
-    ResendPending {
-        #[structopt(long)]
-        fill_gaps: bool,
-        #[structopt(long)]
-        shift: bool,
-    },
+    ResendPending {},
 }
 
 #[derive(StructOpt)]
@@ -278,8 +273,8 @@ async fn run_node(
         bootstrap_nodes,
         blockchain,
         0,
-        wallet.validator_builder(),
-        wallet.user_builder(0),
+        wallet.clone().validator().tx_builder(),
+        wallet.clone().user(0).tx_builder(),
         social_profiles,
         inc_recv,
         out_send,
@@ -361,38 +356,15 @@ async fn run_node(
     Ok(())
 }
 
-fn get_wallet_collection() -> Option<WalletCollection> {
-    let wallet_path = get_wallet_path();
-    let wallet = WalletCollection::open(wallet_path.clone()).unwrap();
-    wallet
-}
-
-fn get_wallet_path() -> PathBuf {
-    let wallet_path = home::home_dir().unwrap().join(Path::new(".bazuka-wallet"));
-    wallet_path
-}
-
-fn get_conf_path() -> PathBuf {
-    let conf_path = home::home_dir().unwrap().join(Path::new(".bazuka.yaml"));
-    conf_path
-}
-
-fn get_conf() -> Option<BazukaConfig> {
-    let conf_path = get_conf_path();
-    let conf: Option<BazukaConfig> = std::fs::File::open(conf_path.clone())
-        .ok()
-        .map(|f| serde_yaml::from_reader(f).unwrap());
-    conf
-}
-
 pub async fn initialize_cli() {
     let opts = CliOptions::from_args();
 
-    let conf_path = get_conf_path();
-
-    let conf = get_conf();
-    let wallet = get_wallet_collection();
-    let wallet_path = get_wallet_path();
+    let conf_path = home::home_dir().unwrap().join(Path::new(".bazuka.yaml"));
+    let conf: Option<BazukaConfig> = std::fs::File::open(conf_path.clone())
+        .ok()
+        .map(|f| serde_yaml::from_reader(f).unwrap());
+    let wallet_path = home::home_dir().unwrap().join(Path::new(".bazuka-wallet"));
+    let wallet = WalletCollection::open(wallet_path.clone()).unwrap();
 
     match opts {
         CliOptions::Chain(chain_opts) => match chain_opts {
@@ -415,16 +387,25 @@ pub async fn initialize_cli() {
                 crate::cli::node::start(
                     discord_handle,
                     client_only,
-                    &conf.expect(BAZUKA_NOT_INITILIZED),
-                    &wallet.expect(BAZUKA_NOT_INITILIZED),
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
                 )
                 .await;
             }
             NodeCliOptions::Status {} => {
-                crate::cli::node::status(get_conf(), get_wallet_collection()).await;
+                crate::cli::node::status(
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
+                )
+                .await;
             }
             NodeCliOptions::AddMpnWorker { mpn_address } => {
-                crate::cli::node::add_mpn_worker(&conf_path, get_conf(), mpn_address).await;
+                crate::cli::node::add_mpn_worker(
+                    &conf_path,
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    mpn_address,
+                )
+                .await;
             }
         },
         #[cfg(feature = "client")]
@@ -458,7 +439,7 @@ pub async fn initialize_cli() {
             WalletOptions::AddToken { id } => {
                 crate::cli::wallet::add_token(
                     id,
-                    &mut wallet.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
                     &wallet_path,
                 );
             }
@@ -479,8 +460,8 @@ pub async fn initialize_cli() {
                     decimals,
                     mintable,
                     fee,
-                    get_conf(),
-                    get_wallet_collection(),
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
                     &wallet_path,
                 )
                 .await;
@@ -500,14 +481,14 @@ pub async fn initialize_cli() {
                     amount,
                     fee,
                     token,
-                    conf,
-                    wallet,
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
                     &wallet_path,
                 )
                 .await;
             }
             WalletOptions::Reset {} => {
-                crate::cli::wallet::reset(&mut wallet.expect(BAZUKA_NOT_INITILIZED), &wallet_path);
+                crate::cli::wallet::reset(wallet.expect(BAZUKA_NOT_INITILIZED), &wallet_path);
             }
             WalletOptions::RegisterValidator {
                 memo,
@@ -518,9 +499,9 @@ pub async fn initialize_cli() {
                     memo,
                     commision,
                     fee,
-                    get_conf(),
-                    get_wallet_collection(),
-                    &get_wallet_path(),
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
+                    &wallet_path,
                 )
                 .await;
             }
@@ -533,13 +514,31 @@ pub async fn initialize_cli() {
                 to,
                 fee,
             } => {
-                crate::cli::wallet::delegate(memo, amount, to, fee).await;
+                crate::cli::wallet::delegate(
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
+                    &wallet_path,
+                    memo,
+                    amount,
+                    to,
+                    fee,
+                )
+                .await;
             }
-            WalletOptions::ResendPending { fill_gaps, shift } => {
-                crate::cli::wallet::resend_pending(fill_gaps, shift).await;
+            WalletOptions::ResendPending {} => {
+                crate::cli::wallet::resend_pending(
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
+                    &wallet_path,
+                )
+                .await;
             }
             WalletOptions::Info {} => {
-                crate::cli::wallet::info(get_conf(), get_wallet_collection()).await;
+                crate::cli::wallet::info(
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
+                )
+                .await;
             }
         },
     }

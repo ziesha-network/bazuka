@@ -1081,12 +1081,12 @@ fn test_chain_should_rollback_applied_block() {
     let height = chain.get_height().unwrap();
     assert_eq!(2, height);
 
-    let account = chain.get_account(wallet2.get_address()).unwrap();
+    let nonce = chain.get_nonce(wallet2.get_address()).unwrap();
     let balance = chain
         .get_balance(wallet2.get_address(), TokenId::Ziesha)
         .unwrap();
     assert_eq!(Amount(1_000_000), balance);
-    assert_eq!(0, account.nonce);
+    assert_eq!(0, nonce);
 
     rollback_till_empty(&mut chain).unwrap();
 }

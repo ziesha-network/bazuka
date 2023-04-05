@@ -4,7 +4,7 @@ mod simulation;
 use simulation::*;
 
 use crate::config::blockchain;
-use crate::core::{ChainSourcedTx, Money, TransactionAndDelta, ZkHasher};
+use crate::core::{Money, TransactionAndDelta, ZkHasher};
 use crate::zk;
 use std::sync::Arc;
 use std::time::Duration;
@@ -403,11 +403,7 @@ async fn test_states_get_synced() -> Result<(), NodeError> {
     let test_logic = async {
         let tx_delta = sample_contract_call();
 
-        chans[0]
-            .transact(TransactRequest::ChainSourcedTx(
-                ChainSourcedTx::TransactionAndDelta(tx_delta),
-            ))
-            .await?;
+        chans[0].transact(tx_delta.into()).await?;
 
         chans[0].mine().await?;
         assert_eq!(chans[0].stats().await?.height, 2);
@@ -489,11 +485,7 @@ async fn test_chain_rolls_back() -> Result<(), NodeError> {
     let test_logic = async {
         let tx_delta = sample_contract_call();
 
-        chans[0]
-            .transact(TransactRequest::ChainSourcedTx(
-                ChainSourcedTx::TransactionAndDelta(tx_delta),
-            ))
-            .await?;
+        chans[0].transact(tx_delta.into()).await?;
 
         chans[0].mine().await?;
         assert_eq!(chans[0].stats().await?.height, 2);

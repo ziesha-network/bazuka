@@ -1,7 +1,7 @@
-use crate::blockchain::{TransactionStats, ZkBlockchainPatch};
+use crate::blockchain::{TimestampCommit, TransactionStats, ZkBlockchainPatch};
 use crate::core::{
-    Account, Address, Amount, Block, ChainSourcedTx, ContractId, Header, Money, MpnAddress,
-    MpnDeposit, MpnSourcedTx, MpnWithdraw, Signature, Token, TransactionAndDelta, ValidatorProof,
+    Address, Amount, Block, ContractId, GeneralAddress, GeneralTransaction, Header, Money,
+    MpnAddress, Signature, Token, TransactionAndDelta, ValidatorProof,
 };
 use crate::mpn::MpnWork;
 use crate::zk;
@@ -9,10 +9,7 @@ use std::collections::HashMap;
 use thiserror::Error;
 
 use super::{
-    explorer::{
-        ExplorerBlock, ExplorerChainSourcedTx, ExplorerMpnAccount, ExplorerMpnSourcedTx,
-        ExplorerStaker,
-    },
+    explorer::{ExplorerBlock, ExplorerGeneralTransaction, ExplorerMpnAccount, ExplorerStaker},
     Peer, PeerAddress,
 };
 use serde::{Deserialize, Serialize};
@@ -48,7 +45,8 @@ pub struct GetAccountRequest {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct GetAccountResponse {
-    pub account: Account,
+    pub nonce: u32,
+    pub mpn_deposit_nonce: u32,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -65,7 +63,7 @@ pub struct GetDelegationsResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMpnAccountRequest {
-    pub index: u64,
+    pub address: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -176,9 +174,9 @@ pub struct GetHeadersResponse {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub enum TransactRequest {
-    ChainSourcedTx(ChainSourcedTx),
-    MpnSourcedTx(MpnSourcedTx),
+pub struct TransactRequest {
+    pub tx: GeneralTransaction,
+    pub timestamp_commit: Option<TimestampCommit>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -193,24 +191,13 @@ pub struct ShutdownRequest {}
 pub struct ShutdownResponse {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetZeroMempoolRequest {}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetZeroMempoolResponse {
-    pub height: u64,
-    pub reward: Amount,
-    pub updates: Vec<zk::MpnTransaction>,
-    pub deposits: Vec<MpnDeposit>,
-    pub withdraws: Vec<MpnWithdraw>,
+pub struct GetMempoolRequest {
+    pub filter: Option<GeneralAddress>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetMempoolRequest {}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMempoolResponse {
-    pub chain_sourced: Vec<ChainSourcedTx>,
-    pub mpn_sourced: Vec<MpnSourcedTx>,
+    pub mempool: Vec<GeneralTransaction>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -237,7 +224,7 @@ pub struct GetBalanceResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct JsonMpnTransaction {
-    pub nonce: u64,
+    pub nonce: u32,
     pub src_pub_key: String,
     pub dst_pub_key: String,
 
@@ -270,8 +257,9 @@ pub struct PostJsonMpnTransactionResponse {}
 impl TryInto<TransactRequest> for PostJsonMpnTransactionRequest {
     type Error = InputError;
     fn try_into(self) -> Result<TransactRequest, Self::Error> {
-        Ok(TransactRequest::MpnSourcedTx(MpnSourcedTx::MpnTransaction(
-            zk::MpnTransaction {
+        Ok(TransactRequest {
+            timestamp_commit: None,
+            tx: GeneralTransaction::MpnTransaction(zk::MpnTransaction {
                 nonce: self.tx.nonce,
                 src_pub_key: self
                     .tx
@@ -309,8 +297,8 @@ impl TryInto<TransactRequest> for PostJsonMpnTransactionRequest {
                     &hex::decode(&self.tx.sig).map_err(|_| Self::Error::Invalid)?,
                 )
                 .map_err(|_| Self::Error::Invalid)?,
-            },
-        )))
+            }),
+        })
     }
 }
 
@@ -318,10 +306,10 @@ impl Into<GetJsonMempoolResponse> for GetMempoolResponse {
     fn into(self) -> GetJsonMempoolResponse {
         GetJsonMempoolResponse {
             updates: self
-                .mpn_sourced
+                .mempool
                 .into_iter()
                 .filter_map(|t| {
-                    if let MpnSourcedTx::MpnTransaction(tx) = t {
+                    if let GeneralTransaction::MpnTransaction(tx) = t {
                         Some(tx)
                     } else {
                         None
@@ -347,7 +335,7 @@ impl Into<GetJsonMempoolResponse> for GetMempoolResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetJsonMempoolRequest {
-    pub mpn_address: String,
+    pub filter: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -440,8 +428,7 @@ pub struct GetExplorerMempoolRequest {}
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetExplorerMempoolResponse {
-    pub chain_sourced: Vec<(ExplorerChainSourcedTx, TransactionStats)>,
-    pub mpn_sourced: Vec<(ExplorerMpnSourcedTx, TransactionStats)>,
+    pub mempool: Vec<(ExplorerGeneralTransaction, TransactionStats)>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

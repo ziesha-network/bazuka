@@ -23,7 +23,6 @@ pub type ZkSigner = crypto::jubjub::JubJub<ZkHasher>;
 
 pub type Address = <Signer as crypto::SignatureScheme>::Pub;
 pub type ParseAddressError = <Signer as crypto::SignatureScheme>::PubParseError;
-pub type Account = address::Account;
 pub type Staker = address::Staker<Vrf>;
 pub type Delegate = address::Delegate;
 pub type Signature = address::Signature<Signer>;
@@ -53,18 +52,18 @@ pub type ContractId = transaction::ContractId<Hasher>;
 pub type TransactionAndDelta = transaction::TransactionAndDelta<Hasher, Signer, Vrf>;
 
 #[derive(Error, Debug)]
-pub enum ParseZieshaAddressError {
+pub enum ParseGeneralAddressError {
     #[error("ziesha address invalid")]
     Invalid,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub enum ZieshaAddress {
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GeneralAddress {
     ChainAddress(Address),
     MpnAddress(MpnAddress),
 }
 
-impl std::fmt::Display for ZieshaAddress {
+impl std::fmt::Display for GeneralAddress {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::ChainAddress(addr) => write!(f, "{}", addr),
@@ -73,8 +72,8 @@ impl std::fmt::Display for ZieshaAddress {
     }
 }
 
-impl FromStr for ZieshaAddress {
-    type Err = ParseZieshaAddressError;
+impl FromStr for GeneralAddress {
+    type Err = ParseGeneralAddressError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Ok::<Address, ParseAddressError>(addr) = s.parse() {
             Ok(Self::ChainAddress(addr))
@@ -86,92 +85,108 @@ impl FromStr for ZieshaAddress {
     }
 }
 
-// Transactions initiated from chain accounts
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum NonceGroup {
+    TransactionAndDelta(Address),
+    MpnDeposit(Address),
+    MpnTransaction(MpnAddress),
+    MpnWithdraw(MpnAddress),
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
-pub enum ChainSourcedTx {
+pub enum GeneralTransaction {
     TransactionAndDelta(TransactionAndDelta),
     MpnDeposit(MpnDeposit),
-}
-
-impl ChainSourcedTx {
-    pub fn sender(&self) -> Address {
-        match self {
-            ChainSourcedTx::TransactionAndDelta(tx_delta) => {
-                tx_delta.tx.src.clone().unwrap_or_default()
-            }
-            ChainSourcedTx::MpnDeposit(mpn_deposit) => mpn_deposit.payment.src.clone(),
-        }
-    }
-    pub fn nonce(&self) -> u32 {
-        match self {
-            ChainSourcedTx::TransactionAndDelta(tx_delta) => tx_delta.tx.nonce,
-            ChainSourcedTx::MpnDeposit(mpn_deposit) => mpn_deposit.payment.nonce,
-        }
-    }
-    pub fn verify_signature(&self) -> bool {
-        match self {
-            ChainSourcedTx::TransactionAndDelta(tx_delta) => tx_delta.tx.verify_signature(),
-            ChainSourcedTx::MpnDeposit(mpn_deposit) => mpn_deposit.payment.verify_signature(),
-        }
-    }
-}
-
-// Transactions initiated from MPN accounts
-#[allow(clippy::large_enum_variant)]
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-pub enum MpnSourcedTx {
     MpnTransaction(MpnTransaction),
     MpnWithdraw(MpnWithdraw),
 }
 
-impl MpnSourcedTx {
-    pub fn sender(&self) -> MpnAddress {
+impl GeneralTransaction {
+    pub fn nonce_group(&self) -> NonceGroup {
         match self {
-            MpnSourcedTx::MpnTransaction(mpn_tx) => MpnAddress {
+            GeneralTransaction::TransactionAndDelta(tx_delta) => {
+                NonceGroup::TransactionAndDelta(tx_delta.tx.src.clone().unwrap_or_default())
+            }
+            GeneralTransaction::MpnDeposit(mpn_deposit) => {
+                NonceGroup::MpnDeposit(mpn_deposit.payment.src.clone())
+            }
+            GeneralTransaction::MpnTransaction(mpn_tx) => NonceGroup::MpnTransaction(MpnAddress {
                 pub_key: mpn_tx.src_pub_key.clone(),
-            },
-            MpnSourcedTx::MpnWithdraw(mpn_withdraw) => MpnAddress {
+            }),
+            GeneralTransaction::MpnWithdraw(mpn_withdraw) => NonceGroup::MpnWithdraw(MpnAddress {
                 pub_key: mpn_withdraw.zk_address.clone(),
-            },
-        }
-    }
-    pub fn nonce(&self) -> u64 {
-        match self {
-            MpnSourcedTx::MpnTransaction(mpn_tx) => mpn_tx.nonce,
-            MpnSourcedTx::MpnWithdraw(mpn_withdraw) => mpn_withdraw.zk_nonce,
+            }),
         }
     }
     pub fn verify_signature(&self) -> bool {
         match self {
-            MpnSourcedTx::MpnTransaction(mpn_tx) => mpn_tx.verify_signature(),
-            MpnSourcedTx::MpnWithdraw(mpn_withdraw) => mpn_withdraw.verify_signature::<ZkHasher>(),
+            GeneralTransaction::TransactionAndDelta(tx_delta) => tx_delta.tx.verify_signature(),
+            GeneralTransaction::MpnDeposit(mpn_deposit) => mpn_deposit.payment.verify_signature(),
+            GeneralTransaction::MpnTransaction(mpn_tx) => mpn_tx.verify_signature(),
+            GeneralTransaction::MpnWithdraw(mpn_withdraw) => {
+                mpn_withdraw.verify_signature::<ZkHasher>()
+            }
+        }
+    }
+    pub fn nonce(&self) -> u32 {
+        match self {
+            GeneralTransaction::TransactionAndDelta(tx_delta) => tx_delta.tx.nonce,
+            GeneralTransaction::MpnDeposit(mpn_deposit) => mpn_deposit.payment.nonce,
+            GeneralTransaction::MpnTransaction(mpn_tx) => mpn_tx.nonce,
+            GeneralTransaction::MpnWithdraw(mpn_withdraw) => mpn_withdraw.zk_nonce,
+        }
+    }
+    pub fn sender(&self) -> GeneralAddress {
+        match self {
+            GeneralTransaction::TransactionAndDelta(tx_delta) => {
+                GeneralAddress::ChainAddress(tx_delta.tx.src.clone().unwrap_or_default())
+            }
+            GeneralTransaction::MpnDeposit(mpn_deposit) => {
+                GeneralAddress::ChainAddress(mpn_deposit.payment.src.clone())
+            }
+            GeneralTransaction::MpnTransaction(mpn_tx) => GeneralAddress::MpnAddress(MpnAddress {
+                pub_key: mpn_tx.src_pub_key.clone(),
+            }),
+            GeneralTransaction::MpnWithdraw(mpn_withdraw) => {
+                GeneralAddress::MpnAddress(MpnAddress {
+                    pub_key: mpn_withdraw.zk_address.clone(),
+                })
+            }
         }
     }
 }
 
-impl PartialEq<ChainSourcedTx> for ChainSourcedTx {
-    fn eq(&self, other: &Self) -> bool {
-        bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
-    }
-}
-impl Eq for ChainSourcedTx {}
-impl std::hash::Hash for ChainSourcedTx {
-    fn hash<Hasher>(&self, state: &mut Hasher)
-    where
-        Hasher: std::hash::Hasher,
-    {
-        state.write(&bincode::serialize(self).unwrap());
-        state.finish();
+impl From<TransactionAndDelta> for GeneralTransaction {
+    fn from(tx: TransactionAndDelta) -> Self {
+        Self::TransactionAndDelta(tx)
     }
 }
 
-impl PartialEq<MpnSourcedTx> for MpnSourcedTx {
+impl From<MpnDeposit> for GeneralTransaction {
+    fn from(tx: MpnDeposit) -> Self {
+        Self::MpnDeposit(tx)
+    }
+}
+
+impl From<MpnTransaction> for GeneralTransaction {
+    fn from(tx: MpnTransaction) -> Self {
+        Self::MpnTransaction(tx)
+    }
+}
+
+impl From<MpnWithdraw> for GeneralTransaction {
+    fn from(tx: MpnWithdraw) -> Self {
+        Self::MpnWithdraw(tx)
+    }
+}
+
+impl PartialEq<GeneralTransaction> for GeneralTransaction {
     fn eq(&self, other: &Self) -> bool {
         bincode::serialize(self).unwrap() == bincode::serialize(other).unwrap()
     }
 }
-impl Eq for MpnSourcedTx {}
-impl std::hash::Hash for MpnSourcedTx {
+impl Eq for GeneralTransaction {}
+impl std::hash::Hash for GeneralTransaction {
     fn hash<Hasher>(&self, state: &mut Hasher)
     where
         Hasher: std::hash::Hasher,

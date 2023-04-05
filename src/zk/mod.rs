@@ -58,7 +58,8 @@ impl<K: std::hash::Hash + Clone + Eq + std::fmt::Debug, V: std::fmt::Debug> LruC
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct MpnAccount {
-    pub nonce: u64,
+    pub tx_nonce: u32,       // Increased on MpnTransactions
+    pub withdraw_nonce: u32, // Increased on MpnWithdrawals
     pub address: jubjub::PointAffine,
     pub tokens: HashMap<u64, Money>,
 }
@@ -286,6 +287,20 @@ impl TryInto<u64> for ZkScalar {
         } else {
             Ok(u64::from_le_bytes(
                 self.to_repr().as_ref()[..8].try_into().unwrap(),
+            ))
+        }
+    }
+}
+
+impl TryInto<u32> for ZkScalar {
+    type Error = ZkError;
+
+    fn try_into(self) -> Result<u32, Self::Error> {
+        if !self.to_repr().as_ref()[4..].iter().all(|d| *d == 0) {
+            Err(ZkError::ScalarBiggerThanU64)
+        } else {
+            Ok(u32::from_le_bytes(
+                self.to_repr().as_ref()[..4].try_into().unwrap(),
             ))
         }
     }
@@ -559,7 +574,7 @@ pub struct ZkSingleInputVerifierKey {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct MpnTransaction {
-    pub nonce: u64,
+    pub nonce: u32,
     pub src_pub_key: jubjub::PublicKey,
     pub dst_pub_key: jubjub::PublicKey,
 
@@ -602,7 +617,7 @@ impl MpnTransaction {
     pub fn hash(&self) -> ZkScalar {
         let dst_pub_decom = self.dst_pub_key.0.decompress();
         ZkMainHasher::hash(&[
-            ZkScalar::from(self.nonce),
+            ZkScalar::from(self.nonce as u64),
             dst_pub_decom.0,
             dst_pub_decom.1,
             self.amount.token_id.into(),

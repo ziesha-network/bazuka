@@ -58,7 +58,7 @@ pub fn update(
             continue;
         };
         let dst_token = dst_before.tokens.get(&tx.dst_token_index);
-        if tx.nonce != src_before.nonce
+        if tx.nonce != src_before.tx_nonce + 1
             || src_before.address != tx.src_pub_key.decompress()
             || (dst_before.address.is_on_curve()
                 && dst_before.address != tx.dst_pub_key.decompress())
@@ -80,13 +80,14 @@ pub fn update(
             let mut src_after = MpnAccount {
                 address: src_before.address.clone(),
                 tokens: src_before.tokens.clone(),
-                nonce: src_before.nonce + 1,
+                withdraw_nonce: src_before.withdraw_nonce,
+                tx_nonce: src_before.tx_nonce + 1,
             };
 
             let src_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.src_index(mpn_log4_account_capacity), 3]),
+                ZkDataLocator(vec![tx.src_index(mpn_log4_account_capacity), 4]),
                 tx.src_token_index,
             )
             .unwrap();
@@ -121,7 +122,7 @@ pub fn update(
             let src_fee_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.src_index(mpn_log4_account_capacity), 3]),
+                ZkDataLocator(vec![tx.src_index(mpn_log4_account_capacity), 4]),
                 tx.src_fee_token_index,
             )
             .unwrap();
@@ -150,7 +151,7 @@ pub fn update(
             let dst_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.dst_index(mpn_log4_account_capacity), 3]),
+                ZkDataLocator(vec![tx.dst_index(mpn_log4_account_capacity), 4]),
                 tx.dst_token_index,
             )
             .unwrap();
@@ -166,7 +167,8 @@ pub fn update(
             let mut dst_after = MpnAccount {
                 address: tx.dst_pub_key.0.decompress(),
                 tokens: dst_before.tokens.clone(),
-                nonce: dst_before.nonce,
+                tx_nonce: dst_before.tx_nonce,
+                withdraw_nonce: dst_before.withdraw_nonce,
             };
             dst_after
                 .tokens

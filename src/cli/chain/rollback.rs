@@ -1,6 +1,6 @@
-use crate::blockchain::Blockchain;
 use crate::cli::BazukaConfig;
-use crate::{
+use bazuka::blockchain::Blockchain;
+use bazuka::{
     blockchain::KvStoreChain, config::blockchain::get_blockchain_config, db::LevelDbKvStore,
 };
 

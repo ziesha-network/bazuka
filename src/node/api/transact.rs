@@ -1,7 +1,7 @@
 use super::messages::{TransactRequest, TransactResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::{Blockchain, BlockchainError};
-use crate::core::ChainSourcedTx;
+use crate::core::GeneralTransaction;
 use crate::db::KvStore;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -13,27 +13,18 @@ pub async fn transact<B: Blockchain>(
     req: TransactRequest,
 ) -> Result<TransactResponse, NodeError> {
     let mut ctx = context.write().await;
-    match req {
-        TransactRequest::ChainSourcedTx(chain_sourced_tx) => {
-            let error = if let ChainSourcedTx::TransactionAndDelta(tx_delta) = &chain_sourced_tx {
-                ctx.blockchain
-                    .check_tx(&tx_delta.tx)
-                    .err()
-                    .filter(|e| !matches!(e, BlockchainError::InvalidTransactionNonce))
-                    .map(|e| e.to_string())
-            } else {
-                None
-            };
-            if error.is_none() {
-                let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
-                ctx.mempool_add_chain_sourced(is_local, chain_sourced_tx)?;
+
+    if let GeneralTransaction::TransactionAndDelta(tx_delta) = &req.tx {
+        if let Some(err) = ctx.blockchain.check_tx(&tx_delta.tx).err() {
+            if !matches!(err, BlockchainError::InvalidTransactionNonce) {
+                return Ok(TransactResponse {
+                    error: Some(err.to_string()),
+                });
             }
-            Ok(TransactResponse { error })
-        }
-        TransactRequest::MpnSourcedTx(mpn_sourced_tx) => {
-            let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
-            ctx.mempool_add_mpn_sourced(is_local, mpn_sourced_tx)?;
-            Ok(TransactResponse { error: None })
         }
     }
+
+    let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
+    ctx.mempool_add_tx(is_local, req.tx)?;
+    Ok(TransactResponse { error: None })
 }

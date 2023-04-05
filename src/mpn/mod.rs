@@ -166,7 +166,8 @@ impl MpnConfig {
             log4_size: self.log4_tree_size,
             item_type: Box::new(ZkStateModel::Struct {
                 field_types: vec![
-                    ZkStateModel::Scalar, // Nonce
+                    ZkStateModel::Scalar, // Tx-Nonce
+                    ZkStateModel::Scalar, // Withdraw-Nonce
                     ZkStateModel::Scalar, // Pub-key X
                     ZkStateModel::Scalar, // Pub-key Y
                     ZkStateModel::List {
@@ -246,8 +247,8 @@ pub fn prepare_works(
     deposit_reward: Amount,
     withdraw_reward: Amount,
     update_reward: Amount,
-    validator_tx_builder_nonce: u32,
-    mut validator_tx_builder_mpn_nonce: u64,
+    validator_tx_builder_deposit_nonce: u32,
+    mut validator_tx_builder_mpn_nonce: u32,
     validator_tx_builder: TxBuilder,
     user_tx_builder: TxBuilder,
 ) -> Result<MpnWorkPool, MpnError> {
@@ -267,7 +268,7 @@ pub fn prepare_works(
             config.mpn_contract_id,
             validator_tx_builder.get_mpn_address(),
             0,
-            validator_tx_builder_nonce + 2,
+            validator_tx_builder_deposit_nonce + 1,
             Money {
                 token_id: TokenId::Ziesha,
                 amount: block_reward,
