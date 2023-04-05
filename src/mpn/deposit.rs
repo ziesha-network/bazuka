@@ -96,6 +96,7 @@ pub fn deposit<K: KvStore>(
 
             transitions.push(DepositTransition {
                 tx: tx.clone(),
+                token_index: zk_token_index,
                 before: acc.clone(),
                 before_balances_hash: acc.tokens_hash::<ZkHasher>(log4_token_tree_size),
                 before_balance: acc_token.cloned().unwrap_or_default(),
