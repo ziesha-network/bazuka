@@ -26,8 +26,8 @@ num-integer = "0.1"
 num-traits = "0.2"
 hex = "0.4.3"
 colored = "2.0.0"
-bellman = "0.13.0"
-bls12_381 = "0.7.0"
+bellman = "0.14.0"
+bls12_381 = "0.8.0"
 ed25519-dalek = { version = "1", features = ["serde"] }
 rayon = "1.5.3"
 
