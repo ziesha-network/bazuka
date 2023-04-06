@@ -51,13 +51,30 @@ pub fn update<K: KvStore>(
             tx.dst_index(mpn_log4_account_capacity),
         )
         .unwrap();
-        let src_token = if let Some(src_token) = src_before.tokens.get(&tx.src_token_index) {
+
+        let ((src_token_index, dst_token_index), src_fee_token_index) =
+            if let Some(((src_token_index, dst_token_index), src_fee_token_index)) = src_before
+                .find_token_index(mpn_log4_account_capacity, tx.amount.token_id, false)
+                .zip(dst_before.find_token_index(
+                    mpn_log4_account_capacity,
+                    tx.amount.token_id,
+                    true,
+                ))
+                .zip(src_before.find_token_index(mpn_log4_account_capacity, tx.fee.token_id, false))
+            {
+                ((src_token_index, dst_token_index), src_fee_token_index)
+            } else {
+                rejected.push(tx.clone());
+                continue;
+            };
+
+        let src_token = if let Some(src_token) = src_before.tokens.get(&src_token_index) {
             src_token.clone()
         } else {
             rejected.push(tx.clone());
             continue;
         };
-        let dst_token = dst_before.tokens.get(&tx.dst_token_index);
+        let dst_token = dst_before.tokens.get(&dst_token_index);
         if tx.nonce != src_before.tx_nonce + 1
             || src_before.address != tx.src_pub_key.decompress()
             || (dst_before.address.is_on_curve()
@@ -88,15 +105,11 @@ pub fn update<K: KvStore>(
                 &mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.src_index(mpn_log4_account_capacity), 4]),
-                tx.src_token_index,
+                src_token_index,
             )
             .unwrap();
 
-            src_after
-                .tokens
-                .get_mut(&tx.src_token_index)
-                .unwrap()
-                .amount -= tx.amount.amount;
+            src_after.tokens.get_mut(&src_token_index).unwrap().amount -= tx.amount.amount;
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut mirror,
                 mpn_contract_id,
@@ -107,7 +120,7 @@ pub fn update<K: KvStore>(
             .unwrap();
 
             let src_fee_token =
-                if let Some(src_fee_token) = src_after.tokens.get(&tx.src_fee_token_index) {
+                if let Some(src_fee_token) = src_after.tokens.get(&src_fee_token_index) {
                     src_fee_token.clone()
                 } else {
                     rejected.push(tx.clone());
@@ -123,13 +136,13 @@ pub fn update<K: KvStore>(
                 &mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.src_index(mpn_log4_account_capacity), 4]),
-                tx.src_fee_token_index,
+                src_fee_token_index,
             )
             .unwrap();
 
             src_after
                 .tokens
-                .get_mut(&tx.src_fee_token_index)
+                .get_mut(&src_fee_token_index)
                 .unwrap()
                 .amount -= tx.fee.amount;
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
@@ -152,7 +165,7 @@ pub fn update<K: KvStore>(
                 &mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.dst_index(mpn_log4_account_capacity), 4]),
-                tx.dst_token_index,
+                dst_token_index,
             )
             .unwrap();
 
@@ -162,7 +175,7 @@ pub fn update<K: KvStore>(
                 tx.dst_index(mpn_log4_account_capacity),
             )
             .unwrap();
-            let dst_token = dst_before.tokens.get(&tx.dst_token_index);
+            let dst_token = dst_before.tokens.get(&dst_token_index);
 
             let mut dst_after = MpnAccount {
                 address: tx.dst_pub_key.0.decompress(),
@@ -172,7 +185,7 @@ pub fn update<K: KvStore>(
             };
             dst_after
                 .tokens
-                .entry(tx.dst_token_index)
+                .entry(dst_token_index)
                 .or_insert(Money::new(tx.amount.token_id, 0))
                 .amount += tx.amount.amount;
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
@@ -185,6 +198,9 @@ pub fn update<K: KvStore>(
             .unwrap();
 
             transitions.push(UpdateTransition {
+                src_token_index,
+                dst_token_index,
+                src_fee_token_index,
                 tx: tx.clone(),
                 src_before: src_before.clone(),
                 src_proof,

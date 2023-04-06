@@ -38,8 +38,18 @@ pub fn deposit<K: KvStore>(
             tx.zk_address_index(mpn_log4_account_capacity),
         )
         .unwrap();
-        let acc_token = acc.tokens.get(&tx.zk_token_index).clone();
         let src_pub = tx.payment.src.clone();
+        let zk_token_index = if let Some(ind) =
+            acc.find_token_index(mpn_log4_account_capacity, tx.payment.amount.token_id, true)
+        {
+            ind
+        } else {
+            rejected.push(tx.clone());
+            rejected_pub_keys.insert(src_pub);
+            continue;
+        };
+        let acc_token = acc.tokens.get(&zk_token_index).clone();
+
         if rejected_pub_keys.contains(&src_pub)
             || (acc.address != Default::default() && tx.zk_address.0.decompress() != acc.address)
             || (acc_token.is_some() && acc_token.unwrap().token_id != tx.payment.amount.token_id)
@@ -56,7 +66,7 @@ pub fn deposit<K: KvStore>(
             };
             updated_acc
                 .tokens
-                .entry(tx.zk_token_index)
+                .entry(zk_token_index)
                 .or_insert(Money::new(tx.payment.amount.token_id, 0))
                 .amount += tx.payment.amount.amount;
 
@@ -64,7 +74,7 @@ pub fn deposit<K: KvStore>(
                 &mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
-                tx.zk_token_index,
+                zk_token_index,
             )
             .unwrap();
             let proof = KvStoreStateManager::<ZkHasher>::prove(
@@ -86,6 +96,7 @@ pub fn deposit<K: KvStore>(
 
             transitions.push(DepositTransition {
                 tx: tx.clone(),
+                token_index: zk_token_index,
                 before: acc.clone(),
                 before_balances_hash: acc.tokens_hash::<ZkHasher>(log4_token_tree_size),
                 before_balance: acc_token.cloned().unwrap_or_default(),

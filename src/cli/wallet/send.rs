@@ -21,9 +21,6 @@ pub async fn send(
     wallet_path: &PathBuf,
 ) {
     let tx_builder = wallet.user(0).tx_builder();
-    let log4_token_tree_size = config::blockchain::get_blockchain_config()
-        .mpn_config
-        .log4_token_tree_size;
     let mpn_contract_id = config::blockchain::get_blockchain_config()
         .mpn_config
         .mpn_contract_id;
@@ -90,14 +87,6 @@ pub async fn send(
                                 .get_account(tx_builder.get_address())
                                 .await?
                                 .mpn_deposit_nonce;
-                            let dst_acc = client.get_mpn_account(to.clone()).await?.account;
-                            let to_token_index = if let Some(ind) =
-                                dst_acc.find_token_index(log4_token_tree_size, tkn, true)
-                            {
-                                ind
-                            } else {
-                                panic!("Cannot find empty token slot in your MPN account!");
-                            };
                             let new_nonce = wallet
                                 .user(0)
                                 .new_nonce(NonceGroup::MpnDeposit(tx_builder.get_address()))
@@ -106,7 +95,6 @@ pub async fn send(
                                 memo.unwrap_or_default(),
                                 mpn_contract_id,
                                 to,
-                                to_token_index,
                                 new_nonce,
                                 Money {
                                     amount,
@@ -137,20 +125,6 @@ pub async fn send(
                     try_join!(
                         async move {
                             let acc = client.get_mpn_account(from.clone()).await?.account;
-                            let token_index = if let Some(ind) =
-                                acc.find_token_index(log4_token_tree_size, tkn, false)
-                            {
-                                ind
-                            } else {
-                                panic!("Token not found in your account!");
-                            };
-                            let fee_token_index = if let Some(ind) =
-                                acc.find_token_index(log4_token_tree_size, TokenId::Ziesha, false)
-                            {
-                                ind
-                            } else {
-                                panic!("Token not found in your account!");
-                            };
                             let new_nonce = wallet
                                 .user(0)
                                 .new_nonce(NonceGroup::MpnWithdraw(tx_builder.get_mpn_address()))
@@ -159,12 +133,10 @@ pub async fn send(
                                 memo.unwrap_or_default(),
                                 mpn_contract_id,
                                 new_nonce,
-                                token_index,
                                 Money {
                                     amount,
                                     token_id: tkn,
                                 },
-                                fee_token_index,
                                 Money {
                                     amount: fee,
                                     token_id: TokenId::Ziesha,
@@ -187,41 +159,16 @@ pub async fn send(
                                 panic!("Cannot assign a memo to a MPN-to-MPN transaction!");
                             }
                             let acc = client.get_mpn_account(from).await?.account;
-                            let dst_acc = client.get_mpn_account(to.clone()).await?.account;
-                            let to_token_index = if let Some(ind) =
-                                dst_acc.find_token_index(log4_token_tree_size, tkn, true)
-                            {
-                                ind
-                            } else {
-                                panic!("Token not found in your account!");
-                            };
-                            let token_index = if let Some(ind) =
-                                acc.find_token_index(log4_token_tree_size, tkn, false)
-                            {
-                                ind
-                            } else {
-                                panic!("Token not found in your account!");
-                            };
-                            let fee_token_index = if let Some(ind) =
-                                acc.find_token_index(log4_token_tree_size, TokenId::Ziesha, false)
-                            {
-                                ind
-                            } else {
-                                panic!("Token not found in your account!");
-                            };
                             let new_nonce = wallet
                                 .user(0)
                                 .new_nonce(NonceGroup::MpnTransaction(tx_builder.get_mpn_address()))
                                 .unwrap_or(acc.tx_nonce + 1);
                             let tx = tx_builder.create_mpn_transaction(
-                                token_index,
                                 to,
-                                to_token_index,
                                 Money {
                                     amount,
                                     token_id: tkn,
                                 },
-                                fee_token_index,
                                 Money {
                                     amount: fee,
                                     token_id: TokenId::Ziesha,

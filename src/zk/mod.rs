@@ -578,10 +578,6 @@ pub struct MpnTransaction {
     pub src_pub_key: jubjub::PublicKey,
     pub dst_pub_key: jubjub::PublicKey,
 
-    pub src_token_index: u64,
-    pub src_fee_token_index: u64,
-    pub dst_token_index: u64,
-
     pub amount: Money,
     pub fee: Money,
     pub sig: jubjub::Signature,

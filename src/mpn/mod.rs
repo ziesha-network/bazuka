@@ -267,7 +267,6 @@ pub fn prepare_works<K: KvStore>(
             "".into(),
             config.mpn_contract_id,
             validator_tx_builder.get_mpn_address(),
-            0,
             validator_tx_builder_deposit_nonce + 1,
             Money {
                 token_id: TokenId::Ziesha,
@@ -337,14 +336,11 @@ pub fn prepare_works<K: KvStore>(
         let mut update_txs = Vec::new();
         for (addr, amount) in rewards.iter() {
             update_txs.push(validator_tx_builder.create_mpn_transaction(
-                0,
                 addr.clone(),
-                0,
                 Money {
                     token_id: TokenId::Ziesha,
                     amount: *amount,
                 },
-                0,
                 Money::ziesha(0),
                 validator_tx_builder_mpn_nonce,
             ));
@@ -352,14 +348,11 @@ pub fn prepare_works<K: KvStore>(
         }
         if i == config.mpn_num_update_batches - 1 {
             update_txs.push(validator_tx_builder.create_mpn_transaction(
-                0,
                 user_tx_builder.get_mpn_address(),
-                0,
                 Money {
                     token_id: TokenId::Ziesha,
                     amount: block_reward,
                 },
-                0,
                 Money::ziesha(0),
                 validator_tx_builder_mpn_nonce,
             ));
@@ -407,6 +400,7 @@ pub struct DepositTransition {
     pub before_balances_hash: ZkScalar,
     pub before_balance: Money,
     pub proof: Vec<[ZkScalar; 3]>,
+    pub token_index: u64,
     pub balance_proof: Vec<[ZkScalar; 3]>,
 }
 
@@ -417,8 +411,10 @@ pub struct WithdrawTransition {
     pub before_token_balance: Money,
     pub before_fee_balance: Money,
     pub proof: Vec<[ZkScalar; 3]>,
+    pub token_index: u64,
     pub token_balance_proof: Vec<[ZkScalar; 3]>,
     pub before_token_hash: ZkScalar,
+    pub fee_token_index: u64,
     pub fee_balance_proof: Vec<[ZkScalar; 3]>,
 }
 
@@ -430,12 +426,15 @@ pub struct UpdateTransition {
     pub src_before_balance: Money,
     pub src_before_fee_balance: Money,
     pub src_proof: Vec<[ZkScalar; 3]>,
+    pub src_token_index: u64,
     pub src_balance_proof: Vec<[ZkScalar; 3]>,
+    pub src_fee_token_index: u64,
     pub src_fee_balance_proof: Vec<[ZkScalar; 3]>,
     pub dst_before: MpnAccount,
     pub dst_before_balances_hash: ZkScalar,
     pub dst_before_balance: Money,
     pub dst_proof: Vec<[ZkScalar; 3]>,
+    pub dst_token_index: u64,
     pub dst_balance_proof: Vec<[ZkScalar; 3]>,
 }
 
