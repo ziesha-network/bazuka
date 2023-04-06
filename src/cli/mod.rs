@@ -1,9 +1,9 @@
 #[cfg(feature = "node")]
 use {
-    bazuka::blockchain::KvStoreChain,
+    bazuka::blockchain::Blockchain,
     bazuka::client::{messages::SocialProfiles, Limit, NodeRequest},
     bazuka::common::*,
-    bazuka::db::LevelDbKvStore,
+    bazuka::db::KvStore,
     bazuka::node::{node_create, Firewall},
     hyper::server::conn::AddrStream,
     hyper::service::{make_service_fn, service_fn},
@@ -170,6 +170,8 @@ enum NodeCliOptions {
         client_only: bool,
         #[structopt(long)]
         discord_handle: Option<String>,
+        #[structopt(long)]
+        dev: bool,
     },
     /// Get status of a node
     Status {},
@@ -225,7 +227,8 @@ enum CliOptions {
 }
 
 #[cfg(feature = "node")]
-async fn run_node(
+async fn run_node<K: KvStore, B: Blockchain<K>>(
+    blockchain: B,
     bazuka_config: BazukaConfig,
     wallet: WalletCollection,
     social_profiles: SocialProfiles,
@@ -254,8 +257,6 @@ async fn run_node(
 
     let bootstrap_nodes = bazuka_config.bootstrap.clone();
 
-    let bazuka_dir = bazuka_config.db.clone();
-
     // 60 request per minute / 4GB per 15min
     let firewall = Firewall::new(360, 4 * GB);
 
@@ -266,11 +267,7 @@ async fn run_node(
         &bazuka_config.network,
         address,
         bootstrap_nodes,
-        KvStoreChain::new(
-            LevelDbKvStore::new(&bazuka_dir, 64).unwrap(),
-            config::blockchain::get_blockchain_config(),
-        )
-        .unwrap(),
+        blockchain,
         0,
         wallet.clone().validator().tx_builder(),
         wallet.clone().user(0).tx_builder(),
@@ -382,12 +379,14 @@ pub async fn initialize_cli() {
             NodeCliOptions::Start {
                 discord_handle,
                 client_only,
+                dev,
             } => {
                 crate::cli::node::start(
                     discord_handle,
                     client_only,
                     conf.expect(BAZUKA_NOT_INITILIZED),
                     wallet.expect(BAZUKA_NOT_INITILIZED),
+                    dev,
                 )
                 .await;
             }
