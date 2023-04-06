@@ -260,6 +260,10 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     }
 }
 
+pub fn get_dev_blockchain_config() -> BlockchainConfig {
+    get_blockchain_config()
+}
+
 #[cfg(test)]
 pub fn get_test_blockchain_config() -> BlockchainConfig {
     use crate::core::RegularSendEntry;
