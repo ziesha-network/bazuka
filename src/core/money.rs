@@ -18,6 +18,48 @@ use thiserror::Error;
 pub struct Amount(pub u64);
 
 #[derive(Error, Debug)]
+pub enum ParseDecimalError {
+    #[error("amount invalid")]
+    Invalid,
+}
+pub struct Decimal {
+    pub value: u64,
+    pub num_decimals: usize,
+}
+
+impl FromStr for Decimal {
+    type Err = ParseDecimalError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut s = s.trim().to_string();
+        if let Some(dot_pos) = s.find('.') {
+            if s == "." {
+                return Err(Self::Err::Invalid);
+            }
+            while let Some(last) = s.chars().last() {
+                if last == '0' {
+                    s.pop();
+                } else {
+                    break;
+                }
+            }
+            let num_decimals = s.len() - dot_pos - 1;
+            s.remove(dot_pos);
+            let value: u64 = s.parse().map_err(|_| Self::Err::Invalid)?;
+            Ok(Self {
+                value,
+                num_decimals,
+            })
+        } else {
+            let value: u64 = s.parse().map_err(|_| Self::Err::Invalid)?;
+            Ok(Self {
+                value,
+                num_decimals: 0,
+            })
+        }
+    }
+}
+
+#[derive(Error, Debug)]
 pub enum ParseAmountError {
     #[error("amount invalid")]
     Invalid,
@@ -132,6 +174,39 @@ impl Div<u64> for Amount {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_decimals() {
+        let a: Decimal = "123".parse().unwrap();
+        assert_eq!((a.value, a.num_decimals), (123, 0));
+
+        let b: Decimal = "123.45".parse().unwrap();
+        assert_eq!((b.value, b.num_decimals), (12345, 2));
+
+        let c: Decimal = "123.450".parse().unwrap();
+        assert_eq!((c.value, c.num_decimals), (12345, 2));
+
+        let d: Decimal = "123.450000".parse().unwrap();
+        assert_eq!((d.value, d.num_decimals), (12345, 2));
+
+        let e: Decimal = "123.".parse().unwrap();
+        assert_eq!((e.value, e.num_decimals), (123, 0));
+
+        let f: Decimal = "123.00".parse().unwrap();
+        assert_eq!((f.value, f.num_decimals), (123, 0));
+
+        let g: Decimal = "1.".parse().unwrap();
+        assert_eq!((g.value, g.num_decimals), (1, 0));
+
+        let h: Decimal = "1.00".parse().unwrap();
+        assert_eq!((h.value, h.num_decimals), (1, 0));
+
+        let i: Decimal = ".1".parse().unwrap();
+        assert_eq!((i.value, i.num_decimals), (1, 1));
+
+        let j: Decimal = ".12300".parse().unwrap();
+        assert_eq!((j.value, j.num_decimals), (123, 3));
+    }
 
     #[test]
     fn test_display_by_decimals_func() {
