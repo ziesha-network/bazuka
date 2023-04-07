@@ -20,6 +20,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                     ctx.mempool_add_tx(true, tx_delta.into())?;
                     if let Some(draft) = ctx.try_produce(wallet)? {
                         ctx.mpn_work_pool = None;
+                        ctx.validator_claim = None;
                         drop(ctx);
                         promote_block(context, draft).await;
                         return Ok(());
