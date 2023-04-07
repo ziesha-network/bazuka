@@ -10,16 +10,19 @@ pub async fn start(
     client_only: bool,
     conf: BazukaConfig,
     mut wallet: WalletCollection,
+    ram: bool,
     dev: bool,
 ) {
-    if dev {
+    let blockchain_conf = if dev {
         let validator_wallet = wallet.validator().tx_builder();
+        config::blockchain::get_dev_blockchain_config(&validator_wallet)
+    } else {
+        config::blockchain::get_blockchain_config()
+    };
+
+    if ram {
         run_node(
-            KvStoreChain::new(
-                RamKvStore::new(),
-                config::blockchain::get_dev_blockchain_config(&validator_wallet),
-            )
-            .unwrap(),
+            KvStoreChain::new(RamKvStore::new(), blockchain_conf).unwrap(),
             conf.clone(),
             wallet.clone(),
             SocialProfiles {
@@ -31,11 +34,7 @@ pub async fn start(
         .unwrap();
     } else {
         run_node(
-            KvStoreChain::new(
-                LevelDbKvStore::new(&conf.db, 64).unwrap(),
-                config::blockchain::get_blockchain_config(),
-            )
-            .unwrap(),
+            KvStoreChain::new(LevelDbKvStore::new(&conf.db, 64).unwrap(), blockchain_conf).unwrap(),
             conf.clone(),
             wallet.clone(),
             SocialProfiles {

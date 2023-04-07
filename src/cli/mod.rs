@@ -171,6 +171,8 @@ enum NodeCliOptions {
         #[structopt(long)]
         discord_handle: Option<String>,
         #[structopt(long)]
+        ram: bool,
+        #[structopt(long)]
         dev: bool,
     },
     /// Get status of a node
@@ -380,12 +382,14 @@ pub async fn initialize_cli() {
                 discord_handle,
                 client_only,
                 dev,
+                ram,
             } => {
                 crate::cli::node::start(
                     discord_handle,
                     client_only,
                     conf.expect(BAZUKA_NOT_INITILIZED),
                     wallet.expect(BAZUKA_NOT_INITILIZED),
+                    ram,
                     dev,
                 )
                 .await;
