@@ -45,7 +45,7 @@ mod tests {
         let tkn = Token {
             name: "KeyvanCoin".into(),
             symbol: "KIWI".into(),
-            supply: Amount(12345),
+            supply: Amount::new(12345),
             decimals: 2,
             minter: None,
         };
@@ -56,7 +56,7 @@ mod tests {
         let expected_ops = vec![
             WriteOp::Put(
                 "ACB-edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640-0x0001020304050607080900010203040506070809000102030405060708090001".into(),
-                Amount(12345).into(),
+                Amount::new(12345).into(),
             ),
             WriteOp::Put(
                 "TKN-0x0001020304050607080900010203040506070809000102030405060708090001".into(),
@@ -87,7 +87,7 @@ mod tests {
         let tkn = Token {
             name: "KeyvanCoin".into(),
             symbol: "KIWI".into(),
-            supply: Amount(12345),
+            supply: Amount::new(12345),
             decimals: 2,
             minter: None,
         };
@@ -118,7 +118,7 @@ mod tests {
         let good_token = Token {
             name: "Keyvan Coin".into(),
             symbol: "KIWI1".into(),
-            supply: Amount(12345),
+            supply: Amount::new(12345),
             decimals: 2,
             minter: None,
         };
@@ -126,49 +126,49 @@ mod tests {
             Token {
                 name: " KeyvanCoin".into(),
                 symbol: "KIWI1".into(),
-                supply: Amount(12345),
+                supply: Amount::new(12345),
                 decimals: 2,
                 minter: None,
             },
             Token {
                 name: "KeyvanCoin".into(),
                 symbol: "KIW I".into(),
-                supply: Amount(12345),
+                supply: Amount::new(12345),
                 decimals: 2,
                 minter: None,
             },
             Token {
                 name: "کیوان".into(),
                 symbol: "KIWI".into(),
-                supply: Amount(12345),
+                supply: Amount::new(12345),
                 decimals: 2,
                 minter: None,
             },
             Token {
                 name: "KeyvanCoin".into(),
                 symbol: "KIWi".into(),
-                supply: Amount(12345),
+                supply: Amount::new(12345),
                 decimals: 2,
                 minter: None,
             },
             Token {
                 name: "KeyvanCoin".into(),
                 symbol: "1KIWI".into(),
-                supply: Amount(12345),
+                supply: Amount::new(12345),
                 decimals: 2,
                 minter: None,
             },
             Token {
                 name: "KeyvanCoinAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA".into(),
                 symbol: "KIWI".into(),
-                supply: Amount(12345),
+                supply: Amount::new(12345),
                 decimals: 2,
                 minter: None,
             },
             Token {
                 name: "KeyvanCoin".into(),
                 symbol: "KIWIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIII".into(),
-                supply: Amount(12345),
+                supply: Amount::new(12345),
                 decimals: 2,
                 minter: None,
             },

@@ -442,7 +442,9 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         Ok(
             match self.database.get(keys::delegate(&delegator, &delegatee))? {
                 Some(b) => b.try_into()?,
-                None => Delegate { amount: Amount(0) },
+                None => Delegate {
+                    amount: Amount::new(0),
+                },
             },
         )
     }
@@ -593,7 +595,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     }
 
     fn currency_in_circulation(&self) -> Result<Amount, BlockchainError> {
-        let mut amount_sum = Amount(0);
+        let mut amount_sum = Amount::new(0);
         for (k, v) in self.database.pairs("ACB-".into())?.into_iter() {
             if k.0.ends_with("Ziesha") {
                 let bal: Amount = v.try_into().unwrap();
@@ -752,8 +754,8 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         &self.database
     }
     fn min_validator_reward(&self, validator: Address) -> Result<Amount, BlockchainError> {
-        let (_, result) =
-            self.isolated(|chain| Ok(chain.pay_validator_and_delegators(validator, Amount(0))?))?;
+        let (_, result) = self
+            .isolated(|chain| Ok(chain.pay_validator_and_delegators(validator, Amount::new(0))?))?;
         Ok(result)
     }
     fn check_tx(&self, tx: &Transaction) -> Result<(), BlockchainError> {

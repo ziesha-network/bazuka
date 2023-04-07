@@ -68,9 +68,9 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                 withdraws,
                 updates,
                 validator_reward,
-                Amount(100_000_000_000), // TODO: Remove Hardcoded rewards
-                Amount(100_000_000_000),
-                Amount(300_000_000_000),
+                Amount::new(100_000_000_000), // TODO: Remove Hardcoded rewards
+                Amount::new(100_000_000_000),
+                Amount::new(300_000_000_000),
                 deposit_nonce,
                 mpn_nonce,
                 ctx.validator_wallet.clone(),

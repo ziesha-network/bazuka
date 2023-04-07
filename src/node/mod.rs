@@ -501,7 +501,7 @@ pub async fn node_create<K: KvStore, B: Blockchain<K>>(
             .map(|w| (w.mpn_address.clone(), w))
             .collect(),
         mpn_work_pool: None,
-        mempool: Mempool::new(Amount(1_000_000_000)),
+        mempool: Mempool::new(Amount::new(1_000_000_000)),
         blockchain,
         validator_wallet,
         user_wallet,

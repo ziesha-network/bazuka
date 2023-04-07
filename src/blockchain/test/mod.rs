@@ -10,10 +10,13 @@ mod tokens;
 
 fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), BlockchainError> {
     while b.get_height()? > 0 {
-        assert_eq!(b.currency_in_circulation()?, Amount(2000000000000000000));
+        assert_eq!(
+            b.currency_in_circulation()?,
+            Amount::new(2000000000000000000)
+        );
         b.rollback()?;
     }
-    assert_eq!(b.currency_in_circulation()?, Amount(0));
+    assert_eq!(b.currency_in_circulation()?, Amount::new(0));
     assert!(matches!(
         b.rollback(),
         Err(BlockchainError::NoBlocksToRollback)
@@ -310,7 +313,7 @@ fn test_merkle_root_check() {
         fork1
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(9700)
+        Amount::new(9700)
     );
 
     fork2.apply_block(&blk2).unwrap();
@@ -318,7 +321,7 @@ fn test_merkle_root_check() {
         fork2
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(9700)
+        Amount::new(9700)
     );
 
     let mut blk_wrong = blk1.clone();
@@ -351,13 +354,13 @@ fn test_txs_cant_be_duplicated() {
         chain
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(10000)
+        Amount::new(10000)
     );
     assert_eq!(
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
 
     let tx = alice.create_transaction(
@@ -382,13 +385,13 @@ fn test_txs_cant_be_duplicated() {
         chain
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(7000)
+        Amount::new(7000)
     );
     assert_eq!(
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(2700)
+        Amount::new(2700)
     );
 
     // Alice -> 2700 -> Bob (Fee 300) (NOT APPLIED: DUPLICATED TRANSACTION!)
@@ -405,13 +408,13 @@ fn test_txs_cant_be_duplicated() {
         chain
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(7000)
+        Amount::new(7000)
     );
     assert_eq!(
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(2700)
+        Amount::new(2700)
     );
 
     let tx2 = alice.create_transaction(
@@ -436,13 +439,13 @@ fn test_txs_cant_be_duplicated() {
         chain
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(4000)
+        Amount::new(4000)
     );
     assert_eq!(
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(5400)
+        Amount::new(5400)
     );
 
     rollback_till_empty(&mut chain).unwrap();
@@ -465,13 +468,13 @@ fn test_insufficient_balance_is_handled() {
         chain
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(10000)
+        Amount::new(10000)
     );
     assert_eq!(
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
 
     let tx = alice.create_transaction(
@@ -505,7 +508,7 @@ fn test_insufficient_balance_is_handled() {
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
 
     rollback_till_empty(&mut chain).unwrap();
@@ -562,7 +565,7 @@ fn test_cant_apply_unsigned_tx() {
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
 
     rollback_till_empty(&mut chain).unwrap();
@@ -625,7 +628,7 @@ fn test_cant_apply_invalid_signed_tx() {
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
 
     rollback_till_empty(&mut chain).unwrap();
@@ -648,13 +651,13 @@ fn test_balances_are_correct_after_tx() {
         chain
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(10000)
+        Amount::new(10000)
     );
     assert_eq!(
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
 
     // Alice -> 2700 -> Bob (Fee 300)
@@ -682,13 +685,13 @@ fn test_balances_are_correct_after_tx() {
         chain
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(7000)
+        Amount::new(7000)
     );
     assert_eq!(
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(2700)
+        Amount::new(2700)
     );
 
     // Bob -> 2600 -> Alice (Fee 200) (BALANCE INSUFFICIENT!)
@@ -716,13 +719,13 @@ fn test_balances_are_correct_after_tx() {
         chain
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(7000)
+        Amount::new(7000)
     );
     assert_eq!(
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(2700)
+        Amount::new(2700)
     );
 
     // Bob -> 2600 -> Alice (Fee 200)
@@ -750,13 +753,13 @@ fn test_balances_are_correct_after_tx() {
         chain
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(9600)
+        Amount::new(9600)
     );
     assert_eq!(
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
 
     // Alice -> 100 -> Alice (Fee 200) (SELF PAYMENT NOT ALLOWED)
@@ -784,13 +787,13 @@ fn test_balances_are_correct_after_tx() {
         chain
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(9400)
+        Amount::new(9400)
     );
     assert_eq!(
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
 
     // Alice -> 20000 -> Alice (Fee 9400) (SELF PAYMENT NOT ALLOWED)
@@ -818,13 +821,13 @@ fn test_balances_are_correct_after_tx() {
         chain
             .get_balance(alice.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
     assert_eq!(
         chain
             .get_balance(bob.get_address(), TokenId::Ziesha)
             .unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
 
     rollback_till_empty(&mut chain).unwrap();
@@ -978,8 +981,8 @@ fn test_chain_should_draft_all_valid_transactions() {
     let account2 = chain
         .get_balance(wallet2.get_address(), TokenId::Ziesha)
         .unwrap();
-    assert_eq!(Amount(10_000_000 - 7000), account1);
-    assert_eq!(Amount(7000), account2);
+    assert_eq!(Amount::new(10_000_000 - 7000), account1);
+    assert_eq!(Amount::new(7000), account2);
 
     rollback_till_empty(&mut chain).unwrap();
 }
@@ -1085,7 +1088,7 @@ fn test_chain_should_rollback_applied_block() {
     let balance = chain
         .get_balance(wallet2.get_address(), TokenId::Ziesha)
         .unwrap();
-    assert_eq!(Amount(1_000_000), balance);
+    assert_eq!(Amount::new(1_000_000), balance);
     assert_eq!(0, nonce);
 
     rollback_till_empty(&mut chain).unwrap();

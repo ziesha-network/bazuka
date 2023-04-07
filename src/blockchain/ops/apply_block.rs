@@ -34,7 +34,7 @@ pub fn apply_block<K: KvStore>(
                 return Err(BlockchainError::UnelectedValidator);
             }
             // WARN: Sum will be invalid if fees are not in Ziesha
-            let fee_sum = Amount(
+            let fee_sum = Amount::new(
                 block
                     .body
                     .iter()

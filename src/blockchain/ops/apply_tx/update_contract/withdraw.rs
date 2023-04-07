@@ -201,12 +201,12 @@ mod tests {
             WriteOp::Put(
                 "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-Ziesha"
                     .into(),
-                Amount(9200).into(),
+                Amount::new(9200).into(),
             ),
             WriteOp::Put(
                 "CAB-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6-Ziesha"
                     .into(),
-                Amount(750).into(),
+                Amount::new(750).into(),
             ),
         ];
 
@@ -215,7 +215,7 @@ mod tests {
             exec_fees,
             vec![Money {
                 token_id: TokenId::Ziesha,
-                amount: Amount(50)
+                amount: Amount::new(50)
             }]
         );
     }
@@ -235,7 +235,7 @@ mod tests {
             "".into(),
             "KeyvanCoin".into(),
             "KIWI".into(),
-            Amount(100000),
+            Amount::new(100000),
             3,
             None,
             Money::ziesha(0),
@@ -266,7 +266,7 @@ mod tests {
             nonce: 2,
             amount: Money {
                 token_id: kiwi_token_id,
-                amount: Amount(1000),
+                amount: Amount::new(1000),
             },
             fee: Money::ziesha(0),
             sig: None,
@@ -282,7 +282,7 @@ mod tests {
             dst: abc.get_address(),
             amount: Money {
                 token_id: kiwi_token_id,
-                amount: Amount(333),
+                amount: Amount::new(333),
             },
             fee: Money::ziesha(444),
         };
@@ -333,17 +333,17 @@ mod tests {
             WriteOp::Put(
                 "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-0x113c5707d6ab03dd78c9f8455f3b4096c8c5e9312076aafe38d79c4d8eb2d096"
                     .into(),
-                Amount(99333).into(),
+                Amount::new(99333).into(),
             ),
             WriteOp::Put(
                 "CAB-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6-0x113c5707d6ab03dd78c9f8455f3b4096c8c5e9312076aafe38d79c4d8eb2d096"
                     .into(),
-                Amount(667).into(),
+                Amount::new(667).into(),
             ),
             WriteOp::Put(
                 "CAB-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6-Ziesha"
                     .into(),
-                Amount(556).into(),
+                Amount::new(556).into(),
             )
         ];
 
@@ -352,7 +352,7 @@ mod tests {
             exec_fees,
             vec![Money {
                 token_id: TokenId::Ziesha,
-                amount: Amount(444)
+                amount: Amount::new(444)
             }]
         );
     }

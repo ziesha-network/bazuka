@@ -117,7 +117,7 @@ mod tests {
                 Ok(delegate(
                     chain,
                     abc.clone(),
-                    Amount(123),
+                    Amount::new(123),
                     dst.clone(),
                     false,
                 )?)
@@ -128,7 +128,7 @@ mod tests {
         let expected_ops = vec![
             WriteOp::Put(
                 "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-Ziesha".into(),
-                Amount(9877).into()
+                Amount::new(9877).into()
             ),
             WriteOp::Put(
                 "DEK-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-ffffffffffffff84-ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
@@ -143,7 +143,7 @@ mod tests {
                 "DEL-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
                     .into(),
                 Delegate {
-                    amount: Amount(123)
+                    amount: Amount::new(123)
                 }.into()
             ),
             WriteOp::Put(
@@ -167,7 +167,7 @@ mod tests {
             WriteOp::Put(
                 "STK-ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
                     .into(),
-                Amount(123).into()
+                Amount::new(123).into()
             ),
         ];
         assert_eq!(ops, expected_ops);
@@ -177,7 +177,7 @@ mod tests {
                 Ok(delegate(
                     chain,
                     abc.clone(),
-                    Amount(77),
+                    Amount::new(77),
                     dst.clone(),
                     false,
                 )?)
@@ -188,7 +188,7 @@ mod tests {
         let expected_ops = vec![
             WriteOp::Put(
                 "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-Ziesha".into(),
-                Amount(9800).into()
+                Amount::new(9800).into()
             ),
             WriteOp::Put(
                 "DEK-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-ffffffffffffff37-ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
@@ -203,7 +203,7 @@ mod tests {
                 "DEL-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
                     .into(),
                 Delegate {
-                    amount: Amount(200)
+                    amount: Amount::new(200)
                 }.into()
             ),
             WriteOp::Put(
@@ -227,7 +227,7 @@ mod tests {
             WriteOp::Put(
                 "STK-ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
                     .into(),
-                Amount(200).into()
+                Amount::new(200).into()
             ),
         ];
         assert_eq!(ops, expected_ops);
@@ -239,7 +239,7 @@ mod tests {
                 dst: src.clone(),
                 amount: Money {
                     token_id: TokenId::Ziesha,
-                    amount: Amount(100),
+                    amount: Amount::new(100),
                 },
             }],
         )
@@ -250,7 +250,7 @@ mod tests {
                 Ok(delegate(
                     chain,
                     src.clone(),
-                    Amount(60),
+                    Amount::new(60),
                     dst.clone(),
                     false,
                 )?)
@@ -260,7 +260,7 @@ mod tests {
         let expected_ops = vec![
                 WriteOp::Put(
                     "ACB-edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640-Ziesha".into(),
-                    Amount(40).into()
+                    Amount::new(40).into()
                 ),
                 WriteOp::Put(
                     "DEK-edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640-ffffffffffffffc3-ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
@@ -275,7 +275,7 @@ mod tests {
                     "DEL-edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640-ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
                         .into(),
                     Delegate {
-                        amount: Amount(60)
+                        amount: Amount::new(60)
                     }.into()
                 ),
                 WriteOp::Put(
@@ -299,7 +299,7 @@ mod tests {
                 WriteOp::Put(
                     "STK-ed9e9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad641"
                         .into(),
-                    Amount(260).into()
+                    Amount::new(260).into()
                 ),
             ];
         assert_eq!(ops, expected_ops);
@@ -320,7 +320,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             chain.isolated(|chain| {
-                delegate(chain, src.clone(), Amount(123), dst.clone(), false)?;
+                delegate(chain, src.clone(), Amount::new(123), dst.clone(), false)?;
                 Ok(())
             }),
             Err(BlockchainError::BalanceInsufficient)

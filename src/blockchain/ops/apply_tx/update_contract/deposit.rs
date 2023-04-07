@@ -166,12 +166,12 @@ mod tests {
             WriteOp::Put(
                 "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-Ziesha"
                     .into(),
-                Amount(9800).into(),
+                Amount::new(9800).into(),
             ),
             WriteOp::Put(
                 "CAB-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6-Ziesha"
                     .into(),
-                Amount(123).into(),
+                Amount::new(123).into(),
             ),
             WriteOp::Put(
                 "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6".into(),
@@ -184,7 +184,7 @@ mod tests {
             exec_fees,
             vec![Money {
                 token_id: TokenId::Ziesha,
-                amount: Amount(77)
+                amount: Amount::new(77)
             }]
         );
     }
@@ -204,7 +204,7 @@ mod tests {
             "".into(),
             "KeyvanCoin".into(),
             "KIWI".into(),
-            Amount(100000),
+            Amount::new(100000),
             3,
             None,
             Money::ziesha(0),
@@ -222,7 +222,7 @@ mod tests {
             nonce: 1,
             amount: Money {
                 token_id: kiwi_token_id,
-                amount: Amount(10000),
+                amount: Amount::new(10000),
             },
             fee: Money::ziesha(321),
             sig: None,
@@ -271,17 +271,17 @@ mod tests {
             WriteOp::Put(
                 "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-0x113c5707d6ab03dd78c9f8455f3b4096c8c5e9312076aafe38d79c4d8eb2d096"
                     .into(),
-                Amount(90000).into(),
+                Amount::new(90000).into(),
             ),
             WriteOp::Put(
                 "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-Ziesha"
                     .into(),
-                Amount(9679).into(),
+                Amount::new(9679).into(),
             ),
             WriteOp::Put(
                 "CAB-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6-0x113c5707d6ab03dd78c9f8455f3b4096c8c5e9312076aafe38d79c4d8eb2d096"
                     .into(),
-                Amount(10000).into(),
+                Amount::new(10000).into(),
             ),
             WriteOp::Put(
                 "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6".into(),
@@ -294,7 +294,7 @@ mod tests {
             exec_fees,
             vec![Money {
                 token_id: TokenId::Ziesha,
-                amount: Amount(321)
+                amount: Amount::new(321)
             }]
         );
     }

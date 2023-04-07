@@ -271,7 +271,7 @@ mod tests {
             abc.get_mpn_address(),
             1,
             Money {
-                amount: Amount(10056),
+                amount: Amount::new(10056),
                 token_id: TokenId::Custom(123.into()),
             },
             Money::ziesha(0),
@@ -298,11 +298,11 @@ mod tests {
             mpn_contract_id,
             1,
             Money {
-                amount: Amount(30),
+                amount: Amount::new(30),
                 token_id: TokenId::Custom(123.into()),
             },
             Money {
-                amount: Amount(26),
+                amount: Amount::new(26),
                 token_id: TokenId::Custom(123.into()),
             },
             abc.get_address(),

@@ -69,7 +69,7 @@ mod tests {
                 addr,
                 &token_id,
                 &TokenUpdate::Mint {
-                    amount: Amount(100)
+                    amount: Amount::new(100)
                 }
             )?)),
             Err(BlockchainError::TokenNotFound)
@@ -100,7 +100,7 @@ mod tests {
         let tkn = Token {
             name: "KeyvanCoin".into(),
             symbol: "KIWI".into(),
-            supply: Amount(12345),
+            supply: Amount::new(12345),
             decimals: 2,
             minter: None,
         };
@@ -108,7 +108,7 @@ mod tests {
         let tkn2 = Token {
             name: "KeyvanCoin".into(),
             symbol: "KIWI".into(),
-            supply: Amount(12345),
+            supply: Amount::new(12345),
             decimals: 2,
             minter: Some(addr_2),
         };
@@ -119,7 +119,7 @@ mod tests {
                 addr_1.clone(),
                 &token_id_1,
                 &TokenUpdate::Mint {
-                    amount: Amount(100)
+                    amount: Amount::new(100)
                 }
             )?)),
             Err(BlockchainError::TokenNotUpdatable)
@@ -130,7 +130,7 @@ mod tests {
                 addr_1,
                 &token_id_2,
                 &TokenUpdate::Mint {
-                    amount: Amount(100)
+                    amount: Amount::new(100)
                 }
             )?)),
             Err(BlockchainError::TokenUpdatePermissionDenied)
@@ -154,7 +154,7 @@ mod tests {
         let tkn = Token {
             name: "KeyvanCoin".into(),
             symbol: "KIWI".into(),
-            supply: Amount(12345),
+            supply: Amount::new(12345),
             decimals: 2,
             minter: Some(addr.clone()),
         };
@@ -167,7 +167,7 @@ mod tests {
                     addr.clone(),
                     &token_id,
                     &TokenUpdate::Mint {
-                        amount: Amount(100),
+                        amount: Amount::new(100),
                     },
                 )?)
             })
@@ -176,7 +176,7 @@ mod tests {
         let expected_ops = vec![
             WriteOp::Put(
                 "ACB-edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640-0x0001020304050607080900010203040506070809000102030405060708090001".into(),
-                Amount(12445).into()
+                Amount::new(12445).into()
             ),
             WriteOp::Put(
                 "TKN-0x0001020304050607080900010203040506070809000102030405060708090001"
@@ -184,7 +184,7 @@ mod tests {
                 (&Token {
                     name: "KeyvanCoin".into(),
                     symbol: "KIWI".into(),
-                    supply: Amount(12445),
+                    supply: Amount::new(12445),
                     decimals: 2,
                     minter: Some(addr),
                 }).into()
@@ -215,7 +215,7 @@ mod tests {
         let tkn = Token {
             name: "KeyvanCoin".into(),
             symbol: "KIWI".into(),
-            supply: Amount(12345),
+            supply: Amount::new(12345),
             decimals: 2,
             minter: Some(addr.clone()),
         };
@@ -239,7 +239,7 @@ mod tests {
             (&Token {
                 name: "KeyvanCoin".into(),
                 symbol: "KIWI".into(),
-                supply: Amount(12345),
+                supply: Amount::new(12345),
                 decimals: 2,
                 minter: Some(new_addr),
             })
@@ -255,7 +255,7 @@ mod tests {
                 addr,
                 &token_id,
                 &TokenUpdate::Mint {
-                    amount: Amount(100)
+                    amount: Amount::new(100)
                 }
             )?)),
             Err(BlockchainError::TokenUpdatePermissionDenied)

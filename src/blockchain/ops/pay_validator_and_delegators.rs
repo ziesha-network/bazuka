@@ -25,7 +25,7 @@ pub fn pay_validator_and_delegators<K: KvStore>(
         .map(|(addr, stake)| {
             (
                 addr,
-                Amount(((u64::from(stake) as f64 / total_f64) * stakers_reward) as u64),
+                Amount::new(((u64::from(stake) as f64 / total_f64) * stakers_reward) as u64),
             )
         })
         .collect::<Vec<_>>();
@@ -34,7 +34,7 @@ pub fn pay_validator_and_delegators<K: KvStore>(
         - payments
             .iter()
             .map(|(_, a)| *a)
-            .fold(Amount(0), |a, b| a + b);
+            .fold(Amount::new(0), |a, b| a + b);
     payments.push((validator.clone(), validator_reward));
     for (i, (addr, amnt)) in payments.into_iter().enumerate() {
         chain.apply_tx(

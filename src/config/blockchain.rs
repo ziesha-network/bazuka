@@ -142,7 +142,7 @@ fn get_ziesha_token_creation_tx() -> Transaction {
             token: Token {
                 name: "Ziesha".into(),
                 symbol: "ZSH".into(),
-                supply: Amount(2_000_000_000_u64 * UNIT),
+                supply: Amount::new(2_000_000_000_u64 * UNIT),
                 decimals: UNIT_ZEROS,
                 minter: None,
             },
@@ -189,7 +189,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             to: "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
                 .parse()
                 .unwrap(),
-            amount: Amount(1000000000000),
+            amount: Amount::new(1000000000000),
             reverse: false,
         },
         nonce: 3,
@@ -282,7 +282,7 @@ pub fn get_dev_blockchain_config(validator: &TxBuilder) -> BlockchainConfig {
         src: None,
         data: TransactionData::Delegate {
             to: validator.get_address(),
-            amount: Amount(1000000000000),
+            amount: Amount::new(1000000000000),
             reverse: false,
         },
         nonce: 3,
@@ -374,7 +374,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
                 .delegate(
                     "".into(),
                     val.get_address(),
-                    Amount(25),
+                    Amount::new(25),
                     false,
                     Money::ziesha(0),
                     (i + 1) as u32,

@@ -30,7 +30,7 @@ pub fn select_transactions<K: KvStore>(
     }
     let (_, result) = chain.isolated(|chain| {
         // Safe to consider a 0 fee-sum
-        chain.pay_validator_and_delegators(validator, Amount(0))?;
+        chain.pay_validator_and_delegators(validator, Amount::new(0))?;
 
         let mut result = Vec::new();
         let mut block_sz = 0usize;

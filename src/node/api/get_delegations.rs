@@ -55,7 +55,7 @@ mod tests {
             resp.delegators
                 .get(&delegator.get_address().to_string())
                 .cloned(),
-            Some(Amount(25))
+            Some(Amount::new(25))
         );
     }
 
@@ -80,7 +80,7 @@ mod tests {
         for val in [validator1, validator2, validator3] {
             assert_eq!(
                 resp.delegatees.get(&val.get_address().to_string()).cloned(),
-                Some(Amount(25))
+                Some(Amount::new(25))
             );
         }
     }

@@ -310,7 +310,7 @@ impl TryInto<Amount> for ZkScalar {
     type Error = ZkError;
 
     fn try_into(self) -> Result<Amount, Self::Error> {
-        Ok(Amount(self.try_into()?))
+        Ok(Amount::new(self.try_into()?))
     }
 }
 

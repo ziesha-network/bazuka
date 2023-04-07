@@ -50,7 +50,7 @@ mod tests {
         assert_eq!(
             resp,
             GetBalanceResponse {
-                balance: Amount(10000),
+                balance: Amount::new(10000),
                 name: "Ziesha".into(),
                 symbol: "ZSH".into(),
             }

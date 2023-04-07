@@ -16,7 +16,7 @@ fn test_token_balances() {
         "".into(),
         "My Token".into(),
         "MYT".into(),
-        Amount(12345),
+        Amount::new(12345),
         0,
         Some(alice.get_address()),
         Money::ziesha(0),
@@ -24,7 +24,7 @@ fn test_token_balances() {
     );
     assert_eq!(
         chain.get_balance(alice.get_address(), token_id).unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
 
     // Cannot spend uncreated token
@@ -56,7 +56,7 @@ fn test_token_balances() {
 
     assert_eq!(
         chain.get_balance(alice.get_address(), token_id).unwrap(),
-        Amount(12345)
+        Amount::new(12345)
     );
 
     chain
@@ -82,11 +82,11 @@ fn test_token_balances() {
 
     assert_eq!(
         chain.get_balance(alice.get_address(), token_id).unwrap(),
-        Amount(12325)
+        Amount::new(12325)
     );
     assert_eq!(
         chain.get_balance(bob.get_address(), token_id).unwrap(),
-        Amount(20)
+        Amount::new(20)
     );
 
     // Check insufficient token balance
@@ -129,7 +129,7 @@ fn test_token_balances() {
 
     assert_eq!(
         chain.get_balance(alice.get_address(), token_id).unwrap(),
-        Amount(0)
+        Amount::new(0)
     );
 
     rollback_till_empty(&mut chain).unwrap();

@@ -337,7 +337,7 @@ mod tests {
         let abc = TxBuilder::new(&Vec::from("ABC"));
 
         for i in 0..5 {
-            let mut mempool = Mempool::new(Amount(1));
+            let mut mempool = Mempool::new(Amount::new(1));
             mempool.add_tx(&chain, dummy_tx(&abc, i), false, 0).unwrap();
 
             let snapshot = mempool.all().collect::<Vec<_>>();
@@ -355,7 +355,7 @@ mod tests {
         .unwrap();
         let abc = TxBuilder::new(&Vec::from("ABC"));
         let other = TxBuilder::new(&Vec::from("DELEGATOR"));
-        let mut mempool = Mempool::new(Amount(1));
+        let mut mempool = Mempool::new(Amount::new(1));
 
         mempool.add_tx(&chain, dummy_tx(&abc, 1), false, 0).unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 1);

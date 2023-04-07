@@ -74,7 +74,7 @@ impl Into<StringKey> for StakerRankDbKey {
 impl TryFrom<StringKey> for StakerRankDbKey {
     type Error = ParseDbKeyError;
     fn try_from(key: StringKey) -> Result<Self, ParseDbKeyError> {
-        let amount = Amount(
+        let amount = Amount::new(
             u64::MAX
                 - u64::from_str_radix(&key.0[4..20], 16).map_err(|_| ParseDbKeyError::Invalid)?,
         );
@@ -113,7 +113,7 @@ impl TryFrom<StringKey> for DelegatorRankDbKey {
             return Err(ParseDbKeyError::Invalid);
         }
         let delegatee: Address = splitted[1].parse().map_err(|_| ParseDbKeyError::Invalid)?;
-        let amount = Amount(
+        let amount = Amount::new(
             u64::MAX
                 - u64::from_str_radix(&splitted[2], 16).map_err(|_| ParseDbKeyError::Invalid)?,
         );
@@ -155,7 +155,7 @@ impl TryFrom<StringKey> for DelegateeRankDbKey {
             return Err(ParseDbKeyError::Invalid);
         }
         let delegator: Address = splitted[1].parse().map_err(|_| ParseDbKeyError::Invalid)?;
-        let amount = Amount(
+        let amount = Amount::new(
             u64::MAX
                 - u64::from_str_radix(&splitted[2], 16).map_err(|_| ParseDbKeyError::Invalid)?,
         );

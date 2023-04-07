@@ -67,13 +67,13 @@ impl Money {
     pub fn new(token_id: TokenId, amount: u64) -> Self {
         Self {
             token_id,
-            amount: Amount(amount),
+            amount: Amount::new(amount),
         }
     }
     pub fn ziesha(amount: u64) -> Self {
         Self {
             token_id: TokenId::Ziesha,
-            amount: Amount(amount),
+            amount: Amount::new(amount),
         }
     }
 }

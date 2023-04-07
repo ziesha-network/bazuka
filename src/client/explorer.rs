@@ -12,8 +12,23 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerAmount {
+    pub value: u64,
+    pub num_decimals: u8,
+}
+
+impl From<Amount> for ExplorerAmount {
+    fn from(obj: Amount) -> Self {
+        Self {
+            value: obj.value,
+            num_decimals: obj.num_decimals,
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerMoney {
-    pub amount: u64,
+    pub amount: ExplorerAmount,
     pub token_id: String,
 }
 
@@ -53,7 +68,7 @@ impl From<&MpnAccount> for ExplorerMpnAccount {
 pub struct ExplorerToken {
     pub name: String,
     pub symbol: String,
-    pub supply: u64,
+    pub supply: ExplorerAmount,
     pub minter: Option<String>,
 }
 
@@ -251,7 +266,7 @@ impl From<&ZkProof> for ExplorerZkProof {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum ExplorerTokenUpdate {
-    Mint { amount: u64 },
+    Mint { amount: ExplorerAmount },
     ChangeMinter { minter: String },
 }
 
@@ -340,7 +355,7 @@ pub enum ExplorerTransactionData {
     },
     Delegate {
         to: String,
-        amount: u64,
+        amount: ExplorerAmount,
         reverse: bool,
     },
     RegularSend {
@@ -449,7 +464,7 @@ impl From<&Block> for ExplorerBlock {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerStaker {
     pub_key: String,
-    stake: u64,
+    stake: ExplorerAmount,
 }
 
 impl From<&(Address, Amount)> for ExplorerStaker {
