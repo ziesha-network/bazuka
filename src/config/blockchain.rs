@@ -11,9 +11,6 @@ use crate::wallet::TxBuilder;
 use crate::mpn::MpnConfig;
 use crate::zk;
 
-#[cfg(test)]
-use crate::wallet::TxBuilder;
-
 const CHAIN_START_TIMESTAMP: u32 = 1678976362;
 
 const MPN_LOG4_TREE_SIZE: u8 = 15;
