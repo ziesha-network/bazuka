@@ -155,7 +155,10 @@ enum WalletOptions {
     /// Resets wallet nonces
     Reset {},
     /// Get info and balances of the wallet
-    Info {},
+    Info {
+        #[structopt(long)]
+        validator: bool,
+    },
     /// Resend pending transactions
     ResendPending {},
 }
@@ -535,10 +538,11 @@ pub async fn initialize_cli() {
                 )
                 .await;
             }
-            WalletOptions::Info {} => {
+            WalletOptions::Info { validator } => {
                 crate::cli::wallet::info(
                     conf.expect(BAZUKA_NOT_INITILIZED),
                     wallet.expect(BAZUKA_NOT_INITILIZED),
+                    validator,
                 )
                 .await;
             }
