@@ -201,7 +201,15 @@ pub fn withdraw<K: KvStore>(
                     ),
                     (
                         ZkDataLocator(vec![i as u64, 2]),
-                        Some(trans.tx.payment.amount.amount.into()),
+                        Some(
+                            trans
+                                .tx
+                                .payment
+                                .amount
+                                .amount
+                                .normalize(crate::config::UNIT_ZEROS)
+                                .into(),
+                        ),
                     ),
                     (
                         ZkDataLocator(vec![i as u64, 3]),
@@ -209,7 +217,15 @@ pub fn withdraw<K: KvStore>(
                     ),
                     (
                         ZkDataLocator(vec![i as u64, 4]),
-                        Some(trans.tx.payment.fee.amount.into()),
+                        Some(
+                            trans
+                                .tx
+                                .payment
+                                .fee
+                                .amount
+                                .normalize(crate::config::UNIT_ZEROS)
+                                .into(),
+                        ),
                     ),
                     (
                         ZkDataLocator(vec![i as u64, 5]),

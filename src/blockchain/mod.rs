@@ -623,10 +623,18 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     ) -> Result<bool, BlockchainError> {
         let (epoch, slot) = self.epoch_slot(timestamp);
         let stakers = self.get_stakers()?;
-        let sum_stakes = stakers.iter().map(|(_, a)| u64::from(*a)).sum::<u64>();
+        let sum_stakes = stakers
+            .iter()
+            .map(|(_, a)| a.normalize(crate::config::UNIT_ZEROS))
+            .sum::<u64>();
         let stakers: HashMap<Address, f32> = stakers
             .into_iter()
-            .map(|(k, v)| (k, (u64::from(v) as f64 / sum_stakes as f64) as f32))
+            .map(|(k, v)| {
+                (
+                    k,
+                    (v.normalize(crate::config::UNIT_ZEROS) as f64 / sum_stakes as f64) as f32,
+                )
+            })
             .collect();
 
         if let Some(chance) = stakers.get(&addr) {
@@ -656,10 +664,18 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     ) -> Result<ValidatorProof, BlockchainError> {
         let (epoch, slot) = self.epoch_slot(timestamp);
         let stakers = self.get_stakers()?;
-        let sum_stakes = stakers.iter().map(|(_, a)| u64::from(*a)).sum::<u64>();
+        let sum_stakes = stakers
+            .iter()
+            .map(|(_, a)| a.normalize(crate::config::UNIT_ZEROS))
+            .sum::<u64>();
         let stakers: HashMap<Address, f32> = stakers
             .into_iter()
-            .map(|(k, v)| (k, (u64::from(v) as f64 / sum_stakes as f64) as f32))
+            .map(|(k, v)| {
+                (
+                    k,
+                    (v.normalize(crate::config::UNIT_ZEROS) as f64 / sum_stakes as f64) as f32,
+                )
+            })
             .collect();
         if let Some(chance) = stakers.get(&wallet.get_address()) {
             let (vrf_output, vrf_proof) = wallet.generate_random(epoch, slot);

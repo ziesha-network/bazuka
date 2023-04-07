@@ -48,7 +48,9 @@ pub fn withdraw<K: KvStore>(
                 ),
                 (
                     zk::ZkDataLocator(vec![i as u64, 2]),
-                    Some(zk::ZkScalar::from(withdraw.amount.amount)),
+                    Some(zk::ZkScalar::from(
+                        withdraw.amount.amount.normalize(crate::config::UNIT_ZEROS),
+                    )),
                 ),
                 (
                     zk::ZkDataLocator(vec![i as u64, 3]),
@@ -56,7 +58,9 @@ pub fn withdraw<K: KvStore>(
                 ),
                 (
                     zk::ZkDataLocator(vec![i as u64, 4]),
-                    Some(zk::ZkScalar::from(withdraw.fee.amount)),
+                    Some(zk::ZkScalar::from(
+                        withdraw.fee.amount.normalize(crate::config::UNIT_ZEROS),
+                    )),
                 ),
                 (zk::ZkDataLocator(vec![i as u64, 5]), Some(fingerprint)),
                 (

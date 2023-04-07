@@ -199,7 +199,7 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
                 db,
                 mpn_contract_id,
                 ZkDataLocator(vec![index, 4, *ind as u64, 1]),
-                ZkScalar::from(money.amount),
+                ZkScalar::from(money.amount.normalize(crate::config::UNIT_ZEROS)),
                 size_diff,
             )?;
         }

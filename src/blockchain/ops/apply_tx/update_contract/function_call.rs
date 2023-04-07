@@ -36,7 +36,9 @@ pub fn function_call<K: KvStore>(
             (zk::ZkDataLocator(vec![0]), Some(fee.token_id.into())),
             (
                 zk::ZkDataLocator(vec![1]),
-                Some(zk::ZkScalar::from(fee.amount)),
+                Some(zk::ZkScalar::from(
+                    fee.amount.normalize(crate::config::UNIT_ZEROS),
+                )),
             ),
         ]
         .into(),

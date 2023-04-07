@@ -38,7 +38,7 @@ pub fn apply_block<K: KvStore>(
                 block
                     .body
                     .iter()
-                    .map(|t| -> u64 { t.fee.amount.into() })
+                    .map(|t| t.fee.amount.normalize(crate::config::UNIT_ZEROS))
                     .sum(),
             );
             chain.pay_validator_and_delegators(

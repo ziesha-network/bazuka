@@ -12,20 +12,23 @@ pub fn pay_validator_and_delegators<K: KvStore>(
     let treasury_nonce = chain.get_nonce(Default::default())?;
 
     let next_reward = chain.next_reward()? + fee_sum;
-    let stakers_reward =
-        u64::from(next_reward) as f64 * ((u8::MAX - staker.commision) as f64 / u8::MAX as f64); // WARN: Hardcoded!
+    let stakers_reward = next_reward.normalize(crate::config::UNIT_ZEROS) as f64
+        * ((u8::MAX - staker.commision) as f64 / u8::MAX as f64); // WARN: Hardcoded!
 
     let delegators = chain.get_delegators(validator.clone(), None)?;
     let total_f64 = delegators
         .iter()
-        .map(|(_, a)| Into::<u64>::into(*a))
+        .map(|(_, a)| a.normalize(crate::config::UNIT_ZEROS))
         .sum::<u64>() as f64;
     let mut payments = delegators
         .into_iter()
         .map(|(addr, stake)| {
             (
                 addr,
-                Amount::new(((u64::from(stake) as f64 / total_f64) * stakers_reward) as u64),
+                Amount::new(
+                    ((stake.normalize(crate::config::UNIT_ZEROS) as f64 / total_f64)
+                        * stakers_reward) as u64,
+                ),
             )
         })
         .collect::<Vec<_>>();

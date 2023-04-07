@@ -84,7 +84,10 @@ impl MpnAccount {
                             ZkDataLocator(vec![*i as u64, 0]),
                             Some(money.token_id.into()),
                         ),
-                        (ZkDataLocator(vec![*i as u64, 1]), Some(money.amount.into())),
+                        (
+                            ZkDataLocator(vec![*i as u64, 1]),
+                            Some(money.amount.normalize(crate::config::UNIT_ZEROS).into()),
+                        ),
                     ]
                     .into(),
                 ))
@@ -258,13 +261,6 @@ impl ZkScalar {
         let mut data = [0u8; 32];
         data[0..bts.len()].copy_from_slice(&bts);
         ZkScalar::from_repr_vartime(ZkScalarRepr(data)).unwrap()
-    }
-}
-
-impl From<Amount> for ZkScalar {
-    fn from(m: Amount) -> Self {
-        let as_u64: u64 = m.into();
-        Self::from(as_u64)
     }
 }
 
@@ -617,9 +613,9 @@ impl MpnTransaction {
             dst_pub_decom.0,
             dst_pub_decom.1,
             self.amount.token_id.into(),
-            ZkScalar::from(self.amount.amount),
+            ZkScalar::from(self.amount.amount.normalize(crate::config::UNIT_ZEROS)),
             self.fee.token_id.into(),
-            ZkScalar::from(self.fee.amount),
+            ZkScalar::from(self.fee.amount.normalize(crate::config::UNIT_ZEROS)),
         ])
     }
 }

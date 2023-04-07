@@ -1,4 +1,3 @@
-use crate::config::{UNIT, UNIT_ZEROS};
 use std::ops::{Add, AddAssign, Div, Sub, SubAssign};
 use std::str::FromStr;
 use thiserror::Error;
@@ -32,6 +31,19 @@ impl Amount {
             value,
             num_decimals: 0,
         }
+    }
+    pub fn normalize(&self, decimals: u8) -> u64 {
+        let mut value = self.value;
+        if self.num_decimals > decimals {
+            for _ in self.num_decimals..decimals {
+                value = value * 10;
+            }
+        } else {
+            for _ in decimals..self.num_decimals {
+                value = value / 10;
+            }
+        }
+        value
     }
     pub fn display_by_decimals(&self, decimals: u8) -> String {
         let mut s = self.value.to_string();
@@ -137,6 +149,7 @@ impl Div<u64> for Amount {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::UNIT_ZEROS;
 
     #[test]
     fn test_display_by_decimals_func() {
