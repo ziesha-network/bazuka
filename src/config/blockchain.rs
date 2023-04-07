@@ -6,6 +6,8 @@ use crate::core::{
     Amount, Block, ContractId, Header, Money, ProofOfStake, Signature, Token, TokenId, Transaction,
     TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
 };
+use crate::wallet::TxBuilder;
+
 use crate::mpn::MpnConfig;
 use crate::zk;
 
@@ -260,8 +262,37 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     }
 }
 
-pub fn get_dev_blockchain_config() -> BlockchainConfig {
-    get_blockchain_config()
+pub fn get_dev_blockchain_config(validator: &TxBuilder) -> BlockchainConfig {
+    let mut conf = get_blockchain_config();
+
+    conf.mpn_config.mpn_num_update_batches = 0;
+    conf.mpn_config.mpn_num_deposit_batches = 0;
+    conf.mpn_config.mpn_num_withdraw_batches = 0;
+
+    conf.genesis.block.body[2] = Transaction {
+        memo: "Very first staker created!".into(),
+        src: Some(validator.get_address()),
+        data: TransactionData::UpdateStaker {
+            vrf_pub_key: validator.get_vrf_public_key(),
+            commision: 12, // 12/255 ~= 5%
+        },
+        nonce: 1,
+        fee: Money::ziesha(0),
+        sig: Signature::Unsigned,
+    };
+    conf.genesis.block.body[3] = Transaction {
+        memo: "Very first delegation!".into(),
+        src: None,
+        data: TransactionData::Delegate {
+            to: validator.get_address(),
+            amount: Amount(1000000000000),
+            reverse: false,
+        },
+        nonce: 3,
+        fee: Money::ziesha(0),
+        sig: Signature::Unsigned,
+    };
+    conf
 }
 
 #[cfg(test)]

@@ -9,14 +9,15 @@ pub async fn start(
     discord_handle: Option<String>,
     client_only: bool,
     conf: BazukaConfig,
-    wallet: WalletCollection,
+    mut wallet: WalletCollection,
     dev: bool,
 ) {
     if dev {
+        let validator_wallet = wallet.validator().tx_builder();
         run_node(
             KvStoreChain::new(
                 RamKvStore::new(),
-                config::blockchain::get_dev_blockchain_config(),
+                config::blockchain::get_dev_blockchain_config(&validator_wallet),
             )
             .unwrap(),
             conf.clone(),
