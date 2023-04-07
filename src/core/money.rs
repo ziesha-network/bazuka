@@ -34,13 +34,13 @@ impl Amount {
     }
     pub fn normalize(&self, decimals: u8) -> u64 {
         let mut value = self.value;
-        if self.num_decimals > decimals {
+        if self.num_decimals < decimals {
             for _ in self.num_decimals..decimals {
-                value = value * 10;
+                value = value.saturating_mul(10);
             }
         } else {
             for _ in decimals..self.num_decimals {
-                value = value / 10;
+                value = value.saturating_div(10);
             }
         }
         value
@@ -150,6 +150,66 @@ impl Div<u64> for Amount {
 mod tests {
     use super::*;
     use crate::config::UNIT_ZEROS;
+
+    #[test]
+    fn test_amount_normalize() {
+        assert_eq!(
+            Amount {
+                value: 0,
+                num_decimals: 0
+            }
+            .normalize(3),
+            0
+        );
+        assert_eq!(
+            Amount {
+                value: 123456,
+                num_decimals: 3
+            }
+            .normalize(3),
+            123456
+        );
+        assert_eq!(
+            Amount {
+                value: 123456,
+                num_decimals: 3
+            }
+            .normalize(2),
+            12345
+        );
+        assert_eq!(
+            Amount {
+                value: 123456,
+                num_decimals: 3
+            }
+            .normalize(4),
+            1234560
+        );
+        assert_eq!(
+            Amount {
+                value: 123456,
+                num_decimals: 3
+            }
+            .normalize(10),
+            1234560000000
+        );
+        assert_eq!(
+            Amount {
+                value: 123456,
+                num_decimals: 3
+            }
+            .normalize(100),
+            u64::MAX
+        );
+        assert_eq!(
+            Amount {
+                value: 123456,
+                num_decimals: 100
+            }
+            .normalize(9),
+            0
+        );
+    }
 
     #[test]
     fn test_display_by_decimals_func() {
