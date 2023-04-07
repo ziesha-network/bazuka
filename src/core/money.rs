@@ -1,3 +1,4 @@
+use std::iter::Sum;
 use std::ops::{Add, AddAssign, Div, Sub, SubAssign};
 use std::str::FromStr;
 use thiserror::Error;
@@ -17,6 +18,15 @@ use thiserror::Error;
 pub struct Amount {
     pub value: u64,
     pub num_decimals: u8,
+}
+
+impl<'a> Sum<&'a Self> for Amount {
+    fn sum<I>(iter: I) -> Self
+    where
+        I: Iterator<Item = &'a Self>,
+    {
+        iter.fold(Self::new(0), |a, b| a + *b)
+    }
 }
 
 #[derive(Error, Debug)]
@@ -135,6 +145,14 @@ impl Sub for Amount {
 
     fn sub(self, other: Self) -> Self {
         Self::new(u64::from(self.value) - u64::from(other.value))
+    }
+}
+
+impl Div for Amount {
+    type Output = f64;
+
+    fn div(self, other: Self) -> f64 {
+        self.value as f64 / other.value as f64
     }
 }
 
