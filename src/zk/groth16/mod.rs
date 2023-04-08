@@ -1,3 +1,5 @@
+pub mod gadgets;
+
 use super::ZkScalar;
 use bls12_381::{Bls12, G1Affine as BellmanG1, G2Affine as BellmanG2, Scalar as BellmanFr};
 use serde::{Deserialize, Serialize};
