@@ -141,6 +141,15 @@ impl Add for Amount {
     fn add(self, other: Self) -> Self {
         let num_decimals = std::cmp::max(self.num_decimals, other.num_decimals);
         let value = self.normalize(num_decimals) + other.normalize(num_decimals);
+        println!(
+            "{} + {} = {}",
+            self,
+            other,
+            Self {
+                value,
+                num_decimals,
+            }
+        );
         Self {
             value,
             num_decimals,
@@ -154,6 +163,37 @@ impl Sub for Amount {
     fn sub(self, other: Self) -> Self {
         let num_decimals = std::cmp::max(self.num_decimals, other.num_decimals);
         let value = self.normalize(num_decimals) - other.normalize(num_decimals);
+        println!(
+            "{} - {} = {}",
+            self,
+            other,
+            Self {
+                value,
+                num_decimals,
+            }
+        );
+        Self {
+            value,
+            num_decimals,
+        }
+    }
+}
+
+impl Mul<f64> for Amount {
+    type Output = Self;
+
+    fn mul(self, other: f64) -> Self {
+        let num_decimals = std::cmp::max(self.num_decimals, other.num_decimals);
+        let value = self.normalize(num_decimals) - other.normalize(num_decimals);
+        println!(
+            "{} - {} = {}",
+            self,
+            other,
+            Self {
+                value,
+                num_decimals,
+            }
+        );
         Self {
             value,
             num_decimals,
@@ -165,7 +205,9 @@ impl Div for Amount {
     type Output = f64;
 
     fn div(self, other: Self) -> f64 {
-        self.value as f64 / other.value as f64
+        let selfnorm = self.normalize(9);
+        let othernorm = self.normalize(9);
+        selfnorm as f64 / othernorm as f64
     }
 }
 
@@ -173,8 +215,11 @@ impl Div<u64> for Amount {
     type Output = Self;
 
     fn div(self, other: u64) -> Self {
-        let normalized = self.normalize(0);
-        Self::new(normalized / other)
+        let normalized = self.normalize(9);
+        Self {
+            value: normalized / other,
+            num_decimals: 9,
+        }
     }
 }
 

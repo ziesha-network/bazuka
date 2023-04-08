@@ -554,6 +554,8 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     }
     fn next_reward(&self) -> Result<Amount, BlockchainError> {
         let supply = self.get_balance(Default::default(), TokenId::Ziesha)?;
+        println!("SUPPLY: {}", supply);
+        println!("REWARD: {}", supply / self.config.reward_ratio);
         Ok(supply / self.config.reward_ratio)
     }
     fn draft_block(
