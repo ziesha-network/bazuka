@@ -1,6 +1,6 @@
 use super::UpdateTransition;
 
-use crate::core::{TokenId};
+use crate::core::TokenId;
 use crate::zk::groth16::gadgets::{
     common, common::Number, common::UnsignedInteger, eddsa, eddsa::AllocatedPoint, merkle,
     poseidon, BellmanFr,

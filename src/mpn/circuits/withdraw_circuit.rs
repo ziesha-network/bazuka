@@ -1,7 +1,5 @@
 use super::WithdrawTransition;
 
-
-
 use crate::zk::groth16::gadgets::common::Number;
 use crate::zk::groth16::gadgets::common::UnsignedInteger;
 use crate::zk::groth16::gadgets::eddsa;
@@ -9,7 +7,7 @@ use crate::zk::groth16::gadgets::eddsa::AllocatedPoint;
 use crate::zk::groth16::gadgets::merkle;
 use crate::zk::groth16::gadgets::reveal::{reveal, AllocatedState};
 use crate::zk::groth16::gadgets::{common, poseidon, BellmanFr};
-use crate::zk::{ZkScalar};
+use crate::zk::ZkScalar;
 use bellman::gadgets::boolean::{AllocatedBit, Boolean};
 use bellman::gadgets::num::AllocatedNum;
 use bellman::{Circuit, ConstraintSystem, SynthesisError};
