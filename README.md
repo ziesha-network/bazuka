@@ -73,12 +73,11 @@ Available flags:
  * `--external <external>`: Public ip/port of your node. Default: `YOUR_PUBLIC_IP:8765`.
  * `--listen <listen>`: Local socket. Default: `0.0.0.0:8765`.
  * `--mnemonic <mnemonic>`: If you already have a 12-word mnemonic phrase, you can pass it through this flag. If not provided, a new wallet will be generated for you. Keep the mnemonic word list somewhere safe!
- * `--network <network>`: The network your node will operate on. Default: `mainnet`
 
-Example to initialize a node with 2 bootstrap nodes `23.34.12.45:8765` and `34.56.78.23:8765` on the `debug` network:
+Example to initialize a node with 2 bootstrap nodes `23.34.12.45:8765` and `34.56.78.23:8765`:
 
 ```
-bazuka init --network debug --bootstrap 23.34.12.45:8765 --bootstrap 34.56.78.23:8765
+bazuka init --bootstrap 23.34.12.45:8765 --bootstrap 34.56.78.23:8765
 ```
 
 After initializing your node you can run it through:
