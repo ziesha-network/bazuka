@@ -43,6 +43,6 @@ jobs:
           apt install -y libssl-dev cmake
       - name: Generate code coverage
         run: |
-          cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
+          cargo tarpaulin --verbose --all-features --workspace --timeout 600 --out Xml
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v2
