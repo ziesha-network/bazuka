@@ -12,6 +12,7 @@ use std::str::FromStr;
 use thiserror::Error;
 
 pub use money::Amount;
+pub use money::Decimal;
 pub use transaction::Money;
 
 pub type Hasher = hash::Sha3Hasher;

@@ -4,13 +4,13 @@ use tokio::try_join;
 
 use crate::cli::BazukaConfig;
 use bazuka::client::{BazukaClient, NodeError};
-use bazuka::core::{Amount, Money, NonceGroup, TokenId};
+use bazuka::core::{Decimal, Money, NonceGroup, TokenId};
 use bazuka::wallet::WalletCollection;
 
 pub async fn register_validator(
     memo: Option<String>,
     commision: f32,
-    fee: Amount,
+    fee: Decimal,
     conf: BazukaConfig,
     mut wallet: WalletCollection,
     wallet_path: &PathBuf,
@@ -36,7 +36,7 @@ pub async fn register_validator(
                 memo.unwrap_or_default(),
                 commision_u8,
                 Money {
-                    amount: fee,
+                    amount: fee.to_amount(bazuka::config::UNIT_ZEROS),
                     token_id: TokenId::Ziesha,
                 },
                 new_nonce,

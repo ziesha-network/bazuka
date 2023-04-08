@@ -3,7 +3,7 @@ use tokio::try_join;
 
 use crate::cli::BazukaConfig;
 use bazuka::client::{BazukaClient, NodeError};
-use bazuka::core::{Amount, Money, NonceGroup, TokenId};
+use bazuka::core::{Decimal, Money, NonceGroup, TokenId};
 use bazuka::crypto::ed25519::PublicKey;
 use bazuka::wallet::WalletCollection;
 
@@ -12,9 +12,9 @@ pub async fn delegate(
     mut wallet: WalletCollection,
     wallet_path: &PathBuf,
     memo: Option<String>,
-    amount: Amount,
+    amount: Decimal,
     to: PublicKey,
-    fee: Amount,
+    fee: Decimal,
 ) -> () {
     let tx_builder = wallet.user(0).tx_builder();
     let (req_loop, client) =
@@ -30,10 +30,10 @@ pub async fn delegate(
             let tx = tx_builder.delegate(
                 memo.unwrap_or_default(),
                 to,
-                amount,
+                amount.to_amount(bazuka::config::UNIT_ZEROS),
                 false,
                 Money {
-                    amount: fee,
+                    amount: fee.to_amount(bazuka::config::UNIT_ZEROS),
                     token_id: TokenId::Ziesha,
                 },
                 new_nonce,

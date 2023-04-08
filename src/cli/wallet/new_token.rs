@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use crate::cli::BazukaConfig;
 use bazuka::client::{BazukaClient, NodeError};
-use bazuka::core::{Amount, Money, NonceGroup, TokenId};
+use bazuka::core::{Decimal, Money, NonceGroup, TokenId};
 use bazuka::wallet::WalletCollection;
 use tokio::try_join;
 
@@ -10,10 +10,10 @@ pub async fn new_token(
     memo: Option<String>,
     name: String,
     symbol: String,
-    supply: Amount,
+    supply: Decimal,
     decimals: u8,
     mintable: bool,
-    fee: Amount,
+    fee: Decimal,
     conf: BazukaConfig,
     mut wallet: WalletCollection,
     wallet_path: &PathBuf,
@@ -33,11 +33,11 @@ pub async fn new_token(
                 memo.unwrap_or_default(),
                 name,
                 symbol,
-                supply,
+                supply.to_amount(decimals),
                 decimals,
                 mintable.then(|| tx_builder.get_address()),
                 Money {
-                    amount: fee,
+                    amount: fee.to_amount(bazuka::config::UNIT_ZEROS),
                     token_id: TokenId::Ziesha,
                 },
                 new_nonce,

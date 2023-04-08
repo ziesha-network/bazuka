@@ -1,4 +1,3 @@
-use crate::config::{UNIT, UNIT_ZEROS};
 use std::ops::{Add, AddAssign, Div, Sub, SubAssign};
 use std::str::FromStr;
 use thiserror::Error;
@@ -24,7 +23,23 @@ pub enum ParseDecimalError {
 }
 pub struct Decimal {
     pub value: u64,
-    pub num_decimals: usize,
+    pub num_decimals: u8,
+}
+
+impl Decimal {
+    pub fn to_amount(&self, decimals: u8) -> Amount {
+        let mut value = self.value;
+        if self.num_decimals < decimals {
+            for _ in self.num_decimals..decimals {
+                value = value.saturating_mul(10);
+            }
+        } else {
+            for _ in decimals..self.num_decimals {
+                value = value.saturating_div(10);
+            }
+        }
+        Amount(value)
+    }
 }
 
 impl FromStr for Decimal {
@@ -42,7 +57,9 @@ impl FromStr for Decimal {
                     break;
                 }
             }
-            let num_decimals = s.len() - dot_pos - 1;
+            let num_decimals = (s.len() - dot_pos - 1)
+                .try_into()
+                .map_err(|_| Self::Err::Invalid)?;
             s.remove(dot_pos);
             let value: u64 = s.parse().map_err(|_| Self::Err::Invalid)?;
             Ok(Self {
@@ -57,12 +74,6 @@ impl FromStr for Decimal {
             })
         }
     }
-}
-
-#[derive(Error, Debug)]
-pub enum ParseAmountError {
-    #[error("amount invalid")]
-    Invalid,
 }
 
 impl Amount {
@@ -88,38 +99,6 @@ impl Amount {
             }
         }
         return s;
-    }
-
-    pub fn from_string(s: &str, decimals: u8) -> Result<Self, ParseAmountError> {
-        let mut s = s.trim().to_string();
-        if decimals == 0 {
-            let as_u64: u64 = s.parse().map_err(|_| ParseAmountError::Invalid)?;
-            return Ok(Self(as_u64 * UNIT));
-        }
-        if let Some(dot_pos) = s.find('.') {
-            if s == "." {
-                return Err(ParseAmountError::Invalid);
-            }
-            let dot_rpos = s.len() - 1 - dot_pos;
-            if dot_rpos > decimals as usize {
-                return Err(ParseAmountError::Invalid);
-            }
-            for _ in 0..decimals as usize - dot_rpos {
-                s.push('0');
-            }
-            s.remove(dot_pos);
-            Ok(Self(s.parse().map_err(|_| ParseAmountError::Invalid)?))
-        } else {
-            let as_u64: u64 = s.parse().map_err(|_| ParseAmountError::Invalid)?;
-            Ok(Self(as_u64 * UNIT))
-        }
-    }
-}
-
-impl FromStr for Amount {
-    type Err = ParseAmountError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        return Amount::from_string(&s, UNIT_ZEROS);
     }
 }
 
@@ -174,6 +153,7 @@ impl Div<u64> for Amount {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::UNIT_ZEROS;
 
     #[test]
     fn test_decimals() {
@@ -239,51 +219,135 @@ mod tests {
 
     #[test]
     fn test_str_to_amount() {
-        assert_eq!("0".parse::<Amount>().unwrap(), Amount(0));
-        assert_eq!("0.".parse::<Amount>().unwrap(), Amount(0));
-        assert_eq!("0.0".parse::<Amount>().unwrap(), Amount(0));
-        assert_eq!("1".parse::<Amount>().unwrap(), Amount(1000000000));
-        assert_eq!("1.".parse::<Amount>().unwrap(), Amount(1000000000));
-        assert_eq!("1.0".parse::<Amount>().unwrap(), Amount(1000000000));
-        assert_eq!("123".parse::<Amount>().unwrap(), Amount(123000000000));
-        assert_eq!("123.".parse::<Amount>().unwrap(), Amount(123000000000));
-        assert_eq!("123.0".parse::<Amount>().unwrap(), Amount(123000000000));
-        assert_eq!("123.1".parse::<Amount>().unwrap(), Amount(123100000000));
-        assert_eq!("123.100".parse::<Amount>().unwrap(), Amount(123100000000));
         assert_eq!(
-            "123.100000000".parse::<Amount>().unwrap(),
+            "0".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(0)
+        );
+        assert_eq!(
+            "0.".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(0)
+        );
+        assert_eq!(
+            "0.0".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(0)
+        );
+        assert_eq!(
+            "1".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(1000000000)
+        );
+        assert_eq!(
+            "1.".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(1000000000)
+        );
+        assert_eq!(
+            "1.0".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(1000000000)
+        );
+        assert_eq!(
+            "123".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(123000000000)
+        );
+        assert_eq!(
+            "123.".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(123000000000)
+        );
+        assert_eq!(
+            "123.0".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(123000000000)
+        );
+        assert_eq!(
+            "123.1".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
             Amount(123100000000)
         );
         assert_eq!(
-            "123.123456".parse::<Amount>().unwrap(),
+            "123.100".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(123100000000)
+        );
+        assert_eq!(
+            "123.100000000"
+                .parse::<Decimal>()
+                .unwrap()
+                .to_amount(UNIT_ZEROS),
+            Amount(123100000000)
+        );
+        assert_eq!(
+            "123.123456"
+                .parse::<Decimal>()
+                .unwrap()
+                .to_amount(UNIT_ZEROS),
             Amount(123123456000)
         );
         assert_eq!(
-            "123.123456000".parse::<Amount>().unwrap(),
+            "123.123456000"
+                .parse::<Decimal>()
+                .unwrap()
+                .to_amount(UNIT_ZEROS),
             Amount(123123456000)
         );
         assert_eq!(
-            "123.123456789".parse::<Amount>().unwrap(),
+            "123.123456789"
+                .parse::<Decimal>()
+                .unwrap()
+                .to_amount(UNIT_ZEROS),
             Amount(123123456789)
         );
-        assert_eq!("123.0001".parse::<Amount>().unwrap(), Amount(123000100000));
         assert_eq!(
-            "123.000000001".parse::<Amount>().unwrap(),
+            "123.0001".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(123000100000)
+        );
+        assert_eq!(
+            "123.000000001"
+                .parse::<Decimal>()
+                .unwrap()
+                .to_amount(UNIT_ZEROS),
             Amount(123000000001)
         );
-        assert_eq!("0.0001".parse::<Amount>().unwrap(), Amount(100000));
-        assert_eq!("0.000000001".parse::<Amount>().unwrap(), Amount(1));
-        assert_eq!(".0001".parse::<Amount>().unwrap(), Amount(100000));
-        assert_eq!(".000000001".parse::<Amount>().unwrap(), Amount(1));
-        assert_eq!(".123456789".parse::<Amount>().unwrap(), Amount(123456789));
-        assert_eq!(" 123 ".parse::<Amount>().unwrap(), Amount(123000000000));
-        assert_eq!(" 123.456 ".parse::<Amount>().unwrap(), Amount(123456000000));
-        assert!("123.234.123".parse::<Amount>().is_err());
-        assert!("k123".parse::<Amount>().is_err());
-        assert!("12 34".parse::<Amount>().is_err());
-        assert!(".".parse::<Amount>().is_err());
-        assert!(" . ".parse::<Amount>().is_err());
-        assert!("12 .".parse::<Amount>().is_err());
-        assert!(". 12".parse::<Amount>().is_err());
+        assert_eq!(
+            "0.0001".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(100000)
+        );
+        assert_eq!(
+            "0.000000001"
+                .parse::<Decimal>()
+                .unwrap()
+                .to_amount(UNIT_ZEROS),
+            Amount(1)
+        );
+        assert_eq!(
+            ".0001".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(100000)
+        );
+        assert_eq!(
+            ".000000001"
+                .parse::<Decimal>()
+                .unwrap()
+                .to_amount(UNIT_ZEROS),
+            Amount(1)
+        );
+        assert_eq!(
+            ".123456789"
+                .parse::<Decimal>()
+                .unwrap()
+                .to_amount(UNIT_ZEROS),
+            Amount(123456789)
+        );
+        assert_eq!(
+            " 123 ".parse::<Decimal>().unwrap().to_amount(UNIT_ZEROS),
+            Amount(123000000000)
+        );
+        assert_eq!(
+            " 123.456 "
+                .parse::<Decimal>()
+                .unwrap()
+                .to_amount(UNIT_ZEROS),
+            Amount(123456000000)
+        );
+        assert!("123.234.123".parse::<Decimal>().is_err());
+        assert!("k123".parse::<Decimal>().is_err());
+        assert!("12 34".parse::<Decimal>().is_err());
+        assert!(".".parse::<Decimal>().is_err());
+        assert!(" . ".parse::<Decimal>().is_err());
+        assert!("12 .".parse::<Decimal>().is_err());
+        assert!(". 12".parse::<Decimal>().is_err());
     }
 }

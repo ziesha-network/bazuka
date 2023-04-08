@@ -16,7 +16,7 @@ use {
 use {
     bazuka::client::{NodeError, PeerAddress},
     bazuka::config,
-    bazuka::core::{Address, Amount, GeneralAddress, MpnAddress, TokenId},
+    bazuka::core::{Address, Decimal, GeneralAddress, MpnAddress, TokenId},
     bazuka::mpn::MpnWorker,
     bazuka::wallet::WalletCollection,
     colored::Colorize,
@@ -98,13 +98,13 @@ enum WalletOptions {
         #[structopt(long)]
         symbol: String,
         #[structopt(long)]
-        supply: Amount,
+        supply: Decimal,
         #[structopt(long, default_value = "0")]
         decimals: u8,
         #[structopt(long)]
         mintable: bool,
         #[structopt(long, default_value = "0")]
-        fee: Amount,
+        fee: Decimal,
     },
     /// Send money
     Send {
@@ -117,9 +117,9 @@ enum WalletOptions {
         #[structopt(long)]
         token: Option<usize>,
         #[structopt(long)]
-        amount: Amount,
+        amount: Decimal,
         #[structopt(long, default_value = "0")]
-        fee: Amount,
+        fee: Decimal,
     },
     /// Register your validator
     RegisterValidator {
@@ -128,7 +128,7 @@ enum WalletOptions {
         #[structopt(long)]
         commision: f32,
         #[structopt(long, default_value = "0")]
-        fee: Amount,
+        fee: Decimal,
     },
     /// Delegate to a validator
     Delegate {
@@ -137,9 +137,9 @@ enum WalletOptions {
         #[structopt(long)]
         to: Address,
         #[structopt(long)]
-        amount: Amount,
+        amount: Decimal,
         #[structopt(long, default_value = "0")]
-        fee: Amount,
+        fee: Decimal,
     },
     /// Reclaim funds inside an ended delegatation back to your account
     ReclaimDelegate {
@@ -148,9 +148,9 @@ enum WalletOptions {
         #[structopt(long)]
         from: Address,
         #[structopt(long)]
-        amount: Amount,
+        amount: Decimal,
         #[structopt(long, default_value = "0")]
-        fee: Amount,
+        fee: Decimal,
     },
     /// Resets wallet nonces
     Reset {},
