@@ -398,6 +398,7 @@ pub fn prepare_works<K: KvStore>(
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DepositTransition {
+    pub enabled: bool,
     pub tx: MpnDeposit,
     pub before: MpnAccount,
     pub before_balances_hash: ZkScalar,
@@ -409,6 +410,7 @@ pub struct DepositTransition {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WithdrawTransition {
+    pub enabled: bool,
     pub tx: MpnWithdraw,
     pub before: MpnAccount,
     pub before_token_balance: Money,
@@ -423,6 +425,7 @@ pub struct WithdrawTransition {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateTransition {
+    pub enabled: bool,
     pub tx: MpnTransaction,
     pub src_before: MpnAccount,
     pub src_before_balances_hash: ZkScalar,

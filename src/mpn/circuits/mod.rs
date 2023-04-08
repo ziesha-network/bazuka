@@ -1,3 +1,5 @@
+use super::{DepositTransition, UpdateTransition, WithdrawTransition};
+
 mod deposit_circuit;
 mod update_circuit;
 mod withdraw_circuit;

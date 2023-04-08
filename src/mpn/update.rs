@@ -198,6 +198,7 @@ pub fn update<K: KvStore>(
             .unwrap();
 
             transitions.push(UpdateTransition {
+                enabled: true,
                 src_token_index,
                 dst_token_index,
                 src_fee_token_index,

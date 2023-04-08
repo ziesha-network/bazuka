@@ -1,107 +1,32 @@
-use crate::core::{Money, MpnDeposit};
-use crate::crypto::jubjub;
+use super::DepositTransition;
+
+
+
 use crate::zk::groth16::gadgets::common::Number;
 use crate::zk::groth16::gadgets::common::UnsignedInteger;
 use crate::zk::groth16::gadgets::eddsa::AllocatedPoint;
 use crate::zk::groth16::gadgets::merkle;
 use crate::zk::groth16::gadgets::reveal::{reveal, AllocatedState};
 use crate::zk::groth16::gadgets::{common, poseidon, BellmanFr};
-use crate::zk::{MpnAccount, ZkScalar};
+use crate::zk::{ZkScalar};
 use bellman::gadgets::boolean::{AllocatedBit, Boolean};
 use bellman::gadgets::num::AllocatedNum;
 use bellman::{Circuit, ConstraintSystem, SynthesisError};
 
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct Deposit {
-    pub mpn_deposit: Option<MpnDeposit>,
-    pub index: u64,
-    pub token_index: u64,
-    pub pub_key: jubjub::PointAffine,
-    pub amount: Money,
-}
-
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct DepositTransition<const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8> {
-    pub enabled: bool,
-    pub tx: Deposit,
-    pub before: MpnAccount,
-    pub before_balances_hash: ZkScalar,
-    pub before_balance: Money,
-    pub proof: merkle::Proof<LOG4_TREE_SIZE>,
-    pub balance_proof: merkle::Proof<LOG4_TOKENS_TREE_SIZE>,
-}
-
-impl<const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8>
-    DepositTransition<LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
-    pub fn from_crate(trans: crate::mpn::DepositTransition) -> Self {
-        Self {
-            enabled: true,
-            tx: Deposit {
-                mpn_deposit: Some(trans.tx.clone()),
-                index: trans.tx.zk_address_index(LOG4_TREE_SIZE),
-                token_index: trans.token_index,
-                pub_key: trans.tx.zk_address.0.decompress(),
-                amount: trans.tx.payment.amount,
-            },
-            before: trans.before,
-            before_balances_hash: trans.before_balances_hash,
-            before_balance: trans.before_balance,
-            proof: merkle::Proof::<LOG4_TREE_SIZE>(trans.proof),
-            balance_proof: merkle::Proof::<LOG4_TOKENS_TREE_SIZE>(trans.balance_proof),
-        }
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct DepositTransitionBatch<
-    const LOG4_BATCH_SIZE: u8,
-    const LOG4_TREE_SIZE: u8,
-    const LOG4_TOKENS_TREE_SIZE: u8,
->(Vec<DepositTransition<LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>>);
-impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8>
-    DepositTransitionBatch<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
-    pub fn new(ts: Vec<crate::mpn::DepositTransition>) -> Self {
-        let mut ts = ts
-            .into_iter()
-            .map(|t| DepositTransition::from_crate(t))
-            .collect::<Vec<_>>();
-        while ts.len() < 1 << (2 * LOG4_BATCH_SIZE) {
-            ts.push(DepositTransition::default());
-        }
-        Self(ts)
-    }
-}
-impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8> Default
-    for DepositTransitionBatch<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
-    fn default() -> Self {
-        Self(
-            (0..1 << (2 * LOG4_BATCH_SIZE))
-                .map(|_| DepositTransition::default())
-                .collect::<Vec<_>>(),
-        )
-    }
-}
-
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
-pub struct DepositCircuit<
-    const LOG4_BATCH_SIZE: u8,
-    const LOG4_TREE_SIZE: u8,
-    const LOG4_TOKENS_TREE_SIZE: u8,
-> {
-    pub height: u64,          // Public
-    pub state: ZkScalar,      // Public
-    pub aux_data: ZkScalar,   // Public
-    pub next_state: ZkScalar, // Public
-    pub transitions:
-        Box<DepositTransitionBatch<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>>, // Secret :)
+pub struct DepositCircuit {
+    pub log4_tree_size: u8,
+    pub log4_token_tree_size: u8,
+    pub log4_deposit_batch_size: u8,
+
+    pub height: u64,                         // Public
+    pub state: ZkScalar,                     // Public
+    pub aux_data: ZkScalar,                  // Public
+    pub next_state: ZkScalar,                // Public
+    pub transitions: Vec<DepositTransition>, // Secret :)
 }
 
-impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8>
-    Circuit<BellmanFr> for DepositCircuit<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
+impl Circuit<BellmanFr> for DepositCircuit {
     fn synthesize<CS: ConstraintSystem<BellmanFr>>(
         self,
         cs: &mut CS,
@@ -131,26 +56,28 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
                     crate::zk::ZkStateModel::Scalar, // Calldata
                 ],
             }),
-            log4_size: LOG4_BATCH_SIZE,
+            log4_size: self.log4_deposit_batch_size,
         };
 
         // Uncompress all the Deposit txs that were compressed inside aux_witness
         let mut tx_wits = Vec::new();
         let mut children = Vec::new();
-        for trans in self.transitions.0.iter() {
+        for trans in self.transitions.iter() {
             // If enabled, transaction is validated, otherwise neglected
             let enabled = AllocatedBit::alloc(&mut *cs, Some(trans.enabled))?;
 
             // Tx amount should always have at most 64 bits
             let token_id = AllocatedNum::alloc(&mut *cs, || {
-                Ok(Into::<ZkScalar>::into(trans.tx.amount.token_id).into())
+                Ok(Into::<ZkScalar>::into(trans.tx.payment.amount.token_id).into())
             })?;
 
             // Tx amount should always have at most 64 bits
-            let amount = UnsignedInteger::alloc_64(&mut *cs, trans.tx.amount.amount.into())?;
+            let amount =
+                UnsignedInteger::alloc_64(&mut *cs, trans.tx.payment.amount.amount.into())?;
 
             // Pub-key only needs to reside on curve if tx is enabled, which is checked in the main loop
-            let pub_key = AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.pub_key))?;
+            let pub_key =
+                AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.zk_address.0.decompress()))?;
 
             tx_wits.push((
                 Boolean::Is(enabled.clone()),
@@ -184,17 +111,17 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
         );
 
         for (trans, (enabled_wit, tx_token_id_wit, tx_amount_wit, tx_pub_key_wit)) in
-            self.transitions.0.iter().zip(tx_wits.into_iter())
+            self.transitions.iter().zip(tx_wits.into_iter())
         {
             // Tx index should always have at most LOG4_TREE_SIZE * 2 bits
             let tx_index_wit =
                 UnsignedInteger::constrain_strict(&mut *cs, tx_pub_key_wit.x.clone().into())?
-                    .extract_bits(LOG4_TREE_SIZE as usize * 2);
+                    .extract_bits(self.log4_tree_size as usize * 2);
 
             let tx_token_index_wit = UnsignedInteger::alloc(
                 &mut *cs,
-                (trans.tx.token_index as u64).into(),
-                LOG4_TOKENS_TREE_SIZE as usize * 2,
+                (trans.token_index as u64).into(),
+                self.log4_token_tree_size as usize * 2,
             )?;
 
             // Check if tx pub-key resides on the curve if tx is enabled
@@ -230,7 +157,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
             )?;
 
             let mut src_balance_proof_wits = Vec::new();
-            for b in trans.balance_proof.0.clone() {
+            for b in trans.balance_proof.clone() {
                 src_balance_proof_wits.push([
                     AllocatedNum::alloc(&mut *cs, || Ok(b[0].into()))?,
                     AllocatedNum::alloc(&mut *cs, || Ok(b[1].into()))?,
@@ -259,7 +186,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
             )?;
 
             let mut proof_wits = Vec::new();
-            for b in trans.proof.0.clone() {
+            for b in trans.proof.clone() {
                 proof_wits.push([
                     AllocatedNum::alloc(&mut *cs, || Ok(b[0].into()))?,
                     AllocatedNum::alloc(&mut *cs, || Ok(b[1].into()))?,

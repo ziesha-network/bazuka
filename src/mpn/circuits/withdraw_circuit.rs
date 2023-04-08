@@ -1,5 +1,7 @@
-use crate::core::{Money, MpnWithdraw};
-use crate::crypto::jubjub;
+use super::WithdrawTransition;
+
+
+
 use crate::zk::groth16::gadgets::common::Number;
 use crate::zk::groth16::gadgets::common::UnsignedInteger;
 use crate::zk::groth16::gadgets::eddsa;
@@ -7,117 +9,25 @@ use crate::zk::groth16::gadgets::eddsa::AllocatedPoint;
 use crate::zk::groth16::gadgets::merkle;
 use crate::zk::groth16::gadgets::reveal::{reveal, AllocatedState};
 use crate::zk::groth16::gadgets::{common, poseidon, BellmanFr};
-use crate::zk::{MpnAccount, ZkScalar};
+use crate::zk::{ZkScalar};
 use bellman::gadgets::boolean::{AllocatedBit, Boolean};
 use bellman::gadgets::num::AllocatedNum;
 use bellman::{Circuit, ConstraintSystem, SynthesisError};
 
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct Withdraw {
-    pub mpn_withdraw: Option<MpnWithdraw>,
-    pub index: u64,
-    pub token_index: u64,
-    pub fee_token_index: u64,
-    pub pub_key: jubjub::PointAffine,
-    pub fingerprint: ZkScalar,
-    pub nonce: u32,
-    pub sig: jubjub::Signature,
-    pub amount: Money,
-    pub fee: Money,
-}
-
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct WithdrawTransition<const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8> {
-    pub enabled: bool,
-    pub tx: Withdraw,
-    pub before: MpnAccount,
-    pub before_token_balance: Money,
-    pub before_fee_balance: Money,
-    pub proof: merkle::Proof<LOG4_TREE_SIZE>,
-    pub token_balance_proof: merkle::Proof<LOG4_TOKENS_TREE_SIZE>,
-    pub before_token_hash: ZkScalar,
-    pub fee_balance_proof: merkle::Proof<LOG4_TOKENS_TREE_SIZE>,
-}
-
-impl<const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8>
-    WithdrawTransition<LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
-    pub fn from_crate(trans: crate::mpn::WithdrawTransition) -> Self {
-        Self {
-            enabled: true,
-            tx: Withdraw {
-                mpn_withdraw: Some(trans.tx.clone()),
-                index: trans.tx.zk_address_index(LOG4_TREE_SIZE),
-                token_index: trans.token_index,
-                fee_token_index: trans.fee_token_index,
-                pub_key: trans.tx.zk_address.0.decompress(),
-                fingerprint: trans.tx.payment.fingerprint(),
-                nonce: trans.tx.zk_nonce,
-                sig: trans.tx.zk_sig,
-                amount: trans.tx.payment.amount,
-                fee: trans.tx.payment.fee,
-            },
-            before: trans.before,
-            before_token_hash: trans.before_token_hash,
-            before_token_balance: trans.before_token_balance,
-            before_fee_balance: trans.before_fee_balance,
-
-            proof: merkle::Proof::<LOG4_TREE_SIZE>(trans.proof),
-            token_balance_proof: merkle::Proof::<LOG4_TOKENS_TREE_SIZE>(trans.token_balance_proof),
-            fee_balance_proof: merkle::Proof::<LOG4_TOKENS_TREE_SIZE>(trans.fee_balance_proof),
-        }
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct WithdrawTransitionBatch<
-    const LOG4_BATCH_SIZE: u8,
-    const LOG4_TREE_SIZE: u8,
-    const LOG4_TOKENS_TREE_SIZE: u8,
->(Vec<WithdrawTransition<LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>>);
-impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8>
-    WithdrawTransitionBatch<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
-    pub fn new(ts: Vec<crate::mpn::WithdrawTransition>) -> Self {
-        let mut ts = ts
-            .into_iter()
-            .map(|t| WithdrawTransition::from_crate(t))
-            .collect::<Vec<_>>();
-        while ts.len() < 1 << (2 * LOG4_BATCH_SIZE) {
-            ts.push(WithdrawTransition::default());
-        }
-        Self(ts)
-    }
-}
-impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8> Default
-    for WithdrawTransitionBatch<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
-    fn default() -> Self {
-        Self(
-            (0..1 << (2 * LOG4_BATCH_SIZE))
-                .map(|_| WithdrawTransition::default())
-                .collect::<Vec<_>>(),
-        )
-    }
-}
-
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
-pub struct WithdrawCircuit<
-    const LOG4_BATCH_SIZE: u8,
-    const LOG4_TREE_SIZE: u8,
-    const LOG4_TOKENS_TREE_SIZE: u8,
-> {
-    pub height: u64,          // Public
-    pub state: ZkScalar,      // Public
-    pub aux_data: ZkScalar,   // Public
-    pub next_state: ZkScalar, // Public
-    pub transitions:
-        Box<WithdrawTransitionBatch<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>>, // Secret :)
+pub struct WithdrawCircuit {
+    pub log4_tree_size: u8,
+    pub log4_token_tree_size: u8,
+    pub log4_withdraw_batch_size: u8,
+
+    pub height: u64,                          // Public
+    pub state: ZkScalar,                      // Public
+    pub aux_data: ZkScalar,                   // Public
+    pub next_state: ZkScalar,                 // Public
+    pub transitions: Vec<WithdrawTransition>, // Secret :)
 }
 
-impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8>
-    Circuit<BellmanFr> for WithdrawCircuit<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
+impl Circuit<BellmanFr> for WithdrawCircuit {
     fn synthesize<CS: ConstraintSystem<BellmanFr>>(
         self,
         cs: &mut CS,
@@ -150,38 +60,41 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
                     crate::zk::ZkStateModel::Scalar, // Calldata
                 ],
             }),
-            log4_size: LOG4_BATCH_SIZE,
+            log4_size: self.log4_withdraw_batch_size,
         };
 
         // Uncompress all the Withdraw txs that were compressed inside aux_witness
         let mut tx_wits = Vec::new();
         let mut children = Vec::new();
-        for trans in self.transitions.0.iter() {
+        for trans in self.transitions.iter() {
             // If enabled, transaction is validated, otherwise neglected
             let enabled = AllocatedBit::alloc(&mut *cs, Some(trans.enabled))?;
 
             let amount_token_id = AllocatedNum::alloc(&mut *cs, || {
-                Ok(Into::<ZkScalar>::into(trans.tx.amount.token_id).into())
+                Ok(Into::<ZkScalar>::into(trans.tx.payment.amount.token_id).into())
             })?;
 
             // Tx amount should always have at most 64 bits
-            let amount = UnsignedInteger::alloc_64(&mut *cs, trans.tx.amount.amount.into())?;
+            let amount =
+                UnsignedInteger::alloc_64(&mut *cs, trans.tx.payment.amount.amount.into())?;
 
             let fee_token_id = AllocatedNum::alloc(&mut *cs, || {
-                Ok(Into::<ZkScalar>::into(trans.tx.fee.token_id).into())
+                Ok(Into::<ZkScalar>::into(trans.tx.payment.fee.token_id).into())
             })?;
 
             // Tx amount should always have at most 64 bits
-            let fee = UnsignedInteger::alloc_64(&mut *cs, trans.tx.fee.amount.into())?;
+            let fee = UnsignedInteger::alloc_64(&mut *cs, trans.tx.payment.fee.amount.into())?;
 
             // Tx amount should always have at most 64 bits
-            let fingerprint = AllocatedNum::alloc(&mut *cs, || Ok(trans.tx.fingerprint.into()))?;
+            let fingerprint =
+                AllocatedNum::alloc(&mut *cs, || Ok(trans.tx.payment.fingerprint().into()))?;
 
             // Pub-key only needs to reside on curve if tx is enabled, which is checked in the main loop
-            let pub_key = AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.pub_key))?;
-            let nonce = AllocatedNum::alloc(&mut *cs, || Ok((trans.tx.nonce as u64).into()))?;
-            let sig_r = AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.sig.r))?;
-            let sig_s = AllocatedNum::alloc(&mut *cs, || Ok(trans.tx.sig.s.into()))?;
+            let pub_key =
+                AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.zk_address.0.decompress()))?;
+            let nonce = AllocatedNum::alloc(&mut *cs, || Ok((trans.tx.zk_nonce as u64).into()))?;
+            let sig_r = AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.zk_sig.r))?;
+            let sig_s = AllocatedNum::alloc(&mut *cs, || Ok(trans.tx.zk_sig.s.into()))?;
 
             tx_wits.push((
                 Boolean::Is(enabled.clone()),
@@ -247,25 +160,25 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
                 tx_sig_r_wit,
                 tx_sig_s_wit,
             ),
-        ) in self.transitions.0.iter().zip(tx_wits.into_iter())
+        ) in self.transitions.iter().zip(tx_wits.into_iter())
         {
             // Tx index should always have at most LOG4_TREE_SIZE * 2 bits
             let tx_index_wit = UnsignedInteger::alloc(
                 &mut *cs,
-                (trans.tx.index as u64).into(),
-                LOG4_TREE_SIZE as usize * 2,
+                (trans.tx.zk_address_index(self.log4_tree_size) as u64).into(),
+                self.log4_tree_size as usize * 2,
             )?;
 
             let tx_token_index_wit = UnsignedInteger::alloc(
                 &mut *cs,
-                (trans.tx.token_index as u64).into(),
-                LOG4_TOKENS_TREE_SIZE as usize * 2,
+                (trans.token_index as u64).into(),
+                self.log4_token_tree_size as usize * 2,
             )?;
 
             let tx_fee_token_index_wit = UnsignedInteger::alloc(
                 &mut *cs,
-                (trans.tx.fee_token_index as u64).into(),
-                LOG4_TOKENS_TREE_SIZE as usize * 2,
+                (trans.fee_token_index as u64).into(),
+                self.log4_token_tree_size as usize * 2,
             )?;
 
             // Check if tx pub-key resides on the curve if tx is enabled
@@ -322,7 +235,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
                 ],
             )?;
             let mut src_token_balance_proof_wits = Vec::new();
-            for b in trans.token_balance_proof.0.clone() {
+            for b in trans.token_balance_proof.clone() {
                 src_token_balance_proof_wits.push([
                     AllocatedNum::alloc(&mut *cs, || Ok(b[0].into()))?,
                     AllocatedNum::alloc(&mut *cs, || Ok(b[1].into()))?,
@@ -373,7 +286,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
             )?;
 
             let mut src_fee_token_balance_proof_wits = Vec::new();
-            for b in trans.fee_balance_proof.0.clone() {
+            for b in trans.fee_balance_proof.clone() {
                 src_fee_token_balance_proof_wits.push([
                     AllocatedNum::alloc(&mut *cs, || Ok(b[0].into()))?,
                     AllocatedNum::alloc(&mut *cs, || Ok(b[1].into()))?,
@@ -409,7 +322,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
                 ],
             )?;
             let mut proof_wits = Vec::new();
-            for b in trans.proof.0.clone() {
+            for b in trans.proof.clone() {
                 proof_wits.push([
                     AllocatedNum::alloc(&mut *cs, || Ok(b[0].into()))?,
                     AllocatedNum::alloc(&mut *cs, || Ok(b[1].into()))?,

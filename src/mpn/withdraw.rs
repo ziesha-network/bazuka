@@ -138,6 +138,7 @@ pub fn withdraw<K: KvStore>(
             .unwrap();
 
             transitions.push(WithdrawTransition {
+                enabled: true,
                 token_index: zk_token_index,
                 fee_token_index: zk_fee_token_index,
                 tx: tx.clone(),

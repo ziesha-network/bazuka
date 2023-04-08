@@ -95,6 +95,7 @@ pub fn deposit<K: KvStore>(
             .unwrap();
 
             transitions.push(DepositTransition {
+                enabled: true,
                 tx: tx.clone(),
                 token_index: zk_token_index,
                 before: acc.clone(),

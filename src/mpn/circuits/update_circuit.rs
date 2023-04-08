@@ -1,121 +1,31 @@
-use crate::core::{Money, TokenId};
-use crate::zk::groth16::gadgets::common::Number;
-use crate::zk::groth16::gadgets::common::UnsignedInteger;
-use crate::zk::groth16::gadgets::eddsa::AllocatedPoint;
-use crate::zk::groth16::gadgets::merkle;
-use crate::zk::groth16::gadgets::{common, eddsa, poseidon, BellmanFr};
-use crate::zk::{MpnAccount, MpnTransaction, ZkScalar};
+use super::UpdateTransition;
+
+use crate::core::{TokenId};
+use crate::zk::groth16::gadgets::{
+    common, common::Number, common::UnsignedInteger, eddsa, eddsa::AllocatedPoint, merkle,
+    poseidon, BellmanFr,
+};
+use crate::zk::ZkScalar;
 use bellman::gadgets::boolean::{AllocatedBit, Boolean};
 use bellman::gadgets::num::AllocatedNum;
 use bellman::{Circuit, ConstraintSystem, SynthesisError};
 
-// Validation:
-// 0. Check verify_sig(tx)
-// 1. Check verify_proof(curr_root, src_before, src_proof)
-// 2. src_after := update_acc(src_before, tx)
-// 3. root_after_src := calc_new_root(src_after, src_proof)
-// 4. Check verify_proof(root_after_src, dst_before, dst_proof)
-// 5. dst_after := update_acc(dst_after, tx)
-// 6. root_after_dst := calc_new_root(dst_after, dst_proof)
-// 7. Check next_state == root_after_dst
-#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
-pub struct Transition<const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8> {
-    pub enabled: bool,
-    pub src_token_index: u64,
-    pub src_fee_token_index: u64,
-    pub dst_token_index: u64,
-    pub tx: MpnTransaction,
-    pub src_before: MpnAccount, // src_after can be derived
-    pub src_before_balances_hash: ZkScalar,
-    pub src_before_balance: Money,
-    pub src_before_fee_balance: Money,
-    pub src_proof: merkle::Proof<LOG4_TREE_SIZE>,
-    pub src_balance_proof: merkle::Proof<LOG4_TOKENS_TREE_SIZE>,
-    pub src_fee_balance_proof: merkle::Proof<LOG4_TOKENS_TREE_SIZE>,
-    pub dst_before: MpnAccount, // dst_after can be derived
-    pub dst_before_balances_hash: ZkScalar,
-    pub dst_before_balance: Money,
-    pub dst_proof: merkle::Proof<LOG4_TREE_SIZE>,
-    pub dst_balance_proof: merkle::Proof<LOG4_TOKENS_TREE_SIZE>,
-}
-
-impl<const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8>
-    Transition<LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
-    pub fn from_crate(trans: crate::mpn::UpdateTransition) -> Self {
-        Self {
-            enabled: true,
-            tx: trans.tx,
-            src_token_index: trans.src_token_index,
-            src_fee_token_index: trans.src_fee_token_index,
-            dst_token_index: trans.dst_token_index,
-            src_before: trans.src_before, // src_after can be derived
-            src_before_balances_hash: trans.src_before_balances_hash,
-            src_before_balance: trans.src_before_balance,
-            src_before_fee_balance: trans.src_before_fee_balance,
-            src_proof: merkle::Proof::<LOG4_TREE_SIZE>(trans.src_proof),
-            src_balance_proof: merkle::Proof::<LOG4_TOKENS_TREE_SIZE>(trans.src_balance_proof),
-            src_fee_balance_proof: merkle::Proof::<LOG4_TOKENS_TREE_SIZE>(
-                trans.src_fee_balance_proof,
-            ),
-            dst_before: trans.dst_before, // dst_after can be derived
-            dst_before_balances_hash: trans.dst_before_balances_hash,
-            dst_before_balance: trans.dst_before_balance,
-            dst_proof: merkle::Proof::<LOG4_TREE_SIZE>(trans.dst_proof),
-            dst_balance_proof: merkle::Proof::<LOG4_TOKENS_TREE_SIZE>(trans.dst_balance_proof),
-        }
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct TransitionBatch<
-    const LOG4_BATCH_SIZE: u8,
-    const LOG4_TREE_SIZE: u8,
-    const LOG4_TOKENS_TREE_SIZE: u8,
->(Vec<Transition<LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>>);
-impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8>
-    TransitionBatch<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
-    pub fn new(ts: Vec<crate::mpn::UpdateTransition>) -> Self {
-        let mut ts = ts
-            .into_iter()
-            .map(|t| Transition::from_crate(t))
-            .collect::<Vec<_>>();
-        while ts.len() < 1 << (2 * LOG4_BATCH_SIZE) {
-            ts.push(Transition::default());
-        }
-        Self(ts)
-    }
-}
-impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8> Default
-    for TransitionBatch<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
-    fn default() -> Self {
-        Self(
-            (0..1 << (2 * LOG4_BATCH_SIZE))
-                .map(|_| Transition::default())
-                .collect::<Vec<_>>(),
-        )
-    }
-}
-
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
-pub struct UpdateCircuit<
-    const LOG4_BATCH_SIZE: u8,
-    const LOG4_TREE_SIZE: u8,
-    const LOG4_TOKENS_TREE_SIZE: u8,
-> {
+pub struct UpdateCircuit {
+    pub log4_tree_size: u8,
+    pub log4_token_tree_size: u8,
+    pub log4_update_batch_size: u8,
+
     pub height: u64,          // Public
     pub state: ZkScalar,      // Public
     pub aux_data: ZkScalar,   // Public
     pub next_state: ZkScalar, // Public
     pub fee_token: TokenId,   // Private
-    pub transitions: Box<TransitionBatch<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>>, // Secret :)
+
+    pub transitions: Vec<UpdateTransition>, // Secret :)
 }
 
-impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE_SIZE: u8>
-    Circuit<BellmanFr> for UpdateCircuit<LOG4_BATCH_SIZE, LOG4_TREE_SIZE, LOG4_TOKENS_TREE_SIZE>
-{
+impl Circuit<BellmanFr> for UpdateCircuit {
     fn synthesize<CS: ConstraintSystem<BellmanFr>>(
         self,
         cs: &mut CS,
@@ -143,26 +53,26 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
         // Sum of tx fees as a linear-combination of tx fees
         let mut fee_sum = Number::zero();
 
-        for trans in self.transitions.0.iter() {
+        for trans in self.transitions.iter() {
             // If enabled, transaction is validated, otherwise neglected
             let enabled_wit = Boolean::Is(AllocatedBit::alloc(&mut *cs, Some(trans.enabled))?);
 
             let tx_src_token_index_wit = UnsignedInteger::alloc(
                 &mut *cs,
                 (trans.src_token_index as u64).into(),
-                LOG4_TOKENS_TREE_SIZE as usize * 2,
+                self.log4_token_tree_size as usize * 2,
             )?;
 
             let tx_src_fee_token_index_wit = UnsignedInteger::alloc(
                 &mut *cs,
                 (trans.src_fee_token_index as u64).into(),
-                LOG4_TOKENS_TREE_SIZE as usize * 2,
+                self.log4_token_tree_size as usize * 2,
             )?;
 
             let tx_dst_token_index_wit = UnsignedInteger::alloc(
                 &mut *cs,
                 (trans.dst_token_index as u64).into(),
-                LOG4_TOKENS_TREE_SIZE as usize * 2,
+                self.log4_token_tree_size as usize * 2,
             )?;
 
             let src_tx_nonce_wit =
@@ -209,7 +119,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
             )?;
 
             let mut src_balance_proof_wits = Vec::new();
-            for b in trans.src_balance_proof.0.clone() {
+            for b in trans.src_balance_proof.clone() {
                 src_balance_proof_wits.push([
                     AllocatedNum::alloc(&mut *cs, || Ok(b[0].into()))?,
                     AllocatedNum::alloc(&mut *cs, || Ok(b[1].into()))?,
@@ -244,7 +154,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
             )?;
 
             let mut src_fee_balance_proof_wits = Vec::new();
-            for b in trans.src_fee_balance_proof.0.clone() {
+            for b in trans.src_fee_balance_proof.clone() {
                 src_fee_balance_proof_wits.push([
                     AllocatedNum::alloc(&mut *cs, || Ok(b[0].into()))?,
                     AllocatedNum::alloc(&mut *cs, || Ok(b[1].into()))?,
@@ -282,7 +192,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
             // src and dst indices should only have 2 * LOG4_TREE_SIZE bits
             let tx_src_index_wit =
                 UnsignedInteger::constrain_strict(&mut *cs, src_addr_wit.x.clone().into())?
-                    .extract_bits(LOG4_TREE_SIZE as usize * 2);
+                    .extract_bits(self.log4_tree_size as usize * 2);
             let tx_amount_token_id_wit = AllocatedNum::alloc(&mut *cs, || {
                 Ok(Into::<ZkScalar>::into(trans.tx.amount.token_id).into())
             })?;
@@ -336,7 +246,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
             )?;
 
             let mut dst_balance_proof_wits = Vec::new();
-            for b in trans.dst_balance_proof.0.clone() {
+            for b in trans.dst_balance_proof.clone() {
                 dst_balance_proof_wits.push([
                     AllocatedNum::alloc(&mut *cs, || Ok(b[0].into()))?,
                     AllocatedNum::alloc(&mut *cs, || Ok(b[1].into()))?,
@@ -359,7 +269,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
             )?;
 
             let mut src_proof_wits = Vec::new();
-            for b in trans.src_proof.0.clone() {
+            for b in trans.src_proof.clone() {
                 src_proof_wits.push([
                     AllocatedNum::alloc(&mut *cs, || Ok(b[0].into()))?,
                     AllocatedNum::alloc(&mut *cs, || Ok(b[1].into()))?,
@@ -405,7 +315,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
 
             let tx_dst_index_wit =
                 UnsignedInteger::constrain_strict(&mut *cs, tx_dst_addr_wit.x.clone().into())?
-                    .extract_bits(LOG4_TREE_SIZE as usize * 2);
+                    .extract_bits(self.log4_tree_size as usize * 2);
 
             let dst_tx_nonce_wit =
                 AllocatedNum::alloc(&mut *cs, || Ok((trans.dst_before.tx_nonce as u64).into()))?;
@@ -427,7 +337,7 @@ impl<const LOG4_BATCH_SIZE: u8, const LOG4_TREE_SIZE: u8, const LOG4_TOKENS_TREE
                 ],
             )?;
             let mut dst_proof_wits = Vec::new();
-            for b in trans.dst_proof.0.clone() {
+            for b in trans.dst_proof.clone() {
                 dst_proof_wits.push([
                     AllocatedNum::alloc(&mut *cs, || Ok(b[0].into()))?,
                     AllocatedNum::alloc(&mut *cs, || Ok(b[1].into()))?,
