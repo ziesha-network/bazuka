@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::cli::BazukaConfig;
+use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::client::{BazukaClient, NodeError};
 use bazuka::core::{Decimal, Money, NonceGroup, TokenId};
 use bazuka::wallet::WalletCollection;
@@ -19,8 +19,11 @@ pub async fn new_token(
     wallet_path: &PathBuf,
 ) -> () {
     let tx_builder = wallet.user(0).tx_builder();
-    let (req_loop, client) =
-        BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
+    let (req_loop, client) = BazukaClient::connect(
+        tx_builder.get_priv_key(),
+        conf.random_node(),
+        CURRENT_NETWORK.into(),
+    );
     try_join!(
         async move {
             let curr_nonce = client.get_account(tx_builder.get_address()).await?.nonce;

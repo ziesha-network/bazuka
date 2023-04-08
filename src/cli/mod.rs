@@ -39,6 +39,8 @@ pub mod node;
 const DEFAULT_PORT: u16 = 8765;
 const BAZUKA_NOT_INITILIZED: &str = "Bazuka is not initialized";
 
+const CURRENT_NETWORK: &str = "tahdig";
+
 #[cfg(feature = "client")]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BazukaConfigMpnWorker {
@@ -63,7 +65,6 @@ impl TryInto<MpnWorker> for BazukaConfigMpnWorker {
 pub struct BazukaConfig {
     listen: SocketAddr,
     external: PeerAddress,
-    network: String,
     bootstrap: Vec<PeerAddress>,
     db: PathBuf,
     mpn_workers: Vec<BazukaConfigMpnWorker>,
@@ -206,8 +207,6 @@ enum CliOptions {
     #[cfg(feature = "client")]
     /// Initialize node/wallet
     Init {
-        #[structopt(long, default_value = "mainnet")]
-        network: String,
         #[structopt(long)]
         bootstrap: Vec<PeerAddress>,
         #[structopt(long)]
@@ -238,6 +237,7 @@ async fn run_node<K: KvStore, B: Blockchain<K>>(
     wallet: WalletCollection,
     social_profiles: SocialProfiles,
     client_only: bool,
+    network: String,
 ) -> Result<(), NodeError> {
     let address = if client_only {
         None
@@ -255,7 +255,7 @@ async fn run_node<K: KvStore, B: Blockchain<K>>(
     if let Some(addr) = &address {
         println!("{} {}", "Internet endpoint:".bright_yellow(), addr);
     }
-    println!("{} {}", "Network:".bright_yellow(), bazuka_config.network);
+    println!("{} {}", "Network:".bright_yellow(), network);
 
     let (inc_send, inc_recv) = mpsc::unbounded_channel::<NodeRequest>();
     let (out_send, mut out_recv) = mpsc::unbounded_channel::<NodeRequest>();
@@ -269,7 +269,7 @@ async fn run_node<K: KvStore, B: Blockchain<K>>(
     // data from external world through a heartbeat loop.
     let node = node_create(
         config::node::get_node_options(),
-        &bazuka_config.network,
+        &network,
         address,
         bootstrap_nodes,
         blockchain,
@@ -415,7 +415,6 @@ pub async fn initialize_cli() {
         },
         #[cfg(feature = "client")]
         CliOptions::Init {
-            network,
             bootstrap,
             mnemonic,
             external,
@@ -423,7 +422,6 @@ pub async fn initialize_cli() {
             db,
         } => {
             crate::cli::init(
-                network,
                 bootstrap,
                 mnemonic,
                 external,

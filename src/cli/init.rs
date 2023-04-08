@@ -8,7 +8,6 @@ use std::{
 };
 
 pub async fn init(
-    network: String,
     bootstrap: Vec<PeerAddress>,
     mnemonic: Option<Mnemonic>,
     external: Option<PeerAddress>,
@@ -40,7 +39,6 @@ pub async fn init(
         std::fs::write(
             conf_path,
             serde_yaml::to_string(&BazukaConfig {
-                network,
                 bootstrap,
                 listen: listen.unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], DEFAULT_PORT))),
                 external: external

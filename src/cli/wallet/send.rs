@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::cli::BazukaConfig;
+use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::wallet::WalletCollection;
 use bazuka::{
     client::{BazukaClient, NodeError},
@@ -25,8 +25,11 @@ pub async fn send(
         .mpn_config
         .mpn_contract_id;
 
-    let (req_loop, client) =
-        BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
+    let (req_loop, client) = BazukaClient::connect(
+        tx_builder.get_priv_key(),
+        conf.random_node(),
+        CURRENT_NETWORK.into(),
+    );
     let tkn = if let Some(token) = token {
         if token >= wallet.user(0).get_tokens().len() {
             panic!("Wrong token selected!");

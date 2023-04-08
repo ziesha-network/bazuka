@@ -1,6 +1,6 @@
 use futures::try_join;
 
-use crate::cli::BazukaConfig;
+use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 
 use bazuka::{
     client::{BazukaClient, NodeError},
@@ -12,7 +12,7 @@ pub async fn status(conf: BazukaConfig, mut wallet: WalletCollection) {
     let (req_loop, client) = BazukaClient::connect(
         wallet.get_priv_key(),
         conf.random_node(),
-        conf.network.clone(),
+        CURRENT_NETWORK.into(),
     );
     try_join!(
         async move {

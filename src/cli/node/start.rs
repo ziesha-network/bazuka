@@ -1,4 +1,4 @@
-use crate::cli::{run_node, BazukaConfig};
+use crate::cli::{run_node, BazukaConfig, CURRENT_NETWORK};
 
 use bazuka::{
     blockchain::KvStoreChain, client::messages::SocialProfiles, config, db::LevelDbKvStore,
@@ -29,6 +29,7 @@ pub async fn start(
                 discord: discord_handle,
             },
             client_only,
+            "dev".into(),
         )
         .await
         .unwrap();
@@ -41,6 +42,7 @@ pub async fn start(
                 discord: discord_handle,
             },
             client_only,
+            CURRENT_NETWORK.into(),
         )
         .await
         .unwrap();

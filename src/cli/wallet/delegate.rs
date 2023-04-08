@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use tokio::try_join;
 
-use crate::cli::BazukaConfig;
+use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::client::{BazukaClient, NodeError};
 use bazuka::core::{Decimal, Money, NonceGroup, TokenId};
 use bazuka::crypto::ed25519::PublicKey;
@@ -17,8 +17,11 @@ pub async fn delegate(
     fee: Decimal,
 ) -> () {
     let tx_builder = wallet.user(0).tx_builder();
-    let (req_loop, client) =
-        BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
+    let (req_loop, client) = BazukaClient::connect(
+        tx_builder.get_priv_key(),
+        conf.random_node(),
+        CURRENT_NETWORK.into(),
+    );
     try_join!(
         async move {
             let curr_nonce = client.get_account(tx_builder.get_address()).await?.nonce;

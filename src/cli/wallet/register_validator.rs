@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use tokio::try_join;
 
-use crate::cli::BazukaConfig;
+use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::client::{BazukaClient, NodeError};
 use bazuka::core::{Decimal, Money, NonceGroup, TokenId};
 use bazuka::wallet::WalletCollection;
@@ -22,8 +22,11 @@ pub async fn register_validator(
 
     let commision_u8 = (commision * (u8::MAX as f32)) as u8;
     let tx_builder = wallet.validator().tx_builder();
-    let (req_loop, client) =
-        BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
+    let (req_loop, client) = BazukaClient::connect(
+        tx_builder.get_priv_key(),
+        conf.random_node(),
+        CURRENT_NETWORK.into(),
+    );
     try_join!(
         async move {
             let curr_nonce = client.get_account(tx_builder.get_address()).await?.nonce;

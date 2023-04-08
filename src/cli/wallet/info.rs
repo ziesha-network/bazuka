@@ -1,6 +1,6 @@
 use tokio::try_join;
 
-use crate::cli::BazukaConfig;
+use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::client::NodeError;
 use bazuka::core::{MpnAddress, NonceGroup};
 use bazuka::wallet::WalletCollection;
@@ -12,8 +12,11 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
     let val_tx_builder = wallet.validator().tx_builder();
     let tx_builder = wallet.user(0).tx_builder();
 
-    let (req_loop, client) =
-        BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
+    let (req_loop, client) = BazukaClient::connect(
+        tx_builder.get_priv_key(),
+        conf.random_node(),
+        CURRENT_NETWORK.into(),
+    );
     try_join!(
         async move {
             if validator {

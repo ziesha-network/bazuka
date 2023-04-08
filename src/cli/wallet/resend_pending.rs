@@ -1,4 +1,4 @@
-use crate::cli::BazukaConfig;
+use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::client::{BazukaClient, NodeError};
 
 use bazuka::wallet::WalletCollection;
@@ -12,8 +12,11 @@ async fn resend_all_wallet_txs(
     wallet: &mut WalletCollection,
 ) -> Result<(), NodeError> {
     let tx_builder = wallet.user(0).tx_builder();
-    let (req_loop, client) =
-        BazukaClient::connect(tx_builder.get_priv_key(), conf.random_node(), conf.network);
+    let (req_loop, client) = BazukaClient::connect(
+        tx_builder.get_priv_key(),
+        conf.random_node(),
+        CURRENT_NETWORK.into(),
+    );
     try_join!(
         async move {
             for (_, txs) in wallet.user(0).txs.iter() {
