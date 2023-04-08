@@ -64,7 +64,7 @@ impl Into<StringKey> for StakerRankDbKey {
         format!(
             "{}-{:016x}-{}",
             Self::prefix(),
-            (u64::MAX - self.amount.normalize(crate::config::UNIT_ZEROS)),
+            (u64::MAX - self.amount.normalize(crate::config::DECIMALS)),
             self.address
         )
         .into()
@@ -99,7 +99,7 @@ impl Into<StringKey> for DelegatorRankDbKey {
         format!(
             "{}-{:016x}-{}",
             Self::prefix(&self.delegatee),
-            (u64::MAX - self.amount.normalize(crate::config::UNIT_ZEROS)),
+            (u64::MAX - self.amount.normalize(crate::config::DECIMALS)),
             self.delegator
         )
         .into()
@@ -141,7 +141,7 @@ impl Into<StringKey> for DelegateeRankDbKey {
         format!(
             "{}-{:016x}-{}",
             Self::prefix(&self.delegator),
-            (u64::MAX - self.amount.normalize(crate::config::UNIT_ZEROS)),
+            (u64::MAX - self.amount.normalize(crate::config::DECIMALS)),
             self.delegatee
         )
         .into()

@@ -110,7 +110,7 @@ impl MpnWorkPool {
                             .iter()
                             .map(|t| {
                                 Into::<u64>::into(
-                                    t.tx.fee.amount.normalize(crate::config::UNIT_ZEROS),
+                                    t.tx.fee.amount.normalize(crate::config::DECIMALS),
                                 )
                             })
                             .sum::<u64>();

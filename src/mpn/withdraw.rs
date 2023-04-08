@@ -207,7 +207,7 @@ pub fn withdraw<K: KvStore>(
                                 .payment
                                 .amount
                                 .amount
-                                .normalize(crate::config::UNIT_ZEROS)
+                                .normalize(crate::config::DECIMALS)
                                 .into(),
                         ),
                     ),
@@ -223,7 +223,7 @@ pub fn withdraw<K: KvStore>(
                                 .payment
                                 .fee
                                 .amount
-                                .normalize(crate::config::UNIT_ZEROS)
+                                .normalize(crate::config::DECIMALS)
                                 .into(),
                         ),
                     ),

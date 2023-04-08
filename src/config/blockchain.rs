@@ -1,4 +1,4 @@
-use super::{UNIT, UNIT_ZEROS};
+use super::DECIMALS;
 
 use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
@@ -142,8 +142,8 @@ fn get_ziesha_token_creation_tx() -> Transaction {
             token: Token {
                 name: "Ziesha".into(),
                 symbol: "ZSH".into(),
-                supply: Amount::new(2_000_000_000_u64 * UNIT),
-                decimals: UNIT_ZEROS,
+                supply: Amount::new(2_000_000_000),
+                decimals: DECIMALS,
                 minter: None,
             },
         },
@@ -189,7 +189,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             to: "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
                 .parse()
                 .unwrap(),
-            amount: Amount::new(1000000000000),
+            amount: Amount::new(1000),
             reverse: false,
         },
         nonce: 3,
@@ -282,7 +282,7 @@ pub fn get_dev_blockchain_config(validator: &TxBuilder) -> BlockchainConfig {
         src: None,
         data: TransactionData::Delegate {
             to: validator.get_address(),
-            amount: Amount::new(1000000000000),
+            amount: Amount::new(1000),
             reverse: false,
         },
         nonce: 3,

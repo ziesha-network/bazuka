@@ -86,7 +86,7 @@ impl MpnAccount {
                         ),
                         (
                             ZkDataLocator(vec![*i as u64, 1]),
-                            Some(money.amount.normalize(crate::config::UNIT_ZEROS).into()),
+                            Some(money.amount.normalize(crate::config::DECIMALS).into()),
                         ),
                     ]
                     .into(),
@@ -613,9 +613,9 @@ impl MpnTransaction {
             dst_pub_decom.0,
             dst_pub_decom.1,
             self.amount.token_id.into(),
-            ZkScalar::from(self.amount.amount.normalize(crate::config::UNIT_ZEROS)),
+            ZkScalar::from(self.amount.amount.normalize(crate::config::DECIMALS)),
             self.fee.token_id.into(),
-            ZkScalar::from(self.fee.amount.normalize(crate::config::UNIT_ZEROS)),
+            ZkScalar::from(self.fee.amount.normalize(crate::config::DECIMALS)),
         ])
     }
 }

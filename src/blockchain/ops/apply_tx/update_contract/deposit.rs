@@ -44,7 +44,7 @@ pub fn deposit<K: KvStore>(
                 (
                     zk::ZkDataLocator(vec![i as u64, 2]),
                     Some(zk::ZkScalar::from(
-                        deposit.amount.amount.normalize(crate::config::UNIT_ZEROS),
+                        deposit.amount.amount.normalize(crate::config::DECIMALS),
                     )),
                 ),
                 (zk::ZkDataLocator(vec![i as u64, 3]), Some(deposit.calldata)),

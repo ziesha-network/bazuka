@@ -155,7 +155,7 @@ pub fn deposit<K: KvStore>(
                                 .payment
                                 .amount
                                 .amount
-                                .normalize(crate::config::UNIT_ZEROS)
+                                .normalize(crate::config::DECIMALS)
                                 .into(),
                         ),
                     ),

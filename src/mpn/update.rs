@@ -240,7 +240,7 @@ pub fn update<K: KvStore>(
             ZkScalar::from(
                 accepted
                     .iter()
-                    .map(|tx| tx.fee.amount.normalize(crate::config::UNIT_ZEROS))
+                    .map(|tx| tx.fee.amount.normalize(crate::config::DECIMALS))
                     .sum::<u64>(),
             ),
         ])

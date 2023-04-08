@@ -10,10 +10,7 @@ mod tokens;
 
 fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), BlockchainError> {
     while b.get_height()? > 0 {
-        assert_eq!(
-            b.currency_in_circulation()?,
-            Amount::new(2000000000000000000)
-        );
+        assert_eq!(b.currency_in_circulation()?, Amount::new(2000000000));
         b.rollback()?;
     }
     assert_eq!(b.currency_in_circulation()?, Amount::new(0));

@@ -21,7 +21,7 @@ pub fn select_transactions<K: KvStore>(
         };
         (
             is_mpn,
-            tx.tx.fee.amount.normalize(crate::config::UNIT_ZEROS) / cost as u64,
+            tx.tx.fee.amount.normalize(crate::config::DECIMALS) / cost as u64,
             -(tx.tx.nonce as i32),
         )
     });

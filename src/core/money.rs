@@ -55,15 +55,18 @@ impl Amount {
         }
         value
     }
-    pub fn display_by_decimals(&self, decimals: u8) -> String {
+}
+
+impl std::fmt::Display for Amount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut s = self.value.to_string();
-        if decimals == 0 {
-            return s;
+        if self.num_decimals == 0 {
+            return write!(f, "{}", s);
         };
-        while s.len() <= decimals as usize {
+        while s.len() <= self.num_decimals as usize {
             s.insert(0, '0');
         }
-        s.insert(s.len() - decimals as usize, '.');
+        s.insert(s.len() - self.num_decimals as usize, '.');
         while let Some(last) = s.chars().last() {
             if last == '0' {
                 s.pop();
@@ -76,7 +79,7 @@ impl Amount {
                 s.push('0');
             }
         }
-        return s;
+        write!(f, "{}", s)
     }
 }
 
@@ -122,13 +125,13 @@ impl From<u64> for Amount {
 
 impl AddAssign for Amount {
     fn add_assign(&mut self, other: Self) {
-        *self = Self::new(u64::from(self.value) + u64::from(other.value))
+        *self = *self + other;
     }
 }
 
 impl SubAssign for Amount {
     fn sub_assign(&mut self, other: Self) {
-        *self = Self::new(u64::from(self.value) - u64::from(other.value))
+        *self = *self - other;
     }
 }
 
@@ -136,7 +139,12 @@ impl Add for Amount {
     type Output = Self;
 
     fn add(self, other: Self) -> Self {
-        Self::new(u64::from(self.value) + u64::from(other.value))
+        let num_decimals = std::cmp::max(self.num_decimals, other.num_decimals);
+        let value = self.normalize(num_decimals) + other.normalize(num_decimals);
+        Self {
+            value,
+            num_decimals,
+        }
     }
 }
 
@@ -144,7 +152,12 @@ impl Sub for Amount {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self {
-        Self::new(u64::from(self.value) - u64::from(other.value))
+        let num_decimals = std::cmp::max(self.num_decimals, other.num_decimals);
+        let value = self.normalize(num_decimals) - other.normalize(num_decimals);
+        Self {
+            value,
+            num_decimals,
+        }
     }
 }
 
@@ -160,14 +173,15 @@ impl Div<u64> for Amount {
     type Output = Self;
 
     fn div(self, other: u64) -> Self {
-        Self::new(u64::from(self.value) / other)
+        let normalized = self.normalize(0);
+        Self::new(normalized / other)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::UNIT_ZEROS;
+    use crate::config::DECIMALS;
 
     #[test]
     fn test_amount_normalize() {
@@ -231,43 +245,70 @@ mod tests {
 
     #[test]
     fn test_display_by_decimals_func() {
-        assert_eq!(Amount::new(0).display_by_decimals(0), "0");
-        assert_eq!(Amount::new(1223).display_by_decimals(0), "1223");
-        assert_eq!(Amount::new(0).display_by_decimals(UNIT_ZEROS), "0.0");
         assert_eq!(
-            Amount::new(1).display_by_decimals(UNIT_ZEROS),
-            "0.000000001"
-        );
-        assert_eq!(
-            Amount::new(12).display_by_decimals(UNIT_ZEROS),
-            "0.000000012"
-        );
-        assert_eq!(
-            Amount::new(1234).display_by_decimals(UNIT_ZEROS),
+            &Amount {
+                value: 1234,
+                num_decimals: DECIMALS
+            }
+            .to_string(),
             "0.000001234"
         );
         assert_eq!(
-            Amount::new(123000000000).display_by_decimals(UNIT_ZEROS),
+            &Amount {
+                value: 123000000000,
+                num_decimals: DECIMALS
+            }
+            .to_string(),
             "123.0"
         );
         assert_eq!(
-            Amount::new(123456789).display_by_decimals(UNIT_ZEROS),
+            &Amount {
+                value: 123456789,
+                num_decimals: DECIMALS
+            }
+            .to_string(),
             "0.123456789"
         );
         assert_eq!(
-            Amount::new(1234567898).display_by_decimals(UNIT_ZEROS),
+            &Amount {
+                value: 1234567898,
+                num_decimals: DECIMALS
+            }
+            .to_string(),
             "1.234567898"
         );
         assert_eq!(
-            Amount::new(123456789987654321).display_by_decimals(UNIT_ZEROS),
+            &Amount {
+                value: 123456789987654321,
+                num_decimals: DECIMALS
+            }
+            .to_string(),
             "123456789.987654321"
         );
         assert_eq!(
-            Amount::new(123000000000).display_by_decimals(4),
+            &Amount {
+                value: 123000000000,
+                num_decimals: DECIMALS
+            }
+            .to_string(),
             "12300000.0"
         );
-        assert_eq!(Amount::new(123456789).display_by_decimals(6), "123.456789");
-        assert_eq!(Amount::new(123456789).display_by_decimals(9), "0.123456789");
+        assert_eq!(
+            &Amount {
+                value: 123456789,
+                num_decimals: DECIMALS
+            }
+            .to_string(),
+            "123.456789"
+        );
+        assert_eq!(
+            &Amount {
+                value: 123456789,
+                num_decimals: DECIMALS
+            }
+            .to_string(),
+            "0.123456789"
+        );
     }
 
     #[test]

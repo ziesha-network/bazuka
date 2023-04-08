@@ -21,14 +21,10 @@ pub async fn log_info<K: KvStore, B: Blockchain<K>>(
     inf.push(("Mempool", ctx.mempool.len().to_string()));
 
     let wallet_addr = ctx.validator_wallet.get_address();
-    let tkn = ctx
-        .blockchain
-        .get_token(crate::core::TokenId::Ziesha)?
-        .unwrap();
     let balance = ctx
         .blockchain
         .get_balance(wallet_addr, crate::core::TokenId::Ziesha)?;
-    inf.push(("Balance", balance.display_by_decimals(tkn.decimals)));
+    inf.push(("Balance", balance.to_string()));
 
     println!(
         "{}",

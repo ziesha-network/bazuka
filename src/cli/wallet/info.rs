@@ -32,7 +32,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                 println!(
                     "{}\t{}{}",
                     "Validator main-chain balance:".bright_yellow(),
-                    validator_ziesha.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                    validator_ziesha,
                     bazuka::config::SYMBOL
                 );
 
@@ -53,7 +53,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                 println!(
                     "{}\t{}{}",
                     "Validator MPN balance:".bright_yellow(),
-                    validator_mpn_ziesha.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                    validator_mpn_ziesha,
                     bazuka::config::SYMBOL
                 );
 
@@ -65,12 +65,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                     println!();
                     println!("{}", "Delegators\n---------".bright_green());
                     for (addr, amount) in delegations.delegators.iter() {
-                        println!(
-                            "{} -> You ({}{})",
-                            addr,
-                            amount.display_by_decimals(bazuka::config::UNIT_ZEROS),
-                            bazuka::config::SYMBOL
-                        );
+                        println!("{} -> You ({}{})", addr, amount, bazuka::config::SYMBOL);
                     }
                 }
 
@@ -78,12 +73,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                     println!();
                     println!("{}", "Delegatees\n---------".bright_green());
                     for (addr, amount) in delegations.delegatees.iter() {
-                        println!(
-                            "You -> {} ({}{})",
-                            addr,
-                            amount.display_by_decimals(bazuka::config::UNIT_ZEROS),
-                            bazuka::config::SYMBOL
-                        );
+                        println!("You -> {} ({}{})", addr, amount, bazuka::config::SYMBOL);
                     }
                 }
             } else {
@@ -123,8 +113,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                         println!(
                             "{}\t{}{}",
                             format!("#{} <{}>:", i, inf.name).bright_yellow(),
-                            inf.balance
-                                .display_by_decimals(tokens.get(id).unwrap().decimals),
+                            inf.balance,
                             if *id == TokenId::Ziesha {
                                 bazuka::config::SYMBOL.to_string()
                             } else {
@@ -188,20 +177,12 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                             MpnAddress { pub_key: acc_pk }
                         );
                         for (_, money) in resp.tokens.iter() {
-                            let resp = client
-                                .get_token(money.token_id)
-                                .await
-                                .map(|resp| resp)
-                                .unwrap();
                             if let Some(inf) = token_balances.get(&money.token_id) {
                                 let token_index = token_indices[&money.token_id];
                                 println!(
                                     "{}\t{}{}",
                                     format!("#{} <{}>:", token_index, inf.name).bright_yellow(),
-                                    resp.token
-                                        .as_ref()
-                                        .map(|t| money.amount.display_by_decimals(t.decimals))
-                                        .unwrap_or("N/A".to_string()),
+                                    money.amount.to_string(),
                                     if money.token_id == TokenId::Ziesha {
                                         bazuka::config::SYMBOL.to_string()
                                     } else {
