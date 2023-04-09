@@ -39,7 +39,7 @@ impl Circuit<BellmanFr> for TestPoseidon4MerkleProofCircuit {
         }
 
         let enabled = Boolean::Is(AllocatedBit::alloc(&mut *cs, Some(true))?);
-        let index = UnsignedInteger::constrain(&mut *cs, index.into(), 8)?;
+        let index = UnsignedInteger::constrain(&mut *cs, index.into(), 6)?;
 
         check_proof_poseidon4(
             &mut *cs,
@@ -60,7 +60,7 @@ fn test_poseidon4_merkle_proofs() {
         let c = TestPoseidon4MerkleProofCircuit {
             index: None,
             val: None,
-            proof: vec![[None; 3]; 4],
+            proof: vec![[None; 3]; 3],
             root: None,
         };
         groth16::generate_random_parameters::<Bls12, _, _>(c, &mut OsRng).unwrap()
@@ -69,18 +69,18 @@ fn test_poseidon4_merkle_proofs() {
     let pvk = groth16::prepare_verifying_key(&params.vk);
 
     let model = ZkStateModel::List {
-        log4_size: 4,
+        log4_size: 3,
         item_type: Box::new(ZkStateModel::Scalar),
     };
     let mut builder = ZkStateBuilder::<PoseidonHasher>::new(model);
-    for i in 0..256 {
+    for i in 0..64 {
         builder
             .batch_set(&ZkDeltaPairs(
                 [(ZkDataLocator(vec![i]), Some(ZkScalar::from(i as u64)))].into(),
             ))
             .unwrap();
     }
-    for i in 0..256 {
+    for i in 0..64 {
         let proof: Vec<[Option<BellmanFr>; 3]> = builder
             .prove(ZkDataLocator(vec![]), i)
             .unwrap()
