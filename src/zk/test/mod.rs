@@ -4,7 +4,7 @@ use crate::db::{KvStore, RamKvStore, WriteOp};
 use std::ops::*;
 use std::str::FromStr;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct SumHasher;
 impl ZkHasher for SumHasher {
     const MAX_ARITY: usize = 16;

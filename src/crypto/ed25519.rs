@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use thiserror::Error;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash, Default)]
 pub struct Ed25519<H: Hash>(std::marker::PhantomData<H>);
 
 pub struct PrivateKey(pub ed25519_dalek::Keypair);
@@ -44,6 +44,12 @@ impl From<PrivateKey> for PublicKey {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Signature(pub ed25519_dalek::Signature);
+
+impl Default for Signature {
+    fn default() -> Self {
+        Self(ed25519_dalek::Signature::from_bytes(&[0u8; 64]).unwrap())
+    }
+}
 
 impl std::fmt::Display for Signature {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

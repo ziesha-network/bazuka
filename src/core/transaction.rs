@@ -10,7 +10,15 @@ use std::str::FromStr;
 use thiserror::Error;
 
 #[derive(
-    serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy, Eq, std::hash::Hash,
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    std::hash::Hash,
+    Default,
 )]
 pub struct ContractId<H: Hash>(H::Output);
 
@@ -127,7 +135,7 @@ impl<H: Hash> FromStr for ContractId<H> {
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
     pub memo: String,
     pub contract_id: ContractId<H>,
@@ -140,7 +148,7 @@ pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
     pub sig: Option<S::Sig>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
     pub memo: String,
     pub contract_id: ContractId<H>,
@@ -151,13 +159,13 @@ pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
     pub fee: Money,    // Executor fee, paid by contract
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
 pub struct MpnDeposit<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub zk_address: ZS::Pub,
     pub payment: ContractDeposit<H, S>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
 pub struct MpnWithdraw<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub zk_address: ZS::Pub,
     pub zk_nonce: u32,

@@ -408,6 +408,21 @@ pub struct DepositTransition {
     pub balance_proof: Vec<[ZkScalar; 3]>,
 }
 
+impl DepositTransition {
+    pub fn null(log4_tree_size: u8, log4_token_tree_size: u8) -> Self {
+        Self {
+            enabled: false,
+            tx: Default::default(),
+            before: Default::default(),
+            before_balances_hash: Default::default(),
+            before_balance: Default::default(),
+            proof: vec![Default::default(); log4_tree_size as usize],
+            token_index: Default::default(),
+            balance_proof: vec![Default::default(); log4_token_tree_size as usize],
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WithdrawTransition {
     pub enabled: bool,
@@ -421,6 +436,24 @@ pub struct WithdrawTransition {
     pub before_token_hash: ZkScalar,
     pub fee_token_index: u64,
     pub fee_balance_proof: Vec<[ZkScalar; 3]>,
+}
+
+impl WithdrawTransition {
+    pub fn null(log4_tree_size: u8, log4_token_tree_size: u8) -> Self {
+        Self {
+            enabled: false,
+            tx: Default::default(),
+            before: Default::default(),
+            before_token_balance: Default::default(),
+            before_fee_balance: Default::default(),
+            proof: vec![Default::default(); log4_tree_size as usize],
+            token_index: Default::default(),
+            token_balance_proof: vec![Default::default(); log4_token_tree_size as usize],
+            before_token_hash: Default::default(),
+            fee_token_index: Default::default(),
+            fee_balance_proof: vec![Default::default(); log4_token_tree_size as usize],
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -442,6 +475,30 @@ pub struct UpdateTransition {
     pub dst_proof: Vec<[ZkScalar; 3]>,
     pub dst_token_index: u64,
     pub dst_balance_proof: Vec<[ZkScalar; 3]>,
+}
+
+impl UpdateTransition {
+    pub fn null(log4_tree_size: u8, log4_token_tree_size: u8) -> Self {
+        Self {
+            enabled: false,
+            tx: Default::default(),
+            src_before: Default::default(),
+            src_before_balances_hash: Default::default(),
+            src_before_balance: Default::default(),
+            src_before_fee_balance: Default::default(),
+            src_proof: vec![Default::default(); log4_tree_size as usize],
+            src_token_index: Default::default(),
+            src_balance_proof: vec![Default::default(); log4_token_tree_size as usize],
+            src_fee_token_index: Default::default(),
+            src_fee_balance_proof: vec![Default::default(); log4_token_tree_size as usize],
+            dst_before: Default::default(),
+            dst_before_balances_hash: Default::default(),
+            dst_before_balance: Default::default(),
+            dst_proof: vec![Default::default(); log4_tree_size as usize],
+            dst_token_index: Default::default(),
+            dst_balance_proof: vec![Default::default(); log4_token_tree_size as usize],
+        }
+    }
 }
 
 #[cfg(test)]

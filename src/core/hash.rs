@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sha3::{Digest, Sha3_256};
 use std::fmt::Debug;
 
-pub trait Hash: Debug + Clone + Serialize + 'static {
+pub trait Hash: Debug + Clone + Serialize + Default + 'static {
     type Output: Debug
         + Serialize
         + DeserializeOwned

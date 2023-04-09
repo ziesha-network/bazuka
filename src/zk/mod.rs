@@ -149,7 +149,7 @@ pub enum ZkError {
 #[derive(Debug, Clone, Default)]
 pub struct ZkStateProof(Vec<ZkScalar>);
 
-pub trait ZkHasher: Clone {
+pub trait ZkHasher: Clone + Default {
     const MAX_ARITY: usize;
     fn hash(vals: &[ZkScalar]) -> ZkScalar;
 }
@@ -484,7 +484,7 @@ lazy_static! {
         Arc::new(Mutex::new(LruCache::new(64)));
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, std::hash::Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, std::hash::Hash, Default)]
 pub struct PoseidonHasher;
 impl ZkHasher for PoseidonHasher {
     const MAX_ARITY: usize = poseidon::MAX_ARITY;

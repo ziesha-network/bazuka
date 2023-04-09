@@ -13,7 +13,7 @@ use thiserror::Error;
 mod curve;
 pub use curve::*;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Hash, Default)]
 pub struct JubJub<H: ZkHasher>(std::marker::PhantomData<H>);
 
 #[derive(Error, Debug)]
