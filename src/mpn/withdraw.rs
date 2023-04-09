@@ -6,7 +6,6 @@ use crate::zk::{
     KvStoreStateManager, ZkCompressedState, ZkDataLocator, ZkDeltaPairs, ZkScalar, ZkStateBuilder,
     ZkStateModel,
 };
-use ff::Field;
 
 pub fn withdraw<K: KvStore>(
     mpn_contract_id: ContractId,

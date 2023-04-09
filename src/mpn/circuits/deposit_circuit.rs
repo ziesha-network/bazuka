@@ -11,7 +11,7 @@ use bellman::gadgets::boolean::{AllocatedBit, Boolean};
 use bellman::gadgets::num::AllocatedNum;
 use bellman::{Circuit, ConstraintSystem, SynthesisError};
 
-#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DepositCircuit {
     pub log4_tree_size: u8,
     pub log4_token_tree_size: u8,
@@ -22,6 +22,24 @@ pub struct DepositCircuit {
     pub aux_data: ZkScalar,                  // Public
     pub next_state: ZkScalar,                // Public
     pub transitions: Vec<DepositTransition>, // Secret :)
+}
+
+impl DepositCircuit {
+    pub fn empty(log4_tree_size: u8, log4_token_tree_size: u8, log4_batch_size: u8) -> Self {
+        Self {
+            log4_tree_size,
+            log4_token_tree_size,
+            log4_deposit_batch_size: log4_batch_size,
+            height: 0,
+            state: Default::default(),
+            aux_data: Default::default(),
+            next_state: Default::default(),
+            transitions: vec![
+                DepositTransition::null(log4_tree_size, log4_token_tree_size);
+                1 << (2 * log4_batch_size)
+            ],
+        }
+    }
 }
 
 impl Circuit<BellmanFr> for DepositCircuit {

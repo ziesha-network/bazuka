@@ -10,7 +10,7 @@ use bellman::gadgets::boolean::{AllocatedBit, Boolean};
 use bellman::gadgets::num::AllocatedNum;
 use bellman::{Circuit, ConstraintSystem, SynthesisError};
 
-#[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct UpdateCircuit {
     pub log4_tree_size: u8,
     pub log4_token_tree_size: u8,
@@ -23,6 +23,25 @@ pub struct UpdateCircuit {
     pub fee_token: TokenId,   // Private
 
     pub transitions: Vec<UpdateTransition>, // Secret :)
+}
+
+impl UpdateCircuit {
+    pub fn empty(log4_tree_size: u8, log4_token_tree_size: u8, log4_batch_size: u8) -> Self {
+        Self {
+            log4_tree_size,
+            log4_token_tree_size,
+            log4_update_batch_size: log4_batch_size,
+            height: 0,
+            state: Default::default(),
+            aux_data: Default::default(),
+            next_state: Default::default(),
+            fee_token: Default::default(),
+            transitions: vec![
+                UpdateTransition::null(log4_tree_size, log4_token_tree_size);
+                1 << (2 * log4_batch_size)
+            ],
+        }
+    }
 }
 
 impl Circuit<BellmanFr> for UpdateCircuit {

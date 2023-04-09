@@ -6,10 +6,12 @@ use crate::core::{
     Amount, Block, ContractId, Header, Money, ProofOfStake, Signature, Token, TokenId, Transaction,
     TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
 };
-use crate::wallet::TxBuilder;
-
 use crate::mpn::MpnConfig;
+use crate::wallet::TxBuilder;
 use crate::zk;
+
+use rand::SeedableRng;
+use rand_chacha::ChaChaRng;
 
 const CHAIN_START_TIMESTAMP: u32 = 1678976362;
 
@@ -262,9 +264,58 @@ pub fn get_blockchain_config() -> BlockchainConfig {
 pub fn get_dev_blockchain_config(validator: &TxBuilder) -> BlockchainConfig {
     let mut conf = get_blockchain_config();
 
-    conf.mpn_config.mpn_num_update_batches = 0;
-    conf.mpn_config.mpn_num_deposit_batches = 0;
-    conf.mpn_config.mpn_num_withdraw_batches = 0;
+    let log4_tree_size = 10;
+    let log4_token_tree_size = 1;
+    let log4_deposit_batch_size = 1;
+    let log4_withdraw_batch_size = 1;
+    let log4_update_batch_size = 1;
+
+    let mut rng = ChaChaRng::from_seed([0u8; 32]);
+
+    log::info!("Generating MPN params...");
+    let deposit_params = bellman::groth16::generate_random_parameters::<bls12_381::Bls12, _, _>(
+        crate::mpn::circuits::DepositCircuit::empty(
+            log4_tree_size,
+            log4_token_tree_size,
+            log4_deposit_batch_size,
+        ),
+        &mut rng,
+    )
+    .unwrap();
+    let withdraw_params = bellman::groth16::generate_random_parameters::<bls12_381::Bls12, _, _>(
+        crate::mpn::circuits::WithdrawCircuit::empty(
+            log4_tree_size,
+            log4_token_tree_size,
+            log4_withdraw_batch_size,
+        ),
+        &mut rng,
+    )
+    .unwrap();
+    let update_params = bellman::groth16::generate_random_parameters::<bls12_381::Bls12, _, _>(
+        crate::mpn::circuits::UpdateCircuit::empty(
+            log4_tree_size,
+            log4_token_tree_size,
+            log4_update_batch_size,
+        ),
+        &mut rng,
+    )
+    .unwrap();
+    log::info!("Done generating MPN params!");
+
+    conf.mpn_config = MpnConfig {
+        mpn_contract_id: conf.mpn_config.mpn_contract_id,
+        log4_tree_size,
+        log4_token_tree_size,
+        log4_deposit_batch_size,
+        log4_withdraw_batch_size,
+        log4_update_batch_size,
+        mpn_num_update_batches: 1,
+        mpn_num_deposit_batches: 1,
+        mpn_num_withdraw_batches: 1,
+        deposit_vk: zk::ZkVerifierKey::Groth16(Box::new(deposit_params.vk.clone().into())),
+        withdraw_vk: zk::ZkVerifierKey::Groth16(Box::new(withdraw_params.vk.clone().into())),
+        update_vk: zk::ZkVerifierKey::Groth16(Box::new(update_params.vk.clone().into())),
+    };
 
     conf.genesis.block.body[2] = Transaction {
         memo: "Very first staker created!".into(),

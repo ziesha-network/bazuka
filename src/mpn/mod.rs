@@ -1,6 +1,4 @@
-#[allow(dead_code)]
-mod circuits;
-
+pub mod circuits;
 pub mod deposit;
 pub mod update;
 pub mod withdraw;
