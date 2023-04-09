@@ -11,6 +11,7 @@ use crate::zk::ZkScalar;
 use bellman::gadgets::boolean::{AllocatedBit, Boolean};
 use bellman::gadgets::num::AllocatedNum;
 use bellman::{Circuit, ConstraintSystem, SynthesisError};
+use ff::Field;
 
 #[derive(Debug, Default, Clone, serde::Serialize, serde::Deserialize)]
 pub struct WithdrawCircuit {
@@ -84,8 +85,14 @@ impl Circuit<BellmanFr> for WithdrawCircuit {
             let fee = UnsignedInteger::alloc_64(&mut *cs, trans.tx.payment.fee.amount.into())?;
 
             // Tx amount should always have at most 64 bits
-            let fingerprint =
-                AllocatedNum::alloc(&mut *cs, || Ok(trans.tx.payment.fingerprint().into()))?;
+            let fingerprint = AllocatedNum::alloc(&mut *cs, || {
+                Ok(if trans.enabled {
+                    trans.tx.payment.fingerprint()
+                } else {
+                    ZkScalar::ZERO
+                }
+                .into())
+            })?;
 
             // Pub-key only needs to reside on curve if tx is enabled, which is checked in the main loop
             let pub_key =
