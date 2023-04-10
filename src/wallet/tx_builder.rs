@@ -1,5 +1,6 @@
-use crate::client::messages::ValidatorClaim;
-use crate::client::PeerAddress;
+#[cfg(feature = "client")]
+use crate::client::{messages::ValidatorClaim, PeerAddress};
+
 use crate::core::{
     Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Hasher, Money,
     MpnAddress, MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token, TokenId,
@@ -135,6 +136,7 @@ impl TxBuilder {
             state_delta: None,
         }
     }
+    #[cfg(feature = "client")]
     pub fn claim_validator(
         &self,
         timestamp: u32,

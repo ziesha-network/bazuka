@@ -172,6 +172,7 @@ pub enum WriteOp {
 
 pub enum QueryResult<'a> {
     Precalculated(Vec<(StringKey, Blob)>),
+    #[cfg(feature = "db")]
     LevelDb {
         prefix: StringKey,
         db: leveldb::iterator::Iterator<'a, StringKey>,
@@ -263,6 +264,7 @@ impl<'a> QueryResult<'a> {
     pub fn into_iter(self) -> Box<dyn Iterator<Item = (StringKey, Blob)> + 'a> {
         match self {
             QueryResult::Precalculated(v) => Box::new(v.into_iter()),
+            #[cfg(feature = "db")]
             QueryResult::LevelDb { prefix, db } => Box::new(
                 db.map(|(k, v)| (k, Blob(v)))
                     .take_while(move |(k, _)| k.0.starts_with(&prefix.0)),
