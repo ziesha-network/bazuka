@@ -4,7 +4,6 @@ use tokio::try_join;
 use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::client::{BazukaClient, NodeError};
 use bazuka::core::{Address, Decimal, Money, NonceGroup, TokenId};
-use bazuka::crypto::ed25519::PublicKey;
 use bazuka::wallet::WalletCollection;
 
 use colored::Colorize;

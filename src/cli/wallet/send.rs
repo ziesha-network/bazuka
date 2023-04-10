@@ -15,7 +15,7 @@ pub async fn send(
     to: GeneralAddress,
     amount: Decimal,
     fee: Decimal,
-    token: Option<usize>,
+    token_id: Option<TokenId>,
     conf: BazukaConfig,
     mut wallet: WalletCollection,
     wallet_path: &PathBuf,
@@ -30,11 +30,11 @@ pub async fn send(
         conf.random_node(),
         CURRENT_NETWORK.into(),
     );
-    let tkn = if let Some(token) = token {
-        if token >= wallet.user(0).get_tokens().len() {
-            panic!("Wrong token selected!");
+    let tkn = if let Some(token_id) = token_id {
+        if wallet.user(0).get_tokens().contains(&token_id) {
+            panic!("Token does not exist in your wallet!");
         } else {
-            wallet.user(0).get_tokens()[token]
+            token_id
         }
     } else {
         TokenId::Ziesha

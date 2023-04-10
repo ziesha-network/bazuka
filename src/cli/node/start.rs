@@ -12,10 +12,11 @@ pub async fn start(
     mut wallet: WalletCollection,
     ram: bool,
     dev: bool,
+    small_mpn: bool,
 ) {
     let blockchain_conf = if dev {
         let validator_wallet = wallet.validator().tx_builder();
-        config::blockchain::get_dev_blockchain_config(&validator_wallet)
+        config::blockchain::get_dev_blockchain_config(&validator_wallet, small_mpn)
     } else {
         config::blockchain::get_blockchain_config()
     };

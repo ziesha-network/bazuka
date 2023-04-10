@@ -116,7 +116,7 @@ enum WalletOptions {
         #[structopt(long)]
         to: GeneralAddress,
         #[structopt(long)]
-        token: Option<usize>,
+        token_id: Option<TokenId>,
         #[structopt(long)]
         amount: Decimal,
         #[structopt(long, default_value = "0")]
@@ -178,6 +178,8 @@ enum NodeCliOptions {
         ram: bool,
         #[structopt(long)]
         dev: bool,
+        #[structopt(long)]
+        small_mpn: bool,
     },
     /// Get status of a node
     Status {},
@@ -386,6 +388,7 @@ pub async fn initialize_cli() {
                 client_only,
                 dev,
                 ram,
+                small_mpn,
             } => {
                 crate::cli::node::start(
                     discord_handle,
@@ -394,6 +397,7 @@ pub async fn initialize_cli() {
                     wallet.expect(BAZUKA_NOT_INITILIZED),
                     ram,
                     dev,
+                    small_mpn,
                 )
                 .await;
             }
@@ -475,7 +479,7 @@ pub async fn initialize_cli() {
                 to,
                 amount,
                 fee,
-                token,
+                token_id,
             } => {
                 crate::cli::wallet::send(
                     memo,
@@ -483,7 +487,7 @@ pub async fn initialize_cli() {
                     to,
                     amount,
                     fee,
-                    token,
+                    token_id,
                     conf.expect(BAZUKA_NOT_INITILIZED),
                     wallet.expect(BAZUKA_NOT_INITILIZED),
                     &wallet_path,
