@@ -1,4 +1,5 @@
 pub mod blockchain;
+mod initials;
 
 #[cfg(feature = "node")]
 pub mod node;

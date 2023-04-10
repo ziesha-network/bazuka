@@ -1,10 +1,10 @@
-use super::{UNIT, UNIT_ZEROS};
+use super::{initials, UNIT, UNIT_ZEROS};
 
 use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
 use crate::core::{
-    Amount, Block, ContractId, Header, Money, ProofOfStake, Signature, Token, TokenId, Transaction,
-    TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
+    Amount, Block, ContractId, Header, Money, ProofOfStake, RegularSendEntry, Signature, Token,
+    TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
 };
 use crate::mpn::MpnConfig;
 use crate::wallet::TxBuilder;
@@ -170,12 +170,12 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     let create_staker = Transaction {
         memo: "Very first staker created!".into(),
         src: Some(
-            "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
+            "ed744735b5239d32a5b5b6441474bf65a6aaa6bfcf8905d4616f1acc14cf3847f0"
                 .parse()
                 .unwrap(),
         ),
         data: TransactionData::UpdateStaker {
-            vrf_pub_key: "vrf666384dd335e559a564d432b0623f6c2791e794ecd964845d47b1a350ade6866"
+            vrf_pub_key: "vrf2a3531b9978e7d1293fa58b4f04cb8d78c72f681b58cd664703c3b0f2a531e04"
                 .parse()
                 .unwrap(),
             commision: 12, // 12/255 ~= 5%
@@ -188,7 +188,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         memo: "Very first delegation!".into(),
         src: None,
         data: TransactionData::Delegate {
-            to: "edae9736792cbdbab2c72068eb41c6ef2e6cab372ca123f834bd7eb59fcecad640"
+            to: "ed744735b5239d32a5b5b6441474bf65a6aaa6bfcf8905d4616f1acc14cf3847f0"
                 .parse()
                 .unwrap(),
             amount: Amount(1000000000000),
@@ -199,7 +199,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         sig: Signature::Unsigned,
     };
 
-    let blk = Block {
+    let mut blk = Block {
         header: Header {
             parent_hash: Default::default(),
             number: 0,
@@ -217,6 +217,25 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             delegate_to_staker,
         ],
     };
+
+    for (i, (dst, amnt)) in initials::initial_balances().into_iter().enumerate() {
+        blk.body.push(Transaction {
+            memo: "".into(),
+            src: None,
+            data: TransactionData::RegularSend {
+                entries: vec![RegularSendEntry {
+                    dst,
+                    amount: Money {
+                        token_id: TokenId::Ziesha,
+                        amount: amnt,
+                    },
+                }],
+            },
+            nonce: 4 + i as u32,
+            fee: Money::ziesha(0),
+            sig: Signature::Unsigned,
+        });
+    }
 
     BlockchainConfig {
         limited_miners: None,
@@ -349,7 +368,6 @@ pub fn get_dev_blockchain_config(validator: &TxBuilder, small_mpn: bool) -> Bloc
 
 #[cfg(test)]
 pub fn get_test_blockchain_config() -> BlockchainConfig {
-    use crate::core::RegularSendEntry;
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 

@@ -38,6 +38,11 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                     validator_ziesha.display_by_decimals(bazuka::config::UNIT_ZEROS),
                     bazuka::config::SYMBOL
                 );
+                println!(
+                    "{}\t{}",
+                    "Validator VRF:".bright_yellow(),
+                    val_tx_builder.get_vrf_public_key()
+                );
 
                 let validator_mpn_ziesha = client
                     .get_mpn_account(val_tx_builder.get_mpn_address())
@@ -93,10 +98,8 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                 let acc = client.get_account(tx_builder.get_address()).await?;
                 let mut token_balances = HashMap::new();
                 let mut tokens = HashMap::new();
-                let mut token_indices = HashMap::new();
-                for (i, tkn) in wallet.user(0).get_tokens().iter().enumerate() {
+                for tkn in wallet.user(0).get_tokens().iter() {
                     if let Some(inf) = client.get_token(*tkn).await?.token {
-                        token_indices.insert(*tkn, i);
                         token_balances.insert(
                             *tkn,
                             client.get_balance(tx_builder.get_address(), *tkn).await?,
@@ -121,11 +124,11 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                     "Address:".bright_yellow(),
                     tx_builder.get_address()
                 );
-                for (i, id) in wallet.user(0).get_tokens().iter().enumerate() {
+                for id in wallet.user(0).get_tokens().iter() {
                     if let Some(inf) = token_balances.get(id) {
                         println!(
                             "{}\t{}{}",
-                            format!("#{} <{}>:", i, inf.name).bright_yellow(),
+                            format!("<{}>:", inf.name).bright_yellow(),
                             inf.balance
                                 .display_by_decimals(tokens.get(id).unwrap().decimals),
                             if *id == TokenId::Ziesha {
@@ -134,8 +137,6 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                                 format!(" {} (Token-Id: {})", inf.symbol, id)
                             }
                         );
-                    } else {
-                        println!("{}\t{}", format!("#{}:", i).bright_yellow(), "N/A");
                     }
                 }
                 if let Some(nonce) = curr_nonce {
@@ -197,10 +198,9 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                                 .map(|resp| resp)
                                 .unwrap();
                             if let Some(inf) = token_balances.get(&money.token_id) {
-                                let token_index = token_indices[&money.token_id];
                                 println!(
                                     "{}\t{}{}",
-                                    format!("#{} <{}>:", token_index, inf.name).bright_yellow(),
+                                    format!("<{}>:", inf.name).bright_yellow(),
                                     resp.token
                                         .as_ref()
                                         .map(|t| money.amount.display_by_decimals(t.decimals))
