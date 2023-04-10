@@ -3,9 +3,11 @@ use tokio::try_join;
 
 use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::client::{BazukaClient, NodeError};
-use bazuka::core::{Decimal, Money, NonceGroup, TokenId};
+use bazuka::core::{Address, Decimal, Money, NonceGroup, TokenId};
 use bazuka::crypto::ed25519::PublicKey;
 use bazuka::wallet::WalletCollection;
+
+use colored::Colorize;
 
 pub async fn delegate(
     conf: BazukaConfig,
@@ -13,10 +15,19 @@ pub async fn delegate(
     wallet_path: &PathBuf,
     memo: Option<String>,
     amount: Decimal,
-    to: PublicKey,
+    to: Address,
     fee: Decimal,
 ) -> () {
     let tx_builder = wallet.user(0).tx_builder();
+    if tx_builder.get_address() == to {
+        println!(
+            "{} {}\n{}",
+            "Error: ".bright_red(),
+            "You should delegate to your validator-address instead of your user address!",
+            "Find your validator address through `bazuka wallet info --validator`"
+        );
+        return;
+    }
     let (req_loop, client) = BazukaClient::connect(
         tx_builder.get_priv_key(),
         conf.random_node(),
