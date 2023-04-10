@@ -1,4 +1,4 @@
-use super::UpdateTransition;
+use super::{MpnCircuit, UpdateTransition};
 
 use crate::core::TokenId;
 use crate::zk::groth16::gadgets::{
@@ -25,8 +25,8 @@ pub struct UpdateCircuit {
     pub transitions: Vec<UpdateTransition>, // Secret :)
 }
 
-impl UpdateCircuit {
-    pub fn empty(log4_tree_size: u8, log4_token_tree_size: u8, log4_batch_size: u8) -> Self {
+impl MpnCircuit for UpdateCircuit {
+    fn empty(log4_tree_size: u8, log4_token_tree_size: u8, log4_batch_size: u8) -> Self {
         Self {
             log4_tree_size,
             log4_token_tree_size,

@@ -6,6 +6,7 @@ use crate::core::{
     Amount, Block, ContractId, Header, Money, ProofOfStake, RegularSendEntry, Signature, Token,
     TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
 };
+use crate::mpn::circuits::MpnCircuit;
 use crate::mpn::MpnConfig;
 use crate::wallet::TxBuilder;
 use crate::zk;

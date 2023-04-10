@@ -1,4 +1,4 @@
-use super::WithdrawTransition;
+use super::{MpnCircuit, WithdrawTransition};
 
 use crate::zk::groth16::gadgets::common::Number;
 use crate::zk::groth16::gadgets::common::UnsignedInteger;
@@ -26,8 +26,8 @@ pub struct WithdrawCircuit {
     pub transitions: Vec<WithdrawTransition>, // Secret :)
 }
 
-impl WithdrawCircuit {
-    pub fn empty(log4_tree_size: u8, log4_token_tree_size: u8, log4_batch_size: u8) -> Self {
+impl MpnCircuit for WithdrawCircuit {
+    fn empty(log4_tree_size: u8, log4_token_tree_size: u8, log4_batch_size: u8) -> Self {
         Self {
             log4_tree_size,
             log4_token_tree_size,

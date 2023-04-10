@@ -1,4 +1,4 @@
-use super::DepositTransition;
+use super::{DepositTransition, MpnCircuit};
 
 use crate::zk::groth16::gadgets::common::Number;
 use crate::zk::groth16::gadgets::common::UnsignedInteger;
@@ -24,8 +24,8 @@ pub struct DepositCircuit {
     pub transitions: Vec<DepositTransition>, // Secret :)
 }
 
-impl DepositCircuit {
-    pub fn empty(log4_tree_size: u8, log4_token_tree_size: u8, log4_batch_size: u8) -> Self {
+impl MpnCircuit for DepositCircuit {
+    fn empty(log4_tree_size: u8, log4_token_tree_size: u8, log4_batch_size: u8) -> Self {
         Self {
             log4_tree_size,
             log4_token_tree_size,
