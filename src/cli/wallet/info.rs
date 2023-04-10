@@ -81,19 +81,6 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                         );
                     }
                 }
-
-                if !delegations.delegatees.is_empty() {
-                    println!();
-                    println!("{}", "Delegatees\n---------".bright_green());
-                    for (addr, amount) in delegations.delegatees.iter() {
-                        println!(
-                            "You -> {} ({}{})",
-                            addr,
-                            amount.display_by_decimals(bazuka::config::UNIT_ZEROS),
-                            bazuka::config::SYMBOL
-                        );
-                    }
-                }
             } else {
                 let acc = client.get_account(tx_builder.get_address()).await?;
                 let mut token_balances = HashMap::new();
@@ -147,6 +134,23 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                 if let Some(nonce) = curr_mpn_deposit_nonce {
                     if nonce > acc.mpn_deposit_nonce {
                         println!("(Pending deposits: {})", nonce - acc.mpn_deposit_nonce);
+                    }
+                }
+
+                let delegations = client
+                    .get_delegations(tx_builder.get_address(), 100)
+                    .await?;
+
+                if !delegations.delegatees.is_empty() {
+                    println!();
+                    println!("{}", "Delegatees\n---------".bright_green());
+                    for (addr, amount) in delegations.delegatees.iter() {
+                        println!(
+                            "You -> {} ({}{})",
+                            addr,
+                            amount.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                            bazuka::config::SYMBOL
+                        );
                     }
                 }
 
