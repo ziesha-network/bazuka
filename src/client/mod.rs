@@ -88,7 +88,7 @@ impl Limit {
 
 impl OutgoingSender {
     pub async fn raw(&self, mut body: Request<Body>, limit: Limit) -> Result<Bytes, NodeError> {
-        let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(2);
+        let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
         body.headers_mut()
             .insert(NETWORK_HEADER, HeaderValue::from_str(&self.network)?);
         let req = NodeRequest {
@@ -101,27 +101,32 @@ impl OutgoingSender {
             .send(req)
             .map_err(|_| NodeError::NotListeningError)?;
 
-        let resp = if let Some(time_limit) = limit.time {
-            timeout(time_limit, resp_rcv.recv()).await?
-        } else {
-            resp_rcv.recv().await
-        }
-        .ok_or(NodeError::NotAnsweringError)??;
+        let recver = async {
+            let resp = resp_rcv
+                .recv()
+                .await
+                .ok_or(NodeError::NotAnsweringError)??;
+            let status = resp.status();
+            let body = resp.into_body();
 
-        let status = resp.status();
-        let body = resp.into_body();
-
-        if let Some(size_limit) = limit.size {
-            if body
-                .size_hint()
-                .upper()
-                .map(|u| u > size_limit)
-                .unwrap_or(true)
-            {
-                return Err(NodeError::SizeLimitError);
+            if let Some(size_limit) = limit.size {
+                if body
+                    .size_hint()
+                    .upper()
+                    .map(|u| u > size_limit)
+                    .unwrap_or(true)
+                {
+                    return Err(NodeError::SizeLimitError);
+                }
             }
-        }
-        let body_bytes = hyper::body::to_bytes(body).await?;
+            Ok::<_, NodeError>((status, hyper::body::to_bytes(body).await?))
+        };
+
+        let (status, body_bytes) = if let Some(time_limit) = limit.time {
+            timeout(time_limit, recver).await?
+        } else {
+            recver.await
+        }?;
 
         if status != StatusCode::OK {
             return Err(NodeError::RemoteServerError(
