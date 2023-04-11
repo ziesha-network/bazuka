@@ -343,7 +343,7 @@ pub fn prepare_works<K: KvStore>(
                     amount: *amount,
                 },
                 Money::ziesha(0),
-                validator_tx_builder_mpn_nonce,
+                validator_tx_builder_mpn_nonce + 1,
             ));
             validator_tx_builder_mpn_nonce += 1;
         }
@@ -355,7 +355,7 @@ pub fn prepare_works<K: KvStore>(
                     amount: block_reward,
                 },
                 Money::ziesha(0),
-                validator_tx_builder_mpn_nonce,
+                validator_tx_builder_mpn_nonce + 1,
             ));
         }
         for tx in update_txs.into_iter().rev() {
