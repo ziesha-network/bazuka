@@ -1,5 +1,6 @@
 use crate::cli::{BazukaConfig, CURRENT_NETWORK};
-use bazuka::client::{BazukaClient, NodeError};
+use bazuka::client::{BazukaClient, Limit, NodeError};
+use bazuka::common::*;
 
 use bazuka::wallet::WalletCollection;
 use std::path::PathBuf;
@@ -16,6 +17,7 @@ async fn resend_all_wallet_txs(
         tx_builder.get_priv_key(),
         conf.random_node(),
         CURRENT_NETWORK.into(),
+        Some(Limit::default().time(2 * SECOND)),
     );
     try_join!(
         async move {

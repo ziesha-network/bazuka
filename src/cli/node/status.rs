@@ -3,7 +3,8 @@ use futures::try_join;
 use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 
 use bazuka::{
-    client::{BazukaClient, NodeError},
+    client::{BazukaClient, Limit, NodeError},
+    common::*,
     wallet::WalletCollection,
 };
 
@@ -13,6 +14,7 @@ pub async fn status(conf: BazukaConfig, mut wallet: WalletCollection) {
         wallet.get_priv_key(),
         conf.random_node(),
         CURRENT_NETWORK.into(),
+        Some(Limit::default().time(2 * SECOND)),
     );
     try_join!(
         async move {

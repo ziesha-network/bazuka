@@ -3,7 +3,8 @@ use std::path::PathBuf;
 use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::wallet::WalletCollection;
 use bazuka::{
-    client::{BazukaClient, NodeError},
+    client::{BazukaClient, Limit, NodeError},
+    common::*,
     config,
     core::{Decimal, GeneralAddress, Money, NonceGroup, TokenId},
 };
@@ -29,6 +30,7 @@ pub async fn send(
         tx_builder.get_priv_key(),
         conf.random_node(),
         CURRENT_NETWORK.into(),
+        Some(Limit::default().time(2 * SECOND)),
     );
     let tkn = if let Some(token_id) = token_id {
         if wallet.user(0).get_tokens().contains(&token_id) {

@@ -227,6 +227,7 @@ impl OutgoingSender {
 pub struct BazukaClient {
     pub peer: PeerAddress,
     pub sender: Arc<OutgoingSender>,
+    pub limit: Option<Limit>,
 }
 
 impl BazukaClient {
@@ -234,6 +235,7 @@ impl BazukaClient {
         priv_key: ed25519::PrivateKey,
         peer: PeerAddress,
         network: String,
+        limit: Option<Limit>,
     ) -> (impl futures::Future<Output = Result<(), NodeError>>, Self) {
         let (sender_send, mut sender_recv) = mpsc::unbounded_channel::<NodeRequest>();
         let client_loop = async move {
@@ -259,6 +261,7 @@ impl BazukaClient {
                     network,
                     chan: sender_send,
                 }),
+                limit,
             },
         )
     }
@@ -267,7 +270,7 @@ impl BazukaClient {
             .json_post::<ShutdownRequest, ShutdownResponse>(
                 format!("http://{}/shutdown", self.peer),
                 ShutdownRequest {},
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await?;
         Ok(())
@@ -277,7 +280,7 @@ impl BazukaClient {
             .json_get::<GetStatsRequest, GetStatsResponse>(
                 format!("http://{}/stats", self.peer),
                 GetStatsRequest {},
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -286,7 +289,7 @@ impl BazukaClient {
             .json_get::<GetPeersRequest, GetPeersResponse>(
                 format!("http://{}/peers", self.peer),
                 GetPeersRequest {},
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -300,7 +303,7 @@ impl BazukaClient {
             .bincode_get::<GetHeadersRequest, GetHeadersResponse>(
                 format!("http://{}/bincode/headers", self.peer),
                 GetHeadersRequest { since, count },
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -310,7 +313,7 @@ impl BazukaClient {
             .bincode_get::<GetBlocksRequest, GetBlocksResponse>(
                 format!("http://{}/bincode/blocks", self.peer),
                 GetBlocksRequest { since, count },
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -320,7 +323,7 @@ impl BazukaClient {
             .bincode_get::<GetOutdatedHeightsRequest, GetOutdatedHeightsResponse>(
                 format!("http://{}/bincode/states/outdated", self.peer),
                 GetOutdatedHeightsRequest {},
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -332,7 +335,7 @@ impl BazukaClient {
                 GetAccountRequest {
                     address: address.to_string(),
                 },
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -349,7 +352,7 @@ impl BazukaClient {
                     address: address.to_string(),
                     top,
                 },
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -366,7 +369,7 @@ impl BazukaClient {
                     address: address.to_string(),
                     token_id: token_id.to_string(),
                 },
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -378,7 +381,7 @@ impl BazukaClient {
                 GetTokenInfoRequest {
                     token_id: token_id.to_string(),
                 },
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -393,7 +396,7 @@ impl BazukaClient {
                 GetMpnAccountRequest {
                     address: mpn_address.to_string(),
                 },
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -406,7 +409,7 @@ impl BazukaClient {
                     tx,
                     timestamp_commit: None,
                 },
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -416,7 +419,7 @@ impl BazukaClient {
             .bincode_post::<GenerateBlockRequest, GenerateBlockResponse>(
                 format!("http://{}/generate_block", self.peer),
                 GenerateBlockRequest {},
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -429,7 +432,7 @@ impl BazukaClient {
             .bincode_get::<GetMpnWorkRequest, GetMpnWorkResponse>(
                 format!("http://{}/bincode/mpn/work", self.peer),
                 GetMpnWorkRequest { mpn_address },
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -442,7 +445,7 @@ impl BazukaClient {
             .bincode_post::<PostMpnWorkerRequest, PostMpnWorkerResponse>(
                 format!("http://{}/bincode/mpn/worker", self.peer),
                 PostMpnWorkerRequest { mpn_address },
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }
@@ -455,7 +458,7 @@ impl BazukaClient {
             .bincode_post::<PostMpnSolutionRequest, PostMpnSolutionResponse>(
                 format!("http://{}/bincode/mpn/solution", self.peer),
                 PostMpnSolutionRequest { proofs },
-                Limit::default(),
+                self.limit.clone().unwrap_or_default(),
             )
             .await
     }

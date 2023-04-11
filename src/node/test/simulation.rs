@@ -65,6 +65,7 @@ fn create_test_node(
                     network: "simulator".into(),
                     priv_key: opts.wallet.get_priv_key(),
                 }),
+                limit: None,
             },
             outgoing: out_recv,
         },

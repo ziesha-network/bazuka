@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
 use crate::cli::{BazukaConfig, CURRENT_NETWORK};
-use bazuka::client::{BazukaClient, NodeError};
+use bazuka::client::{BazukaClient, Limit, NodeError};
+use bazuka::common::*;
 use bazuka::core::{Decimal, Money, NonceGroup, TokenId};
 use bazuka::wallet::WalletCollection;
 use tokio::try_join;
@@ -23,6 +24,7 @@ pub async fn new_token(
         tx_builder.get_priv_key(),
         conf.random_node(),
         CURRENT_NETWORK.into(),
+        Some(Limit::default().time(2 * SECOND)),
     );
     try_join!(
         async move {
