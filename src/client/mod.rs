@@ -60,7 +60,7 @@ pub struct NodeRequest {
     pub limit: Limit,
     pub socket_addr: Option<SocketAddr>,
     pub body: Request<Body>,
-    pub resp: mpsc::Sender<Result<Response<Body>, NodeError>>,
+    pub resp: mpsc::UnboundedSender<Result<Response<Body>, NodeError>>,
 }
 
 pub struct OutgoingSender {
@@ -88,7 +88,8 @@ impl Limit {
 
 impl OutgoingSender {
     pub async fn raw(&self, mut body: Request<Body>, limit: Limit) -> Result<Bytes, NodeError> {
-        let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
+        let (resp_snd, mut resp_rcv) =
+            mpsc::unbounded_channel::<Result<Response<Body>, NodeError>>();
         body.headers_mut()
             .insert(NETWORK_HEADER, HeaderValue::from_str(&self.network)?);
         let req = NodeRequest {
@@ -123,7 +124,10 @@ impl OutgoingSender {
         };
 
         let (status, body_bytes) = if let Some(time_limit) = limit.time {
-            timeout(time_limit, recver).await?
+            println!("AA {:?}", time_limit);
+            let resp = timeout(time_limit, recver).await?;
+            println!("BB");
+            resp
         } else {
             recver.await
         }?;
@@ -251,7 +255,7 @@ impl BazukaClient {
                     Ok::<_, NodeError>(resp)
                 }
                 .await;
-                if let Err(e) = req.resp.send(resp).await {
+                if let Err(e) = req.resp.send(resp) {
                     log::error!("Node not listening to its HTTP request answer: {}", e);
                 }
             }

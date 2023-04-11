@@ -526,7 +526,6 @@ pub async fn node_create<K: KvStore, B: Blockchain<K>>(
                 if let Err(e) = msg
                     .resp
                     .send(node_service(msg.socket_addr, Arc::clone(&context), msg.body).await)
-                    .await
                 {
                     log::error!("Request sender not receiving its answer: {}", e);
                 }

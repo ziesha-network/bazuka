@@ -302,7 +302,7 @@ async fn run_node<K: KvStore, B: Blockchain<K>>(
                         let arc_inc_send = Arc::clone(&arc_inc_send);
                         async move {
                             let (resp_snd, mut resp_rcv) =
-                                mpsc::channel::<Result<Response<Body>, NodeError>>(1);
+                                mpsc::unbounded_channel::<Result<Response<Body>, NodeError>>();
                             let req = NodeRequest {
                                 limit: Limit::default(),
                                 socket_addr: Some(client),
@@ -346,7 +346,7 @@ async fn run_node<K: KvStore, B: Blockchain<K>>(
                     Ok::<_, NodeError>(resp)
                 }
                 .await;
-                if let Err(e) = req.resp.send(resp).await {
+                if let Err(e) = req.resp.send(resp) {
                     log::debug!("Node not listening to its HTTP request answer: {}", e);
                 }
             });

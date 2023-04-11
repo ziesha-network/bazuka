@@ -105,7 +105,8 @@ async fn route(
             }
         }
 
-        let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
+        let (resp_snd, mut resp_rcv) =
+            mpsc::unbounded_channel::<Result<Response<Body>, NodeError>>();
         let inc_req = NodeRequest {
             limit: Limit::default(),
             socket_addr: None,
@@ -114,7 +115,7 @@ async fn route(
         };
         if incs[&dst].sender.chan.send(inc_req).is_ok() {
             if let Some(answer) = resp_rcv.recv().await {
-                let _ = req.resp.send(answer).await;
+                let _ = req.resp.send(answer);
             }
         }
     }
