@@ -124,10 +124,7 @@ impl OutgoingSender {
         };
 
         let (status, body_bytes) = if let Some(time_limit) = limit.time {
-            println!("AA {:?}", time_limit);
-            let resp = timeout(time_limit, recver).await?;
-            println!("BB");
-            resp
+            timeout(time_limit, recver).await?
         } else {
             recver.await
         }?;
