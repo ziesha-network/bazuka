@@ -88,7 +88,7 @@ impl Limit {
 
 impl OutgoingSender {
     pub async fn raw(&self, mut body: Request<Body>, limit: Limit) -> Result<Bytes, NodeError> {
-        let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(1);
+        let (resp_snd, mut resp_rcv) = mpsc::channel::<Result<Response<Body>, NodeError>>(2);
         body.headers_mut()
             .insert(NETWORK_HEADER, HeaderValue::from_str(&self.network)?);
         let req = NodeRequest {
