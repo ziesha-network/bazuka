@@ -23,6 +23,9 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
         async move {
             if validator {
                 println!();
+
+                let acc = client.get_account(val_tx_builder.get_address()).await?;
+
                 println!("{}", "Validator Info\n---------".bright_green());
                 println!(
                     "{}\t{}",
@@ -66,6 +69,17 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                     validator_mpn_ziesha.display_by_decimals(bazuka::config::UNIT_ZEROS),
                     bazuka::config::SYMBOL
                 );
+                let curr_nonce = wallet
+                    .validator()
+                    .new_nonce(NonceGroup::TransactionAndDelta(
+                        val_tx_builder.get_address(),
+                    ))
+                    .map(|n| n - 1);
+                if let Some(nonce) = curr_nonce {
+                    if nonce > acc.nonce {
+                        println!("(Pending transactions: {})", nonce - acc.nonce);
+                    }
+                }
 
                 let delegations = client
                     .get_delegations(val_tx_builder.get_address(), 100)

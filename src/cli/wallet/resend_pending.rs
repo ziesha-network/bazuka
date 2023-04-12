@@ -26,6 +26,11 @@ async fn resend_all_wallet_txs(
                     client.transact(tx.clone()).await?;
                 }
             }
+            for (_, txs) in wallet.validator().txs.iter() {
+                for tx in txs {
+                    client.transact(tx.clone()).await?;
+                }
+            }
             Ok::<(), NodeError>(())
         },
         req_loop
