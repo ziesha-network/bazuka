@@ -67,10 +67,17 @@ impl MpnWorkPool {
         remaining
     }
     pub fn get_works(&self, mpn_address: MpnAddress) -> HashMap<usize, MpnWork> {
-        self.remaining_works()
+        let mut result: HashMap<usize, MpnWork> = self
+            .remaining_works()
             .into_iter()
             .filter(|(_, v)| v.worker.mpn_address == mpn_address)
-            .collect()
+            .collect();
+
+        if result.is_empty() {
+            result = self.remaining_works();
+        }
+
+        result
     }
     pub fn prove(&mut self, id: usize, proof: &ZkProof) -> bool {
         if !self.solutions.contains_key(&id) {
