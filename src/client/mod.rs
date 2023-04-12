@@ -246,15 +246,17 @@ impl BazukaClient {
         let (sender_send, mut sender_recv) = mpsc::unbounded_channel::<NodeRequest>();
         let client_loop = async move {
             while let Some(req) = sender_recv.recv().await {
-                let resp = async {
-                    let client = hyper::Client::new();
-                    let resp = client.request(req.body).await?;
-                    Ok::<_, NodeError>(resp)
-                }
-                .await;
-                if let Err(e) = req.resp.send(resp) {
-                    log::error!("Node not listening to its HTTP request answer: {}", e);
-                }
+                tokio::task::spawn(async move {
+                    let resp = async {
+                        let client = hyper::Client::new();
+                        let resp = client.request(req.body).await?;
+                        Ok::<_, NodeError>(resp)
+                    }
+                    .await;
+                    if let Err(e) = req.resp.send(resp) {
+                        log::error!("Node not listening to its HTTP request answer: {}", e);
+                    }
+                });
             }
             Ok::<(), NodeError>(())
         };
