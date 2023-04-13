@@ -33,7 +33,7 @@ pub async fn send(
         Some(Limit::default().time(2 * SECOND)),
     );
     let tkn = if let Some(token_id) = token_id {
-        if wallet.user(0).get_tokens().contains(&token_id) {
+        if !wallet.user(0).get_tokens().contains(&token_id) {
             panic!("Token does not exist in your wallet!");
         } else {
             token_id
