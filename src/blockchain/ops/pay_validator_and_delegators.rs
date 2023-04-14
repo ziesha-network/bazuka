@@ -1,4 +1,5 @@
 use super::*;
+use crate::core::Ratio;
 
 pub fn pay_validator_and_delegators<K: KvStore>(
     chain: &mut KvStoreChain<K>,
@@ -43,7 +44,7 @@ pub fn pay_validator_and_delegators<K: KvStore>(
                 src: None,
                 data: TransactionData::RegularSend {
                     entries: vec![RegularSendEntry {
-                        dst: addr,
+                        dst: addr.clone(),
                         amount: Money {
                             amount: amnt,
                             token_id: TokenId::Ziesha,
@@ -56,6 +57,25 @@ pub fn pay_validator_and_delegators<K: KvStore>(
             },
             true,
         )?;
+        let auto_delegate_ratio = chain.get_auto_delegate_ratio(addr.clone(), validator.clone())?;
+        if auto_delegate_ratio > Ratio(0) {
+            let auto_delegate_amount = amnt * Into::<f64>::into(auto_delegate_ratio);
+            chain.apply_tx(
+                &Transaction {
+                    memo: String::new(),
+                    src: Some(addr.clone()),
+                    data: TransactionData::Delegate {
+                        to: validator.clone(),
+                        amount: auto_delegate_amount,
+                        reverse: false,
+                    },
+                    nonce: 0,
+                    fee: Money::ziesha(0),
+                    sig: Signature::Unsigned,
+                },
+                true,
+            )?;
+        }
     }
     Ok(validator_reward)
 }
