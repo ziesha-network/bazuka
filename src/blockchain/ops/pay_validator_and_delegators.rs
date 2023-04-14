@@ -13,7 +13,7 @@ pub fn pay_validator_and_delegators<K: KvStore>(
 
     let next_reward = chain.next_reward()? + fee_sum;
     let stakers_reward =
-        u64::from(next_reward) as f64 * ((u8::MAX - staker.commision) as f64 / u8::MAX as f64); // WARN: Hardcoded!
+        u64::from(next_reward) as f64 * (1.0f64 - Into::<f64>::into(staker.commission) as f64);
 
     let delegators = chain.get_delegators(validator.clone(), None)?;
     let total_f64 = delegators

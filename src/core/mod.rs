@@ -13,7 +13,7 @@ use thiserror::Error;
 
 pub use money::Amount;
 pub use money::Decimal;
-pub use transaction::Money;
+pub use transaction::{Money, Ratio};
 
 pub type Hasher = hash::Sha3Hasher;
 pub type Signer = crypto::ed25519::Ed25519<Hasher>;
@@ -21,6 +21,8 @@ pub type Vrf = crypto::vrf::VRF;
 
 pub type ZkHasher = crate::zk::PoseidonHasher;
 pub type ZkSigner = crypto::jubjub::JubJub<ZkHasher>;
+
+pub type ConvertRatioError = transaction::ConvertRatioError;
 
 pub type Address = <Signer as crypto::SignatureScheme>::Pub;
 pub type ParseAddressError = <Signer as crypto::SignatureScheme>::PubParseError;

@@ -204,7 +204,7 @@ mod tests {
                 Amount(9200).into(),
             ),
             WriteOp::Put(
-                "CAB-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6-Ziesha"
+                "CAB-c972b4e67f6544cc01bddf33a2fb6211e6211add7cffa08de5138fe195d90f98-Ziesha"
                     .into(),
                 Amount(750).into(),
             ),
@@ -331,17 +331,17 @@ mod tests {
 
         let expected_ops = vec![
             WriteOp::Put(
-                "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-0x113c5707d6ab03dd78c9f8455f3b4096c8c5e9312076aafe38d79c4d8eb2d096"
+                "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-0x214bfab03425c710055132a7e6656d61442f65e56d2efd930b4f090eb58f952c"
                     .into(),
                 Amount(99333).into(),
             ),
             WriteOp::Put(
-                "CAB-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6-0x113c5707d6ab03dd78c9f8455f3b4096c8c5e9312076aafe38d79c4d8eb2d096"
+                "CAB-c972b4e67f6544cc01bddf33a2fb6211e6211add7cffa08de5138fe195d90f98-0x214bfab03425c710055132a7e6656d61442f65e56d2efd930b4f090eb58f952c"
                     .into(),
                 Amount(667).into(),
             ),
             WriteOp::Put(
-                "CAB-cb27ac3a71d1351da873d7af0457f8032512b76c673bf6a95be7e74b3c0d02c6-Ziesha"
+                "CAB-c972b4e67f6544cc01bddf33a2fb6211e6211add7cffa08de5138fe195d90f98-Ziesha"
                     .into(),
                 Amount(556).into(),
             )

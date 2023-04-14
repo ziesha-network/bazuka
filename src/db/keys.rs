@@ -47,6 +47,10 @@ pub fn stake(address: &Address) -> StringKey {
     format!("STK-{}", address).into()
 }
 
+pub fn auto_delegate(delegator: &Address, delegatee: &Address) -> StringKey {
+    format!("ADL-{}-{}", delegator, delegatee).into()
+}
+
 #[derive(Error, Debug)]
 pub enum ParseDbKeyError {
     #[error("invalid db-key")]

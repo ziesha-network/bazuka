@@ -127,7 +127,7 @@ enum WalletOptions {
         #[structopt(long)]
         memo: Option<String>,
         #[structopt(long)]
-        commision: f32,
+        commission: f32,
         #[structopt(long, default_value = "0")]
         fee: Decimal,
     },
@@ -499,12 +499,12 @@ pub async fn initialize_cli() {
             }
             WalletOptions::RegisterValidator {
                 memo,
-                commision,
+                commission,
                 fee,
             } => {
                 crate::cli::wallet::register_validator(
                     memo,
-                    commision,
+                    commission,
                     fee,
                     conf.expect(BAZUKA_NOT_INITILIZED),
                     wallet.expect(BAZUKA_NOT_INITILIZED),

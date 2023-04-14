@@ -1,5 +1,5 @@
 use super::BlockAndPatch;
-use crate::core::{Address, TokenId};
+use crate::core::{Address, Ratio, TokenId};
 use crate::mpn::MpnConfig;
 use std::collections::HashSet;
 
@@ -18,5 +18,5 @@ pub struct BlockchainConfig {
     pub slot_per_epoch: u32,
     pub chain_start_timestamp: u32,
     pub check_validator: bool,
-    pub max_validator_commision: u8,
+    pub max_validator_commission: Ratio,
 }

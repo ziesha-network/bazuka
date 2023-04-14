@@ -336,12 +336,16 @@ impl From<&ContractUpdate> for ExplorerContractUpdate {
 pub enum ExplorerTransactionData {
     UpdateStaker {
         vrf_pub_key: String,
-        commision: u8,
+        commission: f64,
     },
     Delegate {
         to: String,
         amount: u64,
         reverse: bool,
+    },
+    AutoDelegate {
+        to: String,
+        ratio: f64,
     },
     RegularSend {
         entries: Vec<(String, ExplorerMoney)>,
@@ -367,10 +371,10 @@ impl From<&TransactionData> for ExplorerTransactionData {
         match obj {
             TransactionData::UpdateStaker {
                 vrf_pub_key,
-                commision,
+                commission,
             } => Self::UpdateStaker {
                 vrf_pub_key: hex::encode(vrf_pub_key.as_ref()),
-                commision: *commision,
+                commission: (*commission).into(),
             },
             TransactionData::Delegate {
                 to,
@@ -380,6 +384,10 @@ impl From<&TransactionData> for ExplorerTransactionData {
                 to: to.to_string(),
                 amount: (*amount).into(),
                 reverse: *reverse,
+            },
+            TransactionData::AutoDelegate { to, ratio } => Self::AutoDelegate {
+                to: to.to_string(),
+                ratio: (*ratio).into(),
             },
             TransactionData::RegularSend { entries } => Self::RegularSend {
                 entries: entries

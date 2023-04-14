@@ -297,18 +297,50 @@ pub enum TokenUpdate<S: SignatureScheme> {
     ChangeMinter { minter: S::Pub },
 }
 
+#[derive(
+    serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone, Copy, PartialOrd, Ord,
+)]
+pub struct Ratio(pub u8);
+
+impl Into<f64> for Ratio {
+    fn into(self) -> f64 {
+        self.0 as f64 / u8::MAX as f64
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum ConvertRatioError {
+    #[error("floating point not in correct range")]
+    Invalid,
+}
+
+impl TryFrom<f32> for Ratio {
+    type Error = ConvertRatioError;
+    fn try_from(val: f32) -> Result<Self, ConvertRatioError> {
+        if val < 0.0 || val > 1.0 {
+            Err(ConvertRatioError::Invalid)
+        } else {
+            Ok(Ratio((255.0f64 * val as f64) as u8))
+        }
+    }
+}
+
 // A transaction could be as simple as sending some funds, or as complicated as
 // creating a smart-contract.
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction> {
     UpdateStaker {
         vrf_pub_key: V::Pub,
-        commision: u8, // n parts out of 255 parts
+        commission: Ratio,
     },
     Delegate {
         amount: Amount,
         to: S::Pub,
         reverse: bool,
+    },
+    AutoDelegate {
+        to: S::Pub,
+        ratio: Ratio,
     },
     RegularSend {
         entries: Vec<RegularSendEntry<S>>,

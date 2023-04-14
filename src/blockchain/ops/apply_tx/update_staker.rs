@@ -1,20 +1,20 @@
 use super::*;
-use crate::core::{Address, Vrf};
+use crate::core::{Address, Ratio, Vrf};
 use crate::crypto::VerifiableRandomFunction;
 
 pub fn update_staker<K: KvStore>(
     chain: &mut KvStoreChain<K>,
     tx_src: Address,
     vrf_pub_key: <Vrf as VerifiableRandomFunction>::Pub,
-    commision: u8,
+    commission: Ratio,
 ) -> Result<(), BlockchainError> {
-    let commision = std::cmp::min(commision, chain.config.max_validator_commision);
+    let commission = std::cmp::min(commission, chain.config.max_validator_commission);
 
     chain.database.update(&[WriteOp::Put(
         keys::staker(&tx_src),
         Staker {
             vrf_pub_key,
-            commision,
+            commission,
         }
         .into(),
     )])?;
@@ -38,7 +38,12 @@ mod tests {
 
         let (ops, _) = chain
             .isolated(|chain| {
-                update_staker(chain, abc.get_address(), abc.get_vrf_public_key(), 10)?;
+                update_staker(
+                    chain,
+                    abc.get_address(),
+                    abc.get_vrf_public_key(),
+                    Ratio(10),
+                )?;
                 Ok(())
             })
             .unwrap();
@@ -46,7 +51,7 @@ mod tests {
             "SKR-edf7860e4ff620f392165924386a895e9c82b156e65c16f86cb1ce0085455c4d24".into(),
             Staker {
                 vrf_pub_key: abc.get_vrf_public_key(),
-                commision: 10,
+                commission: Ratio(10),
             }
             .into(),
         )];
@@ -54,7 +59,12 @@ mod tests {
 
         let (ops, _) = chain
             .isolated(|chain| {
-                update_staker(chain, abc.get_address(), abc.get_vrf_public_key(), 255)?;
+                update_staker(
+                    chain,
+                    abc.get_address(),
+                    abc.get_vrf_public_key(),
+                    Ratio(255),
+                )?;
                 Ok(())
             })
             .unwrap();
@@ -62,7 +72,7 @@ mod tests {
             "SKR-edf7860e4ff620f392165924386a895e9c82b156e65c16f86cb1ce0085455c4d24".into(),
             Staker {
                 vrf_pub_key: abc.get_vrf_public_key(),
-                commision: 26,
+                commission: Ratio(26),
             }
             .into(),
         )];

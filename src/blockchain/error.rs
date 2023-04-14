@@ -1,3 +1,4 @@
+use crate::core::ConvertRatioError;
 use crate::db::{keys::ParseDbKeyError, KvStoreError};
 use crate::zk::{StateManagerError, ZkError};
 use thiserror::Error;
@@ -120,4 +121,6 @@ pub enum BlockchainError {
     ParseDbKeyError(#[from] ParseDbKeyError),
     #[error("mpn-address cannot be used")]
     MpnAddressCannotBeUsed,
+    #[error("mpn-address cannot be used")]
+    ConvertRatioError(#[from] ConvertRatioError),
 }

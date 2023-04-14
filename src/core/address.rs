@@ -1,4 +1,4 @@
-use crate::core::Amount;
+use crate::core::{Amount, Ratio};
 use crate::crypto::{
     DeriveMpnAccountIndex, SignatureScheme, VerifiableRandomFunction, ZkSignatureScheme,
 };
@@ -59,7 +59,7 @@ pub enum Signature<S: SignatureScheme> {
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub struct Staker<V: VerifiableRandomFunction> {
     pub vrf_pub_key: V::Pub,
-    pub commision: u8,
+    pub commission: Ratio,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]

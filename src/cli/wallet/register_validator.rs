@@ -5,23 +5,18 @@ use tokio::try_join;
 use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::client::{BazukaClient, Limit, NodeError};
 use bazuka::common::*;
-use bazuka::core::{Decimal, Money, NonceGroup, TokenId};
+use bazuka::core::{Decimal, Money, NonceGroup, Ratio, TokenId};
 use bazuka::wallet::WalletCollection;
 
 pub async fn register_validator(
     memo: Option<String>,
-    commision: f32,
+    commission: f32,
     fee: Decimal,
     conf: BazukaConfig,
     mut wallet: WalletCollection,
     wallet_path: &PathBuf,
 ) -> () {
-    // TODO: Dirty code!
-    if !(0.0..0.1).contains(&commision) {
-        panic!("Commision out of range! Commision should be a float number between 0.0 to 0.1!");
-    }
-
-    let commision_u8 = (commision * (u8::MAX as f32)) as u8;
+    let commission: Ratio = commission.try_into().unwrap();
     let tx_builder = wallet.validator().tx_builder();
     let (req_loop, client) = BazukaClient::connect(
         tx_builder.get_priv_key(),
@@ -39,7 +34,7 @@ pub async fn register_validator(
                 .unwrap_or(curr_nonce + 1);
             let tx = tx_builder.register_validator(
                 memo.unwrap_or_default(),
-                commision_u8,
+                commission,
                 Money {
                     amount: fee.to_amount(bazuka::config::UNIT_ZEROS),
                     token_id: TokenId::Ziesha,

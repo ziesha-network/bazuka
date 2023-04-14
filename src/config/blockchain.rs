@@ -3,8 +3,8 @@ use super::{initials, UNIT, UNIT_ZEROS};
 use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
 use crate::common::*;
 use crate::core::{
-    Amount, Block, ContractId, Header, Money, ProofOfStake, RegularSendEntry, Signature, Token,
-    TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
+    Amount, Block, ContractId, Header, Money, ProofOfStake, Ratio, RegularSendEntry, Signature,
+    Token, TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
 };
 use crate::mpn::circuits::MpnCircuit;
 use crate::mpn::MpnConfig;
@@ -179,7 +179,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             vrf_pub_key: "vrf2a3531b9978e7d1293fa58b4f04cb8d78c72f681b58cd664703c3b0f2a531e04"
                 .parse()
                 .unwrap(),
-            commision: 12, // 12/255 ~= 5%
+            commission: Ratio(12), // 12/255 ~= 5%
         },
         nonce: 1,
         fee: Money::ziesha(0),
@@ -277,7 +277,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         slot_per_epoch: 10,
         chain_start_timestamp: CHAIN_START_TIMESTAMP,
         check_validator: true,
-        max_validator_commision: 26, // 26 / 255 ~= 10%
+        max_validator_commission: Ratio(26), // 26 / 255 ~= 10%
     }
 }
 
@@ -346,7 +346,7 @@ pub fn get_dev_blockchain_config(validator: &TxBuilder, small_mpn: bool) -> Bloc
         src: Some(validator.get_address()),
         data: TransactionData::UpdateStaker {
             vrf_pub_key: validator.get_vrf_public_key(),
-            commision: 12, // 12/255 ~= 5%
+            commission: Ratio(12), // 12/255 ~= 5%
         },
         nonce: 1,
         fee: Money::ziesha(0),
@@ -437,7 +437,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
         conf.genesis.block.body.push(
             val.register_validator(
                 "Test validator".into(),
-                12, // 12/256 ~= 5%
+                Ratio(12), // 12/256 ~= 5%
                 Money::ziesha(0),
                 1,
             )

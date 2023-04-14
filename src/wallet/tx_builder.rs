@@ -3,8 +3,8 @@ use crate::client::{messages::ValidatorClaim, PeerAddress};
 
 use crate::core::{
     Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Hasher, Money,
-    MpnAddress, MpnDeposit, MpnWithdraw, RegularSendEntry, Signature, Signer, Token, TokenId,
-    Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
+    MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry, Signature, Signer, Token,
+    TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::VerifiableRandomFunction;
@@ -114,7 +114,7 @@ impl TxBuilder {
     pub fn register_validator(
         &self,
         memo: String,
-        commision: u8,
+        commission: Ratio,
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
@@ -123,7 +123,7 @@ impl TxBuilder {
             src: Some(self.get_address()),
             data: TransactionData::UpdateStaker {
                 vrf_pub_key: self.vrf_public_key.clone(),
-                commision,
+                commission,
             },
             nonce,
             fee,

@@ -9,7 +9,7 @@ mod ops;
 use crate::core::{
     hash::Hash, Address, Amount, Block, ContractAccount, ContractDeposit, ContractId,
     ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, MpnAddress, ProofOfStake,
-    RegularSendEntry, Signature, Staker, Token, TokenId, TokenUpdate, Transaction,
+    Ratio, RegularSendEntry, Signature, Staker, Token, TokenId, TokenUpdate, Transaction,
     TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkHasher as CoreZkHasher,
 };
 use crate::crypto::VerifiableRandomFunction;
@@ -79,6 +79,11 @@ pub trait Blockchain<K: KvStore> {
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self) -> Result<Vec<(Address, Amount)>, BlockchainError>;
+    fn get_auto_delegate_ratio(
+        &self,
+        delegator: Address,
+        delegatee: Address,
+    ) -> Result<Ratio, BlockchainError>;
     fn get_delegatees(
         &self,
         delegator: Address,
@@ -761,6 +766,21 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         chain.apply_tx(&tx, false)?;
 
         Ok(())
+    }
+    fn get_auto_delegate_ratio(
+        &self,
+        delegator: Address,
+        delegatee: Address,
+    ) -> Result<Ratio, BlockchainError> {
+        Ok(
+            match self
+                .database
+                .get(keys::auto_delegate(&delegator, &delegatee))?
+            {
+                Some(b) => b.try_into()?,
+                None => Ratio(0),
+            },
+        )
     }
 }
 

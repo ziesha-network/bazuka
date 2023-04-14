@@ -1,3 +1,4 @@
+mod auto_delegate;
 mod create_contract;
 mod create_token;
 mod delegate;
@@ -55,9 +56,9 @@ pub fn apply_tx<K: KvStore>(
         match &tx.data {
             TransactionData::UpdateStaker {
                 vrf_pub_key,
-                commision,
+                commission,
             } => {
-                update_staker::update_staker(chain, tx_src, vrf_pub_key.clone(), *commision)?;
+                update_staker::update_staker(chain, tx_src, vrf_pub_key.clone(), *commission)?;
             }
             TransactionData::Delegate {
                 amount,
@@ -65,6 +66,9 @@ pub fn apply_tx<K: KvStore>(
                 reverse,
             } => {
                 delegate::delegate(chain, tx_src, *amount, to.clone(), *reverse)?;
+            }
+            TransactionData::AutoDelegate { to, ratio } => {
+                auto_delegate::auto_delegate(chain, tx_src, to.clone(), *ratio)?;
             }
             TransactionData::CreateToken { token } => {
                 let token_id = {
