@@ -12,12 +12,12 @@ use super::*;
 pub fn apply_tx<K: KvStore>(
     chain: &mut KvStoreChain<K>,
     tx: &Transaction,
-    allow_treasury: bool,
+    internal: bool,
 ) -> Result<TxSideEffect, BlockchainError> {
     let (ops, side_effect) = chain.isolated(|chain| {
         let mut side_effect = TxSideEffect::Nothing;
 
-        if tx.src == None && !allow_treasury {
+        if tx.src == None && !internal {
             return Err(BlockchainError::IllegalTreasuryAccess);
         }
 
@@ -34,7 +34,7 @@ pub fn apply_tx<K: KvStore>(
         let mut acc_nonce = chain.get_nonce(tx_src.clone())?;
         let mut acc_bal = chain.get_balance(tx_src.clone(), tx.fee.token_id)?;
 
-        if tx.nonce != acc_nonce + 1 {
+        if (!internal && tx.nonce != acc_nonce + 1) || (internal && tx.nonce != 0) {
             return Err(BlockchainError::InvalidTransactionNonce);
         }
 
@@ -42,12 +42,14 @@ pub fn apply_tx<K: KvStore>(
             return Err(BlockchainError::BalanceInsufficient);
         }
 
-        acc_bal -= tx.fee.amount;
-        acc_nonce += 1;
+        if !internal {
+            acc_nonce += 1;
+            chain
+                .database
+                .update(&[WriteOp::Put(keys::nonce(&tx_src), acc_nonce.into())])?;
+        }
 
-        chain
-            .database
-            .update(&[WriteOp::Put(keys::nonce(&tx_src), acc_nonce.into())])?;
+        acc_bal -= tx.fee.amount;
         chain.database.update(&[WriteOp::Put(
             keys::account_balance(&tx_src, tx.fee.token_id),
             acc_bal.into(),

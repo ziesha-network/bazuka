@@ -866,7 +866,7 @@ fn test_chain_should_not_draft_invalid_transactions() {
                 amount: Money::ziesha(10_000_000),
             }],
         },
-        nonce: 5,
+        nonce: 0,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });
@@ -940,7 +940,7 @@ fn test_chain_should_draft_all_valid_transactions() {
                 amount: Money::ziesha(10_000_000),
             }],
         },
-        nonce: 5,
+        nonce: 0,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });
@@ -1000,7 +1000,7 @@ fn test_chain_should_rollback_applied_block() {
                 amount: Money::ziesha(10_000_000),
             }],
         },
-        nonce: 5,
+        nonce: 0,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });

@@ -81,7 +81,7 @@ fn get_mpn_contract(
         data: TransactionData::CreateContract {
             contract: mpn_contract,
         },
-        nonce: 2, // MPN contract is created after Ziesha token is created
+        nonce: 0, // MPN contract is created after Ziesha token is created
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     };
@@ -150,7 +150,7 @@ fn get_ziesha_token_creation_tx() -> Transaction {
                 minter: None,
             },
         },
-        nonce: 1,
+        nonce: 0,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     }
@@ -181,7 +181,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 .unwrap(),
             commission: Ratio(12), // 12/255 ~= 5%
         },
-        nonce: 1,
+        nonce: 0,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     };
@@ -195,7 +195,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             amount: Amount(1000000000000),
             reverse: false,
         },
-        nonce: 3,
+        nonce: 0,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     };
@@ -219,7 +219,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         ],
     };
 
-    for (i, (dst, amnt)) in initials::initial_balances().into_iter().enumerate() {
+    for (dst, amnt) in initials::initial_balances().into_iter() {
         blk.body.push(Transaction {
             memo: "".into(),
             src: None,
@@ -232,7 +232,7 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                     },
                 }],
             },
-            nonce: 4 + i as u32,
+            nonce: 0,
             fee: Money::ziesha(0),
             sig: Signature::Unsigned,
         });
@@ -348,7 +348,7 @@ pub fn get_dev_blockchain_config(validator: &TxBuilder, small_mpn: bool) -> Bloc
             vrf_pub_key: validator.get_vrf_public_key(),
             commission: Ratio(12), // 12/255 ~= 5%
         },
-        nonce: 1,
+        nonce: 0,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     };
@@ -360,7 +360,7 @@ pub fn get_dev_blockchain_config(validator: &TxBuilder, small_mpn: bool) -> Bloc
             amount: Amount(1000000000000),
             reverse: false,
         },
-        nonce: 3,
+        nonce: 0,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     };
@@ -410,7 +410,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
                 amount: Money::ziesha(10000),
             }],
         },
-        nonce: 3,
+        nonce: 0,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });
@@ -425,21 +425,18 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
                 amount: Money::ziesha(100),
             }],
         },
-        nonce: 4,
+        nonce: 0,
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     });
 
-    for (i, val) in [validator_1, validator_2, validator_3]
-        .into_iter()
-        .enumerate()
-    {
+    for val in [validator_1, validator_2, validator_3].into_iter() {
         conf.genesis.block.body.push(
             val.register_validator(
                 "Test validator".into(),
                 Ratio(12), // 12/256 ~= 5%
                 Money::ziesha(0),
-                1,
+                0,
             )
             .tx,
         );
@@ -451,7 +448,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
                     Amount(25),
                     false,
                     Money::ziesha(0),
-                    (i + 1) as u32,
+                    0,
                 )
                 .tx,
         );

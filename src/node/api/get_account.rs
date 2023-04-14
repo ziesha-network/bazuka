@@ -59,7 +59,7 @@ mod tests {
         assert_eq!(
             resp_treasury,
             GetAccountResponse {
-                nonce: 204,
+                nonce: 0,
                 mpn_deposit_nonce: 0
             }
         );

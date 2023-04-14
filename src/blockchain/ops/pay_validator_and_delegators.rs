@@ -10,8 +10,6 @@ pub fn pay_validator_and_delegators<K: KvStore>(
         .get_staker(validator.clone())?
         .ok_or(BlockchainError::ValidatorNotRegistered)?;
 
-    let treasury_nonce = chain.get_nonce(Default::default())?;
-
     let next_reward = chain.next_reward()? + fee_sum;
     let stakers_reward =
         u64::from(next_reward) as f64 * (1.0f64 - Into::<f64>::into(staker.commission) as f64);
@@ -37,7 +35,7 @@ pub fn pay_validator_and_delegators<K: KvStore>(
             .map(|(_, a)| *a)
             .fold(Amount(0), |a, b| a + b);
     payments.push((validator.clone(), validator_reward));
-    for (i, (addr, amnt)) in payments.into_iter().enumerate() {
+    for (addr, amnt) in payments.into_iter() {
         chain.apply_tx(
             &Transaction {
                 memo: String::new(),
@@ -51,7 +49,7 @@ pub fn pay_validator_and_delegators<K: KvStore>(
                         },
                     }],
                 },
-                nonce: treasury_nonce + 1 + i as u32,
+                nonce: 0,
                 fee: Money::ziesha(0),
                 sig: Signature::Unsigned,
             },
@@ -59,7 +57,8 @@ pub fn pay_validator_and_delegators<K: KvStore>(
         )?;
         let auto_delegate_ratio = chain.get_auto_delegate_ratio(addr.clone(), validator.clone())?;
         if auto_delegate_ratio > Ratio(0) {
-            let auto_delegate_amount = amnt * Into::<f64>::into(auto_delegate_ratio);
+            let auto_delegate_amount =
+                Amount((amnt.0 as f64 * Into::<f64>::into(auto_delegate_ratio)) as u64);
             chain.apply_tx(
                 &Transaction {
                     memo: String::new(),

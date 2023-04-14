@@ -258,9 +258,9 @@ impl<K: KvStore> KvStoreChain<K> {
     fn apply_tx(
         &mut self,
         tx: &Transaction,
-        allow_treasury: bool,
+        internal: bool,
     ) -> Result<TxSideEffect, BlockchainError> {
-        ops::apply_tx(self, tx, allow_treasury)
+        ops::apply_tx(self, tx, internal)
     }
 
     fn get_changed_states(

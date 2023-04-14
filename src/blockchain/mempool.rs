@@ -369,19 +369,19 @@ mod tests {
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 4);
 
         mempool
-            .add_tx(&chain, dummy_tx(&other, 1), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 10), false, 0)
             .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 4);
         mempool
-            .add_tx(&chain, dummy_tx(&other, 4), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 1), false, 0)
             .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 5);
         mempool
-            .add_tx(&chain, dummy_tx(&other, 6), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 3), false, 0)
             .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 5);
         mempool
-            .add_tx(&chain, dummy_tx(&other, 5), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 2), false, 0)
             .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 6);
     }
