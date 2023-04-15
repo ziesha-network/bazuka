@@ -10,7 +10,8 @@ use crate::core::{
     hash::Hash, Address, Amount, Block, ContractAccount, ContractDeposit, ContractId,
     ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, MpnAddress, ProofOfStake,
     Ratio, RegularSendEntry, Signature, Staker, Token, TokenId, TokenUpdate, Transaction,
-    TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkHasher as CoreZkHasher,
+    TransactionAndDelta, TransactionData, Undelegation, UndelegationId, ValidatorProof, Vrf,
+    ZkHasher as CoreZkHasher,
 };
 use crate::crypto::VerifiableRandomFunction;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
@@ -126,6 +127,16 @@ pub trait Blockchain<K: KvStore> {
         delegator: Address,
         delegatee: Address,
     ) -> Result<Delegate, BlockchainError>;
+    fn get_undelegation(
+        &self,
+        undelegator: Address,
+        undelegation_id: UndelegationId,
+    ) -> Result<Option<Undelegation>, BlockchainError>;
+    fn get_undelegations(
+        &self,
+        undelegator: Address,
+        top: Option<usize>,
+    ) -> Result<Vec<Undelegation>, BlockchainError>;
     fn get_staker(&self, addr: Address) -> Result<Option<Staker>, BlockchainError>;
     fn get_nonce(&self, addr: Address) -> Result<u32, BlockchainError>;
     fn get_mpn_account(&self, addr: MpnAddress) -> Result<zk::MpnAccount, BlockchainError>;
@@ -781,6 +792,45 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
                 None => Ratio(0),
             },
         )
+    }
+    fn get_undelegation(
+        &self,
+        undelegator: Address,
+        undelegation_id: UndelegationId,
+    ) -> Result<Option<Undelegation>, BlockchainError> {
+        Ok(
+            match self.database.get(
+                keys::UndelegationDbKey {
+                    undelegator,
+                    undelegation_id,
+                }
+                .into(),
+            )? {
+                Some(b) => Some(b.try_into()?),
+                None => None,
+            },
+        )
+    }
+    fn get_undelegations(
+        &self,
+        undelegator: Address,
+        top: Option<usize>,
+    ) -> Result<Vec<Undelegation>, BlockchainError> {
+        let mut undelegations = Vec::new();
+        for (_, v) in self
+            .database
+            .pairs(keys::UndelegationDbKey::prefix(&undelegator).into())?
+            .into_iter()
+        {
+            let undelegation: Undelegation = v.try_into()?;
+            undelegations.push(undelegation);
+            if let Some(top) = top {
+                if undelegations.len() >= top {
+                    break;
+                }
+            }
+        }
+        Ok(undelegations)
     }
 }
 

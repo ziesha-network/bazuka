@@ -66,7 +66,6 @@ pub fn pay_validator_and_delegators<K: KvStore>(
                     data: TransactionData::Delegate {
                         to: validator.clone(),
                         amount: auto_delegate_amount,
-                        reverse: false,
                     },
                     nonce: 0,
                     fee: Money::ziesha(0),

@@ -50,7 +50,6 @@ fn test_correct_rewards() {
                     "".into(),
                     validator.get_address(),
                     delegator_stake,
-                    false,
                     Money {
                         amount: 0.into(),
                         token_id: TokenId::Ziesha,
@@ -61,7 +60,6 @@ fn test_correct_rewards() {
                     "".into(),
                     validator.get_address(),
                     validator_stake,
-                    false,
                     Money {
                         amount: 0.into(),
                         token_id: TokenId::Ziesha,

@@ -341,7 +341,13 @@ pub enum ExplorerTransactionData {
     Delegate {
         to: String,
         amount: u64,
-        reverse: bool,
+    },
+    InitUndelegate {
+        from: String,
+        amount: u64,
+    },
+    ClaimUndelegate {
+        undelegation_id: String,
     },
     AutoDelegate {
         to: String,
@@ -376,14 +382,16 @@ impl From<&TransactionData> for ExplorerTransactionData {
                 vrf_pub_key: hex::encode(vrf_pub_key.as_ref()),
                 commission: (*commission).into(),
             },
-            TransactionData::Delegate {
-                to,
-                amount,
-                reverse,
-            } => Self::Delegate {
+            TransactionData::Delegate { to, amount } => Self::Delegate {
                 to: to.to_string(),
                 amount: (*amount).into(),
-                reverse: *reverse,
+            },
+            TransactionData::InitUndelegate { from, amount } => Self::InitUndelegate {
+                from: from.to_string(),
+                amount: (*amount).into(),
+            },
+            TransactionData::ClaimUndelegate { undelegation_id } => Self::ClaimUndelegate {
+                undelegation_id: undelegation_id.to_string(),
             },
             TransactionData::AutoDelegate { to, ratio } => Self::AutoDelegate {
                 to: to.to_string(),

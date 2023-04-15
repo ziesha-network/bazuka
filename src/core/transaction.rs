@@ -20,6 +20,47 @@ use thiserror::Error;
     std::hash::Hash,
     Default,
 )]
+pub struct UndelegationId<H: Hash>(H::Output);
+
+#[derive(Error, Debug)]
+pub enum ParseUndelegationIdError {
+    #[error("undelegate-id invalid")]
+    Invalid,
+}
+
+impl<H: Hash> UndelegationId<H> {
+    pub fn new<S: SignatureScheme, V: VerifiableRandomFunction>(tx: &Transaction<H, S, V>) -> Self {
+        Self(tx.hash())
+    }
+}
+
+impl<H: Hash> std::fmt::Display for UndelegationId<H> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", hex::encode(self.0))
+    }
+}
+
+impl<H: Hash> FromStr for UndelegationId<H> {
+    type Err = ParseUndelegationIdError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let bytes = hex::decode(s).map_err(|_| ParseUndelegationIdError::Invalid)?;
+        let hash_output =
+            H::Output::try_from(bytes).map_err(|_| ParseUndelegationIdError::Invalid)?;
+        Ok(Self(hash_output))
+    }
+}
+
+#[derive(
+    serde::Serialize,
+    serde::Deserialize,
+    PartialEq,
+    Debug,
+    Clone,
+    Copy,
+    Eq,
+    std::hash::Hash,
+    Default,
+)]
 pub struct ContractId<H: Hash>(H::Output);
 
 #[derive(Error, Debug)]
@@ -336,7 +377,13 @@ pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunctio
     Delegate {
         amount: Amount,
         to: S::Pub,
-        reverse: bool,
+    },
+    InitUndelegate {
+        amount: Amount,
+        from: S::Pub,
+    },
+    ClaimUndelegate {
+        undelegation_id: UndelegationId<H>,
     },
     AutoDelegate {
         to: S::Pub,

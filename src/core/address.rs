@@ -66,3 +66,9 @@ pub struct Staker<V: VerifiableRandomFunction> {
 pub struct Delegate {
     pub amount: Amount,
 }
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
+pub struct Undelegation {
+    pub amount: Amount,
+    pub unlocks_on: u64, // Header number
+}

@@ -5,17 +5,12 @@ pub fn delegate<K: KvStore>(
     tx_src: Address,
     amount: Amount,
     to: Address,
-    reverse: bool,
 ) -> Result<(), BlockchainError> {
     let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
-    if !reverse {
-        if src_bal < amount {
-            return Err(BlockchainError::BalanceInsufficient);
-        }
-        src_bal -= amount;
-    } else {
-        src_bal += amount;
+    if src_bal < amount {
+        return Err(BlockchainError::BalanceInsufficient);
     }
+    src_bal -= amount;
     chain.database.update(&[WriteOp::Put(
         keys::account_balance(&tx_src, TokenId::Ziesha),
         src_bal.into(),
@@ -23,14 +18,7 @@ pub fn delegate<K: KvStore>(
 
     let mut delegate = chain.get_delegate(tx_src.clone(), to.clone())?;
     let old_delegate = delegate.amount;
-    if !reverse {
-        delegate.amount += amount;
-    } else {
-        if delegate.amount < amount {
-            return Err(BlockchainError::BalanceInsufficient);
-        }
-        delegate.amount -= amount;
-    }
+    delegate.amount += amount;
     chain.database.update(&[WriteOp::Put(
         keys::delegate(&tx_src, &to),
         delegate.clone().into(),
@@ -113,15 +101,7 @@ mod tests {
             .parse()
             .unwrap();
         let (ops, _) = chain
-            .isolated(|chain| {
-                Ok(delegate(
-                    chain,
-                    abc.clone(),
-                    Amount(123),
-                    dst.clone(),
-                    false,
-                )?)
-            })
+            .isolated(|chain| Ok(delegate(chain, abc.clone(), Amount(123), dst.clone())?))
             .unwrap();
         chain.database.update(&ops).unwrap();
 
@@ -173,15 +153,7 @@ mod tests {
         assert_eq!(ops, expected_ops);
 
         let (ops, _) = chain
-            .isolated(|chain| {
-                Ok(delegate(
-                    chain,
-                    abc.clone(),
-                    Amount(77),
-                    dst.clone(),
-                    false,
-                )?)
-            })
+            .isolated(|chain| Ok(delegate(chain, abc.clone(), Amount(77), dst.clone())?))
             .unwrap();
         chain.database.update(&ops).unwrap();
 
@@ -246,15 +218,7 @@ mod tests {
         .unwrap();
 
         let (ops, _) = chain
-            .isolated(|chain| {
-                Ok(delegate(
-                    chain,
-                    src.clone(),
-                    Amount(60),
-                    dst.clone(),
-                    false,
-                )?)
-            })
+            .isolated(|chain| Ok(delegate(chain, src.clone(), Amount(60), dst.clone())?))
             .unwrap();
 
         let expected_ops = vec![
@@ -320,7 +284,7 @@ mod tests {
             .unwrap();
         assert!(matches!(
             chain.isolated(|chain| {
-                delegate(chain, src.clone(), Amount(123), dst.clone(), false)?;
+                delegate(chain, src.clone(), Amount(123), dst.clone())?;
                 Ok(())
             }),
             Err(BlockchainError::BalanceInsufficient)

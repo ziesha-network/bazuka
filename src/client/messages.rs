@@ -1,7 +1,7 @@
 use crate::blockchain::{TimestampCommit, TransactionStats, ZkBlockchainPatch};
 use crate::core::{
     Address, Amount, Block, ContractId, GeneralAddress, GeneralTransaction, Header, Money,
-    MpnAddress, Signature, Token, TransactionAndDelta, ValidatorProof,
+    MpnAddress, Signature, Token, TransactionAndDelta, Undelegation, ValidatorProof,
 };
 use crate::mpn::MpnWork;
 use crate::zk;
@@ -59,6 +59,7 @@ pub struct GetDelegationsRequest {
 pub struct GetDelegationsResponse {
     pub delegators: HashMap<String, Amount>,
     pub delegatees: HashMap<String, Amount>,
+    pub undelegations: Vec<Undelegation>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

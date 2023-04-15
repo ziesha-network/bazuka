@@ -170,6 +170,19 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                     }
                 }
 
+                if !delegations.undelegations.is_empty() {
+                    println!();
+                    println!("{}", "Undelegations\n---------".bright_green());
+                    for undel in delegations.undelegations {
+                        println!(
+                            "Receiving {}{} after block {}",
+                            undel.amount.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                            bazuka::config::SYMBOL,
+                            undel.unlocks_on
+                        );
+                    }
+                }
+
                 println!();
 
                 let mpn_address = MpnAddress {

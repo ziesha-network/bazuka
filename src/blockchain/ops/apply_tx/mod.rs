@@ -1,7 +1,9 @@
 mod auto_delegate;
+mod claim_undelegate;
 mod create_contract;
 mod create_token;
 mod delegate;
+mod init_undelegate;
 mod regular_send;
 mod update_contract;
 mod update_staker;
@@ -62,15 +64,24 @@ pub fn apply_tx<K: KvStore>(
             } => {
                 update_staker::update_staker(chain, tx_src, vrf_pub_key.clone(), *commission)?;
             }
-            TransactionData::Delegate {
-                amount,
-                to,
-                reverse,
-            } => {
-                delegate::delegate(chain, tx_src, *amount, to.clone(), *reverse)?;
+            TransactionData::Delegate { amount, to } => {
+                delegate::delegate(chain, tx_src, *amount, to.clone())?;
             }
             TransactionData::AutoDelegate { to, ratio } => {
                 auto_delegate::auto_delegate(chain, tx_src, to.clone(), *ratio)?;
+            }
+            TransactionData::InitUndelegate { amount, from } => {
+                let undelegation_id = UndelegationId::new(tx);
+                init_undelegate::init_undelegate(
+                    chain,
+                    undelegation_id,
+                    tx_src,
+                    *amount,
+                    from.clone(),
+                )?;
+            }
+            TransactionData::ClaimUndelegate { undelegation_id } => {
+                claim_undelegate::claim_undelegate(chain, tx_src, *undelegation_id)?;
             }
             TransactionData::CreateToken { token } => {
                 let token_id = {

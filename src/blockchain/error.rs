@@ -123,4 +123,8 @@ pub enum BlockchainError {
     MpnAddressCannotBeUsed,
     #[error("mpn-address cannot be used")]
     ConvertRatioError(#[from] ConvertRatioError),
+    #[error("undelegation not found")]
+    UndelegationNotFound,
+    #[error("undelegation still locked")]
+    UndelegationLocked,
 }

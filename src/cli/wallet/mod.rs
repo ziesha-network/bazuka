@@ -1,6 +1,8 @@
 pub mod add_token;
+pub mod claim_undelegate;
 pub mod delegate;
 pub mod info;
+pub mod init_undelegate;
 pub mod new_token;
 pub mod register_validator;
 pub mod resend_pending;
@@ -8,8 +10,10 @@ pub mod reset;
 pub mod send;
 
 pub use add_token::*;
+pub use claim_undelegate::*;
 pub use delegate::*;
 pub use info::*;
+pub use init_undelegate::*;
 pub use new_token::*;
 pub use register_validator::*;
 pub use resend_pending::*;

@@ -7,27 +7,16 @@ use bazuka::common::*;
 use bazuka::core::{Address, Decimal, Money, NonceGroup, TokenId};
 use bazuka::wallet::WalletCollection;
 
-use colored::Colorize;
-
-pub async fn delegate(
+pub async fn init_undelegate(
     conf: BazukaConfig,
     mut wallet: WalletCollection,
     wallet_path: &PathBuf,
     memo: Option<String>,
     amount: Decimal,
-    to: Address,
+    from: Address,
     fee: Decimal,
 ) -> () {
     let tx_builder = wallet.user(0).tx_builder();
-    if tx_builder.get_address() == to {
-        println!(
-            "{} {}\n{}",
-            "Error: ".bright_red(),
-            "You should delegate to your validator-address instead of your user address!",
-            "Find your validator address through `bazuka wallet info --validator`"
-        );
-        return;
-    }
     let (req_loop, client) = BazukaClient::connect(
         tx_builder.get_priv_key(),
         conf.random_node(),
@@ -42,9 +31,9 @@ pub async fn delegate(
                 .user(0)
                 .new_nonce(NonceGroup::TransactionAndDelta(tx_builder.get_address()))
                 .unwrap_or(curr_nonce + 1);
-            let tx = tx_builder.delegate(
+            let tx = tx_builder.init_undelegate(
                 memo.unwrap_or_default(),
-                to,
+                from,
                 amount.to_amount(bazuka::config::UNIT_ZEROS),
                 Money {
                     amount: fee.to_amount(bazuka::config::UNIT_ZEROS),

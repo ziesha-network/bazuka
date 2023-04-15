@@ -4,7 +4,8 @@ use crate::client::{messages::ValidatorClaim, PeerAddress};
 use crate::core::{
     Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Hasher, Money,
     MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry, Signature, Signer, Token,
-    TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
+    TokenId, Transaction, TransactionAndDelta, TransactionData, UndelegationId, ValidatorProof,
+    Vrf, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::VerifiableRandomFunction;
@@ -75,7 +76,6 @@ impl TxBuilder {
         memo: String,
         address: Address,
         amount: Amount,
-        reverse: bool,
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
@@ -85,8 +85,55 @@ impl TxBuilder {
             data: TransactionData::Delegate {
                 to: address,
                 amount,
-                reverse,
             },
+            nonce,
+            fee,
+            sig: Signature::Unsigned,
+        };
+        self.sign_tx(&mut tx);
+
+        TransactionAndDelta {
+            tx,
+            state_delta: None,
+        }
+    }
+    pub fn init_undelegate(
+        &self,
+        memo: String,
+        address: Address,
+        amount: Amount,
+        fee: Money,
+        nonce: u32,
+    ) -> TransactionAndDelta {
+        let mut tx = Transaction {
+            memo,
+            src: Some(self.get_address()),
+            data: TransactionData::InitUndelegate {
+                from: address,
+                amount,
+            },
+            nonce,
+            fee,
+            sig: Signature::Unsigned,
+        };
+        self.sign_tx(&mut tx);
+
+        TransactionAndDelta {
+            tx,
+            state_delta: None,
+        }
+    }
+    pub fn claim_undelegate(
+        &self,
+        memo: String,
+        undelegation_id: UndelegationId,
+        fee: Money,
+        nonce: u32,
+    ) -> TransactionAndDelta {
+        let mut tx = Transaction {
+            memo,
+            src: Some(self.get_address()),
+            data: TransactionData::ClaimUndelegate { undelegation_id },
             nonce,
             fee,
             sig: Signature::Unsigned,

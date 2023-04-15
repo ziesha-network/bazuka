@@ -193,7 +193,6 @@ pub fn get_blockchain_config() -> BlockchainConfig {
                 .parse()
                 .unwrap(),
             amount: Amount(1000000000000),
-            reverse: false,
         },
         nonce: 0,
         fee: Money::ziesha(0),
@@ -358,7 +357,6 @@ pub fn get_dev_blockchain_config(validator: &TxBuilder, small_mpn: bool) -> Bloc
         data: TransactionData::Delegate {
             to: validator.get_address(),
             amount: Amount(1000000000000),
-            reverse: false,
         },
         nonce: 0,
         fee: Money::ziesha(0),
@@ -446,7 +444,6 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
                     "".into(),
                     val.get_address(),
                     Amount(25),
-                    false,
                     Money::ziesha(0),
                     0,
                 )

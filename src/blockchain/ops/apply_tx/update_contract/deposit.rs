@@ -169,12 +169,12 @@ mod tests {
                 Amount(9800).into(),
             ),
             WriteOp::Put(
-                "CAB-341b882a2d0429ed82ef0717eb9dcfb39012421173979bc4b550d291da91ac3e-Ziesha"
+                "CAB-abbc79a56cdc1eff3445d49eff7a1533e958b145ca5f68091d4a6cb05fd3211c-Ziesha"
                     .into(),
                 Amount(123).into(),
             ),
             WriteOp::Put(
-                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-341b882a2d0429ed82ef0717eb9dcfb39012421173979bc4b550d291da91ac3e".into(),
+                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-abbc79a56cdc1eff3445d49eff7a1533e958b145ca5f68091d4a6cb05fd3211c".into(),
                 1u32.into(),
             ),
         ];
@@ -269,7 +269,7 @@ mod tests {
 
         let expected_ops = vec![
             WriteOp::Put(
-                "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-0x214bfab03425c710055132a7e6656d61442f65e56d2efd930b4f090eb58f952c"
+                "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-0x63888247e8eaba53dd8e3e43b1279d24b409a1b6a638e261ff59625685a02135"
                     .into(),
                 Amount(90000).into(),
             ),
@@ -279,12 +279,12 @@ mod tests {
                 Amount(9679).into(),
             ),
             WriteOp::Put(
-                "CAB-341b882a2d0429ed82ef0717eb9dcfb39012421173979bc4b550d291da91ac3e-0x214bfab03425c710055132a7e6656d61442f65e56d2efd930b4f090eb58f952c"
+                "CAB-abbc79a56cdc1eff3445d49eff7a1533e958b145ca5f68091d4a6cb05fd3211c-0x63888247e8eaba53dd8e3e43b1279d24b409a1b6a638e261ff59625685a02135"
                     .into(),
                 Amount(10000).into(),
             ),
             WriteOp::Put(
-                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-341b882a2d0429ed82ef0717eb9dcfb39012421173979bc4b550d291da91ac3e".into(),
+                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-abbc79a56cdc1eff3445d49eff7a1533e958b145ca5f68091d4a6cb05fd3211c".into(),
                 1u32.into(),
             ),
         ];

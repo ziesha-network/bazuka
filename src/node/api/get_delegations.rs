@@ -23,6 +23,9 @@ pub async fn get_delegations<K: KvStore, B: Blockchain<K>>(
             .into_iter()
             .map(|(k, v)| (k.to_string(), v))
             .collect(),
+        undelegations: context
+            .blockchain
+            .get_undelegations(req.address.parse()?, Some(req.top))?,
     })
 }
 

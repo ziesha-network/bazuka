@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::{Address, ContractId, TokenId};
+use crate::core::{Address, ContractId, TokenId, UndelegationId};
 use crate::zk::ZkDataLocator;
 use thiserror::Error;
 
@@ -49,6 +49,43 @@ pub fn stake(address: &Address) -> StringKey {
 
 pub fn auto_delegate(delegator: &Address, delegatee: &Address) -> StringKey {
     format!("ADL-{}-{}", delegator, delegatee).into()
+}
+
+pub struct UndelegationDbKey {
+    pub undelegation_id: UndelegationId,
+    pub undelegator: Address,
+}
+impl Into<StringKey> for UndelegationDbKey {
+    fn into(self) -> StringKey {
+        format!(
+            "{}-{}",
+            Self::prefix(&self.undelegator),
+            self.undelegation_id
+        )
+        .into()
+    }
+}
+
+impl TryFrom<StringKey> for UndelegationDbKey {
+    type Error = ParseDbKeyError;
+    fn try_from(key: StringKey) -> Result<Self, ParseDbKeyError> {
+        let splitted = key.0.split("-").collect::<Vec<_>>();
+        if splitted.len() != 3 {
+            return Err(ParseDbKeyError::Invalid);
+        }
+        let undelegator = splitted[1].parse().map_err(|_| ParseDbKeyError::Invalid)?;
+        let undelegation_id = splitted[2].parse().map_err(|_| ParseDbKeyError::Invalid)?;
+        Ok(UndelegationDbKey {
+            undelegator,
+            undelegation_id,
+        })
+    }
+}
+
+impl UndelegationDbKey {
+    pub fn prefix(undelegator: &Address) -> String {
+        format!("UDL-{}", undelegator).into()
+    }
 }
 
 #[derive(Error, Debug)]
