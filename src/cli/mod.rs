@@ -39,7 +39,7 @@ pub mod node;
 const DEFAULT_PORT: u16 = 8765;
 const BAZUKA_NOT_INITILIZED: &str = "Bazuka is not initialized";
 
-const CURRENT_NETWORK: &str = "tahdig";
+const CURRENT_NETWORK: &str = "kebab";
 
 #[cfg(feature = "client")]
 #[derive(Serialize, Deserialize, Clone, Debug)]
