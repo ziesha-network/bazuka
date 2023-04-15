@@ -136,7 +136,7 @@ pub trait Blockchain<K: KvStore> {
         &self,
         undelegator: Address,
         top: Option<usize>,
-    ) -> Result<Vec<Undelegation>, BlockchainError>;
+    ) -> Result<Vec<(UndelegationId, Undelegation)>, BlockchainError>;
     fn get_staker(&self, addr: Address) -> Result<Option<Staker>, BlockchainError>;
     fn get_nonce(&self, addr: Address) -> Result<u32, BlockchainError>;
     fn get_mpn_account(&self, addr: MpnAddress) -> Result<zk::MpnAccount, BlockchainError>;
@@ -815,15 +815,16 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         &self,
         undelegator: Address,
         top: Option<usize>,
-    ) -> Result<Vec<Undelegation>, BlockchainError> {
+    ) -> Result<Vec<(UndelegationId, Undelegation)>, BlockchainError> {
         let mut undelegations = Vec::new();
-        for (_, v) in self
+        for (k, v) in self
             .database
             .pairs(keys::UndelegationDbKey::prefix(&undelegator).into())?
             .into_iter()
         {
+            let undelegation_id = keys::UndelegationDbKey::try_from(k)?.undelegation_id;
             let undelegation: Undelegation = v.try_into()?;
-            undelegations.push(undelegation);
+            undelegations.push((undelegation_id, undelegation));
             if let Some(top) = top {
                 if undelegations.len() >= top {
                     break;

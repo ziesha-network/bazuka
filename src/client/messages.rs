@@ -59,7 +59,7 @@ pub struct GetDelegationsRequest {
 pub struct GetDelegationsResponse {
     pub delegators: HashMap<String, Amount>,
     pub delegatees: HashMap<String, Amount>,
-    pub undelegations: Vec<Undelegation>,
+    pub undelegations: Vec<(String, Undelegation)>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

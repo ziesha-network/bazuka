@@ -173,12 +173,13 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                 if !delegations.undelegations.is_empty() {
                     println!();
                     println!("{}", "Undelegations\n---------".bright_green());
-                    for undel in delegations.undelegations {
+                    for (id, undel) in delegations.undelegations {
                         println!(
-                            "Receiving {}{} after block {}",
+                            "Receiving {}{} after block {} (Undelegation-id: {})",
                             undel.amount.display_by_decimals(bazuka::config::UNIT_ZEROS),
                             bazuka::config::SYMBOL,
-                            undel.unlocks_on
+                            undel.unlocks_on,
+                            id
                         );
                     }
                 }
