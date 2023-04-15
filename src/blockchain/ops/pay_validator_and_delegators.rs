@@ -6,6 +6,7 @@ pub fn pay_validator_and_delegators<K: KvStore>(
     validator: Address,
     fee_sum: Amount,
 ) -> Result<Amount, BlockchainError> {
+    let height = chain.get_height()?;
     let staker = chain
         .get_staker(validator.clone())?
         .ok_or(BlockchainError::ValidatorNotRegistered)?;
@@ -75,5 +76,33 @@ pub fn pay_validator_and_delegators<K: KvStore>(
             )?;
         }
     }
+
+    for (k, _) in chain
+        .database
+        .pairs(keys::UndelegationCallbackDbKey::prefix(height + 1).into())?
+        .into_iter()
+        .collect::<Vec<_>>()
+    {
+        let key = keys::UndelegationCallbackDbKey::try_from(k)?;
+        let undelegation = chain
+            .get_undelegation(key.undelegator.clone(), key.undelegation_id)?
+            .ok_or(BlockchainError::Inconsistency)?;
+        let new_balance =
+            chain.get_balance(key.undelegator.clone(), TokenId::Ziesha)? + undelegation.amount;
+        chain.database.update(&[
+            WriteOp::Remove(
+                keys::UndelegationDbKey {
+                    undelegator: key.undelegator.clone(),
+                    undelegation_id: key.undelegation_id,
+                }
+                .into(),
+            ),
+            WriteOp::Put(
+                keys::account_balance(&key.undelegator, TokenId::Ziesha),
+                new_balance.into(),
+            ),
+        ])?;
+    }
+
     Ok(validator_reward)
 }

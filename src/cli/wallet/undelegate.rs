@@ -4,15 +4,16 @@ use tokio::try_join;
 use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::client::{BazukaClient, Limit, NodeError};
 use bazuka::common::*;
-use bazuka::core::{Decimal, Money, NonceGroup, TokenId, UndelegationId};
+use bazuka::core::{Address, Decimal, Money, NonceGroup, TokenId};
 use bazuka::wallet::WalletCollection;
 
-pub async fn claim_undelegate(
+pub async fn undelegate(
     conf: BazukaConfig,
     mut wallet: WalletCollection,
     wallet_path: &PathBuf,
     memo: Option<String>,
-    undelegation_id: UndelegationId,
+    amount: Decimal,
+    from: Address,
     fee: Decimal,
 ) -> () {
     let tx_builder = wallet.user(0).tx_builder();
@@ -30,9 +31,10 @@ pub async fn claim_undelegate(
                 .user(0)
                 .new_nonce(NonceGroup::TransactionAndDelta(tx_builder.get_address()))
                 .unwrap_or(curr_nonce + 1);
-            let tx = tx_builder.claim_undelegate(
+            let tx = tx_builder.undelegate(
                 memo.unwrap_or_default(),
-                undelegation_id,
+                from,
+                amount.to_amount(bazuka::config::UNIT_ZEROS),
                 Money {
                     amount: fee.to_amount(bazuka::config::UNIT_ZEROS),
                     token_id: TokenId::Ziesha,

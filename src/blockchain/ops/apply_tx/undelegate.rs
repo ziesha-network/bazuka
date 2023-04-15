@@ -1,16 +1,14 @@
 use super::*;
 
-pub fn init_undelegate<K: KvStore>(
+pub fn undelegate<K: KvStore>(
     chain: &mut KvStoreChain<K>,
     undelegation_id: UndelegationId,
     tx_src: Address,
     amount: Amount,
     from: Address,
 ) -> Result<(), BlockchainError> {
-    let undelegation = Undelegation {
-        amount,
-        unlocks_on: chain.get_height()? + 10, // TODO: Put undelegation period into config
-    };
+    let unlocks_on = chain.get_height()? + 10; // TODO: Put undelegation period into config
+    let undelegation = Undelegation { amount, unlocks_on };
     let mut delegate = chain.get_delegate(tx_src.clone(), from.clone())?;
     let old_delegate = delegate.amount;
     if delegate.amount < amount {
@@ -35,6 +33,15 @@ pub fn init_undelegate<K: KvStore>(
             }
             .into(),
             undelegation.into(),
+        ),
+        WriteOp::Put(
+            keys::UndelegationCallbackDbKey {
+                block: unlocks_on,
+                undelegator: tx_src.clone(),
+                undelegation_id: undelegation_id,
+            }
+            .into(),
+            ().into(),
         ),
         WriteOp::Remove(
             keys::DelegateeRankDbKey {

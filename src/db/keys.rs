@@ -65,7 +65,6 @@ impl Into<StringKey> for UndelegationDbKey {
         .into()
     }
 }
-
 impl TryFrom<StringKey> for UndelegationDbKey {
     type Error = ParseDbKeyError;
     fn try_from(key: StringKey) -> Result<Self, ParseDbKeyError> {
@@ -81,10 +80,48 @@ impl TryFrom<StringKey> for UndelegationDbKey {
         })
     }
 }
-
 impl UndelegationDbKey {
     pub fn prefix(undelegator: &Address) -> String {
         format!("UDL-{}", undelegator).into()
+    }
+}
+
+pub struct UndelegationCallbackDbKey {
+    pub block: u64,
+    pub undelegator: Address,
+    pub undelegation_id: UndelegationId,
+}
+impl Into<StringKey> for UndelegationCallbackDbKey {
+    fn into(self) -> StringKey {
+        format!(
+            "{}-{}-{}",
+            Self::prefix(self.block),
+            self.undelegator,
+            self.undelegation_id
+        )
+        .into()
+    }
+}
+impl TryFrom<StringKey> for UndelegationCallbackDbKey {
+    type Error = ParseDbKeyError;
+    fn try_from(key: StringKey) -> Result<Self, ParseDbKeyError> {
+        let splitted = key.0.split("-").collect::<Vec<_>>();
+        if splitted.len() != 4 {
+            return Err(ParseDbKeyError::Invalid);
+        }
+        let block = splitted[2].parse().map_err(|_| ParseDbKeyError::Invalid)?;
+        let undelegator = splitted[2].parse().map_err(|_| ParseDbKeyError::Invalid)?;
+        let undelegation_id = splitted[3].parse().map_err(|_| ParseDbKeyError::Invalid)?;
+        Ok(UndelegationCallbackDbKey {
+            block,
+            undelegator,
+            undelegation_id,
+        })
+    }
+}
+impl UndelegationCallbackDbKey {
+    pub fn prefix(block: u64) -> String {
+        format!("UDC-{}", block).into()
     }
 }
 

@@ -378,12 +378,9 @@ pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunctio
         amount: Amount,
         to: S::Pub,
     },
-    InitUndelegate {
+    Undelegate {
         amount: Amount,
         from: S::Pub,
-    },
-    ClaimUndelegate {
-        undelegation_id: UndelegationId<H>,
     },
     AutoDelegate {
         to: S::Pub,

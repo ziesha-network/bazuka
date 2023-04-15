@@ -16,7 +16,7 @@ use {
 use {
     bazuka::client::{NodeError, PeerAddress},
     bazuka::config,
-    bazuka::core::{Address, Decimal, GeneralAddress, MpnAddress, TokenId, UndelegationId},
+    bazuka::core::{Address, Decimal, GeneralAddress, MpnAddress, TokenId},
     bazuka::mpn::MpnWorker,
     bazuka::wallet::WalletCollection,
     colored::Colorize,
@@ -154,22 +154,13 @@ enum WalletOptions {
         fee: Decimal,
     },
     /// Reclaim funds inside an ended delegatation back to your account
-    InitUndelegate {
+    Undelegate {
         #[structopt(long)]
         memo: Option<String>,
         #[structopt(long)]
         from: Address,
         #[structopt(long)]
         amount: Decimal,
-        #[structopt(long, default_value = "0")]
-        fee: Decimal,
-    },
-    /// Reclaim funds inside an ended delegatation back to your account
-    ClaimUndelegate {
-        #[structopt(long)]
-        memo: Option<String>,
-        #[structopt(long)]
-        undelegation_id: UndelegationId,
         #[structopt(long, default_value = "0")]
         fee: Decimal,
     },
@@ -532,34 +523,19 @@ pub async fn initialize_cli() {
                 )
                 .await;
             }
-            WalletOptions::InitUndelegate {
+            WalletOptions::Undelegate {
                 memo,
                 amount,
                 from,
                 fee,
             } => {
-                crate::cli::wallet::init_undelegate(
+                crate::cli::wallet::undelegate(
                     conf.expect(BAZUKA_NOT_INITILIZED),
                     wallet.expect(BAZUKA_NOT_INITILIZED),
                     &wallet_path,
                     memo,
                     amount,
                     from,
-                    fee,
-                )
-                .await;
-            }
-            WalletOptions::ClaimUndelegate {
-                memo,
-                undelegation_id,
-                fee,
-            } => {
-                crate::cli::wallet::claim_undelegate(
-                    conf.expect(BAZUKA_NOT_INITILIZED),
-                    wallet.expect(BAZUKA_NOT_INITILIZED),
-                    &wallet_path,
-                    memo,
-                    undelegation_id,
                     fee,
                 )
                 .await;

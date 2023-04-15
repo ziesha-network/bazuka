@@ -4,8 +4,7 @@ use crate::client::{messages::ValidatorClaim, PeerAddress};
 use crate::core::{
     Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Hasher, Money,
     MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry, Signature, Signer, Token,
-    TokenId, Transaction, TransactionAndDelta, TransactionData, UndelegationId, ValidatorProof,
-    Vrf, ZkSigner,
+    TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::VerifiableRandomFunction;
@@ -97,7 +96,7 @@ impl TxBuilder {
             state_delta: None,
         }
     }
-    pub fn init_undelegate(
+    pub fn undelegate(
         &self,
         memo: String,
         address: Address,
@@ -108,32 +107,10 @@ impl TxBuilder {
         let mut tx = Transaction {
             memo,
             src: Some(self.get_address()),
-            data: TransactionData::InitUndelegate {
+            data: TransactionData::Undelegate {
                 from: address,
                 amount,
             },
-            nonce,
-            fee,
-            sig: Signature::Unsigned,
-        };
-        self.sign_tx(&mut tx);
-
-        TransactionAndDelta {
-            tx,
-            state_delta: None,
-        }
-    }
-    pub fn claim_undelegate(
-        &self,
-        memo: String,
-        undelegation_id: UndelegationId,
-        fee: Money,
-        nonce: u32,
-    ) -> TransactionAndDelta {
-        let mut tx = Transaction {
-            memo,
-            src: Some(self.get_address()),
-            data: TransactionData::ClaimUndelegate { undelegation_id },
             nonce,
             fee,
             sig: Signature::Unsigned,
