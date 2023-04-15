@@ -22,8 +22,6 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
     try_join!(
         async move {
             if validator {
-                println!();
-
                 let acc = client.get_account(val_tx_builder.get_address()).await?;
 
                 println!("{}", "Validator Info\n---------".bright_green());
@@ -98,6 +96,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                     }
                 }
             } else {
+                let height = client.stats().await?.height;
                 let acc = client.get_account(tx_builder.get_address()).await?;
                 let mut token_balances = HashMap::new();
                 let mut tokens = HashMap::new();
@@ -175,10 +174,15 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                     println!("{}", "Undelegations\n---------".bright_green());
                     for (id, undel) in delegations.undelegations {
                         println!(
-                            "Receiving {}{} after block {} (Undelegation-id: {})",
+                            "Receiving {}{} after block {} ({}) (Undelegation-id: {})",
                             undel.amount.display_by_decimals(bazuka::config::UNIT_ZEROS),
                             bazuka::config::SYMBOL,
                             undel.unlocks_on,
+                            if height >= undel.unlocks_on {
+                                "Finished!".green()
+                            } else {
+                                "Pending...".yellow()
+                            },
                             id
                         );
                     }
