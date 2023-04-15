@@ -1,4 +1,5 @@
 pub mod add_token;
+pub mod auto_delegate;
 pub mod claim_undelegate;
 pub mod delegate;
 pub mod info;
@@ -10,6 +11,7 @@ pub mod reset;
 pub mod send;
 
 pub use add_token::*;
+pub use auto_delegate::*;
 pub use claim_undelegate::*;
 pub use delegate::*;
 pub use info::*;

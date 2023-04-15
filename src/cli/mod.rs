@@ -142,6 +142,17 @@ enum WalletOptions {
         #[structopt(long, default_value = "0")]
         fee: Decimal,
     },
+    /// Automatically re-delegate a ratio of staking rewards
+    AutoDelegate {
+        #[structopt(long)]
+        memo: Option<String>,
+        #[structopt(long)]
+        to: Address,
+        #[structopt(long)]
+        ratio: f32,
+        #[structopt(long, default_value = "0")]
+        fee: Decimal,
+    },
     /// Reclaim funds inside an ended delegatation back to your account
     InitUndelegate {
         #[structopt(long)]
@@ -549,6 +560,23 @@ pub async fn initialize_cli() {
                     &wallet_path,
                     memo,
                     undelegation_id,
+                    fee,
+                )
+                .await;
+            }
+            WalletOptions::AutoDelegate {
+                memo,
+                to,
+                ratio,
+                fee,
+            } => {
+                crate::cli::wallet::auto_delegate(
+                    conf.expect(BAZUKA_NOT_INITILIZED),
+                    wallet.expect(BAZUKA_NOT_INITILIZED),
+                    &wallet_path,
+                    memo,
+                    to,
+                    ratio.try_into().unwrap(),
                     fee,
                 )
                 .await;

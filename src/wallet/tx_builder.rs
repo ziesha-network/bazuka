@@ -145,6 +145,29 @@ impl TxBuilder {
             state_delta: None,
         }
     }
+    pub fn auto_delegate(
+        &self,
+        memo: String,
+        to: Address,
+        ratio: Ratio,
+        fee: Money,
+        nonce: u32,
+    ) -> TransactionAndDelta {
+        let mut tx = Transaction {
+            memo,
+            src: Some(self.get_address()),
+            data: TransactionData::AutoDelegate { to, ratio },
+            nonce,
+            fee,
+            sig: Signature::Unsigned,
+        };
+        self.sign_tx(&mut tx);
+
+        TransactionAndDelta {
+            tx,
+            state_delta: None,
+        }
+    }
     pub fn generate_random(
         &self,
         epoch: u32,
