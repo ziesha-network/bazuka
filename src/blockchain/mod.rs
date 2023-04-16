@@ -626,6 +626,10 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             let bal: Delegate = v.try_into().unwrap();
             amount_sum += bal.amount;
         }
+        for (_, v) in self.database.pairs("UDL-".into())?.into_iter() {
+            let bal: Undelegation = v.try_into().unwrap();
+            amount_sum += bal.amount;
+        }
         Ok(amount_sum)
     }
 
