@@ -109,7 +109,7 @@ impl TryFrom<StringKey> for UndelegationCallbackDbKey {
         if splitted.len() != 4 {
             return Err(ParseDbKeyError::Invalid);
         }
-        let block = splitted[2].parse().map_err(|_| ParseDbKeyError::Invalid)?;
+        let block = splitted[1].parse().map_err(|_| ParseDbKeyError::Invalid)?;
         let undelegator = splitted[2].parse().map_err(|_| ParseDbKeyError::Invalid)?;
         let undelegation_id = splitted[3].parse().map_err(|_| ParseDbKeyError::Invalid)?;
         Ok(UndelegationCallbackDbKey {
