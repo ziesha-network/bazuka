@@ -280,7 +280,11 @@ pub fn get_blockchain_config() -> BlockchainConfig {
     }
 }
 
-pub fn get_dev_blockchain_config(validator: &TxBuilder, small_mpn: bool) -> BlockchainConfig {
+pub fn get_dev_blockchain_config(
+    validator: &TxBuilder,
+    user: &TxBuilder,
+    small_mpn: bool,
+) -> BlockchainConfig {
     let mut conf = get_blockchain_config();
 
     if small_mpn {
@@ -362,6 +366,19 @@ pub fn get_dev_blockchain_config(validator: &TxBuilder, small_mpn: bool) -> Bloc
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     };
+    conf.genesis.block.body.push(Transaction {
+        memo: "Initial user balance".into(),
+        src: None,
+        data: TransactionData::RegularSend {
+            entries: vec![RegularSendEntry {
+                dst: user.get_address(),
+                amount: Money::ziesha(100_000_000_000),
+            }],
+        },
+        nonce: 0,
+        fee: Money::ziesha(0),
+        sig: Signature::Unsigned,
+    });
     conf
 }
 

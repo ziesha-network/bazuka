@@ -16,7 +16,8 @@ pub async fn start(
 ) {
     let blockchain_conf = if dev {
         let validator_wallet = wallet.validator().tx_builder();
-        config::blockchain::get_dev_blockchain_config(&validator_wallet, small_mpn)
+        let user_wallet = wallet.user(0).tx_builder();
+        config::blockchain::get_dev_blockchain_config(&validator_wallet, &user_wallet, small_mpn)
     } else {
         config::blockchain::get_blockchain_config()
     };
