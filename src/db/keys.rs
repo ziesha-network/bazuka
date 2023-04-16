@@ -94,7 +94,7 @@ pub struct UndelegationCallbackDbKey {
 impl Into<StringKey> for UndelegationCallbackDbKey {
     fn into(self) -> StringKey {
         format!(
-            "{}-{}-{}",
+            "{}{}-{}",
             Self::prefix(self.block),
             self.undelegator,
             self.undelegation_id
@@ -121,7 +121,7 @@ impl TryFrom<StringKey> for UndelegationCallbackDbKey {
 }
 impl UndelegationCallbackDbKey {
     pub fn prefix(block: u64) -> String {
-        format!("UDC-{}", block).into()
+        format!("UDC-{}-", block).into()
     }
 }
 

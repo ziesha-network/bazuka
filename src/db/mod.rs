@@ -194,6 +194,8 @@ pub enum QueryResult<'a> {
 }
 pub struct MirroredQueryResultIterator<'a> {
     prefix: StringKey,
+    actual_finished: bool,
+    overwrite_finished: bool,
     actual_iter: Box<dyn std::iter::Iterator<Item = (StringKey, Blob)> + 'a>,
     curr_actual: Option<(StringKey, Blob)>,
     overwrite_iter: std::vec::IntoIter<(StringKey, Option<Blob>)>,
@@ -207,12 +209,19 @@ enum MirroredQueryResultIteratorElement {
 
 impl<'a> MirroredQueryResultIterator<'a> {
     fn vnext(&mut self) -> Option<MirroredQueryResultIteratorElement> {
-        if self.curr_actual.is_none() {
+        if self.curr_actual.is_none() && !self.actual_finished {
             self.curr_actual = self.actual_iter.next();
         }
-        if self.curr_overwrite.is_none() {
+        if self.curr_overwrite.is_none() && !self.overwrite_finished {
             self.curr_overwrite = self.overwrite_iter.next();
         }
+        if self.curr_actual.is_none() {
+            self.actual_finished = true;
+        }
+        if self.curr_overwrite.is_none() {
+            self.overwrite_finished = true;
+        }
+
         match (self.curr_actual.clone(), self.curr_overwrite.clone()) {
             (Some(curr_actual), Some(curr_overwrite)) => {
                 if curr_actual.0 < curr_overwrite.0 {
@@ -292,6 +301,8 @@ impl<'a> QueryResult<'a> {
                     .into_iter(),
                 curr_actual: None,
                 curr_overwrite: None,
+                actual_finished: false,
+                overwrite_finished: false,
                 prefix,
             }),
         }
