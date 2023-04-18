@@ -1,7 +1,7 @@
 use super::{Blockchain, BlockchainError, TransactionStats};
 use crate::core::{
-    Address, Amount, GeneralTransaction, MpnDeposit, MpnWithdraw, NonceGroup, Signature,
-    TransactionAndDelta,
+    Address, Amount, GeneralAddress, GeneralTransaction, MpnDeposit, MpnWithdraw, NonceGroup,
+    Signature, TokenId, TransactionAndDelta,
 };
 use crate::db::KvStore;
 use crate::zk::MpnTransaction;
@@ -206,8 +206,22 @@ impl Mempool {
             return Ok(());
         }
 
-        let count_limit = false;
-        /*let ziesha_balance = blockchain.get_balance(tx.sender(), TokenId::Ziesha)?;
+        let ziesha_balance = match tx.sender() {
+            GeneralAddress::ChainAddress(addr) => blockchain.get_balance(addr, TokenId::Ziesha)?,
+            GeneralAddress::MpnAddress(mpn_addr) => {
+                let acc = blockchain.get_mpn_account(mpn_addr)?;
+                acc.tokens
+                    .get(&0)
+                    .map(|m| {
+                        if m.token_id == TokenId::Ziesha {
+                            m.amount
+                        } else {
+                            0.into()
+                        }
+                    })
+                    .unwrap_or_default()
+            }
+        };
 
         // Allow 1tx in mempool per Ziesha
         // Min: 1 Max: 1000
@@ -217,14 +231,14 @@ impl Mempool {
                 1000,
             ),
             1,
-        ) as usize;*/
+        ) as usize;
 
         let all = self
             .txs
             .entry(tx.nonce_group().clone())
             .or_insert(SingleMempool::new(nonce));
 
-        if is_local || !count_limit {
+        if is_local || all.len() < limit {
             all.insert(tx.clone(), TransactionStats::new(is_local, now));
         }
         Ok(())
