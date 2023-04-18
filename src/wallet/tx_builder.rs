@@ -2,9 +2,10 @@
 use crate::client::{messages::ValidatorClaim, PeerAddress};
 
 use crate::core::{
-    Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw, Hasher, Money,
-    MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry, Signature, Signer, Token,
-    TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
+    hash::Hash, Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw,
+    Hasher, Money, MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry, Signature, Signer,
+    Token, TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf,
+    ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::VerifiableRandomFunction;
@@ -147,7 +148,7 @@ impl TxBuilder {
     }
     pub fn generate_random(
         &self,
-        epoch: u32,
+        randomness: <Hasher as Hash>::Output,
         slot: u32,
     ) -> (
         <Vrf as VerifiableRandomFunction>::Out,
@@ -155,7 +156,7 @@ impl TxBuilder {
     ) {
         Vrf::sign(
             &self.vrf_private_key,
-            format!("{}-{}", epoch, slot).as_bytes(),
+            format!("{}-{}", hex::encode(randomness), slot).as_bytes(),
         )
     }
     pub fn register_validator(
