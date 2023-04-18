@@ -11,6 +11,10 @@ pub fn outdated() -> StringKey {
     "OUT".into()
 }
 
+pub fn randomness() -> StringKey {
+    "RND".into()
+}
+
 pub fn block(index: u64) -> StringKey {
     format!("BLK-{:010}", index).into()
 }

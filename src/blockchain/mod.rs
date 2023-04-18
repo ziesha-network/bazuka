@@ -76,6 +76,7 @@ pub enum TxSideEffect {
 }
 
 pub trait Blockchain<K: KvStore> {
+    fn epoch_randomness(&self) -> Result<<Hasher as Hash>::Output, BlockchainError>;
     fn database(&self) -> &K;
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError>;
@@ -631,6 +632,13 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             amount_sum += bal.amount;
         }
         Ok(amount_sum)
+    }
+
+    fn epoch_randomness(&self) -> Result<<Hasher as Hash>::Output, BlockchainError> {
+        Ok(match self.database.get(keys::randomness())? {
+            Some(b) => b.try_into()?,
+            None => Default::default(),
+        })
     }
 
     fn is_validator(
