@@ -79,7 +79,8 @@ pub trait VerifiableRandomFunction: Clone + Serialize {
         + std::hash::Hash
         + Serialize
         + DeserializeOwned
-        + Into<f32>;
+        + Into<f32>
+        + Into<Vec<u8>>;
     type Proof: Clone + Debug + PartialEq + Eq + std::hash::Hash + Serialize + DeserializeOwned;
     fn generate_keys<R: RngCore + CryptoRng>(csprng: R) -> (Self::Pub, Self::Priv);
     fn sign(sk: &Self::Priv, msg: &[u8]) -> (Self::Out, Self::Proof);

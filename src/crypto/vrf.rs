@@ -89,6 +89,12 @@ impl std::hash::Hash for Output {
     }
 }
 
+impl Into<Vec<u8>> for Output {
+    fn into(self) -> Vec<u8> {
+        self.0.to_bytes().to_vec()
+    }
+}
+
 impl Into<f32> for Output {
     fn into(self) -> f32 {
         ChaChaRng::from_seed(self.0 .0).gen_range(0.0..1.0)
