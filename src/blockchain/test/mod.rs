@@ -7,6 +7,7 @@ use crate::db;
 mod contract;
 mod rewards;
 mod tokens;
+mod vrf_randomness;
 
 fn rollback_till_empty<K: KvStore>(b: &mut KvStoreChain<K>) -> Result<(), BlockchainError> {
     while b.get_height()? > 0 {
