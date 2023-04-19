@@ -6,7 +6,6 @@ pub fn apply_block<K: KvStore>(
 ) -> Result<(), BlockchainError> {
     let (ops, _) = chain.isolated(|chain| {
         let curr_height = chain.get_height()?;
-        let mut randomness = chain.epoch_randomness()?;
 
         if let Some(height_limit) = chain.config.testnet_height_limit {
             if block.header.number >= height_limit {
@@ -17,31 +16,6 @@ pub fn apply_block<K: KvStore>(
         let is_genesis = block.header.number == 0;
 
         if curr_height > 0 {
-            let tip_epoch = chain
-                .epoch_slot(chain.get_tip()?.proof_of_stake.timestamp)
-                .0;
-            let block_epoch = chain.epoch_slot(block.header.proof_of_stake.timestamp).0;
-            if block_epoch > tip_epoch {
-                let mut head = chain.get_tip()?;
-                while chain.epoch_slot(head.proof_of_stake.timestamp).0 == tip_epoch
-                    && head.number > 0
-                {
-                    let output_hash = match head.proof_of_stake.proof {
-                        ValidatorProof::Proof { vrf_output, .. } => {
-                            Hasher::hash(&Into::<Vec<u8>>::into(vrf_output.clone()))
-                        }
-                        ValidatorProof::Unproven => Default::default(),
-                    };
-                    let mut preimage: Vec<u8> = randomness.to_vec();
-                    preimage.extend(output_hash);
-                    randomness = Hasher::hash(&preimage);
-                    head = chain.get_header(head.number - 1)?;
-                }
-                chain
-                    .database
-                    .update(&[WriteOp::Put(keys::randomness(), randomness.into())])?;
-            }
-
             if block.merkle_tree().root() != block.header.block_root {
                 return Err(BlockchainError::InvalidMerkleRoot);
             }
@@ -144,6 +118,34 @@ pub fn apply_block<K: KvStore>(
 
         if state_size_delta > chain.config.max_delta_count as isize {
             return Err(BlockchainError::StateDeltaTooBig);
+        }
+
+        if curr_height > 0 {
+            let mut new_randomness = chain.epoch_randomness()?;
+            let tip_epoch = chain
+                .epoch_slot(chain.get_tip()?.proof_of_stake.timestamp)
+                .0;
+            let block_epoch = chain.epoch_slot(block.header.proof_of_stake.timestamp).0;
+            if block_epoch > tip_epoch {
+                let mut head = chain.get_tip()?;
+                while chain.epoch_slot(head.proof_of_stake.timestamp).0 == tip_epoch
+                    && head.number > 0
+                {
+                    let output_hash = match head.proof_of_stake.proof {
+                        ValidatorProof::Proof { vrf_output, .. } => {
+                            Hasher::hash(&Into::<Vec<u8>>::into(vrf_output.clone()))
+                        }
+                        ValidatorProof::Unproven => Default::default(),
+                    };
+                    let mut preimage: Vec<u8> = new_randomness.to_vec();
+                    preimage.extend(output_hash);
+                    new_randomness = Hasher::hash(&preimage);
+                    head = chain.get_header(head.number - 1)?;
+                }
+                chain
+                    .database
+                    .update(&[WriteOp::Put(keys::randomness(), new_randomness.into())])?;
+            }
         }
 
         chain.database.update(&[
