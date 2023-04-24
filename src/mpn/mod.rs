@@ -262,9 +262,12 @@ pub fn prepare_works<K: KvStore>(
 ) -> Result<MpnWorkPool, MpnError> {
     let mut mirror = db.mirror();
     let mut works = Vec::new();
-    let workers = workers.values().collect::<Vec<_>>();
+    let mut workers = workers.values().cloned().collect::<Vec<_>>();
     if workers.len() == 0 {
-        return Err(MpnError::InsufficientWorkers);
+        log::warn!("No MPN-workers defined! All proving rewards will go into validator's wallet!");
+        workers = vec![MpnWorker {
+            mpn_address: user_tx_builder.get_mpn_address(),
+        }];
     }
     let mut worker_id = 0;
     let mut rewards = HashMap::<MpnAddress, Amount>::new();
