@@ -9,6 +9,7 @@ pub fn update_contract<K: KvStore>(
     tx_src: Address,
     contract_id: &ContractId,
     updates: &[ContractUpdate],
+    delta: &Option<zk::ZkDeltaPairs>,
 ) -> Result<TxSideEffect, BlockchainError> {
     let contract = chain.get_contract(*contract_id)?;
     let mut executor_fees = Vec::new();

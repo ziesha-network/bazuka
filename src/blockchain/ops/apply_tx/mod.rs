@@ -90,16 +90,18 @@ pub fn apply_tx<K: KvStore>(
             TransactionData::RegularSend { entries } => {
                 regular_send::regular_send(chain, tx_src, entries)?;
             }
-            TransactionData::CreateContract { contract } => {
+            TransactionData::CreateContract { contract, state } => {
                 let contract_id = ContractId::new(tx);
-                side_effect = create_contract::create_contract(chain, contract_id, contract)?;
+                side_effect =
+                    create_contract::create_contract(chain, contract_id, contract, state)?;
             }
             TransactionData::UpdateContract {
                 contract_id,
                 updates,
+                delta,
             } => {
                 side_effect =
-                    update_contract::update_contract(chain, tx_src, contract_id, updates)?;
+                    update_contract::update_contract(chain, tx_src, contract_id, updates, delta)?;
             }
         }
 

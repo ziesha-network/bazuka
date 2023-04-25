@@ -5,8 +5,8 @@ use crate::core::{
 };
 use crate::crypto::jubjub::*;
 use crate::zk::{
-    MpnAccount, MpnTransaction, ZkCompressedState, ZkContract, ZkMultiInputVerifierKey, ZkProof,
-    ZkSingleInputVerifierKey, ZkStateModel, ZkVerifierKey,
+    MpnAccount, MpnTransaction, ZkCompressedState, ZkContract, ZkDataPairs, ZkDeltaPairs,
+    ZkMultiInputVerifierKey, ZkProof, ZkSingleInputVerifierKey, ZkStateModel, ZkVerifierKey,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -22,6 +22,32 @@ impl From<Money> for ExplorerMoney {
         Self {
             amount: obj.amount.into(),
             token_id: obj.token_id.to_string(),
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerDataPairs {
+    pub data: HashMap<String, String>,
+}
+
+impl From<&ZkDataPairs> for ExplorerDataPairs {
+    fn from(obj: &ZkDataPairs) -> Self {
+        Self {
+            data: Default::default(), // TODO
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerDeltaPairs {
+    pub data: HashMap<String, String>,
+}
+
+impl From<&ZkDeltaPairs> for ExplorerDeltaPairs {
+    fn from(obj: &ZkDeltaPairs) -> Self {
+        Self {
+            data: Default::default(), // TODO
         }
     }
 }
@@ -355,10 +381,12 @@ pub enum ExplorerTransactionData {
     },
     CreateContract {
         contract: ExplorerContract,
+        state: Option<ExplorerDataPairs>,
     },
     UpdateContract {
         contract_id: String,
         updates: Vec<ExplorerContractUpdate>,
+        delta: Option<ExplorerDeltaPairs>,
     },
     CreateToken {
         token: ExplorerToken,
@@ -397,15 +425,18 @@ impl From<&TransactionData> for ExplorerTransactionData {
                     .map(|e| (e.dst.to_string(), e.amount.into()))
                     .collect(),
             },
-            TransactionData::CreateContract { contract } => Self::CreateContract {
+            TransactionData::CreateContract { contract, state } => Self::CreateContract {
                 contract: contract.into(),
+                state: state.map(|s| (&s).into()),
             },
             TransactionData::UpdateContract {
                 contract_id,
                 updates,
+                delta,
             } => Self::UpdateContract {
                 contract_id: contract_id.to_string(),
                 updates: updates.iter().map(|u| u.into()).collect(),
+                delta: delta.map(|d| (&d).into()),
             },
             TransactionData::CreateToken { token } => Self::CreateToken {
                 token: token.into(),

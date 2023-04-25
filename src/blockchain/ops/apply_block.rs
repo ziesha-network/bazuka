@@ -65,6 +65,7 @@ pub fn apply_block<K: KvStore>(
             if let TransactionData::UpdateContract {
                 contract_id,
                 updates,
+                ..
             } = &tx.data
             {
                 if contract_id.clone() == chain.config.mpn_config.mpn_contract_id {

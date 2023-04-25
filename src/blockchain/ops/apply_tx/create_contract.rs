@@ -4,6 +4,7 @@ pub fn create_contract<K: KvStore>(
     chain: &mut KvStoreChain<K>,
     contract_id: ContractId,
     contract: &zk::ZkContract,
+    state: &Option<zk::ZkDataPairs>,
 ) -> Result<TxSideEffect, BlockchainError> {
     if !contract.state_model.is_valid::<CoreZkHasher>() {
         return Err(BlockchainError::InvalidStateModel);
