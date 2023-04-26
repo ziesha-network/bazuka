@@ -72,7 +72,7 @@ mod tests {
                     chain,
                     contract_id,
                     &contract,
-                    &Default::default(),
+                    &Some(Default::default()),
                 )?)
             })
             .unwrap();
@@ -91,8 +91,11 @@ mod tests {
                 contract.into(),
             ),
             WriteOp::Put(
-                "CSA-0000000001-0001020304050607080900010203040506070809000102030405060708090001"
-                    .into(),
+                "S-0001020304050607080900010203040506070809000102030405060708090001-HGT".into(),
+                1u64.into(),
+            ),
+            WriteOp::Put(
+                "S-0001020304050607080900010203040506070809000102030405060708090001-RT".into(),
                 initial_state.into(),
             ),
         ];
