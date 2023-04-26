@@ -10,7 +10,7 @@ pub fn update_contract<K: KvStore>(
     contract_id: &ContractId,
     updates: &[ContractUpdate],
     delta: &Option<zk::ZkDeltaPairs>,
-) -> Result<TxSideEffect, BlockchainError> {
+) -> Result<(), BlockchainError> {
     let contract = chain.get_contract(*contract_id)?;
     let mut executor_fees = Vec::new();
 
@@ -109,12 +109,11 @@ pub fn update_contract<K: KvStore>(
         keys::compressed_state_at(contract_id, cont_account.height),
         cont_account.compressed_state.into(),
     )])?;
-    Ok(TxSideEffect::StateChange {
-        contract_id: *contract_id,
-        state_change: ZkCompressedStateChange {
-            prev_height: prev_account.height,
-            prev_state: prev_account.compressed_state,
-            state: cont_account.compressed_state,
-        },
-    })
+    zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
+        &mut chain.database,
+        *contract_id,
+        &delta.clone().expect("State not provided!"),
+        cont_account.height,
+    )?;
+    Ok(())
 }

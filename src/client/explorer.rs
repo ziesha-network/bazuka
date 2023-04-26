@@ -34,20 +34,28 @@ pub struct ExplorerDataPairs {
 impl From<&ZkDataPairs> for ExplorerDataPairs {
     fn from(obj: &ZkDataPairs) -> Self {
         Self {
-            data: Default::default(), // TODO
+            data: obj
+                .0
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect(),
         }
     }
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerDeltaPairs {
-    pub data: HashMap<String, String>,
+    pub data: HashMap<String, Option<String>>,
 }
 
 impl From<&ZkDeltaPairs> for ExplorerDeltaPairs {
     fn from(obj: &ZkDeltaPairs) -> Self {
         Self {
-            data: Default::default(), // TODO
+            data: obj
+                .0
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.map(|v| v.to_string())))
+                .collect(),
         }
     }
 }
@@ -427,7 +435,7 @@ impl From<&TransactionData> for ExplorerTransactionData {
             },
             TransactionData::CreateContract { contract, state } => Self::CreateContract {
                 contract: contract.into(),
-                state: state.map(|s| (&s).into()),
+                state: state.as_ref().map(|s| s.into()),
             },
             TransactionData::UpdateContract {
                 contract_id,
@@ -436,7 +444,7 @@ impl From<&TransactionData> for ExplorerTransactionData {
             } => Self::UpdateContract {
                 contract_id: contract_id.to_string(),
                 updates: updates.iter().map(|u| u.into()).collect(),
-                delta: delta.map(|d| (&d).into()),
+                delta: delta.as_ref().map(|d| d.into()),
             },
             TransactionData::CreateToken { token } => Self::CreateToken {
                 token: token.into(),

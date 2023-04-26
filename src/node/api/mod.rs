@@ -14,10 +14,6 @@ mod get_blocks;
 pub use get_blocks::*;
 mod get_explorer_blocks;
 pub use get_explorer_blocks::*;
-mod get_states;
-pub use get_states::*;
-mod get_outdated_heights;
-pub use get_outdated_heights::*;
 mod get_headers;
 pub use get_headers::*;
 mod transact;
@@ -122,8 +118,6 @@ mod tests {
                 opts.candidate_remove_threshold,
             ),
             timestamp_offset: 0,
-            banned_headers: Default::default(),
-            outdated_since: None,
             validator_claim: None,
         }))
     }

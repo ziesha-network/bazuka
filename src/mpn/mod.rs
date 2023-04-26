@@ -138,6 +138,7 @@ impl MpnWorkPool {
                 data: TransactionData::UpdateContract {
                     contract_id: self.config.mpn_contract_id.clone(),
                     updates,
+                    delta: Some(self.final_delta.clone()),
                 },
                 sig: Signature::Unsigned,
             };

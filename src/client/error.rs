@@ -54,8 +54,6 @@ pub enum NodeError {
     ZkError(#[from] ZkError),
     #[error("wrong network")]
     WrongNetwork,
-    #[error("states are outdated")]
-    StatesOutdated,
     #[error("requester ip is different with proposed peer")]
     HandshakeClientMismatch,
     #[error("remote server error: {0}")]

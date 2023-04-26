@@ -7,13 +7,13 @@ mod firewall;
 mod heartbeat;
 mod http;
 mod peer_manager;
-use crate::blockchain::{BlockAndPatch, Blockchain, Mempool};
+use crate::blockchain::{Blockchain, Mempool};
 use crate::client::{
     messages::*, Limit, NodeError, NodeRequest, OutgoingSender, Peer, PeerAddress, Timestamp,
     NETWORK_HEADER, SIGNATURE_HEADER,
 };
 use crate::common::*;
-use crate::core::Amount;
+use crate::core::{Amount, Block};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::db::KvStore;
@@ -42,7 +42,6 @@ pub struct HeartbeatIntervals {
     pub sync_clock: Duration,
     pub sync_blocks: Duration,
     pub sync_mempool: Duration,
-    pub sync_state: Duration,
     pub generate_block: Duration,
 }
 
@@ -52,13 +51,11 @@ pub struct NodeOptions {
     pub heartbeat_intervals: HeartbeatIntervals,
     pub num_peers: usize,
     pub max_blocks_fetch: u64,
-    pub outdated_heights_threshold: u32,
     pub default_punish: u32,
     pub no_response_punish: u32,
     pub invalid_data_punish: u32,
     pub incorrect_chain_punish: u32,
     pub max_punish: u32,
-    pub state_unavailable_ban_time: u32,
     pub candidate_remove_threshold: u32,
     pub mempool_max_fetch: usize,
     pub max_block_time_difference: u32,
@@ -90,7 +87,7 @@ fn fetch_signature(
 
 async fn promote_block<K: KvStore, B: Blockchain<K>>(
     context: Arc<RwLock<NodeContext<K, B>>>,
-    block_and_patch: BlockAndPatch,
+    block: Block,
 ) {
     let context = context.read().await;
     let net = context.outgoing.clone();
@@ -100,8 +97,7 @@ async fn promote_block<K: KvStore, B: Blockchain<K>>(
             net.bincode_post::<PostBlockRequest, PostBlockResponse>(
                 format!("http://{}/bincode/blocks", peer.address),
                 PostBlockRequest {
-                    block: block_and_patch.block.clone(),
-                    patch: block_and_patch.patch.clone(),
+                    block: block.clone(),
                 },
                 Limit::default().size(KB).time(3 * SECOND),
             )
@@ -361,21 +357,6 @@ async fn node_service<K: KvStore, B: Blockchain<K>>(
                         .await?,
                 )?);
             }
-            (Method::GET, "/bincode/states") => {
-                *response.body_mut() = Body::from(bincode::serialize(
-                    &api::get_states(Arc::clone(&context), bincode::deserialize(&body_bytes)?)
-                        .await?,
-                )?);
-            }
-            (Method::GET, "/bincode/states/outdated") => {
-                *response.body_mut() = Body::from(bincode::serialize(
-                    &api::get_outdated_heights(
-                        Arc::clone(&context),
-                        bincode::deserialize(&body_bytes)?,
-                    )
-                    .await?,
-                )?);
-            }
             (Method::GET, "/mempool") => {
                 let req: GetJsonMempoolRequest = serde_qs::from_str(&qs)?;
                 let filter = if let Some(filter) = req.filter {
@@ -512,8 +493,6 @@ pub async fn node_create<K: KvStore, B: Blockchain<K>>(
             opts.candidate_remove_threshold,
         ),
         timestamp_offset,
-        banned_headers: HashMap::new(),
-        outdated_since: None,
         validator_claim: None,
     }));
 

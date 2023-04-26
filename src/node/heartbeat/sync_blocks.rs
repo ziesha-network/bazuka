@@ -14,10 +14,6 @@ pub async fn sync_blocks<K: KvStore, B: Blockchain<K>>(
     sorted_peers.sort_by_key(|p| p.height);
 
     for peer in sorted_peers.iter().rev() {
-        if peer.outdated_states > 0 {
-            log::info!("Skipped syncing with {} (Outdated)", peer.address);
-            continue;
-        }
         let mut net_fail = false;
         let mut chain_fail = false;
         loop {
@@ -164,11 +160,6 @@ pub async fn sync_blocks<K: KvStore, B: Blockchain<K>>(
             }
 
             let ctx = context.read().await;
-            if headers.iter().any(|h| ctx.banned_headers.contains_key(h)) {
-                chain_fail = true;
-                log::warn!("Chain has banned headers!");
-                break;
-            }
 
             let will_extend = match ctx.blockchain.will_extend(headers[0].number, &headers) {
                 Ok(result) => {

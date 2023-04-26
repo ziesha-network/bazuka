@@ -302,7 +302,10 @@ impl TxBuilder {
         let mut tx = Transaction {
             memo,
             src: Some(self.get_address()),
-            data: TransactionData::CreateContract { contract },
+            data: TransactionData::CreateContract {
+                contract,
+                state: Some(initial_state.clone()),
+            },
             nonce,
             fee,
             sig: Signature::Unsigned,
@@ -339,6 +342,7 @@ impl TxBuilder {
                     proof,
                     fee: exec_fee,
                 }],
+                delta: Some(state_delta.clone()),
             },
             nonce,
             fee: miner_fee,

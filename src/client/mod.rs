@@ -53,7 +53,6 @@ pub struct Peer {
     pub address: PeerAddress,
     pub pub_key: ed25519::PublicKey,
     pub height: u64,
-    pub outdated_states: usize,
 }
 
 pub struct NodeRequest {
@@ -321,16 +320,6 @@ impl BazukaClient {
             .bincode_get::<GetBlocksRequest, GetBlocksResponse>(
                 format!("http://{}/bincode/blocks", self.peer),
                 GetBlocksRequest { since, count },
-                self.limit.clone().unwrap_or_default(),
-            )
-            .await
-    }
-
-    pub async fn outdated_heights(&self) -> Result<GetOutdatedHeightsResponse, NodeError> {
-        self.sender
-            .bincode_get::<GetOutdatedHeightsRequest, GetOutdatedHeightsResponse>(
-                format!("http://{}/bincode/states/outdated", self.peer),
-                GetOutdatedHeightsRequest {},
                 self.limit.clone().unwrap_or_default(),
             )
             .await

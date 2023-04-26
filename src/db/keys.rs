@@ -7,10 +7,6 @@ pub fn height() -> StringKey {
     "HGT".into()
 }
 
-pub fn outdated() -> StringKey {
-    "OUT".into()
-}
-
 pub fn randomness() -> StringKey {
     "RND".into()
 }

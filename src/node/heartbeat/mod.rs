@@ -7,7 +7,6 @@ mod sync_blocks;
 mod sync_clock;
 mod sync_mempool;
 mod sync_peers;
-mod sync_state;
 
 use super::{
     http, promote_block, promote_validator_claim, Limit, NodeContext, NodeError, Peer, PeerAddress,
@@ -72,11 +71,6 @@ pub async fn heartbeater<K: KvStore, B: Blockchain<K>>(
             &ctx,
             |ctx| sync_mempool::sync_mempool(ctx.clone()),
             ints.sync_mempool
-        ),
-        make_loop(
-            &ctx,
-            |ctx| sync_state::sync_state(ctx.clone()),
-            ints.sync_state
         ),
         make_loop(
             &ctx,

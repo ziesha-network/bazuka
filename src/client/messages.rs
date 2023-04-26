@@ -1,4 +1,4 @@
-use crate::blockchain::{TimestampCommit, TransactionStats, ZkBlockchainPatch};
+use crate::blockchain::{TimestampCommit, TransactionStats};
 use crate::core::{
     Address, Amount, Block, ContractId, GeneralAddress, GeneralTransaction, Header, Money,
     MpnAddress, Signature, Token, TransactionAndDelta, Undelegation, ValidatorProof,
@@ -108,7 +108,6 @@ pub struct GetPeersResponse {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostBlockRequest {
     pub block: Block,
-    pub patch: ZkBlockchainPatch,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -142,25 +141,6 @@ pub struct GetExplorerStakersRequest {}
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetExplorerStakersResponse {
     pub current: Vec<ExplorerStaker>,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetOutdatedHeightsRequest {}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetOutdatedHeightsResponse {
-    pub outdated_heights: HashMap<ContractId, u64>,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetStatesRequest {
-    pub outdated_heights: HashMap<ContractId, u64>,
-    pub to: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct GetStatesResponse {
-    pub patch: ZkBlockchainPatch,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

@@ -5,7 +5,7 @@ pub fn create_contract<K: KvStore>(
     contract_id: ContractId,
     contract: &zk::ZkContract,
     state: &Option<zk::ZkDataPairs>,
-) -> Result<TxSideEffect, BlockchainError> {
+) -> Result<(), BlockchainError> {
     if !contract.state_model.is_valid::<CoreZkHasher>() {
         return Err(BlockchainError::InvalidStateModel);
     }
@@ -27,14 +27,13 @@ pub fn create_contract<K: KvStore>(
         keys::compressed_state_at(&contract_id, 1),
         contract.initial_state.into(),
     )])?;
-    Ok(TxSideEffect::StateChange {
+    zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
+        &mut chain.database,
         contract_id,
-        state_change: ZkCompressedStateChange {
-            prev_height: 0,
-            prev_state: compressed_empty,
-            state: contract.initial_state,
-        },
-    })
+        &state.clone().expect("State not provided!").as_delta(),
+        1,
+    )?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -68,18 +67,6 @@ mod tests {
         let (ops, out) = chain
             .isolated(|chain| Ok(create_contract(chain, contract_id, &contract)?))
             .unwrap();
-
-        assert_eq!(
-            out,
-            TxSideEffect::StateChange {
-                contract_id,
-                state_change: ZkCompressedStateChange {
-                    prev_height: 0,
-                    prev_state: initial_state.clone(),
-                    state: initial_state.clone(),
-                },
-            }
-        );
 
         let expected_ops = vec![
             WriteOp::Put(

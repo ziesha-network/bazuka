@@ -1,6 +1,6 @@
 pub mod keys;
 
-use crate::blockchain::{ZkBlockchainPatch, ZkCompressedStateChange};
+use crate::blockchain::ZkCompressedStateChange;
 use crate::core::{
     hash::Hash, Amount, Block, ContractAccount, ContractId, Delegate, Hasher, Header, Ratio,
     Staker, Token, Undelegation,
@@ -110,7 +110,6 @@ gen_try_into!(
     HashMap<ContractId, ContractAccount>,
     HashMap<ContractId, ZkCompressedStateChange>,
     ZkState,
-    ZkBlockchainPatch,
     ZkStateModel,
     ZkScalar,
     ZkDataPairs,
@@ -140,7 +139,6 @@ gen_from!(
     HashMap<ContractId, ContractAccount>,
     HashMap<ContractId, ZkCompressedStateChange>,
     &ZkState,
-    &ZkBlockchainPatch,
     ZkStateModel,
     ZkScalar,
     &ZkDataPairs,

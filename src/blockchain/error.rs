@@ -47,18 +47,8 @@ pub enum BlockchainError {
     ContractFunctionNotFound,
     #[error("Incorrect zero-knowledge proof")]
     IncorrectZkProof,
-    #[error("Full-state not found in the update provided")]
-    FullStateNotFound,
-    #[error("Invalid full-state in the update provided")]
-    FullStateNotValid,
-    #[error("cannot draft a new block when full-states are outdated")]
-    StatesOutdated,
-    #[error("contract states at requested height are unavailable")]
-    StatesUnavailable,
     #[error("block too big")]
     BlockTooBig,
-    #[error("state-delta too big")]
-    StateDeltaTooBig,
     #[error("compressed-state at specified height not found")]
     CompressedStateNotFound,
     #[error("no blocks to roll back")]
