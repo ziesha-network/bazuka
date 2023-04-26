@@ -282,16 +282,5 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
         1,
     )?;
 
-    // KvStoreStateManager::<PoseidonHasher>::reset_contract(c0, ZkDeltaPairs(Default::default()), Default::default())?;
-
-    while KvStoreStateManager::<PoseidonHasher>::height_of(&db, c0)? > 2 {
-        if let Some(expected_root) = roots.pop() {
-            assert_eq!(
-                Some(expected_root),
-                KvStoreStateManager::<PoseidonHasher>::rollback_contract(&mut db, c0)?
-            );
-        }
-    }
-
     Ok(())
 }

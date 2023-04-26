@@ -49,8 +49,7 @@ fn test_token_balances() {
             &chain
                 .draft_block(1, &[token_create_tx], &miner, false)
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
 
@@ -75,8 +74,7 @@ fn test_token_balances() {
                     false,
                 )
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
 
@@ -122,8 +120,7 @@ fn test_token_balances() {
                     false,
                 )
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
 

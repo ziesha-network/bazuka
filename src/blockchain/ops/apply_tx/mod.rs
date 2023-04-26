@@ -14,10 +14,8 @@ pub fn apply_tx<K: KvStore>(
     chain: &mut KvStoreChain<K>,
     tx: &Transaction,
     internal: bool,
-) -> Result<TxSideEffect, BlockchainError> {
-    let (ops, side_effect) = chain.isolated(|chain| {
-        let mut side_effect = TxSideEffect::Nothing;
-
+) -> Result<(), BlockchainError> {
+    let (ops, _) = chain.isolated(|chain| {
         if tx.src == None && !internal {
             return Err(BlockchainError::IllegalTreasuryAccess);
         }
@@ -90,16 +88,16 @@ pub fn apply_tx<K: KvStore>(
             TransactionData::RegularSend { entries } => {
                 regular_send::regular_send(chain, tx_src, entries)?;
             }
-            TransactionData::CreateContract { contract } => {
+            TransactionData::CreateContract { contract, state } => {
                 let contract_id = ContractId::new(tx);
-                side_effect = create_contract::create_contract(chain, contract_id, contract)?;
+                create_contract::create_contract(chain, contract_id, contract, state)?;
             }
             TransactionData::UpdateContract {
                 contract_id,
                 updates,
+                delta,
             } => {
-                side_effect =
-                    update_contract::update_contract(chain, tx_src, contract_id, updates)?;
+                update_contract::update_contract(chain, tx_src, contract_id, updates, delta)?;
             }
         }
 
@@ -113,9 +111,9 @@ pub fn apply_tx<K: KvStore>(
             )])?;
         }
 
-        Ok(side_effect)
+        Ok(())
     })?;
 
     chain.database.update(&ops)?;
-    Ok(side_effect)
+    Ok(())
 }

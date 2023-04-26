@@ -48,9 +48,6 @@ pub fn apply_block<K: KvStore>(
         }
 
         let mut body_size = 0usize;
-        let mut state_size_delta = 0isize;
-        let mut state_updates: HashMap<ContractId, ZkCompressedStateChange> = HashMap::new();
-        let mut outdated_contracts = chain.get_outdated_contracts()?;
 
         if !is_genesis && !block.body.par_iter().all(|tx| tx.verify_signature()) {
             return Err(BlockchainError::SignatureError);
@@ -65,6 +62,7 @@ pub fn apply_block<K: KvStore>(
             if let TransactionData::UpdateContract {
                 contract_id,
                 updates,
+                ..
             } = &tx.data
             {
                 if contract_id.clone() == chain.config.mpn_config.mpn_contract_id {
@@ -85,23 +83,7 @@ pub fn apply_block<K: KvStore>(
             }
 
             body_size += tx.size();
-            // All genesis block txs are allowed to get from Treasury
-            if let TxSideEffect::StateChange {
-                contract_id,
-                state_change,
-            } = chain.apply_tx(tx, is_genesis)?
-            {
-                state_size_delta +=
-                    state_change.state.size() as isize - state_change.prev_state.size() as isize;
-                if !state_updates.contains_key(&contract_id) {
-                    state_updates.insert(contract_id, state_change.clone());
-                } else {
-                    return Err(BlockchainError::SingleUpdateAllowedPerContract);
-                }
-                if !outdated_contracts.contains(&contract_id) {
-                    outdated_contracts.push(contract_id);
-                }
-            }
+            chain.apply_tx(tx, is_genesis)?;
         }
 
         if !is_genesis
@@ -114,10 +96,6 @@ pub fn apply_block<K: KvStore>(
 
         if body_size > chain.config.max_block_size {
             return Err(BlockchainError::BlockTooBig);
-        }
-
-        if state_size_delta > chain.config.max_delta_count as isize {
-            return Err(BlockchainError::StateDeltaTooBig);
         }
 
         if curr_height > 0 {
@@ -159,19 +137,14 @@ pub fn apply_block<K: KvStore>(
                 keys::merkle(block.header.number),
                 block.merkle_tree().into(),
             ),
-            WriteOp::Put(keys::contract_updates(), state_updates.into()),
         ])?;
 
         let rollback = chain.database.rollback()?;
 
-        chain.database.update(&[
-            WriteOp::Put(keys::rollback(block.header.number), rollback.into()),
-            if outdated_contracts.is_empty() {
-                WriteOp::Remove(keys::outdated())
-            } else {
-                WriteOp::Put(keys::outdated(), outdated_contracts.clone().into())
-            },
-        ])?;
+        chain.database.update(&[WriteOp::Put(
+            keys::rollback(block.header.number),
+            rollback.into(),
+        )])?;
 
         Ok(())
     })?;

@@ -293,185 +293,12 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         }
     }
 
-    pub fn rollback_contract<K: KvStore>(
-        db: &mut K,
-        id: ContractId,
-    ) -> Result<Option<ZkCompressedState>, StateManagerError> {
-        let mut fork = db.mirror();
-        let mut root = Self::root(&fork, id)?;
-        let height = Self::height_of(&fork, id)?;
-        let rollback_key = keys::local_rollback_to_height(&id, height);
-        let rollback_patch = if let Some(patch) = Self::rollback_of(&fork, id, 1)? {
-            patch
-        } else {
-            return Ok(None);
-        };
-        for (k, v) in rollback_patch.0 {
-            root.state_hash = Self::set_data(
-                &mut fork,
-                id,
-                k,
-                v.unwrap_or_default(),
-                &mut root.state_size,
-            )?;
-        }
-        fork.update(&[
-            WriteOp::Remove(rollback_key),
-            WriteOp::Put(keys::local_root(&id), root.into()),
-            WriteOp::Put(keys::local_height(&id), (height - 1).into()),
-        ])?;
-
-        db.update(&fork.to_ops())?;
-
-        Ok(Some(root))
-    }
-
-    pub fn delta_of<K: KvStore>(
-        db: &K,
-        id: ContractId,
-        away: u64,
-    ) -> Result<Option<ZkDeltaPairs>, StateManagerError> {
-        let mut data = ZkDeltaPairs(Default::default());
-        for i in 0..away {
-            if let Some(rollback) = Self::rollback_of(db, id, i + 1)? {
-                for (k, _) in rollback.0 {
-                    data.0.insert(k.clone(), Some(Self::get_data(db, id, &k)?));
-                }
-            } else {
-                return Ok(None);
-            }
-        }
-        Ok(Some(data))
-    }
-
-    pub fn rollback_of<K: KvStore>(
-        db: &K,
-        id: ContractId,
-        away: u64,
-    ) -> Result<Option<ZkDeltaPairs>, StateManagerError> {
-        let height = Self::height_of(db, id)?;
-        Ok(
-            match db.get(keys::local_rollback_to_height(&id, height - away))? {
-                Some(b) => Some(b.try_into()?),
-                None => None,
-            },
-        )
-    }
-
-    pub fn get_full_state<K: KvStore>(
-        db: &K,
-        id: ContractId,
-    ) -> Result<ZkState, StateManagerError> {
-        const MAX_ROLLBACKS: u64 = 5;
-        let mut data = ZkDataPairs(Default::default());
-        for (k, v) in db
-            .pairs(keys::local_scalar_value_prefix(&id).into())?
-            .into_iter()
-        {
-            let loc = ZkDataLocator::from_str(k.0.split('-').nth(3).unwrap())?;
-            data.0.insert(loc, v.try_into()?);
-        }
-        let mut rollbacks = Vec::<ZkDeltaPairs>::new();
-        let height = Self::height_of(db, id)?;
-        for i in 0..MAX_ROLLBACKS {
-            if height > i {
-                rollbacks.push(
-                    match db.get(keys::local_rollback_to_height(&id, height - i - 1))? {
-                        Some(b) => b.try_into()?,
-                        None => {
-                            break;
-                        }
-                    },
-                );
-            } else {
-                break;
-            }
-        }
-        Ok(ZkState { data, rollbacks })
-    }
-
-    pub fn reset_contract<K: KvStore>(
-        db: &mut K,
-        id: ContractId,
-        height: u64,
-        state: &ZkState,
-        expected_delta_targets: &[ZkCompressedState],
-    ) -> Result<(ZkCompressedState, Vec<ZkCompressedState>), StateManagerError> {
-        let mut fork = db.mirror();
-        let contract_type = Self::type_of(&fork, id)?;
-        let removals = fork
-            .pairs(keys::local_prefix(&id).into())?
-            .into_iter()
-            .map(|(k, _)| WriteOp::Remove(k))
-            .collect::<Vec<_>>();
-        fork.update(&removals)?;
-
-        let mut state_hash = contract_type.compress_default::<H>();
-        let mut state_size = 0;
-        for (k, v) in state.data.0.iter() {
-            state_hash = Self::set_data(&mut fork, id, k.clone(), *v, &mut state_size)?;
-        }
-
-        fork.update(&[
-            WriteOp::Put(
-                keys::local_root(&id),
-                ZkCompressedState {
-                    state_hash,
-                    state_size,
-                }
-                .into(),
-            ),
-            WriteOp::Put(keys::local_height(&id), height.into()),
-        ])?;
-
-        let root = Self::root(&fork, id)?;
-
-        let mut rollback_results = Vec::new();
-        let mut rollback_ops = Vec::new();
-        let mut rollback_fork = fork.mirror();
-        let mut rollback_root = root;
-
-        for (i, (rollback, expected)) in state
-            .rollbacks
-            .iter()
-            .zip(expected_delta_targets.iter())
-            .enumerate()
-        {
-            for (k, v) in &rollback.0 {
-                rollback_root.state_hash = Self::set_data(
-                    &mut rollback_fork,
-                    id,
-                    k.clone(),
-                    v.unwrap_or_default(),
-                    &mut rollback_root.state_size,
-                )?;
-            }
-            if rollback_root == *expected {
-                rollback_ops.push(WriteOp::Put(
-                    keys::local_rollback_to_height(&id, height - 1 - i as u64),
-                    rollback.into(),
-                ));
-                rollback_results.push(rollback_root);
-                log::debug!("Delta accepted!");
-            } else {
-                log::debug!("Delta rejected!");
-                break;
-            }
-        }
-        fork.update(&rollback_ops)?;
-
-        db.update(&fork.to_ops())?;
-
-        Ok((root, rollback_results))
-    }
-
     pub fn update_contract<K: KvStore>(
         db: &mut K,
         id: ContractId,
         patch: &ZkDeltaPairs,
         target_height: u64,
     ) -> Result<(), StateManagerError> {
-        const MAX_ROLLBACKS: u64 = 5;
         let mut rollback_patch = ZkDeltaPairs(HashMap::new());
         let mut fork = db.mirror();
         let mut root = Self::root(&fork, id)?;
@@ -488,18 +315,8 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         }
         fork.update(&[
             WriteOp::Put(keys::local_root(&id), root.into()),
-            WriteOp::Put(
-                keys::local_rollback_to_height(&id, target_height - 1),
-                (&rollback_patch).into(),
-            ),
             WriteOp::Put(keys::local_height(&id), target_height.into()),
         ])?;
-        if target_height > MAX_ROLLBACKS {
-            fork.update(&[WriteOp::Remove(keys::local_rollback_to_height(
-                &id,
-                target_height - 1 - MAX_ROLLBACKS,
-            ))])?;
-        }
         db.update(&fork.to_ops())?;
         Ok(())
     }

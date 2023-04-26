@@ -1,6 +1,6 @@
 use super::{initials, UNIT, UNIT_ZEROS};
 
-use crate::blockchain::{BlockAndPatch, BlockchainConfig, ZkBlockchainPatch};
+use crate::blockchain::BlockchainConfig;
 use crate::common::*;
 use crate::core::{
     Amount, Block, ContractId, Header, Money, ProofOfStake, Ratio, RegularSendEntry, Signature,
@@ -80,6 +80,7 @@ fn get_mpn_contract(
         src: None,
         data: TransactionData::CreateContract {
             contract: mpn_contract,
+            state: Some(Default::default()), // Empty
         },
         nonce: 0, // MPN contract is created after Ziesha token is created
         fee: Money::ziesha(0),
@@ -115,7 +116,7 @@ fn get_test_mpn_contract() -> TransactionAndDelta {
         }),
     };
     match &mut mpn_tx_delta.tx.data {
-        TransactionData::CreateContract { contract } => {
+        TransactionData::CreateContract { contract, .. } => {
             contract.state_model = mpn_state_model;
             contract.initial_state =
                 zk::ZkCompressedState::empty::<ZkHasher>(contract.state_model.clone());
@@ -255,20 +256,9 @@ pub fn get_blockchain_config() -> BlockchainConfig {
         },
 
         ziesha_token_id,
-        genesis: BlockAndPatch {
-            block: blk,
-            patch: ZkBlockchainPatch {
-                patches: [(
-                    mpn_contract_id,
-                    zk::ZkStatePatch::Delta(mpn_tx_delta.state_delta.unwrap()),
-                )]
-                .into_iter()
-                .collect(),
-            },
-        },
+        genesis: blk,
         reward_ratio: 100_000, // 1/100_000 -> 0.01% of Treasury Supply per block
         max_block_size: MB as usize,
-        max_delta_count: 1024, // Only allow max of 1024 ZkScalar cells to be added per block
 
         testnet_height_limit: Some(TESTNET_HEIGHT_LIMIT),
         max_memo_length: 64,
@@ -344,7 +334,7 @@ pub fn get_dev_blockchain_config(
         };
     }
 
-    conf.genesis.block.body[2] = Transaction {
+    conf.genesis.body[2] = Transaction {
         memo: "Very first staker created!".into(),
         src: Some(validator.get_address()),
         data: TransactionData::UpdateStaker {
@@ -355,7 +345,7 @@ pub fn get_dev_blockchain_config(
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     };
-    conf.genesis.block.body[3] = Transaction {
+    conf.genesis.body[3] = Transaction {
         memo: "Very first delegation!".into(),
         src: None,
         data: TransactionData::Delegate {
@@ -366,7 +356,7 @@ pub fn get_dev_blockchain_config(
         fee: Money::ziesha(0),
         sig: Signature::Unsigned,
     };
-    conf.genesis.block.body.push(Transaction {
+    conf.genesis.body.push(Transaction {
         memo: "Initial user balance".into(),
         src: None,
         data: TransactionData::RegularSend {
@@ -408,15 +398,15 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.check_validator = false;
     conf.slot_duration = 5;
 
-    conf.genesis.block.body[1] = get_test_mpn_contract().tx;
-    conf.genesis.block.body.drain(2..);
-    conf.genesis.block.header.proof_of_stake.timestamp = 0;
+    conf.genesis.body[1] = get_test_mpn_contract().tx;
+    conf.genesis.body.drain(2..);
+    conf.genesis.header.proof_of_stake.timestamp = 0;
 
     let abc = TxBuilder::new(&Vec::from("ABC"));
     let validator_1 = TxBuilder::new(&Vec::from("VALIDATOR"));
     let validator_2 = TxBuilder::new(&Vec::from("VALIDATOR2"));
     let validator_3 = TxBuilder::new(&Vec::from("VALIDATOR3"));
-    conf.genesis.block.body.push(Transaction {
+    conf.genesis.body.push(Transaction {
         memo: "Dummy tx".into(),
         src: None,
         data: TransactionData::RegularSend {
@@ -431,7 +421,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     });
 
     let delegator = TxBuilder::new(&Vec::from("DELEGATOR"));
-    conf.genesis.block.body.push(Transaction {
+    conf.genesis.body.push(Transaction {
         memo: "".into(),
         src: None,
         data: TransactionData::RegularSend {
@@ -446,7 +436,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     });
 
     for val in [validator_1, validator_2, validator_3].into_iter() {
-        conf.genesis.block.body.push(
+        conf.genesis.body.push(
             val.register_validator(
                 "Test validator".into(),
                 Ratio(12), // 12/256 ~= 5%
@@ -455,7 +445,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
             )
             .tx,
         );
-        conf.genesis.block.body.push(
+        conf.genesis.body.push(
             delegator
                 .delegate(
                     "".into(),
@@ -467,14 +457,5 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
                 .tx,
         );
     }
-
-    conf.genesis.patch = ZkBlockchainPatch {
-        patches: [(
-            mpn_contract_id,
-            zk::ZkStatePatch::Delta(mpn_tx_delta.state_delta.unwrap()),
-        )]
-        .into_iter()
-        .collect(),
-    };
     conf
 }

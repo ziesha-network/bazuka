@@ -4,7 +4,9 @@ use super::Amount;
 use crate::crypto::DeriveMpnAccountIndex;
 use crate::crypto::VerifiableRandomFunction;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
-use crate::zk::{ZkCompressedState, ZkContract, ZkDeltaPairs, ZkHasher, ZkProof, ZkScalar};
+use crate::zk::{
+    ZkCompressedState, ZkContract, ZkDataPairs, ZkDeltaPairs, ZkHasher, ZkProof, ZkScalar,
+};
 use ff::Field;
 use std::str::FromStr;
 use thiserror::Error;
@@ -393,11 +395,13 @@ pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunctio
     // the state. But there should be only one circuit for entering and exiting the contract.
     CreateContract {
         contract: ZkContract,
+        state: Option<ZkDataPairs>, // Removable for space efficiency, not considered inside signature!
     },
     // Collection of contract updates
     UpdateContract {
         contract_id: ContractId<H>,
         updates: Vec<ContractUpdate<H, S>>,
+        delta: Option<ZkDeltaPairs>, // Removable for space efficiency, not considered inside signature!
     },
     CreateToken {
         token: Token<S>,

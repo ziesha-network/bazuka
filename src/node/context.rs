@@ -1,9 +1,7 @@
-use super::{
-    Firewall, NodeError, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerManager, Timestamp,
-};
-use crate::blockchain::{BlockAndPatch, Blockchain, BlockchainError, Mempool};
+use super::{Firewall, NodeError, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerManager};
+use crate::blockchain::{Blockchain, BlockchainError, Mempool};
 use crate::client::messages::{SocialProfiles, ValidatorClaim};
-use crate::core::{GeneralTransaction, Header, MpnAddress, TransactionAndDelta};
+use crate::core::{Block, GeneralTransaction, MpnAddress, TransactionAndDelta};
 use crate::mpn::{MpnWorkPool, MpnWorker};
 use crate::node::KvStore;
 use crate::utils;
@@ -30,9 +28,6 @@ pub struct NodeContext<K: KvStore, B: Blockchain<K>> {
     pub mpn_work_pool: Option<MpnWorkPool>,
 
     pub mempool: Mempool,
-
-    pub outdated_since: Option<Timestamp>,
-    pub banned_headers: HashMap<Header, Timestamp>,
     pub _phantom: std::marker::PhantomData<K>,
 }
 
@@ -57,24 +52,16 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
     }
     pub fn get_info(&self) -> Result<Option<Peer>, NodeError> {
         let height = self.blockchain.get_height()?;
-        let outdated_states = self.blockchain.get_outdated_contracts()?.len();
         Ok(self.address.map(|address| Peer {
             address,
             height,
             pub_key: self.validator_wallet.get_address(),
-            outdated_states,
         }))
     }
 
     pub fn refresh(&mut self) -> Result<(), BlockchainError> {
         let local_ts = self.local_timestamp();
         self.peer_manager.refresh(local_ts);
-
-        for (h, banned_at) in self.banned_headers.clone().into_iter() {
-            if local_ts.saturating_sub(banned_at) > self.opts.state_unavailable_ban_time {
-                self.banned_headers.remove(&h);
-            }
-        }
 
         if let Some(firewall) = &mut self.firewall {
             firewall.refresh(local_ts);
@@ -96,7 +83,6 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
 
     /// Is called whenever chain is extended or rolled back
     pub fn on_update(&mut self) -> Result<(), BlockchainError> {
-        self.outdated_since = None;
         let local_ts = self.local_timestamp();
         self.mempool.refresh(
             &self.blockchain,
@@ -134,10 +120,7 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
         Ok(false)
     }
 
-    pub fn try_produce(
-        &mut self,
-        wallet: TxBuilder,
-    ) -> Result<Option<BlockAndPatch>, BlockchainError> {
+    pub fn try_produce(&mut self, wallet: TxBuilder) -> Result<Option<Block>, BlockchainError> {
         let ts = self.network_timestamp();
         let raw_txs: Vec<TransactionAndDelta> =
             self.mempool.tx_deltas().map(|(tx, _)| tx.clone()).collect();
@@ -145,9 +128,8 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
             Ok(draft) => {
                 if let Some(draft) = draft {
                     self.blockchain
-                        .extend(draft.block.header.number, &[draft.block.clone()])?;
+                        .extend(draft.header.number, &[draft.clone()])?;
                     self.on_update()?;
-                    self.blockchain.update_states(&draft.patch.clone())?;
                     Ok(Some(draft))
                 } else {
                     Ok(None)

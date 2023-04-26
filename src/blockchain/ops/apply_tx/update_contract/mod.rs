@@ -9,7 +9,8 @@ pub fn update_contract<K: KvStore>(
     tx_src: Address,
     contract_id: &ContractId,
     updates: &[ContractUpdate],
-) -> Result<TxSideEffect, BlockchainError> {
+    delta: &Option<zk::ZkDeltaPairs>,
+) -> Result<(), BlockchainError> {
     let contract = chain.get_contract(*contract_id)?;
     let mut executor_fees = Vec::new();
 
@@ -104,16 +105,16 @@ pub fn update_contract<K: KvStore>(
 
     let cont_account = chain.get_contract_account(*contract_id)?;
 
-    chain.database.update(&[WriteOp::Put(
-        keys::compressed_state_at(contract_id, cont_account.height),
-        cont_account.compressed_state.into(),
-    )])?;
-    Ok(TxSideEffect::StateChange {
-        contract_id: *contract_id,
-        state_change: ZkCompressedStateChange {
-            prev_height: prev_account.height,
-            prev_state: prev_account.compressed_state,
-            state: cont_account.compressed_state,
-        },
-    })
+    zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
+        &mut chain.database,
+        *contract_id,
+        &delta.clone().ok_or(BlockchainError::StateNotGiven)?,
+        cont_account.height,
+    )?;
+    if zk::KvStoreStateManager::<CoreZkHasher>::root(&mut chain.database, *contract_id)?
+        != cont_account.compressed_state
+    {
+        return Err(BlockchainError::InvalidState);
+    }
+    Ok(())
 }

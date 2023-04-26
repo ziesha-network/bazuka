@@ -26,7 +26,7 @@ fn test_vrf_randomness_changes() {
             .draft_block(1700000000 + i * 5, &[], &validator, true)
             .unwrap()
             .unwrap();
-        chain.apply_block(&draft.block).unwrap();
+        chain.apply_block(&draft).unwrap();
         assert_eq!(
             hex::encode(chain.epoch_randomness().unwrap()),
             expected[(i / 10) as usize]

@@ -1,15 +1,13 @@
-use super::BlockAndPatch;
-use crate::core::{Address, Ratio, TokenId};
+use crate::core::{Address, Block, Ratio, TokenId};
 use crate::mpn::MpnConfig;
 use std::collections::HashSet;
 
 #[derive(Clone)]
 pub struct BlockchainConfig {
     pub limited_miners: Option<HashSet<Address>>,
-    pub genesis: BlockAndPatch,
+    pub genesis: Block,
     pub reward_ratio: u64,
     pub max_block_size: usize,
-    pub max_delta_count: usize,
     pub ziesha_token_id: TokenId,
     pub mpn_config: MpnConfig,
     pub testnet_height_limit: Option<u64>,

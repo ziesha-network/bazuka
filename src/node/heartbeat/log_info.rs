@@ -9,10 +9,6 @@ pub async fn log_info<K: KvStore, B: Blockchain<K>>(
     let mut inf = Vec::new();
     inf.extend([
         ("Height", ctx.blockchain.get_height()?.to_string()),
-        (
-            "Outdated states",
-            ctx.blockchain.get_outdated_contracts()?.len().to_string(),
-        ),
         ("Timestamp", ctx.network_timestamp().to_string()),
         ("Node count", ctx.peer_manager.node_count().to_string()),
         ("Peer count", ctx.peer_manager.get_peers().len().to_string()),

@@ -48,31 +48,11 @@ impl TransactionStats {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ZkBlockchainPatch {
-    pub patches: HashMap<ContractId, zk::ZkStatePatch>,
-}
-
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct ZkCompressedStateChange {
     prev_state: zk::ZkCompressedState,
     state: zk::ZkCompressedState,
     prev_height: u64,
-}
-
-#[derive(Clone)]
-pub struct BlockAndPatch {
-    pub block: Block,
-    pub patch: ZkBlockchainPatch,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum TxSideEffect {
-    StateChange {
-        contract_id: ContractId,
-        state_change: ZkCompressedStateChange,
-    },
-    Nothing,
 }
 
 pub trait Blockchain<K: KvStore> {
@@ -172,7 +152,7 @@ pub trait Blockchain<K: KvStore> {
         mempool: &[TransactionAndDelta],
         wallet: &TxBuilder,
         check: bool,
-    ) -> Result<Option<BlockAndPatch>, BlockchainError>;
+    ) -> Result<Option<Block>, BlockchainError>;
     fn get_height(&self) -> Result<u64, BlockchainError>;
     fn get_tip(&self) -> Result<Header, BlockchainError>;
     fn get_headers(&self, since: u64, count: u64) -> Result<Vec<Header>, BlockchainError>;
@@ -182,15 +162,6 @@ pub trait Blockchain<K: KvStore> {
 
     fn get_contract(&self, contract_id: ContractId) -> Result<zk::ZkContract, BlockchainError>;
 
-    fn get_outdated_contracts(&self) -> Result<Vec<ContractId>, BlockchainError>;
-
-    fn get_outdated_heights(&self) -> Result<HashMap<ContractId, u64>, BlockchainError>;
-    fn generate_state_patch(
-        &self,
-        heights: HashMap<ContractId, u64>,
-        to: <Hasher as Hash>::Output,
-    ) -> Result<ZkBlockchainPatch, BlockchainError>;
-    fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError>;
     fn check_tx(&self, tx: &Transaction) -> Result<(), BlockchainError>;
 }
 
@@ -209,9 +180,8 @@ impl<K: KvStore> KvStoreChain<K> {
             config: config.clone(),
         };
         if chain.get_height()? == 0 {
-            chain.apply_block(&config.genesis.block)?;
-            chain.update_states(&config.genesis.patch)?;
-        } else if config.genesis.block != chain.get_block(0)? {
+            chain.apply_block(&config.genesis)?;
+        } else if config.genesis != chain.get_block(0)? {
             return Err(BlockchainError::DifferentGenesis);
         }
 
@@ -234,31 +204,6 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok((mirror.database.to_ops(), result))
     }
 
-    fn get_compressed_state_at(
-        &self,
-        contract_id: ContractId,
-        index: u64,
-    ) -> Result<zk::ZkCompressedState, BlockchainError> {
-        let state_model = self.get_contract(contract_id)?.state_model;
-        if index >= self.get_contract_account(contract_id)?.height {
-            return Err(BlockchainError::CompressedStateNotFound);
-        }
-        if index == 0 {
-            return Ok(zk::ZkCompressedState::empty::<CoreZkHasher>(state_model));
-        }
-        Ok(
-            match self
-                .database
-                .get(keys::compressed_state_at(&contract_id, index))?
-            {
-                Some(b) => b.try_into()?,
-                None => {
-                    return Err(BlockchainError::Inconsistency);
-                }
-            },
-        )
-    }
-
     fn apply_deposit(&mut self, deposit: &ContractDeposit) -> Result<(), BlockchainError> {
         ops::apply_deposit(self, deposit)
     }
@@ -267,22 +212,8 @@ impl<K: KvStore> KvStoreChain<K> {
         ops::apply_withdraw(self, withdraw)
     }
 
-    fn apply_tx(
-        &mut self,
-        tx: &Transaction,
-        internal: bool,
-    ) -> Result<TxSideEffect, BlockchainError> {
+    fn apply_tx(&mut self, tx: &Transaction, internal: bool) -> Result<(), BlockchainError> {
         ops::apply_tx(self, tx, internal)
-    }
-
-    fn get_changed_states(
-        &self,
-    ) -> Result<HashMap<ContractId, ZkCompressedStateChange>, BlockchainError> {
-        Ok(self
-            .database
-            .get(keys::contract_updates())?
-            .map(|b| b.try_into())
-            .ok_or(BlockchainError::Inconsistency)??)
     }
 
     fn pay_validator_and_delegators(
@@ -341,28 +272,6 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         ops::rollback(self)
     }
 
-    fn get_outdated_heights(&self) -> Result<HashMap<ContractId, u64>, BlockchainError> {
-        let outdated = self.get_outdated_contracts()?;
-        let mut ret = HashMap::new();
-        for cid in outdated {
-            let state_height =
-                zk::KvStoreStateManager::<CoreZkHasher>::height_of(&self.database, cid)?;
-            ret.insert(cid, state_height);
-        }
-        Ok(ret)
-    }
-    fn get_outdated_contracts(&self) -> Result<Vec<ContractId>, BlockchainError> {
-        Ok(match self.database.get(keys::outdated())? {
-            Some(b) => {
-                let val: Vec<ContractId> = b.try_into()?;
-                if val.is_empty() {
-                    return Err(BlockchainError::Inconsistency);
-                }
-                val
-            }
-            None => Vec::new(),
-        })
-    }
     fn get_tip(&self) -> Result<Header, BlockchainError> {
         let height = self.get_height()?;
         if height == 0 {
@@ -577,12 +486,8 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         mempool: &[TransactionAndDelta],
         wallet: &TxBuilder,
         check: bool,
-    ) -> Result<Option<BlockAndPatch>, BlockchainError> {
+    ) -> Result<Option<Block>, BlockchainError> {
         ops::draft_block(self, timestamp, mempool, wallet, check)
-    }
-
-    fn update_states(&mut self, patch: &ZkBlockchainPatch) -> Result<(), BlockchainError> {
-        ops::update_states(self, patch)
     }
 
     fn read_state(
@@ -595,14 +500,6 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             contract_id,
             &locator,
         )?)
-    }
-
-    fn generate_state_patch(
-        &self,
-        heights: HashMap<ContractId, u64>,
-        to: <Hasher as Hash>::Output,
-    ) -> Result<ZkBlockchainPatch, BlockchainError> {
-        ops::generate_state_patch(self, heights, to)
     }
 
     fn config(&self) -> &BlockchainConfig {

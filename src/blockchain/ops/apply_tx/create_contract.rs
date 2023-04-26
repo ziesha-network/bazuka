@@ -4,7 +4,8 @@ pub fn create_contract<K: KvStore>(
     chain: &mut KvStoreChain<K>,
     contract_id: ContractId,
     contract: &zk::ZkContract,
-) -> Result<TxSideEffect, BlockchainError> {
+    state: &Option<zk::ZkDataPairs>,
+) -> Result<(), BlockchainError> {
     if !contract.state_model.is_valid::<CoreZkHasher>() {
         return Err(BlockchainError::InvalidStateModel);
     }
@@ -12,8 +13,6 @@ pub fn create_contract<K: KvStore>(
         keys::contract(&contract_id),
         contract.clone().into(),
     )])?;
-    let compressed_empty =
-        zk::ZkCompressedState::empty::<CoreZkHasher>(contract.state_model.clone());
     chain.database.update(&[WriteOp::Put(
         keys::contract_account(&contract_id),
         ContractAccount {
@@ -22,18 +21,21 @@ pub fn create_contract<K: KvStore>(
         }
         .into(),
     )])?;
-    chain.database.update(&[WriteOp::Put(
-        keys::compressed_state_at(&contract_id, 1),
-        contract.initial_state.into(),
-    )])?;
-    Ok(TxSideEffect::StateChange {
+    zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
+        &mut chain.database,
         contract_id,
-        state_change: ZkCompressedStateChange {
-            prev_height: 0,
-            prev_state: compressed_empty,
-            state: contract.initial_state,
-        },
-    })
+        &state
+            .clone()
+            .ok_or(BlockchainError::StateNotGiven)?
+            .as_delta(),
+        1,
+    )?;
+    if zk::KvStoreStateManager::<CoreZkHasher>::root(&mut chain.database, contract_id)?
+        != contract.initial_state
+    {
+        return Err(BlockchainError::InvalidState);
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -64,21 +66,16 @@ mod tests {
             withdraw_functions: vec![],
             functions: vec![],
         };
-        let (ops, out) = chain
-            .isolated(|chain| Ok(create_contract(chain, contract_id, &contract)?))
+        let (ops, _) = chain
+            .isolated(|chain| {
+                Ok(create_contract(
+                    chain,
+                    contract_id,
+                    &contract,
+                    &Some(Default::default()),
+                )?)
+            })
             .unwrap();
-
-        assert_eq!(
-            out,
-            TxSideEffect::StateChange {
-                contract_id,
-                state_change: ZkCompressedStateChange {
-                    prev_height: 0,
-                    prev_state: initial_state.clone(),
-                    state: initial_state.clone(),
-                },
-            }
-        );
 
         let expected_ops = vec![
             WriteOp::Put(
@@ -94,8 +91,11 @@ mod tests {
                 contract.into(),
             ),
             WriteOp::Put(
-                "CSA-0000000001-0001020304050607080900010203040506070809000102030405060708090001"
-                    .into(),
+                "S-0001020304050607080900010203040506070809000102030405060708090001-HGT".into(),
+                1u64.into(),
+            ),
+            WriteOp::Put(
+                "S-0001020304050607080900010203040506070809000102030405060708090001-RT".into(),
                 initial_state.into(),
             ),
         ];

@@ -169,12 +169,12 @@ mod tests {
                 Amount(9800).into(),
             ),
             WriteOp::Put(
-                "CAB-7e945da48a92aeb4da6c05adf8bb65eba45a6e860d5c269e9b5d30cd4ccdbcd1-Ziesha"
+                "CAB-86669100d6158145126b2a0d1df5ae210ab0bc128a8b7093d1b662ca6cc74aef-Ziesha"
                     .into(),
                 Amount(123).into(),
             ),
             WriteOp::Put(
-                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-7e945da48a92aeb4da6c05adf8bb65eba45a6e860d5c269e9b5d30cd4ccdbcd1".into(),
+                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-86669100d6158145126b2a0d1df5ae210ab0bc128a8b7093d1b662ca6cc74aef".into(),
                 1u32.into(),
             ),
         ];
@@ -279,12 +279,12 @@ mod tests {
                 Amount(9679).into(),
             ),
             WriteOp::Put(
-                "CAB-7e945da48a92aeb4da6c05adf8bb65eba45a6e860d5c269e9b5d30cd4ccdbcd1-0x5bfa932c150df0af24346419d31b61dab0747d78fa1b46e97f838927423c99f4"
+                "CAB-86669100d6158145126b2a0d1df5ae210ab0bc128a8b7093d1b662ca6cc74aef-0x5bfa932c150df0af24346419d31b61dab0747d78fa1b46e97f838927423c99f4"
                     .into(),
                 Amount(10000).into(),
             ),
             WriteOp::Put(
-                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-7e945da48a92aeb4da6c05adf8bb65eba45a6e860d5c269e9b5d30cd4ccdbcd1".into(),
+                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-86669100d6158145126b2a0d1df5ae210ab0bc128a8b7093d1b662ca6cc74aef".into(),
                 1u32.into(),
             ),
         ];

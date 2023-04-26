@@ -34,21 +34,13 @@ pub fn select_transactions<K: KvStore>(
 
         let mut result = Vec::new();
         let mut block_sz = 0usize;
-        let mut delta_cnt = 0isize;
         for tx in sorted.into_iter().rev() {
             match chain.isolated(|chain| chain.apply_tx(&tx.tx, false)) {
-                Ok((ops, eff)) => {
-                    let delta_diff = if let TxSideEffect::StateChange { state_change, .. } = eff {
-                        state_change.state.size() as isize - state_change.prev_state.size() as isize
-                    } else {
-                        0
-                    };
+                Ok((ops, _)) => {
                     let block_diff = tx.tx.size();
-                    if delta_cnt + delta_diff <= chain.config.max_delta_count as isize
-                        && block_sz + block_diff <= chain.config.max_block_size
+                    if block_sz + block_diff <= chain.config.max_block_size
                         && tx.tx.verify_signature()
                     {
-                        delta_cnt += delta_diff;
                         block_sz += block_diff;
                         chain.database.update(&ops)?;
                         result.push(tx);
