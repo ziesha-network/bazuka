@@ -13,8 +13,6 @@ pub fn create_contract<K: KvStore>(
         keys::contract(&contract_id),
         contract.clone().into(),
     )])?;
-    let compressed_empty =
-        zk::ZkCompressedState::empty::<CoreZkHasher>(contract.state_model.clone());
     chain.database.update(&[WriteOp::Put(
         keys::contract_account(&contract_id),
         ContractAccount {
@@ -22,10 +20,6 @@ pub fn create_contract<K: KvStore>(
             height: 1,
         }
         .into(),
-    )])?;
-    chain.database.update(&[WriteOp::Put(
-        keys::compressed_state_at(&contract_id, 1),
-        contract.initial_state.into(),
     )])?;
     zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
         &mut chain.database,

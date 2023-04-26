@@ -34,10 +34,9 @@ pub fn select_transactions<K: KvStore>(
 
         let mut result = Vec::new();
         let mut block_sz = 0usize;
-        let mut delta_cnt = 0isize;
         for tx in sorted.into_iter().rev() {
             match chain.isolated(|chain| chain.apply_tx(&tx.tx, false)) {
-                Ok((ops, eff)) => {
+                Ok((ops, _)) => {
                     let block_diff = tx.tx.size();
                     if block_sz + block_diff <= chain.config.max_block_size
                         && tx.tx.verify_signature()

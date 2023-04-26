@@ -105,10 +105,6 @@ pub fn update_contract<K: KvStore>(
 
     let cont_account = chain.get_contract_account(*contract_id)?;
 
-    chain.database.update(&[WriteOp::Put(
-        keys::compressed_state_at(contract_id, cont_account.height),
-        cont_account.compressed_state.into(),
-    )])?;
     zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
         &mut chain.database,
         *contract_id,

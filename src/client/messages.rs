@@ -1,7 +1,7 @@
 use crate::blockchain::{TimestampCommit, TransactionStats};
 use crate::core::{
-    Address, Amount, Block, ContractId, GeneralAddress, GeneralTransaction, Header, Money,
-    MpnAddress, Signature, Token, TransactionAndDelta, Undelegation, ValidatorProof,
+    Address, Amount, Block, GeneralAddress, GeneralTransaction, Header, Money, MpnAddress,
+    Signature, Token, TransactionAndDelta, Undelegation, ValidatorProof,
 };
 use crate::mpn::MpnWork;
 use crate::zk;

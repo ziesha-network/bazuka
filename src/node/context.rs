@@ -1,9 +1,7 @@
-use super::{
-    Firewall, NodeError, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerManager, Timestamp,
-};
+use super::{Firewall, NodeError, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerManager};
 use crate::blockchain::{Blockchain, BlockchainError, Mempool};
 use crate::client::messages::{SocialProfiles, ValidatorClaim};
-use crate::core::{Block, GeneralTransaction, Header, MpnAddress, TransactionAndDelta};
+use crate::core::{Block, GeneralTransaction, MpnAddress, TransactionAndDelta};
 use crate::mpn::{MpnWorkPool, MpnWorker};
 use crate::node::KvStore;
 use crate::utils;

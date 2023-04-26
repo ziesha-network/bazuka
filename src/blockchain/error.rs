@@ -49,8 +49,6 @@ pub enum BlockchainError {
     IncorrectZkProof,
     #[error("block too big")]
     BlockTooBig,
-    #[error("compressed-state at specified height not found")]
-    CompressedStateNotFound,
     #[error("no blocks to roll back")]
     NoBlocksToRollback,
     #[error("zk error happened: {0}")]
@@ -105,8 +103,6 @@ pub enum BlockchainError {
     ValidatorNotRegistered,
     #[error("blockchain is empty")]
     BlockchainEmpty,
-    #[error("invalid number of rollbacks in the patch")]
-    InvalidNumberOfRollbacks,
     #[error("error while parsing db-key: {0}")]
     ParseDbKeyError(#[from] ParseDbKeyError),
     #[error("mpn-address cannot be used")]

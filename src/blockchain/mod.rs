@@ -204,31 +204,6 @@ impl<K: KvStore> KvStoreChain<K> {
         Ok((mirror.database.to_ops(), result))
     }
 
-    fn get_compressed_state_at(
-        &self,
-        contract_id: ContractId,
-        index: u64,
-    ) -> Result<zk::ZkCompressedState, BlockchainError> {
-        let state_model = self.get_contract(contract_id)?.state_model;
-        if index >= self.get_contract_account(contract_id)?.height {
-            return Err(BlockchainError::CompressedStateNotFound);
-        }
-        if index == 0 {
-            return Ok(zk::ZkCompressedState::empty::<CoreZkHasher>(state_model));
-        }
-        Ok(
-            match self
-                .database
-                .get(keys::compressed_state_at(&contract_id, index))?
-            {
-                Some(b) => b.try_into()?,
-                None => {
-                    return Err(BlockchainError::Inconsistency);
-                }
-            },
-        )
-    }
-
     fn apply_deposit(&mut self, deposit: &ContractDeposit) -> Result<(), BlockchainError> {
         ops::apply_deposit(self, deposit)
     }
@@ -239,16 +214,6 @@ impl<K: KvStore> KvStoreChain<K> {
 
     fn apply_tx(&mut self, tx: &Transaction, internal: bool) -> Result<(), BlockchainError> {
         ops::apply_tx(self, tx, internal)
-    }
-
-    fn get_changed_states(
-        &self,
-    ) -> Result<HashMap<ContractId, ZkCompressedStateChange>, BlockchainError> {
-        Ok(self
-            .database
-            .get(keys::contract_updates())?
-            .map(|b| b.try_into())
-            .ok_or(BlockchainError::Inconsistency)??)
     }
 
     fn pay_validator_and_delegators(

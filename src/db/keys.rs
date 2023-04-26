@@ -27,10 +27,6 @@ pub fn merkle(index: u64) -> StringKey {
     format!("MRK-{:010}", index).into()
 }
 
-pub fn compressed_state_at(contract_id: &ContractId, at: u64) -> StringKey {
-    format!("CSA-{:010}-{}", at, contract_id).into()
-}
-
 pub fn nonce(address: &Address) -> StringKey {
     format!("NNC-{}", address).into()
 }
@@ -275,10 +271,6 @@ pub fn token(token_id: &TokenId) -> StringKey {
     format!("TKN-{}", token_id).into()
 }
 
-pub fn contract_updates() -> StringKey {
-    "CUP".into()
-}
-
 pub fn local_prefix(contract_id: &ContractId) -> String {
     format!("S-{}", contract_id)
 }
@@ -297,10 +289,6 @@ pub fn local_tree_aux(
     aux_id: u64,
 ) -> StringKey {
     format!("{}-{}-T-{}", local_prefix(contract_id), tree_loc, aux_id).into()
-}
-
-pub fn local_rollback_to_height(contract_id: &ContractId, height: u64) -> StringKey {
-    format!("{}-RLK-{}", local_prefix(contract_id), height).into()
 }
 
 pub fn local_scalar_value_prefix(contract_id: &ContractId) -> String {
