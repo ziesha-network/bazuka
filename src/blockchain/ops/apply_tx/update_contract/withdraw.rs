@@ -204,7 +204,7 @@ mod tests {
                 Amount(9200).into(),
             ),
             WriteOp::Put(
-                "CAB-7e945da48a92aeb4da6c05adf8bb65eba45a6e860d5c269e9b5d30cd4ccdbcd1-Ziesha"
+                "CAB-86669100d6158145126b2a0d1df5ae210ab0bc128a8b7093d1b662ca6cc74aef-Ziesha"
                     .into(),
                 Amount(750).into(),
             ),
@@ -336,12 +336,12 @@ mod tests {
                 Amount(99333).into(),
             ),
             WriteOp::Put(
-                "CAB-7e945da48a92aeb4da6c05adf8bb65eba45a6e860d5c269e9b5d30cd4ccdbcd1-0x5bfa932c150df0af24346419d31b61dab0747d78fa1b46e97f838927423c99f4"
+                "CAB-86669100d6158145126b2a0d1df5ae210ab0bc128a8b7093d1b662ca6cc74aef-0x5bfa932c150df0af24346419d31b61dab0747d78fa1b46e97f838927423c99f4"
                     .into(),
                 Amount(667).into(),
             ),
             WriteOp::Put(
-                "CAB-7e945da48a92aeb4da6c05adf8bb65eba45a6e860d5c269e9b5d30cd4ccdbcd1-Ziesha"
+                "CAB-86669100d6158145126b2a0d1df5ae210ab0bc128a8b7093d1b662ca6cc74aef-Ziesha"
                     .into(),
                 Amount(556).into(),
             )
