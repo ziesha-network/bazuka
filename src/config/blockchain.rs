@@ -116,7 +116,7 @@ fn get_test_mpn_contract() -> TransactionAndDelta {
         }),
     };
     match &mut mpn_tx_delta.tx.data {
-        TransactionData::CreateContract { contract } => {
+        TransactionData::CreateContract { contract, .. } => {
             contract.state_model = mpn_state_model;
             contract.initial_state =
                 zk::ZkCompressedState::empty::<ZkHasher>(contract.state_model.clone());

@@ -90,7 +90,7 @@ mod tests {
                 .draft_block((i * 60 + 30) as u32, &[], &validator_wallet, true)
                 .unwrap()
                 .unwrap();
-            blockchain.extend((i + 1) as u64, &[block.block]).unwrap();
+            blockchain.extend((i + 1) as u64, &[block]).unwrap();
         }
         Arc::new(RwLock::new(NodeContext {
             _phantom: std::marker::PhantomData,

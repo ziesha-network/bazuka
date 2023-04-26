@@ -4,7 +4,6 @@ mod simulation;
 use simulation::*;
 
 use crate::config::blockchain;
-use crate::core::{Money, TransactionAndDelta, ZkHasher};
 use crate::zk;
 use std::sync::Arc;
 use std::time::Duration;
@@ -337,35 +336,4 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
     };
     tokio::try_join!(node_futs, route_futs, test_logic)?;
     Ok(())
-}
-
-fn sample_contract_call() -> TransactionAndDelta {
-    let updater = TxBuilder::new(&Vec::from("ABC"));
-
-    let mpn_conf = blockchain::get_test_blockchain_config().mpn_config;
-    let cid = mpn_conf.mpn_contract_id;
-    let mut full_state = zk::ZkState {
-        rollbacks: vec![],
-        data: zk::ZkDataPairs(Default::default()),
-    };
-    let state_delta = zk::ZkDeltaPairs(
-        [(zk::ZkDataLocator(vec![0, 0]), Some(zk::ZkScalar::from(234)))]
-            .into_iter()
-            .collect(),
-    );
-    full_state.apply_delta(&state_delta);
-    updater.call_function(
-        "".into(),
-        cid,
-        0,
-        state_delta.clone(),
-        mpn_conf
-            .state_model()
-            .compress::<ZkHasher>(&full_state.data)
-            .unwrap(),
-        zk::ZkProof::Dummy(true),
-        Money::ziesha(0),
-        Money::ziesha(0),
-        1,
-    )
 }

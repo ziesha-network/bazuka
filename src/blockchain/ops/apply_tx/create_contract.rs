@@ -58,8 +58,15 @@ mod tests {
             withdraw_functions: vec![],
             functions: vec![],
         };
-        let (ops, out) = chain
-            .isolated(|chain| Ok(create_contract(chain, contract_id, &contract)?))
+        let (ops, _) = chain
+            .isolated(|chain| {
+                Ok(create_contract(
+                    chain,
+                    contract_id,
+                    &contract,
+                    &Default::default(),
+                )?)
+            })
             .unwrap();
 
         let expected_ops = vec![

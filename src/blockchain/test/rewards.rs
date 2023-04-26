@@ -27,7 +27,7 @@ fn test_correct_rewards() {
         .draft_block(0, &[], &validator, true)
         .unwrap()
         .unwrap();
-    chain.apply_block(&draft.block).unwrap();
+    chain.apply_block(&draft).unwrap();
     assert!(close_enough(
         chain
             .get_balance(validator.get_address(), TokenId::Ziesha)
@@ -72,7 +72,7 @@ fn test_correct_rewards() {
         )
         .unwrap()
         .unwrap();
-    chain.apply_block(&draft.block).unwrap();
+    chain.apply_block(&draft).unwrap();
 
     let expected_validator_balance_2 =
         expected_validator_reward_1 + expected_validator_reward_2 - validator_stake;
@@ -97,7 +97,7 @@ fn test_correct_rewards() {
         .draft_block(0, &[], &validator, true)
         .unwrap()
         .unwrap();
-    chain.apply_block(&draft.block).unwrap();
+    chain.apply_block(&draft).unwrap();
     assert!(close_enough(
         chain
             .get_balance(validator.get_address(), TokenId::Ziesha)
@@ -163,7 +163,7 @@ fn test_auto_delegate() {
         .draft_block(0, &[], &validator, true)
         .unwrap()
         .unwrap();
-    chain.apply_block(&draft.block).unwrap();
+    chain.apply_block(&draft).unwrap();
     assert!(close_enough(
         chain
             .get_delegate(delegator.get_address(), validator.get_address())

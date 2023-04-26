@@ -37,11 +37,7 @@ fn test_get_header_and_get_block() {
     )
     .unwrap();
 
-    let new_block = chain
-        .draft_block(60, &[], &miner, true)
-        .unwrap()
-        .unwrap()
-        .block;
+    let new_block = chain.draft_block(60, &[], &miner, true).unwrap().unwrap();
     chain.extend(1, &[new_block.clone()]).unwrap();
 
     assert_eq!(chain.get_block(1).unwrap(), new_block);
@@ -90,13 +86,7 @@ fn test_timestamp_increasing() {
 
     let mut fork1 = chain.fork_on_ram();
     fork1
-        .apply_block(
-            &fork1
-                .draft_block(10, &[], &miner, true)
-                .unwrap()
-                .unwrap()
-                .block,
-        )
+        .apply_block(&fork1.draft_block(10, &[], &miner, true).unwrap().unwrap())
         .unwrap();
     assert!(matches!(
         fork1.draft_block(
@@ -117,20 +107,13 @@ fn test_timestamp_increasing() {
                     true,
                 )
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
 
     for i in 11..30 {
         fork1
-            .apply_block(
-                &fork1
-                    .draft_block(i, &[], &miner, true)
-                    .unwrap()
-                    .unwrap()
-                    .block,
-            )
+            .apply_block(&fork1.draft_block(i, &[], &miner, true).unwrap().unwrap())
             .unwrap();
     }
 
@@ -139,13 +122,7 @@ fn test_timestamp_increasing() {
         Err(BlockchainError::InvalidTimestamp)
     ));
     fork1
-        .apply_block(
-            &fork1
-                .draft_block(29, &[], &miner, true)
-                .unwrap()
-                .unwrap()
-                .block,
-        )
+        .apply_block(&fork1.draft_block(29, &[], &miner, true).unwrap().unwrap())
         .unwrap();
 
     rollback_till_empty(&mut fork1).unwrap();
@@ -163,30 +140,28 @@ fn test_block_number_correctness_check() {
     .unwrap();
     let mut fork1 = chain.fork_on_ram();
     let blk1 = fork1.draft_block(0, &[], &miner, true).unwrap().unwrap();
-    fork1.extend(1, &[blk1.block.clone()]).unwrap();
+    fork1.extend(1, &[blk1.clone()]).unwrap();
     let blk2 = fork1.draft_block(1, &[], &miner, true).unwrap().unwrap();
-    fork1.extend(2, &[blk2.block.clone()]).unwrap();
+    fork1.extend(2, &[blk2.clone()]).unwrap();
     assert_eq!(fork1.get_height().unwrap(), 3);
 
     let mut fork2 = chain.fork_on_ram();
-    fork2
-        .extend(1, &[blk1.block.clone(), blk2.block.clone()])
-        .unwrap();
+    fork2.extend(1, &[blk1.clone(), blk2.clone()]).unwrap();
     assert_eq!(fork2.get_height().unwrap(), 3);
 
     let mut fork3 = chain.fork_on_ram();
     let mut blk1_wrong_num = blk1.clone();
-    blk1_wrong_num.block.header.number += 1;
+    blk1_wrong_num.header.number += 1;
     assert!(matches!(
-        fork3.extend(1, &[blk1_wrong_num.block, blk2.block.clone()]),
+        fork3.extend(1, &[blk1_wrong_num, blk2.clone()]),
         Err(BlockchainError::InvalidBlockNumber)
     ));
 
     let mut fork4 = chain.fork_on_ram();
     let mut blk2_wrong_num = blk2.clone();
-    blk2_wrong_num.block.header.number += 1;
+    blk2_wrong_num.header.number += 1;
     assert!(matches!(
-        fork4.extend(1, &[blk1.block, blk2_wrong_num.block.clone()]),
+        fork4.extend(1, &[blk1, blk2_wrong_num.clone()]),
         Err(BlockchainError::InvalidBlockNumber)
     ));
 
@@ -208,30 +183,28 @@ fn test_parent_hash_correctness_check() {
     .unwrap();
     let mut fork1 = chain.fork_on_ram();
     let blk1 = fork1.draft_block(0, &[], &miner, true).unwrap().unwrap();
-    fork1.extend(1, &[blk1.block.clone()]).unwrap();
+    fork1.extend(1, &[blk1.clone()]).unwrap();
     let blk2 = fork1.draft_block(1, &[], &miner, true).unwrap().unwrap();
-    fork1.extend(2, &[blk2.block.clone()]).unwrap();
+    fork1.extend(2, &[blk2.clone()]).unwrap();
     assert_eq!(fork1.get_height().unwrap(), 3);
 
     let mut fork2 = chain.fork_on_ram();
-    fork2
-        .extend(1, &[blk1.block.clone(), blk2.block.clone()])
-        .unwrap();
+    fork2.extend(1, &[blk1.clone(), blk2.clone()]).unwrap();
     assert_eq!(fork2.get_height().unwrap(), 3);
 
     let mut fork3 = chain.fork_on_ram();
     let mut blk1_wrong = blk1.clone();
-    blk1_wrong.block.header.parent_hash = Default::default();
+    blk1_wrong.header.parent_hash = Default::default();
     assert!(matches!(
-        fork3.extend(1, &[blk1_wrong.block, blk2.block.clone()]),
+        fork3.extend(1, &[blk1_wrong, blk2.clone()]),
         Err(BlockchainError::InvalidParentHash)
     ));
 
     let mut fork4 = chain.fork_on_ram();
     let mut blk2_wrong = blk2.clone();
-    blk2_wrong.block.header.parent_hash = Default::default();
+    blk2_wrong.header.parent_hash = Default::default();
     assert!(matches!(
-        fork4.extend(1, &[blk1.block, blk2_wrong.block.clone()]),
+        fork4.extend(1, &[blk1, blk2_wrong.clone()]),
         Err(BlockchainError::InvalidParentHash)
     ));
 
@@ -275,8 +248,7 @@ fn test_merkle_root_check() {
             true,
         )
         .unwrap()
-        .unwrap()
-        .block;
+        .unwrap();
     let blk2 = chain
         .draft_block(
             1,
@@ -300,8 +272,7 @@ fn test_merkle_root_check() {
             true,
         )
         .unwrap()
-        .unwrap()
-        .block;
+        .unwrap();
 
     let mut fork1 = chain.fork_on_ram();
     let mut fork2 = chain.fork_on_ram();
@@ -375,8 +346,7 @@ fn test_txs_cant_be_duplicated() {
             &chain
                 .draft_block(1, &[tx.clone()], &miner, true)
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
     assert_eq!(
@@ -398,8 +368,7 @@ fn test_txs_cant_be_duplicated() {
             &chain
                 .draft_block(1, &[tx.clone()], &miner, true)
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
     assert_eq!(
@@ -425,13 +394,7 @@ fn test_txs_cant_be_duplicated() {
 
     // Alice -> 2700 -> Bob (Fee 300)
     chain
-        .apply_block(
-            &chain
-                .draft_block(1, &[tx2], &miner, true)
-                .unwrap()
-                .unwrap()
-                .block,
-        )
+        .apply_block(&chain.draft_block(1, &[tx2], &miner, true).unwrap().unwrap())
         .unwrap();
     assert_eq!(
         chain
@@ -494,13 +457,7 @@ fn test_insufficient_balance_is_handled() {
 
     // Ensure tx is not included in block and bob has not received funds
     chain
-        .apply_block(
-            &chain
-                .draft_block(1, &[tx], &miner, true)
-                .unwrap()
-                .unwrap()
-                .block,
-        )
+        .apply_block(&chain.draft_block(1, &[tx], &miner, true).unwrap().unwrap())
         .unwrap();
     assert_eq!(
         chain
@@ -555,8 +512,7 @@ fn test_cant_apply_unsigned_tx() {
             &chain
                 .draft_block(1, &[unsigned_tx], &miner, true)
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
     assert_eq!(
@@ -614,13 +570,7 @@ fn test_cant_apply_invalid_signed_tx() {
 
     // Ensure tx is not included in block and bob has not received funds
     chain
-        .apply_block(
-            &chain
-                .draft_block(1, &[tx], &miner, true)
-                .unwrap()
-                .unwrap()
-                .block,
-        )
+        .apply_block(&chain.draft_block(1, &[tx], &miner, true).unwrap().unwrap())
         .unwrap();
     assert_eq!(
         chain
@@ -675,8 +625,7 @@ fn test_balances_are_correct_after_tx() {
                     true,
                 )
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
     assert_eq!(
@@ -709,8 +658,7 @@ fn test_balances_are_correct_after_tx() {
                     true,
                 )
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
     assert_eq!(
@@ -743,8 +691,7 @@ fn test_balances_are_correct_after_tx() {
                     true,
                 )
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
     assert_eq!(
@@ -777,8 +724,7 @@ fn test_balances_are_correct_after_tx() {
                     true,
                 )
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
     assert_eq!(
@@ -811,8 +757,7 @@ fn test_balances_are_correct_after_tx() {
                     true,
                 )
                 .unwrap()
-                .unwrap()
-                .block,
+                .unwrap(),
         )
         .unwrap();
     assert_eq!(
@@ -838,13 +783,13 @@ fn test_genesis_is_not_replaceable() {
     assert_eq!(1, chain.get_height().unwrap());
 
     let first_block = chain.get_block(0).unwrap();
-    assert_eq!(conf.genesis.block.header.hash(), first_block.header.hash());
+    assert_eq!(conf.genesis.header.hash(), first_block.header.hash());
 
     let mut another_conf = conf.clone();
-    another_conf.genesis.block.header.proof_of_stake.timestamp += 1;
+    another_conf.genesis.header.proof_of_stake.timestamp += 1;
 
     assert!(matches!(
-        chain.extend(0, &[another_conf.genesis.block]),
+        chain.extend(0, &[another_conf.genesis]),
         Err(BlockchainError::ExtendFromGenesis)
     ));
 
@@ -858,7 +803,7 @@ fn test_chain_should_not_draft_invalid_transactions() {
     let wallet2 = TxBuilder::new(&Vec::from("CBA"));
 
     let mut conf = blockchain::get_test_blockchain_config();
-    conf.genesis.block.body.push(Transaction {
+    conf.genesis.body.push(Transaction {
         memo: "".into(),
         src: None,
         data: TransactionData::RegularSend {
@@ -919,8 +864,8 @@ fn test_chain_should_not_draft_invalid_transactions() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(1, draft.block.body.len());
-    assert_eq!(Some(wallet1.get_address()), draft.block.body[0].src);
+    assert_eq!(1, draft.body.len());
+    assert_eq!(Some(wallet1.get_address()), draft.body[0].src);
 
     rollback_till_empty(&mut chain).unwrap();
 }
@@ -932,7 +877,7 @@ fn test_chain_should_draft_all_valid_transactions() {
     let wallet2 = TxBuilder::new(&Vec::from("CBAD"));
 
     let mut conf = blockchain::get_test_blockchain_config();
-    conf.genesis.block.body.push(Transaction {
+    conf.genesis.body.push(Transaction {
         memo: "".into(),
         src: None,
         data: TransactionData::RegularSend {
@@ -969,9 +914,9 @@ fn test_chain_should_draft_all_valid_transactions() {
         .unwrap()
         .unwrap();
 
-    chain.apply_block(&draft.block).unwrap();
+    chain.apply_block(&draft).unwrap();
 
-    assert_eq!(2, draft.block.body.len());
+    assert_eq!(2, draft.body.len());
 
     let account1 = chain
         .get_balance(wallet1.get_address(), TokenId::Ziesha)
@@ -992,7 +937,7 @@ fn test_chain_should_rollback_applied_block() {
     let wallet2 = TxBuilder::new(&Vec::from("CBA"));
 
     let mut conf = blockchain::get_test_blockchain_config();
-    conf.genesis.block.body.push(Transaction {
+    conf.genesis.body.push(Transaction {
         memo: "".into(),
         src: None,
         data: TransactionData::RegularSend {
@@ -1021,7 +966,7 @@ fn test_chain_should_rollback_applied_block() {
         .unwrap()
         .unwrap();
 
-    chain.apply_block(&draft.block).unwrap();
+    chain.apply_block(&draft).unwrap();
 
     let t2 = wallet1.create_transaction(
         "".into(),
@@ -1044,7 +989,7 @@ fn test_chain_should_rollback_applied_block() {
         .checksum::<Hasher>()
         .unwrap();
 
-    chain.apply_block(&draft.block).unwrap();
+    chain.apply_block(&draft).unwrap();
 
     let height = chain.get_height().unwrap();
     assert_eq!(3, height);
