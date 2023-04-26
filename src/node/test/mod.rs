@@ -166,7 +166,8 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
     // Allow sync of clocks but no block transfer
     let rules = Arc::new(RwLock::new(vec![]));
 
-    let conf = blockchain::get_test_blockchain_config();
+    let mut conf = blockchain::get_test_blockchain_config();
+    conf.slot_duration = 1;
 
     let (node_futs, route_futs, chans) = simulation::test_network(
         Arc::clone(&rules),
@@ -199,12 +200,19 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
 
         chans[0].mine().await?;
         assert_eq!(chans[0].stats().await?.height, 2);
+
+        sleep(Duration::from_millis(1000)).await;
+
         chans[0].mine().await?;
         assert_eq!(chans[0].stats().await?.height, 3);
+
+        sleep(Duration::from_millis(1000)).await;
+
         chans[0].mine().await?;
         assert_eq!(chans[0].stats().await?.height, 4);
 
-        for i in 2..51 {
+        for i in 2..11 {
+            sleep(Duration::from_millis(1000)).await;
             chans[1].mine().await?;
             assert_eq!(chans[1].stats().await?.height, i);
         }
@@ -212,25 +220,25 @@ async fn test_blocks_get_synced() -> Result<(), NodeError> {
         // Still not synced...
         sleep(Duration::from_millis(2000)).await;
         assert_eq!(chans[0].stats().await?.height, 4);
-        assert_eq!(chans[1].stats().await?.height, 50);
+        assert_eq!(chans[1].stats().await?.height, 10);
 
         // Now we open the connections...
         rules.write().await.clear();
         assert!(
             catch_change(
-                || async { Ok(chans[0].stats().await?.height == 50) },
+                || async { Ok(chans[0].stats().await?.height == 10) },
                 MAX_WAIT_FOR_CHANGE
             )
             .await?,
         );
-        assert_eq!(chans[1].stats().await?.height, 50);
+        assert_eq!(chans[1].stats().await?.height, 10);
 
         // Now nodes should immediately sync with post_block
         chans[1].mine().await?;
-        assert_eq!(chans[1].stats().await?.height, 51);
+        assert_eq!(chans[1].stats().await?.height, 11);
         assert!(
             catch_change(
-                || async { Ok(chans[0].stats().await?.height == 51) },
+                || async { Ok(chans[0].stats().await?.height == 11) },
                 MAX_WAIT_FOR_CHANGE
             )
             .await?,

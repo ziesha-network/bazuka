@@ -30,7 +30,7 @@ fn test_token_balances() {
     // Cannot spend uncreated token
     assert!(matches!(
         chain.draft_block(
-            1,
+            100,
             &[alice.create_transaction(
                 "".into(),
                 bob.get_address(),
@@ -47,7 +47,7 @@ fn test_token_balances() {
     chain
         .apply_block(
             &chain
-                .draft_block(1, &[token_create_tx], &miner, false)
+                .draft_block(100, &[token_create_tx], &miner, false)
                 .unwrap()
                 .unwrap(),
         )
@@ -62,7 +62,7 @@ fn test_token_balances() {
         .apply_block(
             &chain
                 .draft_block(
-                    1,
+                    200,
                     &[alice.create_transaction(
                         "".into(),
                         bob.get_address(),
@@ -90,7 +90,7 @@ fn test_token_balances() {
     // Check insufficient token balance
     assert!(matches!(
         chain.draft_block(
-            1,
+            300,
             &[alice.create_transaction(
                 "".into(),
                 bob.get_address(),
@@ -108,7 +108,7 @@ fn test_token_balances() {
         .apply_block(
             &chain
                 .draft_block(
-                    1,
+                    400,
                     &[alice.create_transaction(
                         "".into(),
                         bob.get_address(),

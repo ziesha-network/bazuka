@@ -24,7 +24,7 @@ fn test_correct_rewards() {
     let expected_validator_reward_1 = Amount(expected_reward_1.0 * 12 / 255);
     assert_eq!(expected_reward_1, Amount(19999999999999));
     let draft = chain
-        .draft_block(0, &[], &validator, true)
+        .draft_block(100, &[], &validator, true)
         .unwrap()
         .unwrap();
     chain.apply_block(&draft).unwrap();
@@ -44,7 +44,7 @@ fn test_correct_rewards() {
     let expected_validator_reward_2 = Amount(expected_reward_2.0 * 12 / 255);
     let draft = chain
         .draft_block(
-            0,
+            200,
             &[
                 delegator.delegate(
                     "".into(),
@@ -94,7 +94,7 @@ fn test_correct_rewards() {
     assert_eq!(expected_reward_3, Amount(19999600001999));
     let expected_validator_reward_3 = Amount(expected_reward_3.0 * 12 / 255);
     let draft = chain
-        .draft_block(0, &[], &validator, true)
+        .draft_block(300, &[], &validator, true)
         .unwrap()
         .unwrap();
     chain.apply_block(&draft).unwrap();
@@ -160,7 +160,7 @@ fn test_auto_delegate() {
     );
     assert_eq!(expected_reward, Amount(19999999999999));
     let draft = chain
-        .draft_block(0, &[], &validator, true)
+        .draft_block(100, &[], &validator, true)
         .unwrap()
         .unwrap();
     chain.apply_block(&draft).unwrap();

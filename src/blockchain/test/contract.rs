@@ -36,7 +36,7 @@ fn test_contract_create_patch() {
     );
 
     let draft = chain
-        .draft_block(1, &[tx.clone()], &miner, true)
+        .draft_block(100, &[tx.clone()], &miner, true)
         .unwrap()
         .unwrap();
     chain.apply_block(&draft).unwrap();

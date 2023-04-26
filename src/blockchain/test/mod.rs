@@ -86,43 +86,49 @@ fn test_timestamp_increasing() {
 
     let mut fork1 = chain.fork_on_ram();
     fork1
-        .apply_block(&fork1.draft_block(10, &[], &miner, true).unwrap().unwrap())
+        .apply_block(&fork1.draft_block(100, &[], &miner, true).unwrap().unwrap())
         .unwrap();
     assert!(matches!(
         fork1.draft_block(
-            5, // 5 < 10
+            60, // 60 < 100
             &[],
             &miner,
             true,
         ),
         Err(BlockchainError::InvalidEpochSlot)
     ));
-    fork1
-        .apply_block(
-            &fork1
-                .draft_block(
-                    10, // 10, again, should be fine
-                    &[],
-                    &miner,
-                    true,
-                )
-                .unwrap()
-                .unwrap(),
-        )
-        .unwrap();
+    assert!(matches!(
+        &fork1.draft_block(
+            101, // 101, same epoch!
+            &[],
+            &miner,
+            true,
+        ),
+        Err(BlockchainError::InvalidEpochSlot)
+    ));
 
     for i in 11..30 {
         fork1
-            .apply_block(&fork1.draft_block(i, &[], &miner, true).unwrap().unwrap())
+            .apply_block(
+                &fork1
+                    .draft_block(i * 60, &[], &miner, true)
+                    .unwrap()
+                    .unwrap(),
+            )
             .unwrap();
     }
 
     assert!(matches!(
-        fork1.draft_block(28, &[], &miner, true,),
+        fork1.draft_block(28 * 60, &[], &miner, true,),
         Err(BlockchainError::InvalidEpochSlot)
     ));
     fork1
-        .apply_block(&fork1.draft_block(29, &[], &miner, true).unwrap().unwrap())
+        .apply_block(
+            &fork1
+                .draft_block(31 * 60, &[], &miner, true)
+                .unwrap()
+                .unwrap(),
+        )
         .unwrap();
 
     rollback_till_empty(&mut fork1).unwrap();
@@ -139,9 +145,9 @@ fn test_block_number_correctness_check() {
     )
     .unwrap();
     let mut fork1 = chain.fork_on_ram();
-    let blk1 = fork1.draft_block(0, &[], &miner, true).unwrap().unwrap();
+    let blk1 = fork1.draft_block(100, &[], &miner, true).unwrap().unwrap();
     fork1.extend(1, &[blk1.clone()]).unwrap();
-    let blk2 = fork1.draft_block(1, &[], &miner, true).unwrap().unwrap();
+    let blk2 = fork1.draft_block(200, &[], &miner, true).unwrap().unwrap();
     fork1.extend(2, &[blk2.clone()]).unwrap();
     assert_eq!(fork1.get_height().unwrap(), 3);
 
@@ -182,9 +188,9 @@ fn test_parent_hash_correctness_check() {
     )
     .unwrap();
     let mut fork1 = chain.fork_on_ram();
-    let blk1 = fork1.draft_block(0, &[], &miner, true).unwrap().unwrap();
+    let blk1 = fork1.draft_block(100, &[], &miner, true).unwrap().unwrap();
     fork1.extend(1, &[blk1.clone()]).unwrap();
-    let blk2 = fork1.draft_block(1, &[], &miner, true).unwrap().unwrap();
+    let blk2 = fork1.draft_block(200, &[], &miner, true).unwrap().unwrap();
     fork1.extend(2, &[blk2.clone()]).unwrap();
     assert_eq!(fork1.get_height().unwrap(), 3);
 
@@ -227,7 +233,7 @@ fn test_merkle_root_check() {
     .unwrap();
     let blk1 = chain
         .draft_block(
-            1,
+            100,
             &[
                 alice.create_transaction(
                     "".into(),
@@ -251,7 +257,7 @@ fn test_merkle_root_check() {
         .unwrap();
     let blk2 = chain
         .draft_block(
-            1,
+            200,
             &[
                 alice.create_transaction(
                     "".into(),
@@ -344,7 +350,7 @@ fn test_txs_cant_be_duplicated() {
     chain
         .apply_block(
             &chain
-                .draft_block(1, &[tx.clone()], &miner, true)
+                .draft_block(100, &[tx.clone()], &miner, true)
                 .unwrap()
                 .unwrap(),
         )
@@ -366,7 +372,7 @@ fn test_txs_cant_be_duplicated() {
     chain
         .apply_block(
             &chain
-                .draft_block(1, &[tx.clone()], &miner, true)
+                .draft_block(200, &[tx.clone()], &miner, true)
                 .unwrap()
                 .unwrap(),
         )
@@ -394,7 +400,12 @@ fn test_txs_cant_be_duplicated() {
 
     // Alice -> 2700 -> Bob (Fee 300)
     chain
-        .apply_block(&chain.draft_block(1, &[tx2], &miner, true).unwrap().unwrap())
+        .apply_block(
+            &chain
+                .draft_block(300, &[tx2], &miner, true)
+                .unwrap()
+                .unwrap(),
+        )
         .unwrap();
     assert_eq!(
         chain
@@ -457,7 +468,12 @@ fn test_insufficient_balance_is_handled() {
 
     // Ensure tx is not included in block and bob has not received funds
     chain
-        .apply_block(&chain.draft_block(1, &[tx], &miner, true).unwrap().unwrap())
+        .apply_block(
+            &chain
+                .draft_block(100, &[tx], &miner, true)
+                .unwrap()
+                .unwrap(),
+        )
         .unwrap();
     assert_eq!(
         chain
@@ -501,7 +517,7 @@ fn test_cant_apply_unsigned_tx() {
     };
 
     // Ensure apply_tx will raise
-    match chain.draft_block(1, &[unsigned_tx.clone()], &miner, false) {
+    match chain.draft_block(100, &[unsigned_tx.clone()], &miner, false) {
         Ok(_) => assert!(false, "Unsigned transaction shall not be applied"),
         Err(e) => assert!(matches!(e, BlockchainError::SignatureError)),
     }
@@ -510,7 +526,7 @@ fn test_cant_apply_unsigned_tx() {
     chain
         .apply_block(
             &chain
-                .draft_block(1, &[unsigned_tx], &miner, true)
+                .draft_block(200, &[unsigned_tx], &miner, true)
                 .unwrap()
                 .unwrap(),
         )
@@ -563,14 +579,19 @@ fn test_cant_apply_invalid_signed_tx() {
     };
 
     // Ensure apply_tx will raise
-    match chain.draft_block(1, &[tx.clone()], &miner, false) {
+    match chain.draft_block(100, &[tx.clone()], &miner, false) {
         Ok(_) => assert!(false, "Invalid signed transaction shall not be applied"),
         Err(e) => assert!(matches!(e, BlockchainError::SignatureError)),
     }
 
     // Ensure tx is not included in block and bob has not received funds
     chain
-        .apply_block(&chain.draft_block(1, &[tx], &miner, true).unwrap().unwrap())
+        .apply_block(
+            &chain
+                .draft_block(100, &[tx], &miner, true)
+                .unwrap()
+                .unwrap(),
+        )
         .unwrap();
     assert_eq!(
         chain
@@ -613,7 +634,7 @@ fn test_balances_are_correct_after_tx() {
         .apply_block(
             &chain
                 .draft_block(
-                    1,
+                    100,
                     &[alice.create_transaction(
                         "".into(),
                         bob.get_address(),
@@ -646,7 +667,7 @@ fn test_balances_are_correct_after_tx() {
         .apply_block(
             &chain
                 .draft_block(
-                    1,
+                    200,
                     &[bob.create_transaction(
                         "".into(),
                         alice.get_address(),
@@ -679,7 +700,7 @@ fn test_balances_are_correct_after_tx() {
         .apply_block(
             &chain
                 .draft_block(
-                    2,
+                    300,
                     &[bob.create_transaction(
                         "".into(),
                         alice.get_address(),
@@ -712,7 +733,7 @@ fn test_balances_are_correct_after_tx() {
         .apply_block(
             &chain
                 .draft_block(
-                    3,
+                    400,
                     &[alice.create_transaction(
                         "".into(),
                         alice.get_address(),
@@ -745,7 +766,7 @@ fn test_balances_are_correct_after_tx() {
         .apply_block(
             &chain
                 .draft_block(
-                    4,
+                    500,
                     &[alice.create_transaction(
                         "".into(),
                         alice.get_address(),
@@ -978,7 +999,7 @@ fn test_chain_should_rollback_applied_block() {
     mempool.push(t2);
 
     let draft = chain
-        .draft_block(1650000001, &mempool, &wallet_miner, true)
+        .draft_block(1650000100, &mempool, &wallet_miner, true)
         .unwrap()
         .unwrap();
 

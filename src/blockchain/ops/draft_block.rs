@@ -43,7 +43,6 @@ pub fn draft_block<K: KvStore>(
         Ok(())
     }) {
         Err(BlockchainError::InsufficientMpnUpdates) => Ok(None),
-        Err(BlockchainError::InvalidEpochSlot) => Ok(None),
         Err(e) => Err(e),
         Ok(_) => Ok(Some(blk)),
     }
