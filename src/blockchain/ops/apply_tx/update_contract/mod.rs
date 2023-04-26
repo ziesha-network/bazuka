@@ -108,8 +108,13 @@ pub fn update_contract<K: KvStore>(
     zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
         &mut chain.database,
         *contract_id,
-        &delta.clone().expect("State not provided!"),
+        &delta.clone().ok_or(BlockchainError::StateNotGiven)?,
         cont_account.height,
     )?;
+    if zk::KvStoreStateManager::<CoreZkHasher>::root(&mut chain.database, *contract_id)?
+        != cont_account.compressed_state
+    {
+        return Err(BlockchainError::InvalidState);
+    }
     Ok(())
 }

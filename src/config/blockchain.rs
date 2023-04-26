@@ -80,7 +80,7 @@ fn get_mpn_contract(
         src: None,
         data: TransactionData::CreateContract {
             contract: mpn_contract,
-            state: Default::default(), // Empty
+            state: Some(Default::default()), // Empty
         },
         nonce: 0, // MPN contract is created after Ziesha token is created
         fee: Money::ziesha(0),

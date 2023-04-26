@@ -113,4 +113,8 @@ pub enum BlockchainError {
     UndelegationNotFound,
     #[error("undelegation still locked")]
     UndelegationLocked,
+    #[error("state not given")]
+    StateNotGiven,
+    #[error("state invalid")]
+    InvalidState,
 }
