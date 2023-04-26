@@ -206,18 +206,6 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         Ok(())
     }
 
-    pub fn delete_contract<K: KvStore>(
-        db: &mut K,
-        id: ContractId,
-    ) -> Result<(), StateManagerError> {
-        let mut rems = Vec::new();
-        for (k, _) in db.pairs(keys::local_prefix(&id).into())?.into_iter() {
-            rems.push(WriteOp::Remove(k));
-        }
-        db.update(&rems)?;
-        Ok(())
-    }
-
     pub fn height_of<K: KvStore>(db: &K, id: ContractId) -> Result<u64, StateManagerError> {
         if let Some(blob) = db.get(keys::local_height(&id))? {
             Ok(blob.try_into()?)
@@ -299,12 +287,9 @@ impl<H: ZkHasher> KvStoreStateManager<H> {
         patch: &ZkDeltaPairs,
         target_height: u64,
     ) -> Result<(), StateManagerError> {
-        let mut rollback_patch = ZkDeltaPairs(HashMap::new());
         let mut fork = db.mirror();
         let mut root = Self::root(&fork, id)?;
         for (k, v) in &patch.0 {
-            let prev_val = Self::get_data(&fork, id, k)?;
-            rollback_patch.0.insert(k.clone(), Some(prev_val)); // Or None if default
             root.state_hash = Self::set_data(
                 &mut fork,
                 id,
