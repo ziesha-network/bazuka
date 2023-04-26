@@ -432,8 +432,22 @@ impl<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction> Transaction<H, S,
     pub fn size(&self) -> usize {
         bincode::serialize(self).unwrap().len()
     }
+    pub fn sig_state_excluded(&self) -> Self {
+        let mut clean = self.clone();
+        match &mut clean.data {
+            TransactionData::UpdateContract { delta, .. } => {
+                *delta = None;
+            }
+            TransactionData::CreateContract { state, .. } => {
+                *state = None;
+            }
+            _ => {}
+        }
+        clean.sig = Signature::Unsigned;
+        clean
+    }
     pub fn hash(&self) -> H::Output {
-        H::hash(&bincode::serialize(self).unwrap())
+        H::hash(&bincode::serialize(&self.sig_state_excluded()).unwrap())
     }
     pub fn verify_signature(&self) -> bool {
         match &self.src {
@@ -441,9 +455,7 @@ impl<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction> Transaction<H, S,
             Some(pk) => match &self.sig {
                 Signature::Unsigned => false,
                 Signature::Signed(sig) => {
-                    let mut unsigned = self.clone();
-                    unsigned.sig = Signature::Unsigned;
-                    let bytes = bincode::serialize(&unsigned).unwrap();
+                    let bytes = bincode::serialize(&self.sig_state_excluded()).unwrap();
                     S::verify(pk, &bytes, sig)
                 }
             },

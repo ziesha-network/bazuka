@@ -17,7 +17,6 @@ use rand_chacha::ChaChaRng;
 
 #[derive(Clone)]
 pub struct TxBuilder {
-    seed: Vec<u8>,
     vrf_private_key: <Vrf as VerifiableRandomFunction>::Priv,
     vrf_public_key: <Vrf as VerifiableRandomFunction>::Pub,
     private_key: <Signer as SignatureScheme>::Priv,
@@ -34,7 +33,6 @@ impl TxBuilder {
         let mut chacha_rng = ChaChaRng::from_seed(chacha_seed);
         let (vrf_public_key, vrf_private_key) = Vrf::generate_keys(&mut chacha_rng);
         Self {
-            seed: seed.to_vec(),
             address: pk,
             zk_address: zk_pk,
             private_key: sk,
@@ -68,7 +66,7 @@ impl TxBuilder {
         tx.sig = Some(Signer::sign(&self.private_key, &bytes));
     }
     pub fn sign_tx(&self, tx: &mut Transaction) {
-        let bytes = bincode::serialize(&tx).unwrap();
+        let bytes = bincode::serialize(&tx.sig_state_excluded()).unwrap();
         tx.sig = Signature::Signed(Signer::sign(&self.private_key, &bytes));
     }
     pub fn delegate(
@@ -330,7 +328,6 @@ impl TxBuilder {
         miner_fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
-        let (_, sk) = Signer::generate_keys(&self.seed);
         let mut tx = Transaction {
             memo,
             src: Some(self.get_address()),
@@ -348,8 +345,7 @@ impl TxBuilder {
             fee: miner_fee,
             sig: Signature::Unsigned,
         };
-        let bytes = bincode::serialize(&tx).unwrap();
-        tx.sig = Signature::Signed(Signer::sign(&sk, &bytes));
+        self.sign_tx(&mut tx);
         TransactionAndDelta {
             tx,
             state_delta: Some(state_delta),
