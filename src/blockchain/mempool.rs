@@ -163,6 +163,22 @@ impl Mempool {
         now: u32,
     ) -> Result<(), BlockchainError> {
         let mpn_contract_id = blockchain.config().mpn_config.mpn_contract_id;
+
+        match &tx {
+            GeneralTransaction::MpnDeposit(tx) => {
+                if tx.payment.contract_id != mpn_contract_id || tx.payment.deposit_circuit_id != 0 {
+                    return Ok(());
+                }
+            }
+            GeneralTransaction::MpnWithdraw(tx) => {
+                if tx.payment.contract_id != mpn_contract_id || tx.payment.withdraw_circuit_id != 0
+                {
+                    return Ok(());
+                }
+            }
+            _ => {}
+        }
+
         if is_local {
             self.rejected.remove(&tx);
         }
