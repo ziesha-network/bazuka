@@ -95,7 +95,7 @@ fn test_timestamp_increasing() {
             &miner,
             true,
         ),
-        Err(BlockchainError::InvalidTimestamp)
+        Err(BlockchainError::InvalidEpochSlot)
     ));
     fork1
         .apply_block(
@@ -119,7 +119,7 @@ fn test_timestamp_increasing() {
 
     assert!(matches!(
         fork1.draft_block(28, &[], &miner, true,),
-        Err(BlockchainError::InvalidTimestamp)
+        Err(BlockchainError::InvalidEpochSlot)
     ));
     fork1
         .apply_block(&fork1.draft_block(29, &[], &miner, true).unwrap().unwrap())

@@ -32,7 +32,7 @@ pub enum BlockchainError {
     #[error("transaction nonce invalid")]
     InvalidTransactionNonce,
     #[error("block timestamp is in past")]
-    InvalidTimestamp,
+    InvalidEpochSlot,
     #[error("miner reward not present")]
     MinerRewardNotFound,
     #[error("illegal access to treasury funds")]

@@ -413,8 +413,11 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         let mut last_header = self.get_header(from - 1)?;
 
         for h in headers.iter() {
-            if h.proof_of_stake.timestamp < last_header.proof_of_stake.timestamp {
-                return Err(BlockchainError::InvalidTimestamp);
+            let (last_epoch, last_slot) = self.epoch_slot(last_header.proof_of_stake.timestamp);
+            let (h_epoch, h_slot) = self.epoch_slot(h.proof_of_stake.timestamp);
+
+            if [h_epoch, h_slot] <= [last_epoch, last_slot] {
+                return Err(BlockchainError::InvalidEpochSlot);
             }
 
             if h.number != last_header.number + 1 {
