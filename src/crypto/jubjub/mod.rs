@@ -5,7 +5,7 @@ use num_integer::Integer;
 use serde::{Deserialize, Serialize};
 use std::ops::{AddAssign, MulAssign};
 
-use super::{DeriveMpnAccountIndex, ZkSignatureScheme};
+use super::ZkSignatureScheme;
 
 use std::str::FromStr;
 use thiserror::Error;
@@ -36,13 +36,6 @@ impl Into<Vec<ZkScalar>> for PublicKey {
     fn into(self) -> Vec<ZkScalar> {
         let decom = self.0.decompress();
         [decom.0, decom.1].into()
-    }
-}
-
-impl DeriveMpnAccountIndex for PublicKey {
-    fn mpn_account_index(&self, log4_account_capacity: u8) -> u64 {
-        u64::from_le_bytes(self.0 .0.to_repr().as_ref()[0..8].try_into().unwrap())
-            & ((1 << (2 * log4_account_capacity)) - 1)
     }
 }
 

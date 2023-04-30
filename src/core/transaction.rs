@@ -1,7 +1,6 @@
 use super::address::Signature;
 use super::hash::Hash;
 use super::Amount;
-use crate::crypto::DeriveMpnAccountIndex;
 use crate::crypto::VerifiableRandomFunction;
 use crate::crypto::{SignatureScheme, ZkSignatureScheme};
 use crate::zk::{
@@ -216,22 +215,7 @@ pub struct MpnWithdraw<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
     pub payment: ContractWithdraw<H, S>,
 }
 
-impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> MpnDeposit<H, S, ZS>
-where
-    ZS::Pub: DeriveMpnAccountIndex,
-{
-    pub fn zk_address_index(&self, log4_account_capacity: u8) -> u64 {
-        self.zk_address.mpn_account_index(log4_account_capacity)
-    }
-}
-
-impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> MpnWithdraw<H, S, ZS>
-where
-    ZS::Pub: DeriveMpnAccountIndex,
-{
-    pub fn zk_address_index(&self, log4_account_capacity: u8) -> u64 {
-        self.zk_address.mpn_account_index(log4_account_capacity)
-    }
+impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> MpnWithdraw<H, S, ZS> {
     pub fn verify_calldata<ZH: ZkHasher>(&self) -> bool {
         let mut preimage: Vec<ZkScalar> = self.zk_address.clone().into();
         preimage.push((self.zk_nonce as u64).into());

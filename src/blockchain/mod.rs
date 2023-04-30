@@ -375,7 +375,6 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     }
 
     fn get_mpn_account(&self, addr: MpnAddress) -> Result<zk::MpnAccount, BlockchainError> {
-        let index = addr.account_index(self.config().mpn_config.log4_tree_size);
         let acc = zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_account(
             &self.database,
             self.config.mpn_config.mpn_contract_id,

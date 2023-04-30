@@ -1,5 +1,5 @@
 use crate::core::{hash::Hash, Amount, Hasher, Money, TokenId, ZkHasher as ZkMainHasher};
-use crate::crypto::{jubjub, DeriveMpnAccountIndex, ZkSignatureScheme};
+use crate::crypto::{jubjub, ZkSignatureScheme};
 
 use ff::{Field, PrimeField};
 use num_bigint::BigUint;
@@ -598,12 +598,6 @@ impl std::hash::Hash for MpnTransaction {
 }
 
 impl MpnTransaction {
-    pub fn src_index(&self, log4_account_capacity: u8) -> u64 {
-        self.src_pub_key.mpn_account_index(log4_account_capacity)
-    }
-    pub fn dst_index(&self, log4_account_capacity: u8) -> u64 {
-        self.dst_pub_key.mpn_account_index(log4_account_capacity)
-    }
     pub fn verify_signature(&self) -> bool {
         jubjub::JubJub::<ZkMainHasher>::verify(&self.src_pub_key, self.hash(), &self.sig)
     }

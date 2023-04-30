@@ -30,10 +30,13 @@ pub fn withdraw<K: KvStore>(
         if transitions.len() == 1 << (2 * log4_batch_size) {
             break;
         }
+
+        let account_index = 0;
+
         let acc = KvStoreStateManager::<ZkHasher>::get_mpn_account(
             &mirror,
             mpn_contract_id,
-            tx.zk_address_index(mpn_log4_account_capacity),
+            account_index,
         )
         .unwrap();
 
@@ -60,7 +63,6 @@ pub fn withdraw<K: KvStore>(
             || tx.zk_nonce != acc.withdraw_nonce + 1
             || tx.payment.amount.token_id != acc_token.token_id
             || tx.payment.amount.amount > acc_token.amount
-            || tx.zk_address_index(mpn_log4_account_capacity) > 0x3fffffff
         {
             println!("{} {}", tx.zk_nonce, acc.withdraw_nonce);
             rejected.push(tx.clone());
@@ -77,7 +79,7 @@ pub fn withdraw<K: KvStore>(
             let token_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 &mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
+                ZkDataLocator(vec![account_index, 4]),
                 zk_token_index,
             )
             .unwrap();
@@ -86,7 +88,7 @@ pub fn withdraw<K: KvStore>(
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut mirror,
                 mpn_contract_id,
-                tx.zk_address_index(mpn_log4_account_capacity),
+                account_index,
                 updated_acc.clone(),
                 &mut state_size,
             )
@@ -95,7 +97,7 @@ pub fn withdraw<K: KvStore>(
             let fee_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 &mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
+                ZkDataLocator(vec![account_index, 4]),
                 zk_fee_token_index,
             )
             .unwrap();
@@ -124,14 +126,14 @@ pub fn withdraw<K: KvStore>(
                 &mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
-                tx.zk_address_index(mpn_log4_account_capacity),
+                account_index,
             )
             .unwrap();
 
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut mirror,
                 mpn_contract_id,
-                tx.zk_address_index(mpn_log4_account_capacity),
+                account_index,
                 updated_acc,
                 &mut state_size,
             )
@@ -139,6 +141,7 @@ pub fn withdraw<K: KvStore>(
 
             transitions.push(WithdrawTransition {
                 enabled: true,
+                account_index,
                 token_index: zk_token_index,
                 fee_token_index: zk_fee_token_index,
                 tx: tx.clone(),

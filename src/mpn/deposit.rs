@@ -32,10 +32,13 @@ pub fn deposit<K: KvStore>(
         if transitions.len() == 1 << (2 * log4_batch_size) {
             break;
         }
+
+        let account_index = 0;
+
         let acc = KvStoreStateManager::<ZkHasher>::get_mpn_account(
             &mirror,
             mpn_contract_id,
-            tx.zk_address_index(mpn_log4_account_capacity),
+            account_index,
         )
         .unwrap();
         let src_pub = tx.payment.src.clone();
@@ -73,7 +76,7 @@ pub fn deposit<K: KvStore>(
             let balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 &mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
+                ZkDataLocator(vec![account_index, 4]),
                 zk_token_index,
             )
             .unwrap();
@@ -81,14 +84,14 @@ pub fn deposit<K: KvStore>(
                 &mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
-                tx.zk_address_index(mpn_log4_account_capacity),
+                account_index,
             )
             .unwrap();
 
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut mirror,
                 mpn_contract_id,
-                tx.zk_address_index(mpn_log4_account_capacity),
+                account_index,
                 updated_acc,
                 &mut state_size,
             )
@@ -97,6 +100,7 @@ pub fn deposit<K: KvStore>(
             transitions.push(DepositTransition {
                 enabled: true,
                 tx: tx.clone(),
+                account_index,
                 token_index: zk_token_index,
                 before: acc.clone(),
                 before_balances_hash: acc.tokens_hash::<ZkHasher>(log4_token_tree_size),
