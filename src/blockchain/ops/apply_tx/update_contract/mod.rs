@@ -3,6 +3,34 @@ mod function_call;
 mod withdraw;
 
 use super::*;
+use crate::crypto::jubjub;
+use crate::zk::ZkScalar;
+
+pub fn index_mpn_accounts<K: KvStore>(
+    chain: &mut KvStoreChain<K>,
+    delta: &zk::ZkDeltaPairs,
+) -> Result<(), BlockchainError> {
+    let mut org = HashMap::<u64, HashMap<u64, ZkScalar>>::new();
+    for (k, v) in delta.0.iter() {
+        if k.0.len() == 2 && (k.0[1] == 2 || k.0[1] == 3) {
+            org.entry(k.0[0])
+                .or_default()
+                .entry(k.0[1])
+                .or_insert(v.unwrap_or_default());
+        }
+    }
+    for (ind, data) in org {
+        let x = data.get(&2).ok_or(BlockchainError::Inconsistency)?;
+        let y = data.get(&3).ok_or(BlockchainError::Inconsistency)?;
+        let addr = MpnAddress {
+            pub_key: jubjub::PublicKey(jubjub::PointAffine(*x, *y).compress()),
+        };
+        chain
+            .database
+            .update(&[WriteOp::Put(keys::mpn_account_index(&addr, ind), ().into())])?;
+    }
+    Ok(())
+}
 
 pub fn update_contract<K: KvStore>(
     chain: &mut KvStoreChain<K>,
@@ -105,10 +133,15 @@ pub fn update_contract<K: KvStore>(
 
     let cont_account = chain.get_contract_account(*contract_id)?;
 
+    let delta = delta.clone().ok_or(BlockchainError::StateNotGiven)?;
+    if *contract_id == chain.config().mpn_config.mpn_contract_id {
+        index_mpn_accounts(chain, &delta)?;
+    }
+
     zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
         &mut chain.database,
         *contract_id,
-        &delta.clone().ok_or(BlockchainError::StateNotGiven)?,
+        &delta,
         cont_account.height,
     )?;
     if zk::KvStoreStateManager::<CoreZkHasher>::root(&mut chain.database, *contract_id)?

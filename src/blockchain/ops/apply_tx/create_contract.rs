@@ -21,13 +21,11 @@ pub fn create_contract<K: KvStore>(
         }
         .into(),
     )])?;
+    let state = state.clone().ok_or(BlockchainError::StateNotGiven)?;
     zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
         &mut chain.database,
         contract_id,
-        &state
-            .clone()
-            .ok_or(BlockchainError::StateNotGiven)?
-            .as_delta(),
+        &state.as_delta(),
         1,
     )?;
     if zk::KvStoreStateManager::<CoreZkHasher>::root(&mut chain.database, contract_id)?

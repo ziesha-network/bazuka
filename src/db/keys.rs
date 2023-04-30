@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::{Address, ContractId, TokenId, UndelegationId};
+use crate::core::{Address, ContractId, MpnAddress, TokenId, UndelegationId};
 use crate::zk::ZkDataLocator;
 use thiserror::Error;
 
@@ -269,6 +269,10 @@ pub fn contract(contract_id: &ContractId) -> StringKey {
 
 pub fn token(token_id: &TokenId) -> StringKey {
     format!("TKN-{}", token_id).into()
+}
+
+pub fn mpn_account_index(mpn_address: &MpnAddress, index: u64) -> StringKey {
+    format!("MPN-{}-{}", mpn_address, index).into()
 }
 
 pub fn local_prefix(contract_id: &ContractId) -> String {
