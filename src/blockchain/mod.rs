@@ -59,6 +59,7 @@ pub trait Blockchain<K: KvStore> {
     fn epoch_randomness(&self) -> Result<<Hasher as Hash>::Output, BlockchainError>;
     fn database(&self) -> &K;
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
+    fn get_mpn_account_count(&self) -> Result<u64, BlockchainError>;
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self) -> Result<Vec<(Address, Amount)>, BlockchainError>;
     fn get_auto_delegate_ratio(
@@ -746,6 +747,12 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             }
         }
         Ok(undelegations)
+    }
+    fn get_mpn_account_count(&self) -> Result<u64, BlockchainError> {
+        Ok(match self.database.get(keys::mpn_account_count())? {
+            Some(b) => b.try_into()?,
+            None => 0,
+        })
     }
 }
 

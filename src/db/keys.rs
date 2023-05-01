@@ -275,6 +275,10 @@ pub fn mpn_account_index(mpn_address: &MpnAddress, index: u64) -> StringKey {
     format!("MPN-{}-{}", mpn_address, index).into()
 }
 
+pub fn mpn_account_count() -> StringKey {
+    "MPN-CNT".into()
+}
+
 pub fn local_prefix(contract_id: &ContractId) -> String {
     format!("S-{}", contract_id)
 }
