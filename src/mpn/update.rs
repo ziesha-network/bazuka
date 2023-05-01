@@ -1,30 +1,30 @@
 use super::*;
-use crate::blockchain::BlockchainError;
+use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::{ContractId, TokenId, ZkHasher};
 use crate::db::{keys, KvStore, WriteOp};
 use crate::zk::{KvStoreStateManager, ZkCompressedState, ZkDataLocator, ZkScalar};
 use rayon::prelude::*;
 
-pub fn update<K: KvStore>(
+pub fn update<K: KvStore, B: Blockchain<K>>(
     mpn_contract_id: ContractId,
     mpn_log4_account_capacity: u8,
     log4_token_tree_size: u8,
     log4_batch_size: u8,
     fee_token: TokenId,
-    db: &mut K,
+    db: &mut B,
     txs: &[MpnTransaction],
 ) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<UpdateTransition>), BlockchainError> {
     let mut rejected = Vec::new();
     let mut accepted = Vec::new();
     let mut transitions = Vec::new();
 
-    let root = KvStoreStateManager::<ZkHasher>::root(db, mpn_contract_id).unwrap();
-    let height = KvStoreStateManager::<ZkHasher>::height_of(db, mpn_contract_id).unwrap();
+    let mut mirror = db.database().mirror();
+
+    let root = KvStoreStateManager::<ZkHasher>::root(&mirror, mpn_contract_id).unwrap();
+    let height = KvStoreStateManager::<ZkHasher>::height_of(&mirror, mpn_contract_id).unwrap();
 
     let state = root.state_hash;
     let mut state_size = root.state_size;
-
-    let mut mirror = db.mirror();
 
     let txs = txs
         .into_par_iter()
@@ -248,7 +248,7 @@ pub fn update<K: KvStore>(
     };
 
     let ops = mirror.to_ops();
-    db.update(&ops)?;
+    db.database_mut().update(&ops)?;
     Ok((
         new_root,
         ZkPublicInputs {

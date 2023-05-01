@@ -1,5 +1,5 @@
 use super::*;
-use crate::blockchain::BlockchainError;
+use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::{ContractId, ZkHasher};
 use crate::db::{keys, KvStore, WriteOp};
 use crate::zk::{
@@ -7,21 +7,21 @@ use crate::zk::{
     ZkStateModel,
 };
 
-pub fn withdraw<K: KvStore>(
+pub fn withdraw<K: KvStore, B: Blockchain<K>>(
     mpn_contract_id: ContractId,
     mpn_log4_account_capacity: u8,
     log4_token_tree_size: u8,
     log4_batch_size: u8,
-    db: &mut K,
+    db: &mut B,
     txs: &[MpnWithdraw],
 ) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<WithdrawTransition>), BlockchainError> {
-    let mut mirror = db.mirror();
+    let mut mirror = db.database().mirror();
 
     let mut transitions = Vec::new();
     let mut rejected = Vec::new();
     let mut accepted = Vec::new();
-    let height = KvStoreStateManager::<ZkHasher>::height_of(db, mpn_contract_id).unwrap();
-    let root = KvStoreStateManager::<ZkHasher>::root(db, mpn_contract_id).unwrap();
+    let height = KvStoreStateManager::<ZkHasher>::height_of(&mirror, mpn_contract_id).unwrap();
+    let root = KvStoreStateManager::<ZkHasher>::root(&mirror, mpn_contract_id).unwrap();
 
     let state = root.state_hash;
     let mut state_size = root.state_size;
@@ -228,7 +228,7 @@ pub fn withdraw<K: KvStore>(
     let aux_data = state_builder.compress().unwrap().state_hash;
 
     let ops = mirror.to_ops();
-    db.update(&ops)?;
+    db.database_mut().update(&ops)?;
     Ok((
         new_root,
         ZkPublicInputs {

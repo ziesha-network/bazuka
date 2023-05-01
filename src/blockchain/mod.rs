@@ -56,8 +56,10 @@ pub struct ZkCompressedStateChange {
 }
 
 pub trait Blockchain<K: KvStore> {
+    fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>>;
     fn epoch_randomness(&self) -> Result<<Hasher as Hash>::Output, BlockchainError>;
     fn database(&self) -> &K;
+    fn database_mut(&mut self) -> &mut K;
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn get_mpn_account_count(&self) -> Result<u64, BlockchainError>;
     fn get_mpn_account_indices(&self, addr: MpnAddress) -> Result<Vec<u64>, BlockchainError>;
@@ -188,13 +190,6 @@ impl<K: KvStore> KvStoreChain<K> {
         }
 
         Ok(chain)
-    }
-
-    pub fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
-        KvStoreChain {
-            database: self.database.mirror(),
-            config: self.config.clone(),
-        }
     }
 
     fn isolated<F, R>(&self, f: F) -> Result<(Vec<WriteOp>, R), BlockchainError>
@@ -682,6 +677,9 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     fn database(&self) -> &K {
         &self.database
     }
+    fn database_mut(&mut self) -> &mut K {
+        &mut self.database
+    }
     fn min_validator_reward(&self, validator: Address) -> Result<Amount, BlockchainError> {
         let (_, result) =
             self.isolated(|chain| Ok(chain.pay_validator_and_delegators(validator, Amount(0))?))?;
@@ -764,6 +762,13 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             indices.push(keys::MpnAccountIndexDbKey::try_from(k)?.index);
         }
         Ok(indices)
+    }
+
+    fn fork_on_ram(&self) -> KvStoreChain<RamMirrorKvStore<'_, K>> {
+        KvStoreChain {
+            database: self.database.mirror(),
+            config: self.config.clone(),
+        }
     }
 }
 

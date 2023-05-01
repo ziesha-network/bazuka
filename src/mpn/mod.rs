@@ -3,7 +3,7 @@ pub mod deposit;
 pub mod update;
 pub mod withdraw;
 
-use crate::blockchain::BlockchainError;
+use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::{
     Amount, ContractId, ContractUpdate, Money, MpnAddress, MpnDeposit, MpnWithdraw, Signature,
     TokenId, Transaction, TransactionAndDelta, TransactionData,
@@ -245,9 +245,9 @@ impl MpnWork {
     }
 }
 
-pub fn prepare_works<K: KvStore>(
+pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
     config: &MpnConfig,
-    db: &K,
+    db: &B,
     workers: &HashMap<MpnAddress, MpnWorker>,
     mut deposits: Vec<MpnDeposit>,
     withdraws: Vec<MpnWithdraw>,
@@ -261,7 +261,7 @@ pub fn prepare_works<K: KvStore>(
     validator_tx_builder: TxBuilder,
     user_tx_builder: TxBuilder,
 ) -> Result<MpnWorkPool, MpnError> {
-    let mut mirror = db.mirror();
+    let mut mirror = db.fork_on_ram();
     let mut works = Vec::new();
     let mut workers = workers.values().cloned().collect::<Vec<_>>();
     if workers.len() == 0 {
@@ -395,7 +395,7 @@ pub fn prepare_works<K: KvStore>(
         });
         worker_id = (worker_id + 1) % workers.len();
     }
-    let ops = mirror.to_ops();
+    let ops = mirror.database().to_ops();
     let final_delta = extract_delta(&ops);
     Ok(MpnWorkPool {
         config: config.clone(),
