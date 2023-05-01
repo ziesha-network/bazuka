@@ -60,6 +60,7 @@ pub trait Blockchain<K: KvStore> {
     fn database(&self) -> &K;
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
     fn get_mpn_account_count(&self) -> Result<u64, BlockchainError>;
+    fn get_mpn_account_indices(&self, addr: MpnAddress) -> Result<Vec<u64>, BlockchainError>;
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError>;
     fn get_stakers(&self) -> Result<Vec<(Address, Amount)>, BlockchainError>;
     fn get_auto_delegate_ratio(
@@ -752,6 +753,17 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             Some(b) => b.try_into()?,
             None => 0,
         })
+    }
+    fn get_mpn_account_indices(&self, addr: MpnAddress) -> Result<Vec<u64>, BlockchainError> {
+        let mut indices = Vec::new();
+        for (k, v) in self
+            .database
+            .pairs(keys::MpnAccountIndexDbKey::prefix(&addr).into())?
+            .into_iter()
+        {
+            indices.push(keys::MpnAccountIndexDbKey::try_from(k)?.index);
+        }
+        Ok(indices)
     }
 }
 

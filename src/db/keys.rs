@@ -275,6 +275,33 @@ pub fn mpn_account_index(mpn_address: &MpnAddress, index: u64) -> StringKey {
     format!("MPN-{}-{}", mpn_address, index).into()
 }
 
+pub struct MpnAccountIndexDbKey {
+    pub address: MpnAddress,
+    pub index: u64,
+}
+impl Into<StringKey> for MpnAccountIndexDbKey {
+    fn into(self) -> StringKey {
+        format!("{}-{:016x}", Self::prefix(&self.address), self.index).into()
+    }
+}
+impl TryFrom<StringKey> for MpnAccountIndexDbKey {
+    type Error = ParseDbKeyError;
+    fn try_from(key: StringKey) -> Result<Self, ParseDbKeyError> {
+        let splitted = key.0.split("-").collect::<Vec<_>>();
+        if splitted.len() != 3 {
+            return Err(ParseDbKeyError::Invalid);
+        }
+        let address: MpnAddress = splitted[1].parse().map_err(|_| ParseDbKeyError::Invalid)?;
+        let index: u64 = splitted[2].parse().map_err(|_| ParseDbKeyError::Invalid)?;
+        Ok(Self { address, index })
+    }
+}
+impl MpnAccountIndexDbKey {
+    pub fn prefix(addr: &MpnAddress) -> String {
+        format!("MPN-{}", addr).into()
+    }
+}
+
 pub fn mpn_account_count() -> StringKey {
     "MPN-CNT".into()
 }

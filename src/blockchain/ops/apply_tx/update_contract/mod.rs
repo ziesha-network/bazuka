@@ -19,15 +19,16 @@ pub fn index_mpn_accounts<K: KvStore>(
                 .or_insert(v.unwrap_or_default());
         }
     }
-    for (ind, data) in org {
+    for (index, data) in org {
         let x = data.get(&2).ok_or(BlockchainError::Inconsistency)?;
         let y = data.get(&3).ok_or(BlockchainError::Inconsistency)?;
-        let addr = MpnAddress {
+        let address = MpnAddress {
             pub_key: jubjub::PublicKey(jubjub::PointAffine(*x, *y).compress()),
         };
-        chain
-            .database
-            .update(&[WriteOp::Put(keys::mpn_account_index(&addr, ind), ().into())])?;
+        chain.database.update(&[WriteOp::Put(
+            keys::MpnAccountIndexDbKey { address, index }.into(),
+            ().into(),
+        )])?;
     }
     Ok(())
 }
