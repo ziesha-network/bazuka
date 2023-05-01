@@ -31,7 +31,16 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
             break;
         }
 
-        let account_index = 0;
+        let mpn_addr = MpnAddress {
+            pub_key: tx.zk_address.clone(),
+        };
+        let account_index = if let Some(ind) = db.get_mpn_account_indices(mpn_addr.clone())?.first()
+        {
+            *ind
+        } else {
+            rejected.push(tx.clone());
+            continue;
+        };
 
         let acc = KvStoreStateManager::<ZkHasher>::get_mpn_account(
             &mirror,
@@ -251,10 +260,11 @@ mod tests {
 
     #[test]
     fn test_withdraw_empty() {
-        let conf = crate::config::blockchain::get_blockchain_config().mpn_config;
-        let (mut db, mpn_contract_id) = fresh_db(conf.clone());
+        let chain_conf = crate::config::blockchain::get_blockchain_config();
+        let conf = chain_conf.mpn_config.clone();
+        let mut db = fresh_db(chain_conf);
         withdraw(
-            mpn_contract_id,
+            conf.mpn_contract_id,
             conf.log4_tree_size,
             conf.log4_token_tree_size,
             conf.log4_withdraw_batch_size,
@@ -266,12 +276,13 @@ mod tests {
 
     #[test]
     fn test_withdraw() {
-        let conf = crate::config::blockchain::get_blockchain_config().mpn_config;
-        let (mut db, mpn_contract_id) = fresh_db(conf.clone());
+        let chain_conf = crate::config::blockchain::get_blockchain_config();
+        let conf = chain_conf.mpn_config.clone();
+        let mut db = fresh_db(chain_conf);
         let abc = TxBuilder::new(&Vec::from("ABC"));
         let initial_dep = abc.deposit_mpn(
             "".into(),
-            mpn_contract_id,
+            conf.mpn_contract_id,
             abc.get_mpn_address(),
             1,
             Money {
@@ -284,7 +295,7 @@ mod tests {
         // An initial amount to be withdrawn
         assert_eq!(
             deposit::deposit(
-                mpn_contract_id,
+                conf.mpn_contract_id,
                 conf.log4_tree_size,
                 conf.log4_token_tree_size,
                 conf.log4_deposit_batch_size,
@@ -299,7 +310,7 @@ mod tests {
 
         let withdrawal = abc.withdraw_mpn(
             "".into(),
-            mpn_contract_id,
+            conf.mpn_contract_id,
             1,
             Money {
                 amount: Amount(30),
@@ -314,7 +325,7 @@ mod tests {
 
         assert_eq!(
             withdraw(
-                mpn_contract_id,
+                conf.mpn_contract_id,
                 conf.log4_tree_size,
                 conf.log4_token_tree_size,
                 conf.log4_withdraw_batch_size,

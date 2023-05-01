@@ -521,32 +521,12 @@ impl UpdateTransition {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::blockchain::BlockchainConfig;
+    use crate::blockchain::KvStoreChain;
     use crate::core::ContractId;
-    use crate::db::{keys, KvStore, RamKvStore, WriteOp};
-    use crate::zk::ZkContract;
-    use std::str::FromStr;
+    use crate::db::RamKvStore;
 
-    pub fn fresh_db(mpn_config: MpnConfig) -> (RamKvStore, ContractId) {
-        let mpn_contract_id = ContractId::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000000",
-        )
-        .unwrap();
-        let mut db = RamKvStore::new();
-        db.update(&[WriteOp::Put(
-            keys::contract(&mpn_contract_id),
-            ZkContract {
-                initial_state: ZkCompressedState::empty::<crate::core::ZkHasher>(
-                    mpn_config.state_model(),
-                )
-                .into(),
-                state_model: mpn_config.state_model(),
-                deposit_functions: vec![],
-                withdraw_functions: vec![],
-                functions: vec![],
-            }
-            .into(),
-        )])
-        .unwrap();
-        (db, mpn_contract_id)
+    pub fn fresh_db(conf: BlockchainConfig) -> KvStoreChain<RamKvStore> {
+        KvStoreChain::new(RamKvStore::new(), conf).unwrap()
     }
 }

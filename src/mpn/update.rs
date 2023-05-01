@@ -22,6 +22,8 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
 
     let root = KvStoreStateManager::<ZkHasher>::root(&mirror, mpn_contract_id).unwrap();
     let height = KvStoreStateManager::<ZkHasher>::height_of(&mirror, mpn_contract_id).unwrap();
+    let mpn_account_count = db.get_mpn_account_count()?;
+    let mut new_account_indices = HashMap::<MpnAddress, u64>::new();
 
     let state = root.state_hash;
     let mut state_size = root.state_size;
@@ -40,8 +42,31 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
             break;
         }
 
-        let src_index = 0;
-        let dst_index = 0;
+        let src_mpn_addr = MpnAddress {
+            pub_key: tx.src_pub_key.clone(),
+        };
+        let dst_mpn_addr = MpnAddress {
+            pub_key: tx.dst_pub_key.clone(),
+        };
+        let src_index = if let Some(ind) = db.get_mpn_account_indices(src_mpn_addr.clone())?.first()
+        {
+            *ind
+        } else {
+            rejected.push(tx.clone());
+            continue;
+        };
+        let dst_index = if let Some(ind) = db.get_mpn_account_indices(dst_mpn_addr.clone())?.first()
+        {
+            *ind
+        } else {
+            if let Some(ind) = new_account_indices.get(&dst_mpn_addr) {
+                *ind
+            } else {
+                let ind = mpn_account_count + new_account_indices.len() as u64;
+                new_account_indices.insert(dst_mpn_addr.clone(), ind);
+                ind
+            }
+        };
 
         let src_before =
             KvStoreStateManager::<ZkHasher>::get_mpn_account(&mirror, mpn_contract_id, src_index)

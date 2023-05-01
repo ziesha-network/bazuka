@@ -371,13 +371,18 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     }
 
     fn get_mpn_account(&self, addr: MpnAddress) -> Result<zk::MpnAccount, BlockchainError> {
+        let index = if let Some(ind) = self.get_mpn_account_indices(addr.clone())?.first() {
+            *ind
+        } else {
+            return Ok(Default::default());
+        };
         let acc = zk::KvStoreStateManager::<CoreZkHasher>::get_mpn_account(
             &self.database,
             self.config.mpn_config.mpn_contract_id,
             index,
         )?;
         if acc.address.is_on_curve() && acc.address != addr.pub_key.0.decompress() {
-            return Err(BlockchainError::MpnAddressCannotBeUsed);
+            return Err(BlockchainError::Inconsistency);
         }
         Ok(acc)
     }
@@ -754,7 +759,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     }
     fn get_mpn_account_indices(&self, addr: MpnAddress) -> Result<Vec<u64>, BlockchainError> {
         let mut indices = Vec::new();
-        for (k, v) in self
+        for (k, _) in self
             .database
             .pairs(keys::MpnAccountIndexDbKey::prefix(&addr).into())?
             .into_iter()
