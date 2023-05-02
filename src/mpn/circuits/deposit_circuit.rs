@@ -130,9 +130,12 @@ impl Circuit<BellmanFr> for DepositCircuit {
             self.transitions.iter().zip(tx_wits.into_iter())
         {
             // Tx index should always have at most LOG4_TREE_SIZE * 2 bits
-            let tx_index_wit =
-                UnsignedInteger::constrain_strict(&mut *cs, tx_pub_key_wit.x.clone().into())?
-                    .extract_bits(self.log4_tree_size as usize * 2);
+
+            let tx_index_wit = UnsignedInteger::alloc(
+                &mut *cs,
+                (trans.account_index as u64).into(),
+                self.log4_tree_size as usize * 2,
+            )?;
 
             let tx_token_index_wit = UnsignedInteger::alloc(
                 &mut *cs,

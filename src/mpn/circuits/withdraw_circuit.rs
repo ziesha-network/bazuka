@@ -188,7 +188,7 @@ impl Circuit<BellmanFr> for WithdrawCircuit {
             // Tx index should always have at most LOG4_TREE_SIZE * 2 bits
             let tx_index_wit = UnsignedInteger::alloc(
                 &mut *cs,
-                (trans.tx.zk_address_index(self.log4_tree_size) as u64).into(),
+                (trans.account_index as u64).into(),
                 self.log4_tree_size as usize * 2,
             )?;
 

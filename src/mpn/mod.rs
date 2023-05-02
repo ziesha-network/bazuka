@@ -3,7 +3,7 @@ pub mod deposit;
 pub mod update;
 pub mod withdraw;
 
-use crate::blockchain::BlockchainError;
+use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::{
     Amount, ContractId, ContractUpdate, Money, MpnAddress, MpnDeposit, MpnWithdraw, Signature,
     TokenId, Transaction, TransactionAndDelta, TransactionData,
@@ -245,9 +245,9 @@ impl MpnWork {
     }
 }
 
-pub fn prepare_works<K: KvStore>(
+pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
     config: &MpnConfig,
-    db: &K,
+    db: &B,
     workers: &HashMap<MpnAddress, MpnWorker>,
     mut deposits: Vec<MpnDeposit>,
     withdraws: Vec<MpnWithdraw>,
@@ -261,7 +261,7 @@ pub fn prepare_works<K: KvStore>(
     validator_tx_builder: TxBuilder,
     user_tx_builder: TxBuilder,
 ) -> Result<MpnWorkPool, MpnError> {
-    let mut mirror = db.mirror();
+    let mut mirror = db.fork_on_ram();
     let mut works = Vec::new();
     let mut workers = workers.values().cloned().collect::<Vec<_>>();
     if workers.len() == 0 {
@@ -272,6 +272,7 @@ pub fn prepare_works<K: KvStore>(
     }
     let mut worker_id = 0;
     let mut rewards = HashMap::<MpnAddress, Amount>::new();
+    let mut new_account_indices = HashMap::<MpnAddress, u64>::new();
 
     deposits.insert(
         0,
@@ -296,6 +297,7 @@ pub fn prepare_works<K: KvStore>(
             config.log4_deposit_batch_size,
             &mut mirror,
             &deposits,
+            &mut new_account_indices,
         )?;
         log::info!("Made MPN-Deposit block of {} txs.", transitions.len());
         for (i, tx) in transitions.iter().enumerate() {
@@ -322,6 +324,7 @@ pub fn prepare_works<K: KvStore>(
             config.log4_withdraw_batch_size,
             &mut mirror,
             &withdraws,
+            &mut new_account_indices,
         )?;
         log::info!("Made MPN-Withdraw block of {} txs.", transitions.len());
         for (i, tx) in transitions.iter().enumerate() {
@@ -380,6 +383,7 @@ pub fn prepare_works<K: KvStore>(
             TokenId::Ziesha,
             &mut mirror,
             &updates,
+            &mut new_account_indices,
         )?;
         log::info!("Made MPN-Update block of {} txs.", transitions.len());
         for (i, tx) in transitions.iter().enumerate() {
@@ -395,7 +399,7 @@ pub fn prepare_works<K: KvStore>(
         });
         worker_id = (worker_id + 1) % workers.len();
     }
-    let ops = mirror.to_ops();
+    let ops = mirror.database().to_ops();
     let final_delta = extract_delta(&ops);
     Ok(MpnWorkPool {
         config: config.clone(),
@@ -413,6 +417,7 @@ pub struct DepositTransition {
     pub before_balances_hash: ZkScalar,
     pub before_balance: Money,
     pub proof: Vec<[ZkScalar; 3]>,
+    pub account_index: u64,
     pub token_index: u64,
     pub balance_proof: Vec<[ZkScalar; 3]>,
 }
@@ -426,6 +431,7 @@ impl DepositTransition {
             before_balances_hash: Default::default(),
             before_balance: Default::default(),
             proof: vec![Default::default(); log4_tree_size as usize],
+            account_index: Default::default(),
             token_index: Default::default(),
             balance_proof: vec![Default::default(); log4_token_tree_size as usize],
         }
@@ -440,6 +446,7 @@ pub struct WithdrawTransition {
     pub before_token_balance: Money,
     pub before_fee_balance: Money,
     pub proof: Vec<[ZkScalar; 3]>,
+    pub account_index: u64,
     pub token_index: u64,
     pub token_balance_proof: Vec<[ZkScalar; 3]>,
     pub before_token_hash: ZkScalar,
@@ -455,6 +462,7 @@ impl WithdrawTransition {
             before: Default::default(),
             before_token_balance: Default::default(),
             before_fee_balance: Default::default(),
+            account_index: Default::default(),
             proof: vec![Default::default(); log4_tree_size as usize],
             token_index: Default::default(),
             token_balance_proof: vec![Default::default(); log4_token_tree_size as usize],
@@ -474,6 +482,7 @@ pub struct UpdateTransition {
     pub src_before_balance: Money,
     pub src_before_fee_balance: Money,
     pub src_proof: Vec<[ZkScalar; 3]>,
+    pub src_index: u64,
     pub src_token_index: u64,
     pub src_balance_proof: Vec<[ZkScalar; 3]>,
     pub src_fee_token_index: u64,
@@ -482,6 +491,7 @@ pub struct UpdateTransition {
     pub dst_before_balances_hash: ZkScalar,
     pub dst_before_balance: Money,
     pub dst_proof: Vec<[ZkScalar; 3]>,
+    pub dst_index: u64,
     pub dst_token_index: u64,
     pub dst_balance_proof: Vec<[ZkScalar; 3]>,
 }
@@ -495,6 +505,7 @@ impl UpdateTransition {
             src_before_balances_hash: Default::default(),
             src_before_balance: Default::default(),
             src_before_fee_balance: Default::default(),
+            src_index: Default::default(),
             src_proof: vec![Default::default(); log4_tree_size as usize],
             src_token_index: Default::default(),
             src_balance_proof: vec![Default::default(); log4_token_tree_size as usize],
@@ -503,6 +514,7 @@ impl UpdateTransition {
             dst_before: Default::default(),
             dst_before_balances_hash: Default::default(),
             dst_before_balance: Default::default(),
+            dst_index: Default::default(),
             dst_proof: vec![Default::default(); log4_tree_size as usize],
             dst_token_index: Default::default(),
             dst_balance_proof: vec![Default::default(); log4_token_tree_size as usize],
@@ -512,33 +524,11 @@ impl UpdateTransition {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::core::ContractId;
-    use crate::db::{keys, KvStore, RamKvStore, WriteOp};
-    use crate::zk::ZkContract;
-    use std::str::FromStr;
+    use crate::blockchain::BlockchainConfig;
+    use crate::blockchain::KvStoreChain;
+    use crate::db::RamKvStore;
 
-    pub fn fresh_db(mpn_config: MpnConfig) -> (RamKvStore, ContractId) {
-        let mpn_contract_id = ContractId::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000000",
-        )
-        .unwrap();
-        let mut db = RamKvStore::new();
-        db.update(&[WriteOp::Put(
-            keys::contract(&mpn_contract_id),
-            ZkContract {
-                initial_state: ZkCompressedState::empty::<crate::core::ZkHasher>(
-                    mpn_config.state_model(),
-                )
-                .into(),
-                state_model: mpn_config.state_model(),
-                deposit_functions: vec![],
-                withdraw_functions: vec![],
-                functions: vec![],
-            }
-            .into(),
-        )])
-        .unwrap();
-        (db, mpn_contract_id)
+    pub fn fresh_db(conf: BlockchainConfig) -> KvStoreChain<RamKvStore> {
+        KvStoreChain::new(RamKvStore::new(), conf).unwrap()
     }
 }

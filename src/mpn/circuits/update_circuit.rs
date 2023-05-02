@@ -209,9 +209,11 @@ impl Circuit<BellmanFr> for UpdateCircuit {
                 AllocatedNum::alloc(&mut *cs, || Ok((trans.tx.nonce as u64).into()))?;
 
             // src and dst indices should only have 2 * LOG4_TREE_SIZE bits
-            let tx_src_index_wit =
-                UnsignedInteger::constrain_strict(&mut *cs, src_addr_wit.x.clone().into())?
-                    .extract_bits(self.log4_tree_size as usize * 2);
+            let tx_src_index_wit = UnsignedInteger::alloc(
+                &mut *cs,
+                (trans.src_index as u64).into(),
+                self.log4_tree_size as usize * 2,
+            )?;
             let tx_amount_token_id_wit = AllocatedNum::alloc(&mut *cs, || {
                 Ok(Into::<ZkScalar>::into(trans.tx.amount.token_id).into())
             })?;
@@ -332,9 +334,11 @@ impl Circuit<BellmanFr> for UpdateCircuit {
             // Destination address should be on curve in case transaction slot is non-empty
             tx_dst_addr_wit.assert_on_curve(&mut *cs, &enabled_wit)?;
 
-            let tx_dst_index_wit =
-                UnsignedInteger::constrain_strict(&mut *cs, tx_dst_addr_wit.x.clone().into())?
-                    .extract_bits(self.log4_tree_size as usize * 2);
+            let tx_dst_index_wit = UnsignedInteger::alloc(
+                &mut *cs,
+                (trans.dst_index as u64).into(),
+                self.log4_tree_size as usize * 2,
+            )?;
 
             let dst_tx_nonce_wit =
                 AllocatedNum::alloc(&mut *cs, || Ok((trans.dst_before.tx_nonce as u64).into()))?;

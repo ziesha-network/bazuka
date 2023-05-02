@@ -32,10 +32,6 @@ pub trait SignatureScheme: Clone + Serialize + Default {
     fn verify(pk: &Self::Pub, msg: &[u8], sig: &Self::Sig) -> bool;
 }
 
-pub trait DeriveMpnAccountIndex {
-    fn mpn_account_index(&self, log4_account_capacity: u8) -> u64;
-}
-
 pub trait ZkSignatureScheme: Clone + Serialize + Default {
     type Pub: Clone
         + Debug

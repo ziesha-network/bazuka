@@ -1,5 +1,5 @@
 use super::*;
-use crate::blockchain::BlockchainError;
+use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::{ContractId, ZkHasher};
 use crate::db::{keys, KvStore, WriteOp};
 use crate::zk::{
@@ -7,21 +7,22 @@ use crate::zk::{
     ZkStateModel,
 };
 
-pub fn withdraw<K: KvStore>(
+pub fn withdraw<K: KvStore, B: Blockchain<K>>(
     mpn_contract_id: ContractId,
     mpn_log4_account_capacity: u8,
     log4_token_tree_size: u8,
     log4_batch_size: u8,
-    db: &mut K,
+    db: &mut B,
     txs: &[MpnWithdraw],
+    new_account_indices: &HashMap<MpnAddress, u64>,
 ) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<WithdrawTransition>), BlockchainError> {
-    let mut mirror = db.mirror();
+    let mut mirror = db.database().mirror();
 
     let mut transitions = Vec::new();
     let mut rejected = Vec::new();
     let mut accepted = Vec::new();
-    let height = KvStoreStateManager::<ZkHasher>::height_of(db, mpn_contract_id).unwrap();
-    let root = KvStoreStateManager::<ZkHasher>::root(db, mpn_contract_id).unwrap();
+    let height = KvStoreStateManager::<ZkHasher>::height_of(&mirror, mpn_contract_id).unwrap();
+    let root = KvStoreStateManager::<ZkHasher>::root(&mirror, mpn_contract_id).unwrap();
 
     let state = root.state_hash;
     let mut state_size = root.state_size;
@@ -30,10 +31,26 @@ pub fn withdraw<K: KvStore>(
         if transitions.len() == 1 << (2 * log4_batch_size) {
             break;
         }
+
+        let mpn_addr = MpnAddress {
+            pub_key: tx.zk_address.clone(),
+        };
+        let account_index = if let Some(ind) = db.get_mpn_account_indices(mpn_addr.clone())?.first()
+        {
+            *ind
+        } else {
+            if let Some(ind) = new_account_indices.get(&mpn_addr) {
+                *ind
+            } else {
+                rejected.push(tx.clone());
+                continue;
+            }
+        };
+
         let acc = KvStoreStateManager::<ZkHasher>::get_mpn_account(
             &mirror,
             mpn_contract_id,
-            tx.zk_address_index(mpn_log4_account_capacity),
+            account_index,
         )
         .unwrap();
 
@@ -60,7 +77,6 @@ pub fn withdraw<K: KvStore>(
             || tx.zk_nonce != acc.withdraw_nonce + 1
             || tx.payment.amount.token_id != acc_token.token_id
             || tx.payment.amount.amount > acc_token.amount
-            || tx.zk_address_index(mpn_log4_account_capacity) > 0x3fffffff
         {
             println!("{} {}", tx.zk_nonce, acc.withdraw_nonce);
             rejected.push(tx.clone());
@@ -77,7 +93,7 @@ pub fn withdraw<K: KvStore>(
             let token_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 &mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
+                ZkDataLocator(vec![account_index, 4]),
                 zk_token_index,
             )
             .unwrap();
@@ -86,7 +102,7 @@ pub fn withdraw<K: KvStore>(
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut mirror,
                 mpn_contract_id,
-                tx.zk_address_index(mpn_log4_account_capacity),
+                account_index,
                 updated_acc.clone(),
                 &mut state_size,
             )
@@ -95,7 +111,7 @@ pub fn withdraw<K: KvStore>(
             let fee_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 &mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
+                ZkDataLocator(vec![account_index, 4]),
                 zk_fee_token_index,
             )
             .unwrap();
@@ -124,14 +140,14 @@ pub fn withdraw<K: KvStore>(
                 &mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
-                tx.zk_address_index(mpn_log4_account_capacity),
+                account_index,
             )
             .unwrap();
 
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut mirror,
                 mpn_contract_id,
-                tx.zk_address_index(mpn_log4_account_capacity),
+                account_index,
                 updated_acc,
                 &mut state_size,
             )
@@ -139,6 +155,7 @@ pub fn withdraw<K: KvStore>(
 
             transitions.push(WithdrawTransition {
                 enabled: true,
+                account_index,
                 token_index: zk_token_index,
                 fee_token_index: zk_fee_token_index,
                 tx: tx.clone(),
@@ -225,7 +242,7 @@ pub fn withdraw<K: KvStore>(
     let aux_data = state_builder.compress().unwrap().state_hash;
 
     let ops = mirror.to_ops();
-    db.update(&ops)?;
+    db.database_mut().update(&ops)?;
     Ok((
         new_root,
         ZkPublicInputs {
@@ -248,27 +265,31 @@ mod tests {
 
     #[test]
     fn test_withdraw_empty() {
-        let conf = crate::config::blockchain::get_blockchain_config().mpn_config;
-        let (mut db, mpn_contract_id) = fresh_db(conf.clone());
+        let chain_conf = crate::config::blockchain::get_blockchain_config();
+        let conf = chain_conf.mpn_config.clone();
+        let mut db = fresh_db(chain_conf);
         withdraw(
-            mpn_contract_id,
+            conf.mpn_contract_id,
             conf.log4_tree_size,
             conf.log4_token_tree_size,
             conf.log4_withdraw_batch_size,
             &mut db,
             &[],
+            &Default::default(),
         )
         .unwrap();
     }
 
     #[test]
     fn test_withdraw() {
-        let conf = crate::config::blockchain::get_blockchain_config().mpn_config;
-        let (mut db, mpn_contract_id) = fresh_db(conf.clone());
+        let mut new_account_indices = HashMap::new();
+        let chain_conf = crate::config::blockchain::get_blockchain_config();
+        let conf = chain_conf.mpn_config.clone();
+        let mut db = fresh_db(chain_conf);
         let abc = TxBuilder::new(&Vec::from("ABC"));
         let initial_dep = abc.deposit_mpn(
             "".into(),
-            mpn_contract_id,
+            conf.mpn_contract_id,
             abc.get_mpn_address(),
             1,
             Money {
@@ -281,12 +302,13 @@ mod tests {
         // An initial amount to be withdrawn
         assert_eq!(
             deposit::deposit(
-                mpn_contract_id,
+                conf.mpn_contract_id,
                 conf.log4_tree_size,
                 conf.log4_token_tree_size,
                 conf.log4_deposit_batch_size,
                 &mut db,
                 &[initial_dep],
+                &mut new_account_indices
             )
             .unwrap()
             .2
@@ -296,7 +318,7 @@ mod tests {
 
         let withdrawal = abc.withdraw_mpn(
             "".into(),
-            mpn_contract_id,
+            conf.mpn_contract_id,
             1,
             Money {
                 amount: Amount(30),
@@ -311,12 +333,13 @@ mod tests {
 
         assert_eq!(
             withdraw(
-                mpn_contract_id,
+                conf.mpn_contract_id,
                 conf.log4_tree_size,
                 conf.log4_token_tree_size,
                 conf.log4_withdraw_batch_size,
                 &mut db,
                 &[withdrawal],
+                &new_account_indices,
             )
             .unwrap()
             .2

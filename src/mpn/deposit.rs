@@ -1,5 +1,5 @@
 use super::*;
-use crate::blockchain::BlockchainError;
+use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::{ContractId, ZkHasher};
 use crate::db::{keys, KvStore, WriteOp};
 use crate::zk::{
@@ -8,21 +8,24 @@ use crate::zk::{
 };
 use std::collections::HashSet;
 
-pub fn deposit<K: KvStore>(
+pub fn deposit<K: KvStore, B: Blockchain<K>>(
     mpn_contract_id: ContractId,
     mpn_log4_account_capacity: u8,
     log4_token_tree_size: u8,
     log4_batch_size: u8,
-    db: &mut K,
+    db: &mut B,
     txs: &[MpnDeposit],
+    new_account_indices: &mut HashMap<MpnAddress, u64>,
 ) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<DepositTransition>), BlockchainError> {
-    let mut mirror = db.mirror();
+    let mut mirror = db.database().mirror();
 
     let mut transitions = Vec::new();
     let mut rejected = Vec::new();
     let mut accepted = Vec::new();
-    let height = KvStoreStateManager::<ZkHasher>::height_of(db, mpn_contract_id).unwrap();
-    let root = KvStoreStateManager::<ZkHasher>::root(db, mpn_contract_id).unwrap();
+    let height = KvStoreStateManager::<ZkHasher>::height_of(&mirror, mpn_contract_id).unwrap();
+    let root = KvStoreStateManager::<ZkHasher>::root(&mirror, mpn_contract_id).unwrap();
+
+    let mpn_account_count = db.get_mpn_account_count()?;
 
     let state = root.state_hash;
     let mut state_size = root.state_size;
@@ -32,10 +35,28 @@ pub fn deposit<K: KvStore>(
         if transitions.len() == 1 << (2 * log4_batch_size) {
             break;
         }
+
+        let mpn_addr = MpnAddress {
+            pub_key: tx.zk_address.clone(),
+        };
+        let mut new_index = None;
+        let account_index = if let Some(ind) = db.get_mpn_account_indices(mpn_addr.clone())?.first()
+        {
+            *ind
+        } else {
+            if let Some(ind) = new_account_indices.get(&mpn_addr) {
+                *ind
+            } else {
+                let ind = mpn_account_count + new_account_indices.len() as u64;
+                new_index = Some(ind);
+                ind
+            }
+        };
+
         let acc = KvStoreStateManager::<ZkHasher>::get_mpn_account(
             &mirror,
             mpn_contract_id,
-            tx.zk_address_index(mpn_log4_account_capacity),
+            account_index,
         )
         .unwrap();
         let src_pub = tx.payment.src.clone();
@@ -73,7 +94,7 @@ pub fn deposit<K: KvStore>(
             let balance_proof = KvStoreStateManager::<ZkHasher>::prove(
                 &mirror,
                 mpn_contract_id,
-                ZkDataLocator(vec![tx.zk_address_index(mpn_log4_account_capacity), 4]),
+                ZkDataLocator(vec![account_index, 4]),
                 zk_token_index,
             )
             .unwrap();
@@ -81,22 +102,26 @@ pub fn deposit<K: KvStore>(
                 &mirror,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
-                tx.zk_address_index(mpn_log4_account_capacity),
+                account_index,
             )
             .unwrap();
 
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
                 &mut mirror,
                 mpn_contract_id,
-                tx.zk_address_index(mpn_log4_account_capacity),
+                account_index,
                 updated_acc,
                 &mut state_size,
             )
             .unwrap();
 
+            if let Some(new_ind) = new_index {
+                new_account_indices.insert(mpn_addr.clone(), new_ind);
+            }
             transitions.push(DepositTransition {
                 enabled: true,
                 tx: tx.clone(),
+                account_index,
                 token_index: zk_token_index,
                 before: acc.clone(),
                 before_balances_hash: acc.tokens_hash::<ZkHasher>(log4_token_tree_size),
@@ -164,7 +189,7 @@ pub fn deposit<K: KvStore>(
     let aux_data = state_builder.compress().unwrap().state_hash;
 
     let ops = mirror.to_ops();
-    db.update(&ops)?;
+    db.database_mut().update(&ops)?;
 
     Ok((
         new_root,
