@@ -291,8 +291,9 @@ impl TryFrom<StringKey> for MpnAccountIndexDbKey {
         if splitted.len() != 3 {
             return Err(ParseDbKeyError::Invalid);
         }
+
         let address: MpnAddress = splitted[1].parse().map_err(|_| ParseDbKeyError::Invalid)?;
-        let index: u64 = splitted[2].parse().map_err(|_| ParseDbKeyError::Invalid)?;
+        let index = u64::from_str_radix(&splitted[2], 16).map_err(|_| ParseDbKeyError::Invalid)?;
         Ok(Self { address, index })
     }
 }

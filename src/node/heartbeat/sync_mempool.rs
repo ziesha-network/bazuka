@@ -31,7 +31,10 @@ pub async fn sync_mempool<K: KvStore, B: Blockchain<K>>(
             .collect::<Vec<_>>();
         for txs in resps {
             for tx in txs.into_iter().take(opts.mempool_max_fetch) {
-                ctx.mempool_add_tx(false, tx)?;
+                if let Err(e) = ctx.mempool_add_tx(false, tx.clone()) {
+                    log::info!("Skipped syncing mempool: {}", e);
+                    break;
+                }
             }
         }
     }
