@@ -14,6 +14,7 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
     log4_batch_size: u8,
     db: &mut B,
     txs: &[MpnWithdraw],
+    new_account_indices: &HashMap<MpnAddress, u64>,
 ) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<WithdrawTransition>), BlockchainError> {
     let mut mirror = db.database().mirror();
 
@@ -38,8 +39,12 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
         {
             *ind
         } else {
-            rejected.push(tx.clone());
-            continue;
+            if let Some(ind) = new_account_indices.get(&mpn_addr) {
+                *ind
+            } else {
+                rejected.push(tx.clone());
+                continue;
+            }
         };
 
         let acc = KvStoreStateManager::<ZkHasher>::get_mpn_account(
@@ -270,12 +275,14 @@ mod tests {
             conf.log4_withdraw_batch_size,
             &mut db,
             &[],
+            &Default::default(),
         )
         .unwrap();
     }
 
     #[test]
     fn test_withdraw() {
+        let mut new_account_indices = HashMap::new();
         let chain_conf = crate::config::blockchain::get_blockchain_config();
         let conf = chain_conf.mpn_config.clone();
         let mut db = fresh_db(chain_conf);
@@ -301,6 +308,7 @@ mod tests {
                 conf.log4_deposit_batch_size,
                 &mut db,
                 &[initial_dep],
+                &mut new_account_indices
             )
             .unwrap()
             .2
@@ -331,6 +339,7 @@ mod tests {
                 conf.log4_withdraw_batch_size,
                 &mut db,
                 &[withdrawal],
+                &new_account_indices,
             )
             .unwrap()
             .2

@@ -15,6 +15,7 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
     log4_batch_size: u8,
     db: &mut B,
     txs: &[MpnDeposit],
+    new_account_indices: &mut HashMap<MpnAddress, u64>,
 ) -> Result<(ZkCompressedState, ZkPublicInputs, Vec<DepositTransition>), BlockchainError> {
     let mut mirror = db.database().mirror();
 
@@ -25,7 +26,6 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
     let root = KvStoreStateManager::<ZkHasher>::root(&mirror, mpn_contract_id).unwrap();
 
     let mpn_account_count = db.get_mpn_account_count()?;
-    let mut new_account_indices = HashMap::<MpnAddress, u64>::new();
 
     let state = root.state_hash;
     let mut state_size = root.state_size;
@@ -46,9 +46,7 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
             if let Some(ind) = new_account_indices.get(&mpn_addr) {
                 *ind
             } else {
-                let ind = mpn_account_count + new_account_indices.len() as u64;
-                new_account_indices.insert(mpn_addr.clone(), ind);
-                ind
+                mpn_account_count + new_account_indices.len() as u64
             }
         };
 
@@ -114,6 +112,7 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
             )
             .unwrap();
 
+            new_account_indices.insert(mpn_addr.clone(), account_index);
             transitions.push(DepositTransition {
                 enabled: true,
                 tx: tx.clone(),

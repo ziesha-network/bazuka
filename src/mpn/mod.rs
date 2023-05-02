@@ -272,6 +272,7 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
     }
     let mut worker_id = 0;
     let mut rewards = HashMap::<MpnAddress, Amount>::new();
+    let mut new_account_indices = HashMap::<MpnAddress, u64>::new();
 
     deposits.insert(
         0,
@@ -296,6 +297,7 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             config.log4_deposit_batch_size,
             &mut mirror,
             &deposits,
+            &mut new_account_indices,
         )?;
         log::info!("Made MPN-Deposit block of {} txs.", transitions.len());
         for (i, tx) in transitions.iter().enumerate() {
@@ -322,6 +324,7 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             config.log4_withdraw_batch_size,
             &mut mirror,
             &withdraws,
+            &mut new_account_indices,
         )?;
         log::info!("Made MPN-Withdraw block of {} txs.", transitions.len());
         for (i, tx) in transitions.iter().enumerate() {
@@ -380,6 +383,7 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             TokenId::Ziesha,
             &mut mirror,
             &updates,
+            &mut new_account_indices,
         )?;
         log::info!("Made MPN-Update block of {} txs.", transitions.len());
         for (i, tx) in transitions.iter().enumerate() {
@@ -520,10 +524,8 @@ impl UpdateTransition {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::blockchain::BlockchainConfig;
     use crate::blockchain::KvStoreChain;
-    use crate::core::ContractId;
     use crate::db::RamKvStore;
 
     pub fn fresh_db(conf: BlockchainConfig) -> KvStoreChain<RamKvStore> {
