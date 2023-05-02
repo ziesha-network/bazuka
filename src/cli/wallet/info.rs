@@ -207,7 +207,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                                 pub_key: tx_builder.get_zk_address(),
                             }
                         );
-                        println!("Waiting to be activated... (Send some funds to it!)")
+                        println!("No tokens in your wallet yet!")
                     } else {
                         let acc_pk = bazuka::crypto::jubjub::PublicKey(resp.address.compress());
                         if acc_pk != tx_builder.get_zk_address() {
