@@ -18,10 +18,7 @@ pub async fn status(conf: BazukaConfig, mut wallet: WalletCollection) {
     );
     try_join!(
         async move {
-            match client.stats().await.ok() {
-                Some(resp) => println!("{:#?}", resp),
-                None => panic!("Could not receive stats from the node. Make sure the node is started and running.")
-            }
+            println!("{:#?}", client.stats().await.expect("Could not receive stats from the node. Make sure the node is started and running."));
             Ok::<(), NodeError>(())
         },
         req_loop
