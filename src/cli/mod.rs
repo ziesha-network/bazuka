@@ -28,8 +28,8 @@ use {
 
 use {
     colored::Colorize,
-    std::panic,
     std::io::{self, Write},
+    std::panic,
 };
 
 pub mod chain;
