@@ -19,12 +19,17 @@ use {
     bazuka::core::{Address, Decimal, GeneralAddress, MpnAddress, TokenId},
     bazuka::mpn::MpnWorker,
     bazuka::wallet::WalletCollection,
-    colored::Colorize,
     serde::{Deserialize, Serialize},
     std::net::SocketAddr,
     std::path::{Path, PathBuf},
     structopt::StructOpt,
     tokio::try_join,
+};
+
+use {
+    colored::Colorize,
+    std::io::{self, Write},
+    std::panic,
 };
 
 pub mod chain;
@@ -379,6 +384,21 @@ pub async fn initialize_cli() {
         .map(|f| serde_yaml::from_reader(f).unwrap());
     let wallet_path = home::home_dir().unwrap().join(Path::new(".bazuka-wallet"));
     let wallet = WalletCollection::open(wallet_path.clone()).unwrap();
+
+    panic::set_hook(Box::new(|panic_info| {
+        let default_message = "Unknown panic";
+
+        let message = panic_info
+            .payload()
+            .downcast_ref::<&str>()
+            .unwrap_or(&default_message);
+
+        let stderr = io::stderr();
+        let mut stderr_handle = stderr.lock();
+        write!(stderr_handle, "{} ", "Error:".bold().red()).unwrap();
+        stderr_handle.write_all(message.as_bytes()).unwrap();
+        stderr_handle.write_all(b"\n").unwrap();
+    }));
 
     match opts {
         CliOptions::Chain(chain_opts) => match chain_opts {
