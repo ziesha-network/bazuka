@@ -386,11 +386,11 @@ pub async fn initialize_cli() {
     let wallet = WalletCollection::open(wallet_path.clone()).unwrap();
 
     panic::set_hook(Box::new(|panic_info| {
-        let default_message = "Unknown panic";
+        let default_message = "Unknown panic".to_string();
 
         let message = panic_info
             .payload()
-            .downcast_ref::<&str>()
+            .downcast_ref::<String>()
             .unwrap_or(&default_message);
 
         let stderr = io::stderr();
