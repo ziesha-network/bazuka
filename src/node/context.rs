@@ -115,6 +115,12 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
                 self.validator_claim = Some(claim.clone());
                 log::info!("Address {} is the validator!", claim.address);
                 return Ok(true);
+            } else {
+                log::info!(
+                    "Invalid/expired validator-claim from {}. Signature validity: {}",
+                    claim.address,
+                    claim.verify_signature()
+                );
             }
         }
         Ok(false)
