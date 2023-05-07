@@ -226,6 +226,11 @@ async fn node_service<K: KvStore, B: Blockchain<K>>(
                         .await?,
                 )?);
             }
+            (Method::GET, "/logs") => {
+                *response.body_mut() = Body::from(serde_json::to_vec(
+                    &api::get_logs(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,
+                )?);
+            }
             (Method::GET, "/stats") => {
                 *response.body_mut() = Body::from(serde_json::to_vec(
                     &api::get_stats(Arc::clone(&context), serde_qs::from_str(&qs)?).await?,

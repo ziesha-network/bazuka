@@ -410,3 +410,11 @@ pub struct CheckTransactionRequest {
 pub struct CheckTransactionResponse {
     pub error: Option<String>,
 }
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetLogsRequest {}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct GetLogsResponse {
+    pub logs: Vec<String>,
+}

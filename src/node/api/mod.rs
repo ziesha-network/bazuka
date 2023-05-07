@@ -50,6 +50,8 @@ mod get_explorer_mempool;
 pub use get_explorer_mempool::*;
 mod get_check_tx;
 pub use get_check_tx::*;
+mod get_logs;
+pub use get_logs::*;
 #[cfg(test)]
 mod generate_block;
 #[cfg(test)]
