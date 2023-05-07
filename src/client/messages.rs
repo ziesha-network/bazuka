@@ -36,6 +36,7 @@ pub struct GetStatsResponse {
     pub version: String,
     pub network: String,
     pub validator_claim: Option<ValidatorClaim>,
+    pub random_number: f32,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

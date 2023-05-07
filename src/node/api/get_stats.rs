@@ -12,6 +12,13 @@ pub async fn get_stats<K: KvStore, B: Blockchain<K>>(
     let context = context.read().await;
     let ts = context.network_timestamp();
     let (epoch, slot) = context.blockchain.epoch_slot(ts);
+    let randomness = context.blockchain.epoch_randomness()?;
+    let random_number: f32 = context
+        .validator_wallet
+        .generate_random(randomness, slot)
+        .0
+        .into();
+
     Ok(GetStatsResponse {
         social_profiles: context.social_profiles.clone(),
         address: context.validator_wallet.get_address().to_string(),
@@ -25,5 +32,6 @@ pub async fn get_stats<K: KvStore, B: Blockchain<K>>(
         version: env!("CARGO_PKG_VERSION").into(),
         network: context.network.clone(),
         validator_claim: context.validator_claim.clone(),
+        random_number,
     })
 }
