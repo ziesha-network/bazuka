@@ -24,21 +24,6 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
         let claim = ctx.validator_wallet.claim_validator(timestamp, proof, node);
         if ctx.update_validator_claim(claim.clone())? {
             if ctx.opts.automatic_block_generation {
-                if let Some(work_pool) = &ctx.mpn_work_pool {
-                    let wallet = ctx.validator_wallet.clone();
-                    let nonce = ctx.blockchain.get_nonce(wallet.get_address())?;
-                    if let Some(tx_delta) = work_pool.ready(&wallet, nonce + 1) {
-                        log::info!("All MPN-proofs ready!");
-                        ctx.mempool_add_tx(true, tx_delta.into())?;
-                        if let Some(draft) = ctx.try_produce(wallet)? {
-                            ctx.mpn_work_pool = None;
-                            ctx.validator_claim = None;
-                            drop(ctx);
-                            promote_block(context.clone(), draft).await;
-                            return Ok(());
-                        }
-                    }
-                }
                 let mempool = ctx.mempool.clone();
 
                 let updates = mempool
@@ -86,8 +71,24 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                 )?);
             }
         }
-        drop(ctx);
-        promote_validator_claim(context.clone(), claim).await;
+        if let Some(work_pool) = &ctx.mpn_work_pool {
+            let wallet = ctx.validator_wallet.clone();
+            let nonce = ctx.blockchain.get_nonce(wallet.get_address())?;
+            if let Some(tx_delta) = work_pool.ready(&wallet, nonce + 1) {
+                log::info!("All MPN-proofs ready!");
+                ctx.mempool_add_tx(true, tx_delta.into())?;
+                if let Some(draft) = ctx.try_produce(wallet)? {
+                    ctx.mpn_work_pool = None;
+                    ctx.validator_claim = None;
+                    drop(ctx);
+                    promote_block(context.clone(), draft).await;
+                    return Ok(());
+                }
+            }
+        } else {
+            drop(ctx);
+            promote_validator_claim(context.clone(), claim).await;
+        }
     } else {
         if let Some(claim) = ctx.validator_claim.clone() {
             if claim.address == ctx.validator_wallet.get_address() {
