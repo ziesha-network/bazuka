@@ -15,7 +15,7 @@ pub async fn get_stats<K: KvStore, B: Blockchain<K>>(
     let randomness = context.blockchain.epoch_randomness()?;
     let random_number: f32 = context
         .validator_wallet
-        .generate_random(randomness, slot)
+        .generate_random(randomness, epoch, slot)
         .0
         .into();
 

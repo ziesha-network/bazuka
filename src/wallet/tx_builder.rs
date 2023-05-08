@@ -147,6 +147,7 @@ impl TxBuilder {
     pub fn generate_random(
         &self,
         randomness: <Hasher as Hash>::Output,
+        epoch: u32,
         slot: u32,
     ) -> (
         <Vrf as VerifiableRandomFunction>::Out,
@@ -154,7 +155,7 @@ impl TxBuilder {
     ) {
         Vrf::sign(
             &self.vrf_private_key,
-            format!("{}-{}", hex::encode(randomness), slot).as_bytes(),
+            format!("{}-{}-{}", hex::encode(randomness), epoch, slot).as_bytes(),
         )
     }
     pub fn register_validator(

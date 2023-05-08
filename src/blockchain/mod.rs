@@ -548,7 +548,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         addr: Address,
         proof: ValidatorProof,
     ) -> Result<bool, BlockchainError> {
-        let (_, slot) = self.epoch_slot(timestamp);
+        let (epoch, slot) = self.epoch_slot(timestamp);
         let randomness = self.epoch_randomness()?;
         let stakers = self.get_stakers()?;
         let sum_stakes = stakers.iter().map(|(_, a)| u64::from(*a)).sum::<u64>();
@@ -565,9 +565,15 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
                 } = proof
                 {
                     if Into::<f32>::into(vrf_output.clone()) <= *chance {
+                        let preimage = if self.get_height()? >= 696 {
+                            format!("{}-{}-{}", hex::encode(randomness), epoch, slot)
+                        } else {
+                            format!("{}-{}", hex::encode(randomness), slot)
+                        };
+
                         return Ok(Vrf::verify(
                             &staker_info.vrf_pub_key,
-                            format!("{}-{}", hex::encode(randomness), slot).as_bytes(),
+                            preimage.as_bytes(),
                             &vrf_output,
                             &vrf_proof,
                         ));
@@ -582,7 +588,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         timestamp: u32,
         wallet: &TxBuilder,
     ) -> Result<ValidatorProof, BlockchainError> {
-        let (_, slot) = self.epoch_slot(timestamp);
+        let (epoch, slot) = self.epoch_slot(timestamp);
         let randomness = self.epoch_randomness()?;
         let stakers = self.get_stakers()?;
         let sum_stakes = stakers.iter().map(|(_, a)| u64::from(*a)).sum::<u64>();
@@ -591,7 +597,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             .map(|(k, v)| (k, (u64::from(v) as f64 / sum_stakes as f64) as f32))
             .collect();
         if let Some(chance) = stakers.get(&wallet.get_address()) {
-            let (vrf_output, vrf_proof) = wallet.generate_random(randomness, slot);
+            let (vrf_output, vrf_proof) = wallet.generate_random(randomness, epoch, slot);
             if Into::<f32>::into(vrf_output.clone()) <= *chance {
                 Ok(ValidatorProof::Proof {
                     vrf_output,
