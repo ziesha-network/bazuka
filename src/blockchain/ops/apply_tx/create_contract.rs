@@ -22,6 +22,10 @@ pub fn create_contract<K: KvStore>(
         .into(),
     )])?;
     let state = state.clone().ok_or(BlockchainError::StateNotGiven)?;
+    if contract_id == chain.config().mpn_config.mpn_contract_id {
+        index_mpn_accounts(chain, &state.as_delta())?;
+    }
+
     zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
         &mut chain.database,
         contract_id,

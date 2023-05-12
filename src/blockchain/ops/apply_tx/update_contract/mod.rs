@@ -3,52 +3,6 @@ mod function_call;
 mod withdraw;
 
 use super::*;
-use crate::crypto::jubjub;
-use crate::zk::ZkScalar;
-
-pub fn index_mpn_accounts<K: KvStore>(
-    chain: &mut KvStoreChain<K>,
-    delta: &zk::ZkDeltaPairs,
-) -> Result<(), BlockchainError> {
-    let mut acc_count = chain.get_mpn_account_count()?;
-    let mut org = HashMap::<u64, HashMap<u64, ZkScalar>>::new();
-    for (k, v) in delta.0.iter() {
-        if k.0.len() == 2 && (k.0[1] == 2 || k.0[1] == 3) {
-            org.entry(k.0[0])
-                .or_default()
-                .entry(k.0[1])
-                .or_insert(v.unwrap_or_default());
-        }
-    }
-    for (index, data) in org.iter() {
-        let x = data.get(&2).ok_or(BlockchainError::Inconsistency)?;
-        let y = data.get(&3).ok_or(BlockchainError::Inconsistency)?;
-        let address = MpnAddress {
-            pub_key: jubjub::PublicKey(jubjub::PointAffine(*x, *y).compress()),
-        };
-        chain.database.update(&[WriteOp::Put(
-            keys::MpnAccountIndexDbKey {
-                address,
-                index: *index,
-            }
-            .into(),
-            ().into(),
-        )])?;
-    }
-    let mut inds = org.keys().cloned().collect::<Vec<_>>();
-    inds.sort();
-    for ind in inds {
-        if ind as u64 == acc_count {
-            acc_count += 1;
-        } else if ind as u64 > acc_count {
-            return Err(BlockchainError::Inconsistency);
-        }
-    }
-    chain
-        .database
-        .update(&[WriteOp::Put(keys::mpn_account_count(), acc_count.into())])?;
-    Ok(())
-}
 
 pub fn update_contract<K: KvStore>(
     internal: bool,
@@ -124,14 +78,16 @@ pub fn update_contract<K: KvStore>(
         };
 
         let mut cont_account = chain.get_contract_account(*contract_id)?;
-        if !zk::check_proof(
-            &circuit,
-            prev_account.height,
-            cont_account.compressed_state.state_hash,
-            aux_data.state_hash,
-            next_state.state_hash,
-            &proof,
-        ) {
+        if !internal
+            && !zk::check_proof(
+                &circuit,
+                prev_account.height,
+                cont_account.compressed_state.state_hash,
+                aux_data.state_hash,
+                next_state.state_hash,
+                &proof,
+            )
+        {
             return Err(BlockchainError::IncorrectZkProof);
         }
         cont_account.compressed_state = next_state;

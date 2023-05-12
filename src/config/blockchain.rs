@@ -3,14 +3,16 @@ use super::{initials, UNIT, UNIT_ZEROS};
 use crate::blockchain::BlockchainConfig;
 use crate::common::*;
 use crate::core::{
-    Amount, Block, ContractDeposit, ContractId, ContractUpdate, Header, Money, MpnAddress,
-    ProofOfStake, Ratio, RegularSendEntry, Signature, Token, TokenId, Transaction,
-    TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
+    Amount, Block, ContractId, Header, Money, MpnAddress, ProofOfStake, Ratio, RegularSendEntry,
+    Signature, Token, TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof,
+    ZkHasher,
 };
 use crate::mpn::circuits::MpnCircuit;
 use crate::mpn::MpnConfig;
 use crate::wallet::TxBuilder;
 use crate::zk;
+
+use std::collections::HashMap;
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
@@ -40,6 +42,7 @@ fn get_mpn_contract(
     log4_token_tree_size: u8,
     log4_deposit_batch_size: u8,
     log4_withdraw_batch_size: u8,
+    initial_balances: &[(MpnAddress, Amount)],
 ) -> TransactionAndDelta {
     let mpn_state_model = zk::ZkStateModel::List {
         log4_size: log4_tree_size,
@@ -61,9 +64,55 @@ fn get_mpn_contract(
             ],
         }),
     };
+
+    let mut data = zk::ZkDataPairs(HashMap::new());
+    let mut state_builder = zk::ZkStateBuilder::<ZkHasher>::new(mpn_state_model.clone());
+    for (i, (addr, amount)) in initial_balances.iter().enumerate() {
+        let addr = addr.pub_key.0.decompress();
+        data.0.insert(
+            zk::ZkDataLocator(vec![i as u64, 2]),
+            zk::ZkScalar::from(addr.0),
+        );
+        data.0.insert(
+            zk::ZkDataLocator(vec![i as u64, 3]),
+            zk::ZkScalar::from(addr.1),
+        );
+        data.0.insert(
+            zk::ZkDataLocator(vec![i as u64, 4, 0, 0]),
+            zk::ZkScalar::from(TokenId::Ziesha),
+        );
+        data.0.insert(
+            zk::ZkDataLocator(vec![i as u64, 4, 0, 1]),
+            zk::ZkScalar::from(*amount),
+        );
+        state_builder
+            .batch_set(&zk::ZkDeltaPairs(
+                [
+                    (
+                        zk::ZkDataLocator(vec![i as u64, 2]),
+                        Some(zk::ZkScalar::from(addr.0)),
+                    ),
+                    (
+                        zk::ZkDataLocator(vec![i as u64, 3]),
+                        Some(zk::ZkScalar::from(addr.1)),
+                    ),
+                    (
+                        zk::ZkDataLocator(vec![i as u64, 4, 0, 0]),
+                        Some(zk::ZkScalar::from(TokenId::Ziesha)),
+                    ),
+                    (
+                        zk::ZkDataLocator(vec![i as u64, 4, 0, 1]),
+                        Some(zk::ZkScalar::from(*amount)),
+                    ),
+                ]
+                .into(),
+            ))
+            .unwrap();
+    }
+
     let mpn_contract = zk::ZkContract {
         state_model: mpn_state_model.clone(),
-        initial_state: zk::ZkCompressedState::empty::<ZkHasher>(mpn_state_model),
+        initial_state: state_builder.compress().unwrap(),
         deposit_functions: vec![zk::ZkMultiInputVerifierKey {
             verifier_key: zk::ZkVerifierKey::Groth16(Box::new(MPN_DEPOSIT_VK.clone())),
             log4_payment_capacity: log4_deposit_batch_size,
@@ -81,7 +130,7 @@ fn get_mpn_contract(
         src: None,
         data: TransactionData::CreateContract {
             contract: mpn_contract,
-            state: Some(Default::default()), // Empty
+            state: Some(data),
         },
         nonce: 0, // MPN contract is created after Ziesha token is created
         fee: Money::ziesha(0),
@@ -95,7 +144,7 @@ fn get_mpn_contract(
 
 #[cfg(test)]
 fn get_test_mpn_contract() -> TransactionAndDelta {
-    let mut mpn_tx_delta = get_mpn_contract(30, 1, 1, 1);
+    let mut mpn_tx_delta = get_mpn_contract(30, 1, 1, 1, &[]);
     let mpn_state_model = zk::ZkStateModel::List {
         log4_size: 30,
         item_type: Box::new(zk::ZkStateModel::Struct {
@@ -159,11 +208,21 @@ fn get_ziesha_token_creation_tx() -> Transaction {
 }
 
 pub fn get_blockchain_config() -> BlockchainConfig {
+    blockchain_config_template(true)
+}
+
+pub fn blockchain_config_template(initial_balances: bool) -> BlockchainConfig {
+    let init_balances = initials::initial_mpn_balances();
     let mpn_tx_delta = get_mpn_contract(
         MPN_LOG4_TREE_SIZE,
         MPN_LOG4_TOKENS_TREE_SIZE,
         MPN_LOG4_DEPOSIT_BATCH_SIZE,
         MPN_LOG4_WITHDRAW_BATCH_SIZE,
+        if initial_balances {
+            &init_balances
+        } else {
+            &[]
+        },
     );
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
@@ -238,44 +297,6 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             sig: Signature::Unsigned,
         });
     }
-
-    let deps = initials::initial_mpn_balances()
-        .chunks(64)
-        .map(|chunk| ContractUpdate::Deposit {
-            deposit_circuit_id: 0,
-            deposits: chunk
-                .iter()
-                .map(|(addr, amount)| ContractDeposit {
-                    memo: "".into(),
-                    contract_id: mpn_contract_id,
-                    deposit_circuit_id: 0,
-                    calldata: Default::default(),
-                    src: Default::default(),
-                    amount: Money {
-                        token_id: TokenId::Ziesha,
-                        amount: *amount,
-                    },
-                    fee: Money::ziesha(0),
-                    nonce: 0,
-                    sig: None,
-                })
-                .collect::<Vec<_>>(),
-            next_state: Default::default(),
-            proof: Default::default(),
-        })
-        .collect::<Vec<_>>();
-    blk.body.push(Transaction {
-        memo: "".into(),
-        src: None,
-        data: TransactionData::UpdateContract {
-            contract_id: mpn_contract_id,
-            updates: vec![],
-            delta: Some(Default::default()),
-        },
-        nonce: 0,
-        fee: Money::ziesha(0),
-        sig: Signature::Unsigned,
-    });
 
     BlockchainConfig {
         limited_miners: None,
@@ -416,7 +437,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     let mpn_tx_delta = get_test_mpn_contract();
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
-    let mut conf = get_blockchain_config();
+    let mut conf = blockchain_config_template(false);
     conf.limited_miners = None;
     conf.mpn_config = MpnConfig {
         mpn_contract_id,
