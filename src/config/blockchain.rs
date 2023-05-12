@@ -3,8 +3,9 @@ use super::{initials, UNIT, UNIT_ZEROS};
 use crate::blockchain::BlockchainConfig;
 use crate::common::*;
 use crate::core::{
-    Amount, Block, ContractId, Header, Money, ProofOfStake, Ratio, RegularSendEntry, Signature,
-    Token, TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
+    Amount, Block, ContractDeposit, ContractId, ContractUpdate, Header, Money, MpnAddress,
+    ProofOfStake, Ratio, RegularSendEntry, Signature, Token, TokenId, Transaction,
+    TransactionAndDelta, TransactionData, ValidatorProof, ZkHasher,
 };
 use crate::mpn::circuits::MpnCircuit;
 use crate::mpn::MpnConfig;
@@ -237,6 +238,44 @@ pub fn get_blockchain_config() -> BlockchainConfig {
             sig: Signature::Unsigned,
         });
     }
+
+    let deps = initials::initial_mpn_balances()
+        .chunks(64)
+        .map(|chunk| ContractUpdate::Deposit {
+            deposit_circuit_id: 0,
+            deposits: chunk
+                .iter()
+                .map(|(addr, amount)| ContractDeposit {
+                    memo: "".into(),
+                    contract_id: mpn_contract_id,
+                    deposit_circuit_id: 0,
+                    calldata: Default::default(),
+                    src: Default::default(),
+                    amount: Money {
+                        token_id: TokenId::Ziesha,
+                        amount: *amount,
+                    },
+                    fee: Money::ziesha(0),
+                    nonce: 0,
+                    sig: None,
+                })
+                .collect::<Vec<_>>(),
+            next_state: Default::default(),
+            proof: Default::default(),
+        })
+        .collect::<Vec<_>>();
+    blk.body.push(Transaction {
+        memo: "".into(),
+        src: None,
+        data: TransactionData::UpdateContract {
+            contract_id: mpn_contract_id,
+            updates: vec![],
+            delta: Some(Default::default()),
+        },
+        nonce: 0,
+        fee: Money::ziesha(0),
+        sig: Signature::Unsigned,
+    });
 
     BlockchainConfig {
         limited_miners: None,

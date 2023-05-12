@@ -51,6 +51,7 @@ pub fn index_mpn_accounts<K: KvStore>(
 }
 
 pub fn update_contract<K: KvStore>(
+    internal: bool,
     chain: &mut KvStoreChain<K>,
     tx_src: Address,
     contract_id: &ContractId,
