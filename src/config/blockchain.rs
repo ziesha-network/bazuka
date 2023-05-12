@@ -65,9 +65,11 @@ fn get_mpn_contract(
         }),
     };
 
+    let mut sum_amount = Amount(0);
     let mut data = zk::ZkDataPairs(HashMap::new());
     let mut state_builder = zk::ZkStateBuilder::<ZkHasher>::new(mpn_state_model.clone());
     for (i, (addr, amount)) in initial_balances.iter().enumerate() {
+        sum_amount = sum_amount + *amount;
         let addr = addr.pub_key.0.decompress();
         data.0.insert(
             zk::ZkDataLocator(vec![i as u64, 2]),
@@ -131,6 +133,7 @@ fn get_mpn_contract(
         data: TransactionData::CreateContract {
             contract: mpn_contract,
             state: Some(data),
+            money: Money::ziesha(sum_amount.into()),
         },
         nonce: 0, // MPN contract is created after Ziesha token is created
         fee: Money::ziesha(0),

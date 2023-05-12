@@ -379,6 +379,7 @@ pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunctio
     // the state. But there should be only one circuit for entering and exiting the contract.
     CreateContract {
         contract: ZkContract,
+        money: Money,
         state: Option<ZkDataPairs>, // Removable for space efficiency, not considered inside signature!
     },
     // Collection of contract updates

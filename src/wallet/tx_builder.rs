@@ -295,6 +295,7 @@ impl TxBuilder {
         memo: String,
         contract: zk::ZkContract,
         initial_state: zk::ZkDataPairs,
+        money: Money,
         fee: Money,
         nonce: u32,
     ) -> TransactionAndDelta {
@@ -304,6 +305,7 @@ impl TxBuilder {
             data: TransactionData::CreateContract {
                 contract,
                 state: Some(initial_state.clone()),
+                money,
             },
             nonce,
             fee,

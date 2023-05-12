@@ -135,9 +135,20 @@ pub fn apply_tx<K: KvStore>(
             TransactionData::RegularSend { entries } => {
                 regular_send::regular_send(chain, tx_src, entries)?;
             }
-            TransactionData::CreateContract { contract, state } => {
+            TransactionData::CreateContract {
+                contract,
+                state,
+                money,
+            } => {
                 let contract_id = ContractId::new(tx);
-                create_contract::create_contract(chain, contract_id, contract, state)?;
+                create_contract::create_contract(
+                    chain,
+                    tx_src,
+                    contract_id,
+                    contract,
+                    state,
+                    *money,
+                )?;
             }
             TransactionData::UpdateContract {
                 contract_id,
