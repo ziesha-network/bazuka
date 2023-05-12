@@ -144,14 +144,7 @@ pub fn apply_tx<K: KvStore>(
                 updates,
                 delta,
             } => {
-                update_contract::update_contract(
-                    internal,
-                    chain,
-                    tx_src,
-                    contract_id,
-                    updates,
-                    delta,
-                )?;
+                update_contract::update_contract(chain, tx_src, contract_id, updates, delta)?;
             }
         }
 
