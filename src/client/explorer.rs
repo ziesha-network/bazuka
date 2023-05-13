@@ -390,6 +390,7 @@ pub enum ExplorerTransactionData {
     CreateContract {
         contract: ExplorerContract,
         state: Option<ExplorerDataPairs>,
+        money: ExplorerMoney,
     },
     UpdateContract {
         contract_id: String,
@@ -433,9 +434,14 @@ impl From<&TransactionData> for ExplorerTransactionData {
                     .map(|e| (e.dst.to_string(), e.amount.into()))
                     .collect(),
             },
-            TransactionData::CreateContract { contract, state } => Self::CreateContract {
+            TransactionData::CreateContract {
+                contract,
+                state,
+                money,
+            } => Self::CreateContract {
                 contract: contract.into(),
                 state: state.as_ref().map(|s| s.into()),
+                money: (*money).into(),
             },
             TransactionData::UpdateContract {
                 contract_id,
