@@ -565,15 +565,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
                 } = proof
                 {
                     if Into::<f32>::into(vrf_output.clone()) <= *chance {
-                        #[cfg(test)]
-                        let is_test = true;
-                        #[cfg(not(test))]
-                        let is_test = false;
-                        let preimage = if self.get_height()? >= 696 || is_test {
-                            format!("{}-{}-{}", hex::encode(randomness), epoch, slot)
-                        } else {
-                            format!("{}-{}", hex::encode(randomness), slot)
-                        };
+                        let preimage = format!("{}-{}-{}", hex::encode(randomness), epoch, slot);
 
                         return Ok(Vrf::verify(
                             &staker_info.vrf_pub_key,
