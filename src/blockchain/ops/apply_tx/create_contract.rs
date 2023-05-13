@@ -67,6 +67,7 @@ mod tests {
 
     #[test]
     fn test_create_contract() {
+        let abc = TxBuilder::new(&Vec::from("ABC"));
         let chain = KvStoreChain::new(
             RamKvStore::new(),
             crate::config::blockchain::get_test_blockchain_config(),
@@ -92,14 +93,26 @@ mod tests {
             .isolated(|chain| {
                 Ok(create_contract(
                     chain,
+                    abc.get_address(),
                     contract_id,
                     &contract,
                     &Some(Default::default()),
+                    Money::ziesha(2345),
                 )?)
             })
             .unwrap();
 
         let expected_ops = vec![
+            WriteOp::Put(
+                "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-Ziesha"
+                    .into(),
+                7655u64.into(),
+            ),
+            WriteOp::Put(
+                "CAB-0001020304050607080900010203040506070809000102030405060708090001-Ziesha"
+                    .into(),
+                2345u64.into(),
+            ),
             WriteOp::Put(
                 "CAC-0001020304050607080900010203040506070809000102030405060708090001".into(),
                 ContractAccount {

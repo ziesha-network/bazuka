@@ -32,6 +32,7 @@ fn test_contract_create_patch() {
         },
         full_state.data.clone(),
         Money::ziesha(0),
+        Money::ziesha(0),
         1,
     );
 
