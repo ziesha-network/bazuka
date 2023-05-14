@@ -25,11 +25,12 @@ pub fn update_contract<K: KvStore>(
     )])?;
 
     for update in updates {
-        let (circuit, aux_data, next_state, proof) = match update {
+        let (circuit, aux_data, next_state, reward, proof) = match update {
             ContractUpdate::Deposit {
                 deposit_circuit_id,
                 deposits,
                 next_state,
+                reward,
                 proof,
             } => {
                 let (circuit, aux_data) = deposit::deposit(
@@ -40,12 +41,19 @@ pub fn update_contract<K: KvStore>(
                     deposits,
                     &mut executor_fees,
                 )?;
-                (circuit, aux_data, next_state.clone(), proof.clone())
+                (
+                    circuit,
+                    aux_data,
+                    next_state.clone(),
+                    reward.clone(),
+                    proof.clone(),
+                )
             }
             ContractUpdate::Withdraw {
                 withdraw_circuit_id,
                 withdraws,
                 next_state,
+                reward,
                 proof,
             } => {
                 let (circuit, aux_data) = withdraw::withdraw(
@@ -56,11 +64,18 @@ pub fn update_contract<K: KvStore>(
                     withdraws,
                     &mut executor_fees,
                 )?;
-                (circuit, aux_data, next_state.clone(), proof.clone())
+                (
+                    circuit,
+                    aux_data,
+                    next_state.clone(),
+                    reward.clone(),
+                    proof.clone(),
+                )
             }
             ContractUpdate::FunctionCall {
                 function_id,
                 next_state,
+                reward,
                 proof,
                 fee,
             } => {
@@ -72,7 +87,13 @@ pub fn update_contract<K: KvStore>(
                     fee,
                     &mut executor_fees,
                 )?;
-                (circuit, aux_data, next_state.clone(), proof.clone())
+                (
+                    circuit,
+                    aux_data,
+                    next_state.clone(),
+                    reward.clone(),
+                    proof.clone(),
+                )
             }
         };
 

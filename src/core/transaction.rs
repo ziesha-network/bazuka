@@ -259,12 +259,19 @@ pub struct ContractAccount {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
+pub struct ProverRewardInfo<S: SignatureScheme> {
+    pub prover: S::Pub,
+    pub reward: Amount,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
 pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
     // Proof for DepositCircuit[circuit_id](curr_state, next_state, hash(entries))
     Deposit {
         deposit_circuit_id: u32,
         deposits: Vec<ContractDeposit<H, S>>,
         next_state: ZkCompressedState,
+        reward: ProverRewardInfo<S>,
         proof: ZkProof,
     },
     // Proof for WithdrawCircuit[circuit_id](curr_state, next_state, hash(entries))
@@ -272,12 +279,14 @@ pub enum ContractUpdate<H: Hash, S: SignatureScheme> {
         withdraw_circuit_id: u32,
         withdraws: Vec<ContractWithdraw<H, S>>,
         next_state: ZkCompressedState,
+        reward: ProverRewardInfo<S>,
         proof: ZkProof,
     },
     // Proof for FunctionCallCircuits[function_id](curr_state, next_state)
     FunctionCall {
         function_id: u32,
         next_state: ZkCompressedState,
+        reward: ProverRewardInfo<S>,
         proof: ZkProof,
         fee: Money, // Executor fee
     },

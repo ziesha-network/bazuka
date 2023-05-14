@@ -37,6 +37,7 @@ pub type ContractAccount = transaction::ContractAccount;
 pub type ContractUpdate = transaction::ContractUpdate<Hasher, Signer>;
 pub type ContractDeposit = transaction::ContractDeposit<Hasher, Signer>;
 pub type ContractWithdraw = transaction::ContractWithdraw<Hasher, Signer>;
+pub type ProverRewardInfo = transaction::ProverRewardInfo<Signer>;
 pub type MpnAddress = address::MpnAddress<ZkSigner>;
 pub type ParseMpnAddressError = address::ParseMpnAddressError;
 pub type UndelegationId = transaction::UndelegationId<Hasher>;
