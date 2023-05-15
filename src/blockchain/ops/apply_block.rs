@@ -67,14 +67,14 @@ pub fn apply_block<K: KvStore>(
             {
                 if contract_id.clone() == chain.config.mpn_config.mpn_contract_id {
                     for update in updates.iter() {
-                        match update {
-                            ContractUpdate::Deposit { .. } => {
+                        match update.data {
+                            ContractUpdateData::Deposit { .. } => {
                                 num_mpn_contract_deposits += 1;
                             }
-                            ContractUpdate::Withdraw { .. } => {
+                            ContractUpdateData::Withdraw { .. } => {
                                 num_mpn_contract_withdraws += 1;
                             }
-                            ContractUpdate::FunctionCall { .. } => {
+                            ContractUpdateData::FunctionCall { .. } => {
                                 num_mpn_function_calls += 1;
                             }
                         }

@@ -1,7 +1,7 @@
 use crate::core::{
-    Address, Amount, Block, ContractDeposit, ContractUpdate, ContractWithdraw, GeneralTransaction,
-    Header, Money, MpnDeposit, MpnWithdraw, ProofOfStake, Token, TokenUpdate, Transaction,
-    TransactionData,
+    Address, Amount, Block, ContractDeposit, ContractUpdate, ContractUpdateData, ContractWithdraw,
+    GeneralTransaction, Header, Money, MpnDeposit, MpnWithdraw, ProofOfStake, Token, TokenUpdate,
+    Transaction, TransactionData,
 };
 use crate::crypto::jubjub::*;
 use crate::zk::{
@@ -304,63 +304,51 @@ impl From<&TokenUpdate> for ExplorerTokenUpdate {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum ExplorerContractUpdate {
+pub enum ExplorerContractUpdateData {
     Deposit {
-        deposit_circuit_id: u32,
         deposits: Vec<ExplorerContractDeposit>,
-        next_state: ExplorerCompressedState,
-        proof: ExplorerZkProof,
     },
     Withdraw {
-        withdraw_circuit_id: u32,
         withdraws: Vec<ExplorerContractWithdraw>,
-        next_state: ExplorerCompressedState,
-        proof: ExplorerZkProof,
     },
     FunctionCall {
-        function_id: u32,
-        next_state: ExplorerCompressedState,
-        proof: ExplorerZkProof,
         fee: ExplorerMoney,
     },
 }
 
+impl From<&ContractUpdateData> for ExplorerContractUpdateData {
+    fn from(obj: &ContractUpdateData) -> Self {
+        match obj {
+            ContractUpdateData::Deposit { deposits } => Self::Deposit {
+                deposits: deposits.iter().map(|p| p.into()).collect(),
+            },
+            ContractUpdateData::Withdraw { withdraws } => Self::Withdraw {
+                withdraws: withdraws.iter().map(|p| p.into()).collect(),
+            },
+            ContractUpdateData::FunctionCall { fee } => Self::FunctionCall { fee: (*fee).into() },
+        }
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ExplorerContractUpdate {
+    circuit_id: u32,
+    data: ExplorerContractUpdateData,
+    next_state: ExplorerCompressedState,
+    prover: String,
+    reward: u64,
+    proof: ExplorerZkProof,
+}
+
 impl From<&ContractUpdate> for ExplorerContractUpdate {
     fn from(obj: &ContractUpdate) -> Self {
-        match obj {
-            ContractUpdate::Deposit {
-                deposit_circuit_id,
-                deposits,
-                next_state,
-                proof,
-            } => Self::Deposit {
-                deposit_circuit_id: *deposit_circuit_id,
-                deposits: deposits.iter().map(|p| p.into()).collect(),
-                next_state: next_state.into(),
-                proof: proof.into(),
-            },
-            ContractUpdate::Withdraw {
-                withdraw_circuit_id,
-                withdraws,
-                next_state,
-                proof,
-            } => Self::Withdraw {
-                withdraw_circuit_id: *withdraw_circuit_id,
-                withdraws: withdraws.iter().map(|p| p.into()).collect(),
-                next_state: next_state.into(),
-                proof: proof.into(),
-            },
-            ContractUpdate::FunctionCall {
-                function_id,
-                next_state,
-                proof,
-                fee,
-            } => Self::FunctionCall {
-                function_id: *function_id,
-                fee: (*fee).into(),
-                next_state: next_state.into(),
-                proof: proof.into(),
-            },
+        Self {
+            circuit_id: obj.circuit_id,
+            data: (&obj.data).into(),
+            next_state: (&obj.next_state).into(),
+            prover: obj.prover.to_string(),
+            reward: obj.reward.into(),
+            proof: (&obj.proof).into(),
         }
     }
 }

@@ -2,10 +2,10 @@
 use crate::client::{messages::ValidatorClaim, PeerAddress};
 
 use crate::core::{
-    hash::Hash, Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractWithdraw,
-    Hasher, Money, MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry, Signature, Signer,
-    Token, TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf,
-    ZkSigner,
+    hash::Hash, Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractUpdateData,
+    ContractWithdraw, Hasher, Money, MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry,
+    Signature, Signer, Token, TokenId, Transaction, TransactionAndDelta, TransactionData,
+    ValidatorProof, Vrf, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::VerifiableRandomFunction;
@@ -315,43 +315,6 @@ impl TxBuilder {
         TransactionAndDelta {
             tx,
             state_delta: Some(initial_state.as_delta()),
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn call_function(
-        &self,
-        memo: String,
-        contract_id: ContractId,
-        function_id: u32,
-        state_delta: zk::ZkDeltaPairs,
-        next_state: zk::ZkCompressedState,
-        proof: zk::ZkProof,
-        exec_fee: Money,
-        miner_fee: Money,
-        nonce: u32,
-    ) -> TransactionAndDelta {
-        let mut tx = Transaction {
-            memo,
-            src: Some(self.get_address()),
-            data: TransactionData::UpdateContract {
-                contract_id,
-                updates: vec![ContractUpdate::FunctionCall {
-                    function_id,
-                    next_state,
-                    proof,
-                    fee: exec_fee,
-                }],
-                delta: Some(state_delta.clone()),
-            },
-            nonce,
-            fee: miner_fee,
-            sig: Signature::Unsigned,
-        };
-        self.sign_tx(&mut tx);
-        TransactionAndDelta {
-            tx,
-            state_delta: Some(state_delta),
         }
     }
 

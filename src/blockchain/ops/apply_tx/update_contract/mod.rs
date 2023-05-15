@@ -25,54 +25,40 @@ pub fn update_contract<K: KvStore>(
     )])?;
 
     for update in updates {
-        let (circuit, aux_data, next_state, proof) = match update {
-            ContractUpdate::Deposit {
-                deposit_circuit_id,
-                deposits,
-                next_state,
-                proof,
-            } => {
+        let (next_state, proof) = (update.next_state.clone(), update.proof.clone());
+        let (circuit, aux_data) = match &update.data {
+            ContractUpdateData::Deposit { deposits } => {
                 let (circuit, aux_data) = deposit::deposit(
                     chain,
                     &contract_id,
                     &contract,
-                    deposit_circuit_id,
+                    &update.circuit_id,
                     deposits,
                     &mut executor_fees,
                 )?;
-                (circuit, aux_data, next_state.clone(), proof.clone())
+                (circuit, aux_data)
             }
-            ContractUpdate::Withdraw {
-                withdraw_circuit_id,
-                withdraws,
-                next_state,
-                proof,
-            } => {
+            ContractUpdateData::Withdraw { withdraws } => {
                 let (circuit, aux_data) = withdraw::withdraw(
                     chain,
                     &contract_id,
                     &contract,
-                    withdraw_circuit_id,
+                    &update.circuit_id,
                     withdraws,
                     &mut executor_fees,
                 )?;
-                (circuit, aux_data, next_state.clone(), proof.clone())
+                (circuit, aux_data)
             }
-            ContractUpdate::FunctionCall {
-                function_id,
-                next_state,
-                proof,
-                fee,
-            } => {
+            ContractUpdateData::FunctionCall { fee } => {
                 let (circuit, aux_data) = function_call::function_call(
                     chain,
                     &contract_id,
                     &contract,
-                    function_id,
+                    &update.circuit_id,
                     fee,
                     &mut executor_fees,
                 )?;
-                (circuit, aux_data, next_state.clone(), proof.clone())
+                (circuit, aux_data)
             }
         };
 

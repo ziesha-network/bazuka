@@ -5,8 +5,8 @@ pub mod withdraw;
 
 use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::{
-    Amount, ContractId, ContractUpdate, Money, MpnAddress, MpnDeposit, MpnWithdraw, Signature,
-    TokenId, Transaction, TransactionAndDelta, TransactionData,
+    Amount, ContractId, ContractUpdate, ContractUpdateData, Money, MpnAddress, MpnDeposit,
+    MpnWithdraw, Signature, TokenId, Transaction, TransactionAndDelta, TransactionData,
 };
 use crate::db::{KvStore, WriteOp};
 use crate::wallet::TxBuilder;
@@ -100,17 +100,25 @@ impl MpnWorkPool {
             let mut updates = vec![];
             for i in 0..self.works.len() {
                 updates.push(match self.works[&i].data.clone() {
-                    MpnWorkData::Deposit(trans) => ContractUpdate::Deposit {
-                        deposit_circuit_id: 0,
-                        deposits: trans.into_iter().map(|t| t.tx.payment.clone()).collect(),
+                    MpnWorkData::Deposit(trans) => ContractUpdate {
+                        data: ContractUpdateData::Deposit {
+                            deposits: trans.into_iter().map(|t| t.tx.payment.clone()).collect(),
+                        },
+                        circuit_id: 0,
                         next_state: self.works[&i].new_root.clone(),
                         proof: self.solutions[&i].clone(),
+                        reward: 0.into(),
+                        prover: Default::default(),
                     },
-                    MpnWorkData::Withdraw(trans) => ContractUpdate::Withdraw {
-                        withdraw_circuit_id: 0,
-                        withdraws: trans.into_iter().map(|t| t.tx.payment.clone()).collect(),
+                    MpnWorkData::Withdraw(trans) => ContractUpdate {
+                        data: ContractUpdateData::Withdraw {
+                            withdraws: trans.into_iter().map(|t| t.tx.payment.clone()).collect(),
+                        },
+                        circuit_id: 0,
                         next_state: self.works[&i].new_root.clone(),
                         proof: self.solutions[&i].clone(),
+                        reward: 0.into(),
+                        prover: Default::default(),
                     },
                     MpnWorkData::Update(trans) => {
                         assert!(trans.iter().all(|t| t.tx.fee.token_id == TokenId::Ziesha));
@@ -118,14 +126,18 @@ impl MpnWorkPool {
                             .iter()
                             .map(|t| Into::<u64>::into(t.tx.fee.amount))
                             .sum::<u64>();
-                        ContractUpdate::FunctionCall {
-                            function_id: 0,
+                        ContractUpdate {
+                            data: ContractUpdateData::FunctionCall {
+                                fee: Money {
+                                    token_id: TokenId::Ziesha,
+                                    amount: fee_sum.into(),
+                                },
+                            },
+                            circuit_id: 0,
                             next_state: self.works[&i].new_root.clone(),
                             proof: self.solutions[&i].clone(),
-                            fee: Money {
-                                token_id: TokenId::Ziesha,
-                                amount: fee_sum.into(),
-                            },
+                            reward: 0.into(),
+                            prover: Default::default(),
                         }
                     }
                 });
