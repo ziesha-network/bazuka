@@ -51,11 +51,16 @@ fn extract_delta(ops: &[WriteOp]) -> ZkDeltaPairs {
     pairs
 }
 
+pub struct MpnSolution {
+    prover: Address,
+    proof: ZkProof,
+}
+
 pub struct MpnWorkPool {
     config: MpnConfig,
     final_delta: ZkDeltaPairs,
     works: HashMap<usize, MpnWork>,
-    solutions: HashMap<usize, ZkProof>,
+    solutions: HashMap<usize, MpnSolution>,
 }
 
 impl MpnWorkPool {
@@ -79,11 +84,17 @@ impl MpnWorkPool {
 
         result
     }
-    pub fn prove(&mut self, id: usize, proof: &ZkProof) -> bool {
+    pub fn prove(&mut self, id: usize, prover: &Address, proof: &ZkProof) -> bool {
         if !self.solutions.contains_key(&id) {
             if let Some(work) = self.works.get(&id) {
-                if work.verify(proof) {
-                    self.solutions.insert(id, proof.clone());
+                if work.verify(prover, proof) {
+                    self.solutions.insert(
+                        id,
+                        MpnSolution {
+                            prover: prover.clone(),
+                            proof: proof.clone(),
+                        },
+                    );
                     true
                 } else {
                     false
@@ -106,9 +117,9 @@ impl MpnWorkPool {
                         },
                         circuit_id: 0,
                         next_state: self.works[&i].new_root.clone(),
-                        proof: self.solutions[&i].clone(),
+                        proof: self.solutions[&i].proof.clone(),
                         reward: self.works[&i].reward,
-                        prover: Default::default(),
+                        prover: self.solutions[&i].prover.clone(),
                     },
                     MpnWorkData::Withdraw(trans) => ContractUpdate {
                         data: ContractUpdateData::Withdraw {
@@ -116,9 +127,9 @@ impl MpnWorkPool {
                         },
                         circuit_id: 0,
                         next_state: self.works[&i].new_root.clone(),
-                        proof: self.solutions[&i].clone(),
+                        proof: self.solutions[&i].proof.clone(),
                         reward: self.works[&i].reward,
-                        prover: Default::default(),
+                        prover: self.solutions[&i].prover.clone(),
                     },
                     MpnWorkData::Update(trans) => {
                         assert!(trans.iter().all(|t| t.tx.fee.token_id == TokenId::Ziesha));
@@ -135,9 +146,9 @@ impl MpnWorkPool {
                             },
                             circuit_id: 0,
                             next_state: self.works[&i].new_root.clone(),
-                            proof: self.solutions[&i].clone(),
+                            proof: self.solutions[&i].proof.clone(),
                             reward: self.works[&i].reward,
-                            prover: Default::default(),
+                            prover: self.solutions[&i].prover.clone(),
                         }
                     }
                 });
@@ -245,7 +256,7 @@ impl MpnWork {
         }
         .clone()
     }
-    pub fn verify(&self, proof: &ZkProof) -> bool {
+    pub fn verify(&self, _prover: &Address, proof: &ZkProof) -> bool {
         let vk = self.vk();
         check_proof(
             &vk,

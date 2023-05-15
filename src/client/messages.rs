@@ -376,6 +376,7 @@ pub struct GetMpnWorkResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMpnSolutionRequest {
+    pub prover: Address,
     pub proofs: HashMap<usize, zk::ZkProof>,
 }
 
