@@ -29,6 +29,24 @@ pub fn update_contract<K: KvStore>(
             Hasher::hash(&bincode::serialize(&(update.prover.clone(), update.reward)).unwrap())
                 .as_ref(),
         );
+
+        // Pay prover reward from tx_src
+        let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
+        if src_bal < update.reward {
+            return Err(BlockchainError::BalanceInsufficient);
+        }
+        src_bal -= update.reward;
+        chain.database.update(&[WriteOp::Put(
+            keys::account_balance(&tx_src, TokenId::Ziesha),
+            src_bal.into(),
+        )])?;
+        let mut prover_bal = chain.get_balance(update.prover.clone(), TokenId::Ziesha)?;
+        prover_bal += update.reward;
+        chain.database.update(&[WriteOp::Put(
+            keys::account_balance(&update.prover, TokenId::Ziesha),
+            prover_bal.into(),
+        )])?;
+
         let (next_state, proof) = (update.next_state.clone(), update.proof.clone());
         let (circuit, aux_data) = match &update.data {
             ContractUpdateData::Deposit { deposits } => {
