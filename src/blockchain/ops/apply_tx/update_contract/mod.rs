@@ -25,60 +25,69 @@ pub fn update_contract<K: KvStore>(
     )])?;
 
     for update in updates {
-        let (circuit, aux_data, next_state, proof) = match update {
-            ContractUpdate::Deposit {
-                deposit_circuit_id,
-                deposits,
-                next_state,
-                proof,
-            } => {
+        let commit = zk::ZkScalar::new(
+            Hasher::hash(&bincode::serialize(&(update.prover.clone(), update.reward)).unwrap())
+                .as_ref(),
+        );
+
+        // Pay prover reward from tx_src
+        let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
+        if src_bal < update.reward {
+            return Err(BlockchainError::BalanceInsufficient);
+        }
+        src_bal -= update.reward;
+        chain.database.update(&[WriteOp::Put(
+            keys::account_balance(&tx_src, TokenId::Ziesha),
+            src_bal.into(),
+        )])?;
+        let mut prover_bal = chain.get_balance(update.prover.clone(), TokenId::Ziesha)?;
+        prover_bal += update.reward;
+        chain.database.update(&[WriteOp::Put(
+            keys::account_balance(&update.prover, TokenId::Ziesha),
+            prover_bal.into(),
+        )])?;
+
+        let (next_state, proof) = (update.next_state.clone(), update.proof.clone());
+        let (circuit, aux_data) = match &update.data {
+            ContractUpdateData::Deposit { deposits } => {
                 let (circuit, aux_data) = deposit::deposit(
                     chain,
                     &contract_id,
                     &contract,
-                    deposit_circuit_id,
+                    &update.circuit_id,
                     deposits,
                     &mut executor_fees,
                 )?;
-                (circuit, aux_data, next_state.clone(), proof.clone())
+                (circuit, aux_data)
             }
-            ContractUpdate::Withdraw {
-                withdraw_circuit_id,
-                withdraws,
-                next_state,
-                proof,
-            } => {
+            ContractUpdateData::Withdraw { withdraws } => {
                 let (circuit, aux_data) = withdraw::withdraw(
                     chain,
                     &contract_id,
                     &contract,
-                    withdraw_circuit_id,
+                    &update.circuit_id,
                     withdraws,
                     &mut executor_fees,
                 )?;
-                (circuit, aux_data, next_state.clone(), proof.clone())
+                (circuit, aux_data)
             }
-            ContractUpdate::FunctionCall {
-                function_id,
-                next_state,
-                proof,
-                fee,
-            } => {
+            ContractUpdateData::FunctionCall { fee } => {
                 let (circuit, aux_data) = function_call::function_call(
                     chain,
                     &contract_id,
                     &contract,
-                    function_id,
+                    &update.circuit_id,
                     fee,
                     &mut executor_fees,
                 )?;
-                (circuit, aux_data, next_state.clone(), proof.clone())
+                (circuit, aux_data)
             }
         };
 
         let mut cont_account = chain.get_contract_account(*contract_id)?;
         if !zk::check_proof(
             &circuit,
+            commit,
             prev_account.height,
             cont_account.compressed_state.state_hash,
             aux_data.state_hash,

@@ -421,14 +421,11 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn get_mpn_works(
-        &self,
-        mpn_address: MpnAddress,
-    ) -> Result<GetMpnWorkResponse, NodeError> {
+    pub async fn get_mpn_works(&self, address: Address) -> Result<GetMpnWorkResponse, NodeError> {
         self.sender
             .bincode_get::<GetMpnWorkRequest, GetMpnWorkResponse>(
                 format!("http://{}/bincode/mpn/work", self.peer),
-                GetMpnWorkRequest { mpn_address },
+                GetMpnWorkRequest { address },
                 self.limit.clone().unwrap_or_default(),
             )
             .await
@@ -436,12 +433,12 @@ impl BazukaClient {
 
     pub async fn post_mpn_worker(
         &self,
-        mpn_address: MpnAddress,
+        address: Address,
     ) -> Result<PostMpnWorkerResponse, NodeError> {
         self.sender
             .bincode_post::<PostMpnWorkerRequest, PostMpnWorkerResponse>(
                 format!("http://{}/bincode/mpn/worker", self.peer),
-                PostMpnWorkerRequest { mpn_address },
+                PostMpnWorkerRequest { address },
                 self.limit.clone().unwrap_or_default(),
             )
             .await
@@ -449,12 +446,13 @@ impl BazukaClient {
 
     pub async fn post_mpn_proof(
         &self,
+        prover: Address,
         proofs: HashMap<usize, ZkProof>,
     ) -> Result<PostMpnSolutionResponse, NodeError> {
         self.sender
             .bincode_post::<PostMpnSolutionRequest, PostMpnSolutionResponse>(
                 format!("http://{}/bincode/mpn/solution", self.peer),
-                PostMpnSolutionRequest { proofs },
+                PostMpnSolutionRequest { prover, proofs },
                 self.limit.clone().unwrap_or_default(),
             )
             .await

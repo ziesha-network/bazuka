@@ -8,10 +8,10 @@ mod ops;
 
 use crate::core::{
     hash::Hash, Address, Amount, Block, ContractAccount, ContractDeposit, ContractId,
-    ContractUpdate, ContractWithdraw, Delegate, Hasher, Header, Money, MpnAddress, ProofOfStake,
-    Ratio, RegularSendEntry, Signature, Staker, Token, TokenId, TokenUpdate, Transaction,
-    TransactionAndDelta, TransactionData, Undelegation, UndelegationId, ValidatorProof, Vrf,
-    ZkHasher as CoreZkHasher,
+    ContractUpdate, ContractUpdateData, ContractWithdraw, Delegate, Hasher, Header, Money,
+    MpnAddress, ProofOfStake, Ratio, RegularSendEntry, Signature, Staker, Token, TokenId,
+    TokenUpdate, Transaction, TransactionAndDelta, TransactionData, Undelegation, UndelegationId,
+    ValidatorProof, Vrf, ZkHasher as CoreZkHasher,
 };
 use crate::crypto::VerifiableRandomFunction;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};

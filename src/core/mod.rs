@@ -35,6 +35,7 @@ pub type TransactionData = transaction::TransactionData<Hasher, Signer, Vrf>;
 pub type RegularSendEntry = transaction::RegularSendEntry<Signer>;
 pub type ContractAccount = transaction::ContractAccount;
 pub type ContractUpdate = transaction::ContractUpdate<Hasher, Signer>;
+pub type ContractUpdateData = transaction::ContractUpdateData<Hasher, Signer>;
 pub type ContractDeposit = transaction::ContractDeposit<Hasher, Signer>;
 pub type ContractWithdraw = transaction::ContractWithdraw<Hasher, Signer>;
 pub type MpnAddress = address::MpnAddress<ZkSigner>;

@@ -282,7 +282,7 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
                 timestamp_offset: 0,
                 auto_gen_block: true,
                 mpn_workers: vec![MpnWorker {
-                    mpn_address: abc.get_mpn_address(),
+                    address: abc.get_address(),
                 }],
             },
             NodeOpts {
@@ -293,7 +293,7 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
                 timestamp_offset: 0,
                 auto_gen_block: true,
                 mpn_workers: vec![MpnWorker {
-                    mpn_address: abc.get_mpn_address(),
+                    address: abc.get_address(),
                 }],
             },
             NodeOpts {
@@ -304,7 +304,7 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
                 timestamp_offset: 0,
                 auto_gen_block: true,
                 mpn_workers: vec![MpnWorker {
-                    mpn_address: abc.get_mpn_address(),
+                    address: abc.get_address(),
                 }],
             },
         ],
@@ -317,6 +317,7 @@ async fn test_auto_block_production() -> Result<(), NodeError> {
                     // Continuously post dummy proofs to all validators to ensure block production
                     for ch in chans.iter() {
                         ch.post_mpn_proof(
+                            abc.get_address(),
                             [
                                 (0, zk::ZkProof::Dummy(true)),
                                 (1, zk::ZkProof::Dummy(true)),

@@ -1,7 +1,7 @@
 use crate::blockchain::{TimestampCommit, TransactionStats};
 use crate::core::{
-    Address, Amount, Block, GeneralAddress, GeneralTransaction, Header, Money, MpnAddress,
-    Signature, Token, TransactionAndDelta, Undelegation, ValidatorProof,
+    Address, Amount, Block, GeneralAddress, GeneralTransaction, Header, Money, Signature, Token,
+    TransactionAndDelta, Undelegation, ValidatorProof,
 };
 use crate::mpn::MpnWork;
 use crate::zk;
@@ -366,7 +366,7 @@ pub struct GenerateBlockResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMpnWorkRequest {
-    pub mpn_address: MpnAddress,
+    pub address: Address,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -376,6 +376,7 @@ pub struct GetMpnWorkResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMpnSolutionRequest {
+    pub prover: Address,
     pub proofs: HashMap<usize, zk::ZkProof>,
 }
 
@@ -386,7 +387,7 @@ pub struct PostMpnSolutionResponse {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct PostMpnWorkerRequest {
-    pub mpn_address: MpnAddress,
+    pub address: Address,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::{Amount, MpnAddress};
+use crate::core::Amount;
 use crate::mpn;
 
 pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
@@ -47,12 +47,6 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                     ctx.validator_wallet.get_address(),
                     ctx.blockchain.config().mpn_config.mpn_contract_id,
                 )?;
-                let mpn_nonce = ctx
-                    .blockchain
-                    .get_mpn_account(MpnAddress {
-                        pub_key: ctx.validator_wallet.get_zk_address(),
-                    })?
-                    .tx_nonce;
                 ctx.mpn_work_pool = Some(mpn::prepare_works(
                     &ctx.blockchain.config().mpn_config,
                     &ctx.blockchain,
@@ -65,7 +59,6 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                     Amount(100_000_000_000),
                     Amount(300_000_000_000),
                     deposit_nonce,
-                    mpn_nonce,
                     ctx.validator_wallet.clone(),
                     ctx.user_wallet.clone(),
                 )?);
@@ -94,7 +87,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
             if claim.address == ctx.validator_wallet.get_address() {
                 if let Some(work_pool) = &ctx.mpn_work_pool {
                     for work in work_pool.remaining_works().values() {
-                        log::error!("Prover {} is late!", work.worker.mpn_address);
+                        log::error!("Prover {} is late!", work.worker.address);
                     }
                 }
             }

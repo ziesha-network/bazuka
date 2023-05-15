@@ -13,10 +13,10 @@ pub async fn get_mpn_work<K: KvStore, B: Blockchain<K>>(
     let works = ctx
         .mpn_work_pool
         .as_ref()
-        .map(|p| p.get_works(req.mpn_address.clone()))
+        .map(|p| p.get_works(req.address.clone()))
         .unwrap_or_default();
     if !works.is_empty() {
-        println!("Sending {} works to {}", works.len(), req.mpn_address);
+        println!("Sending {} works to {}", works.len(), req.address);
     }
     Ok(GetMpnWorkResponse { works })
 }

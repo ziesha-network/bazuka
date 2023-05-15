@@ -16,7 +16,7 @@ use {
 use {
     bazuka::client::{NodeError, PeerAddress},
     bazuka::config,
-    bazuka::core::{Address, Decimal, GeneralAddress, MpnAddress, TokenId},
+    bazuka::core::{Address, Decimal, GeneralAddress, TokenId},
     bazuka::mpn::MpnWorker,
     bazuka::wallet::WalletCollection,
     serde::{Deserialize, Serialize},
@@ -49,7 +49,7 @@ const CURRENT_NETWORK: &str = "peking-duck";
 #[cfg(feature = "client")]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BazukaConfigMpnWorker {
-    mpn_address: String,
+    address: String,
 }
 
 #[cfg(feature = "client")]
@@ -60,7 +60,7 @@ impl TryInto<MpnWorker> for BazukaConfigMpnWorker {
     type Error = InvalidMpnWorker;
     fn try_into(self) -> Result<MpnWorker, InvalidMpnWorker> {
         Ok(MpnWorker {
-            mpn_address: self.mpn_address.parse().map_err(|_| InvalidMpnWorker)?,
+            address: self.address.parse().map_err(|_| InvalidMpnWorker)?,
         })
     }
 }
@@ -200,7 +200,7 @@ enum NodeCliOptions {
     /// Get status of a node
     Status {},
     /// Add a new mpn worker
-    AddMpnWorker { mpn_address: MpnAddress },
+    AddMpnWorker { address: Address },
 }
 
 #[derive(StructOpt)]
@@ -439,11 +439,11 @@ pub async fn initialize_cli() {
                 )
                 .await;
             }
-            NodeCliOptions::AddMpnWorker { mpn_address } => {
+            NodeCliOptions::AddMpnWorker { address } => {
                 crate::cli::node::add_mpn_worker(
                     &conf_path,
                     conf.expect(BAZUKA_NOT_INITILIZED),
-                    mpn_address,
+                    address,
                 )
                 .await;
             }

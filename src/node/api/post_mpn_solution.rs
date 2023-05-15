@@ -13,7 +13,7 @@ pub async fn post_mpn_solution<K: KvStore, B: Blockchain<K>>(
     if let Some(mpn_work_pool) = &mut ctx.mpn_work_pool {
         let mut accepted = 0;
         for (id, proof) in req.proofs.iter() {
-            if mpn_work_pool.prove(*id, proof) {
+            if mpn_work_pool.prove(*id, &req.prover, proof) {
                 accepted += 1;
             }
         }
