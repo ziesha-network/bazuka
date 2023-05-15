@@ -5,8 +5,9 @@ pub mod withdraw;
 
 use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::{
-    Address, Amount, ContractId, ContractUpdate, ContractUpdateData, Money, MpnAddress, MpnDeposit,
-    MpnWithdraw, Signature, TokenId, Transaction, TransactionAndDelta, TransactionData,
+    hash::Hash, Address, Amount, ContractId, ContractUpdate, ContractUpdateData, Hasher, Money,
+    MpnAddress, MpnDeposit, MpnWithdraw, Signature, TokenId, Transaction, TransactionAndDelta,
+    TransactionData,
 };
 use crate::db::{KvStore, WriteOp};
 use crate::wallet::TxBuilder;
@@ -256,10 +257,14 @@ impl MpnWork {
         }
         .clone()
     }
-    pub fn verify(&self, _prover: &Address, proof: &ZkProof) -> bool {
+    pub fn verify(&self, prover: &Address, proof: &ZkProof) -> bool {
         let vk = self.vk();
+        let commitment = ZkScalar::new(
+            Hasher::hash(&bincode::serialize(&(prover.clone(), self.reward)).unwrap()).as_ref(),
+        );
         check_proof(
             &vk,
+            commitment,
             self.public_inputs.height,
             self.public_inputs.state,
             self.public_inputs.aux_data,

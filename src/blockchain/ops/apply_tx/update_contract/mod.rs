@@ -25,6 +25,10 @@ pub fn update_contract<K: KvStore>(
     )])?;
 
     for update in updates {
+        let commit = zk::ZkScalar::new(
+            Hasher::hash(&bincode::serialize(&(update.prover.clone(), update.reward)).unwrap())
+                .as_ref(),
+        );
         let (next_state, proof) = (update.next_state.clone(), update.proof.clone());
         let (circuit, aux_data) = match &update.data {
             ContractUpdateData::Deposit { deposits } => {
@@ -65,6 +69,7 @@ pub fn update_contract<K: KvStore>(
         let mut cont_account = chain.get_contract_account(*contract_id)?;
         if !zk::check_proof(
             &circuit,
+            commit,
             prev_account.height,
             cont_account.compressed_state.state_hash,
             aux_data.state_hash,

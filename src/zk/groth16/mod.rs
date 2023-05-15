@@ -66,6 +66,7 @@ impl From<bellman::groth16::VerifyingKey<Bls12>> for Groth16VerifyingKey {
 
 pub fn groth16_verify(
     vk: &Groth16VerifyingKey,
+    commitment: ZkScalar,
     prev_height: u64,
     prev_state: ZkScalar,
     aux_data: ZkScalar,
@@ -109,6 +110,7 @@ pub fn groth16_verify(
         &vk,
         &proof,
         &[
+            commitment.into(),
             prev_height.into(),
             prev_state.into(),
             aux_data.into(),
