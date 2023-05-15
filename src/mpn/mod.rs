@@ -301,6 +301,12 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
     let mut worker_id = 0;
     let mut new_account_indices = HashMap::<MpnAddress, u64>::new();
 
+    let remaining_reward: Amount = (u64::from(block_reward)
+        - config.mpn_num_deposit_batches as u64 * u64::from(deposit_reward)
+        - config.mpn_num_withdraw_batches as u64 * u64::from(withdraw_reward)
+        - config.mpn_num_update_batches as u64 * u64::from(update_reward))
+    .into();
+
     deposits.insert(
         0,
         validator_tx_builder.deposit_mpn(
@@ -310,7 +316,7 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             validator_tx_builder_deposit_nonce + 1,
             Money {
                 token_id: TokenId::Ziesha,
-                amount: block_reward,
+                amount: remaining_reward,
             },
             Money::ziesha(0),
         ),
