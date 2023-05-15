@@ -17,6 +17,7 @@ pub struct DepositCircuit {
     pub log4_token_tree_size: u8,
     pub log4_deposit_batch_size: u8,
 
+    pub commitment: ZkScalar,                // Public
     pub height: u64,                         // Public
     pub state: ZkScalar,                     // Public
     pub aux_data: ZkScalar,                  // Public
@@ -30,6 +31,7 @@ impl MpnCircuit for DepositCircuit {
             log4_tree_size,
             log4_token_tree_size,
             log4_deposit_batch_size: log4_batch_size,
+            commitment: Default::default(),
             height: 0,
             state: Default::default(),
             aux_data: Default::default(),
@@ -47,6 +49,10 @@ impl Circuit<BellmanFr> for DepositCircuit {
         self,
         cs: &mut CS,
     ) -> Result<(), SynthesisError> {
+        // Reward commitment feeded as input
+        let commitment_wit = AllocatedNum::alloc(&mut *cs, || Ok(self.commitment.into()))?;
+        commitment_wit.inputize(&mut *cs)?;
+
         // Contract height feeded as input
         let height_wit = AllocatedNum::alloc(&mut *cs, || Ok(self.height.into()))?;
         height_wit.inputize(&mut *cs)?;
