@@ -2,10 +2,9 @@
 use crate::client::{messages::ValidatorClaim, PeerAddress};
 
 use crate::core::{
-    hash::Hash, Address, Amount, ContractDeposit, ContractId, ContractUpdate, ContractUpdateData,
-    ContractWithdraw, Hasher, Money, MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry,
-    Signature, Signer, Token, TokenId, Transaction, TransactionAndDelta, TransactionData,
-    ValidatorProof, Vrf, ZkSigner,
+    hash::Hash, Address, Amount, ContractDeposit, ContractId, ContractWithdraw, Hasher, Money,
+    MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry, Signature, Signer, Token,
+    TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::VerifiableRandomFunction;

@@ -5,7 +5,7 @@ pub mod withdraw;
 
 use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::{
-    Amount, ContractId, ContractUpdate, ContractUpdateData, Money, MpnAddress, MpnDeposit,
+    Address, Amount, ContractId, ContractUpdate, ContractUpdateData, Money, MpnAddress, MpnDeposit,
     MpnWithdraw, Signature, TokenId, Transaction, TransactionAndDelta, TransactionData,
 };
 use crate::db::{KvStore, WriteOp};
@@ -66,11 +66,11 @@ impl MpnWorkPool {
         }
         remaining
     }
-    pub fn get_works(&self, mpn_address: MpnAddress) -> HashMap<usize, MpnWork> {
+    pub fn get_works(&self, address: Address) -> HashMap<usize, MpnWork> {
         let mut result: HashMap<usize, MpnWork> = self
             .remaining_works()
             .into_iter()
-            .filter(|(_, v)| v.worker.mpn_address == mpn_address)
+            .filter(|(_, v)| v.worker.address == address)
             .collect();
 
         if result.is_empty() {
@@ -107,7 +107,7 @@ impl MpnWorkPool {
                         circuit_id: 0,
                         next_state: self.works[&i].new_root.clone(),
                         proof: self.solutions[&i].clone(),
-                        reward: 0.into(),
+                        reward: self.works[&i].reward,
                         prover: Default::default(),
                     },
                     MpnWorkData::Withdraw(trans) => ContractUpdate {
@@ -117,7 +117,7 @@ impl MpnWorkPool {
                         circuit_id: 0,
                         next_state: self.works[&i].new_root.clone(),
                         proof: self.solutions[&i].clone(),
-                        reward: 0.into(),
+                        reward: self.works[&i].reward,
                         prover: Default::default(),
                     },
                     MpnWorkData::Update(trans) => {
@@ -136,7 +136,7 @@ impl MpnWorkPool {
                             circuit_id: 0,
                             next_state: self.works[&i].new_root.clone(),
                             proof: self.solutions[&i].clone(),
-                            reward: 0.into(),
+                            reward: self.works[&i].reward,
                             prover: Default::default(),
                         }
                     }
@@ -223,7 +223,7 @@ pub struct ZkPublicInputs {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MpnWorker {
-    pub mpn_address: MpnAddress,
+    pub address: Address,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -233,6 +233,7 @@ pub struct MpnWork {
     pub data: MpnWorkData,
     pub new_root: ZkCompressedState,
     pub worker: MpnWorker,
+    pub reward: Amount,
 }
 
 impl MpnWork {
@@ -260,16 +261,15 @@ impl MpnWork {
 pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
     config: &MpnConfig,
     db: &B,
-    workers: &HashMap<MpnAddress, MpnWorker>,
+    workers: &HashMap<Address, MpnWorker>,
     mut deposits: Vec<MpnDeposit>,
     withdraws: Vec<MpnWithdraw>,
-    mut updates: Vec<MpnTransaction>,
-    mut block_reward: Amount,
+    updates: Vec<MpnTransaction>,
+    block_reward: Amount,
     deposit_reward: Amount,
     withdraw_reward: Amount,
     update_reward: Amount,
     validator_tx_builder_deposit_nonce: u32,
-    mut validator_tx_builder_mpn_nonce: u32,
     validator_tx_builder: TxBuilder,
     user_tx_builder: TxBuilder,
 ) -> Result<MpnWorkPool, MpnError> {
@@ -279,11 +279,10 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
     if workers.len() == 0 {
         log::warn!("No MPN-workers defined! All proving rewards will go into validator's wallet!");
         workers = vec![MpnWorker {
-            mpn_address: user_tx_builder.get_mpn_address(),
+            address: user_tx_builder.get_address(),
         }];
     }
     let mut worker_id = 0;
-    let mut rewards = HashMap::<MpnAddress, Amount>::new();
     let mut new_account_indices = HashMap::<MpnAddress, u64>::new();
 
     deposits.insert(
@@ -321,11 +320,8 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             new_root,
             data: MpnWorkData::Deposit(transitions),
             worker: workers[worker_id].clone(),
+            reward: deposit_reward,
         });
-        *rewards
-            .entry(workers[worker_id].mpn_address.clone())
-            .or_default() += deposit_reward;
-        block_reward -= deposit_reward;
         worker_id = (worker_id + 1) % workers.len();
     }
     for _ in 0..config.mpn_num_withdraw_batches {
@@ -348,45 +344,11 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             new_root,
             data: MpnWorkData::Withdraw(transitions),
             worker: workers[worker_id].clone(),
+            reward: withdraw_reward,
         });
-        *rewards
-            .entry(workers[worker_id].mpn_address.clone())
-            .or_default() += withdraw_reward;
-        block_reward -= withdraw_reward;
         worker_id = (worker_id + 1) % workers.len();
     }
-    for i in 0..config.mpn_num_update_batches {
-        *rewards
-            .entry(workers[worker_id].mpn_address.clone())
-            .or_default() += update_reward;
-        block_reward -= update_reward;
-        let mut update_txs = Vec::new();
-        for (addr, amount) in rewards.iter() {
-            update_txs.push(validator_tx_builder.create_mpn_transaction(
-                addr.clone(),
-                Money {
-                    token_id: TokenId::Ziesha,
-                    amount: *amount,
-                },
-                Money::ziesha(0),
-                validator_tx_builder_mpn_nonce + 1,
-            ));
-            validator_tx_builder_mpn_nonce += 1;
-        }
-        if i == config.mpn_num_update_batches - 1 {
-            update_txs.push(validator_tx_builder.create_mpn_transaction(
-                user_tx_builder.get_mpn_address(),
-                Money {
-                    token_id: TokenId::Ziesha,
-                    amount: block_reward,
-                },
-                Money::ziesha(0),
-                validator_tx_builder_mpn_nonce + 1,
-            ));
-        }
-        for tx in update_txs.into_iter().rev() {
-            updates.insert(0, tx);
-        }
+    for _ in 0..config.mpn_num_update_batches {
         let (new_root, public_inputs, transitions) = update::update(
             config.mpn_contract_id,
             config.log4_tree_size,
@@ -401,13 +363,13 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
         for (i, tx) in transitions.iter().enumerate() {
             log::info!("MPN-Update tx {}: {:?}", i, tx.tx);
         }
-        rewards.clear();
         works.push(MpnWork {
             config: config.clone(),
             public_inputs,
             new_root,
             data: MpnWorkData::Update(transitions),
             worker: workers[worker_id].clone(),
+            reward: update_reward,
         });
         worker_id = (worker_id + 1) % workers.len();
     }
