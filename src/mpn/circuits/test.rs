@@ -121,6 +121,7 @@ fn test_empty_update_circuit() {
         log4_token_tree_size: 3,
         log4_update_batch_size: 1,
 
+        commitment: ZkScalar::from(456),
         height: 0,
         state: ZkScalar::from(123),
         aux_data: aux,
@@ -137,6 +138,7 @@ fn test_empty_update_circuit() {
         &pvk,
         &proof,
         &[
+            ZkScalar::from(456).into(),
             ZkScalar::from(0).into(),
             ZkScalar::from(123).into(),
             aux.into(),
@@ -160,6 +162,7 @@ fn test_empty_deposit_circuit() {
         log4_token_tree_size: 3,
         log4_deposit_batch_size: 1,
 
+        commitment: ZkScalar::from(456),
         height: 0,
         state: ZkScalar::from(123),
         aux_data: aux,
@@ -175,6 +178,7 @@ fn test_empty_deposit_circuit() {
         &pvk,
         &proof,
         &[
+            ZkScalar::from(456).into(),
             ZkScalar::from(0).into(),
             ZkScalar::from(123).into(),
             aux.into(),
@@ -198,6 +202,7 @@ fn test_empty_withdraw_circuit() {
         log4_token_tree_size: 3,
         log4_withdraw_batch_size: 1,
 
+        commitment: ZkScalar::from(456),
         height: 0,
         state: ZkScalar::from(123),
         aux_data: aux,
@@ -213,6 +218,7 @@ fn test_empty_withdraw_circuit() {
         &pvk,
         &proof,
         &[
+            ZkScalar::from(456).into(),
             ZkScalar::from(0).into(),
             ZkScalar::from(123).into(),
             aux.into(),
