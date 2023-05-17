@@ -9,7 +9,7 @@ use crate::core::{
     MpnAddress, MpnDeposit, MpnWithdraw, Signature, TokenId, Transaction, TransactionAndDelta,
     TransactionData,
 };
-use crate::db::{KvStore, WriteOp};
+use crate::db::{KvStore, KvStoreError, WriteOp};
 use crate::wallet::TxBuilder;
 use crate::zk::{
     check_proof, MpnAccount, MpnTransaction, ZkCompressedState, ZkDeltaPairs, ZkProof, ZkScalar,
@@ -23,6 +23,8 @@ use thiserror::Error;
 pub enum MpnError {
     #[error("blockchain error happened: {0}")]
     BlockchainError(#[from] BlockchainError),
+    #[error("kv-store error happened: {0}")]
+    KvStoreError(#[from] KvStoreError),
     #[error("insufficient workers in the pool")]
     InsufficientWorkers,
 }
@@ -315,6 +317,12 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
         - config.mpn_num_withdraw_batches as u64 * u64::from(withdraw_reward)
         - config.mpn_num_update_batches as u64 * u64::from(update_reward))
     .into();
+
+    let validator_balance = db.get_balance(validator_tx_builder.get_address(), TokenId::Ziesha)?;
+    mirror.database_mut().update(&[WriteOp::Put(
+        crate::db::keys::account_balance(&validator_tx_builder.get_address(), TokenId::Ziesha),
+        (validator_balance + remaining_reward).into(),
+    )])?;
 
     deposits.insert(
         0,
