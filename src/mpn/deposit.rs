@@ -79,6 +79,28 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
             rejected_pub_keys.insert(src_pub);
             continue;
         } else {
+            // Check src have enough balance
+            let src_amount_bal = db.get_balance(src_pub.clone(), tx.payment.amount.token_id)?;
+            if src_amount_bal < tx.payment.amount.amount {
+                rejected.push(tx.clone());
+                rejected_pub_keys.insert(src_pub);
+                continue;
+            }
+            mirror.update(&[WriteOp::Put(
+                crate::db::keys::account_balance(&src_pub, tx.payment.amount.token_id),
+                (src_amount_bal - tx.payment.amount.amount).into(),
+            )])?;
+            let src_fee_bal = db.get_balance(src_pub.clone(), tx.payment.fee.token_id)?;
+            if src_fee_bal < tx.payment.fee.amount {
+                rejected.push(tx.clone());
+                rejected_pub_keys.insert(src_pub);
+                continue;
+            }
+            mirror.update(&[WriteOp::Put(
+                crate::db::keys::account_balance(&src_pub, tx.payment.fee.token_id),
+                (src_fee_bal - tx.payment.fee.amount).into(),
+            )])?;
+
             let mut updated_acc = MpnAccount {
                 address: tx.zk_address.0.decompress(),
                 tokens: acc.tokens.clone(),
