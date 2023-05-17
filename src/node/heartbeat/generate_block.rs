@@ -43,6 +43,11 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                     .blockchain
                     .min_validator_reward(ctx.validator_wallet.get_address())?;
 
+                // TODO: Remove Hardcoded rewards
+                let deposit_reward = Amount(u64::from(validator_reward) / 10 * 1);
+                let withdraw_reward = Amount(u64::from(validator_reward) / 10 * 1);
+                let update_reward = Amount(u64::from(validator_reward) / 10 * 3);
+
                 let deposit_nonce = ctx.blockchain.get_deposit_nonce(
                     ctx.validator_wallet.get_address(),
                     ctx.blockchain.config().mpn_config.mpn_contract_id,
@@ -55,9 +60,9 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
                     withdraws,
                     updates,
                     validator_reward,
-                    Amount(100_000_000_000), // TODO: Remove Hardcoded rewards
-                    Amount(100_000_000_000),
-                    Amount(300_000_000_000),
+                    deposit_reward,
+                    withdraw_reward,
+                    update_reward,
                     deposit_nonce,
                     ctx.validator_wallet.clone(),
                     ctx.user_wallet.clone(),
