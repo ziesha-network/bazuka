@@ -3,21 +3,9 @@ use crate::crypto::{SignatureScheme, VerifiableRandomFunction};
 
 // A proof that you are the validator for this block
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
-pub enum ValidatorProof<V: VerifiableRandomFunction> {
-    Unproven,
-    Proof {
-        vrf_output: V::Out,
-        vrf_proof: V::Proof,
-    },
-}
-
-impl<V: VerifiableRandomFunction> ValidatorProof<V> {
-    pub fn is_unproven(&self) -> bool {
-        match self {
-            Self::Proof { .. } => false,
-            Self::Unproven => true,
-        }
-    }
+pub struct ValidatorProof<V: VerifiableRandomFunction> {
+    pub vrf_output: V::Out,
+    pub vrf_proof: V::Proof,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
@@ -27,7 +15,7 @@ pub struct ProofOfStake<S: SignatureScheme, V: VerifiableRandomFunction> {
     /// when the validator started validating this block
     pub timestamp: u32,
     /// vrf proof for this validator
-    pub proof: ValidatorProof<V>,
+    pub proof: Option<ValidatorProof<V>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]

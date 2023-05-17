@@ -11,7 +11,7 @@ pub async fn generate_block<K: KvStore, B: Blockchain<K>>(
         .blockchain
         .validator_status(timestamp, &ctx.validator_wallet)?;
 
-    if !proof.is_unproven() {
+    if let Some(proof) = proof {
         let (tip_epoch, tip_slot) = ctx
             .blockchain
             .epoch_slot(ctx.blockchain.get_tip()?.proof_of_stake.timestamp);

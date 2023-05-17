@@ -13,7 +13,7 @@ pub fn draft_block<K: KvStore>(
     }
 
     let validator_status = chain.validator_status(timestamp, wallet)?;
-    if chain.config.check_validator && validator_status.is_unproven() {
+    if chain.config.check_validator && validator_status.is_none() {
         return Ok(None);
     }
 

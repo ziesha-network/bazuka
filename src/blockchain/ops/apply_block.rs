@@ -24,14 +24,18 @@ pub fn apply_block<K: KvStore>(
         }
 
         if !is_genesis {
-            if chain.config.check_validator
-                && !chain.is_validator(
-                    block.header.proof_of_stake.timestamp,
-                    block.header.proof_of_stake.validator.clone(),
-                    block.header.proof_of_stake.proof.clone(),
-                )?
-            {
-                return Err(BlockchainError::UnelectedValidator);
+            if chain.config.check_validator {
+                if let Some(proof) = block.header.proof_of_stake.proof.clone() {
+                    if !chain.is_validator(
+                        block.header.proof_of_stake.timestamp,
+                        block.header.proof_of_stake.validator.clone(),
+                        proof,
+                    )? {
+                        return Err(BlockchainError::UnelectedValidator);
+                    }
+                } else {
+                    return Err(BlockchainError::UnelectedValidator); // TODO: Separate error
+                }
             }
             // WARN: Sum will be invalid if fees are not in Ziesha
             let fee_sum = Amount(
@@ -109,12 +113,11 @@ pub fn apply_block<K: KvStore>(
                 while chain.epoch_slot(head.proof_of_stake.timestamp).0 == tip_epoch
                     && head.number > 0
                 {
-                    let output_hash = match head.proof_of_stake.proof {
-                        ValidatorProof::Proof { vrf_output, .. } => {
-                            Hasher::hash(&Into::<Vec<u8>>::into(vrf_output.clone()))
-                        }
-                        ValidatorProof::Unproven => Default::default(),
-                    };
+                    let output_hash = head
+                        .proof_of_stake
+                        .proof
+                        .map(|p| Hasher::hash(&Into::<Vec<u8>>::into(p.vrf_output.clone())))
+                        .unwrap_or_default();
                     let mut preimage: Vec<u8> = new_randomness.to_vec();
                     preimage.extend(output_hash);
                     new_randomness = Hasher::hash(&preimage);

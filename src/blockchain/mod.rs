@@ -90,7 +90,7 @@ pub trait Blockchain<K: KvStore> {
         &self,
         timestamp: u32,
         wallet: &TxBuilder,
-    ) -> Result<ValidatorProof, BlockchainError>;
+    ) -> Result<Option<ValidatorProof>, BlockchainError>;
     fn min_validator_reward(&self, validator: Address) -> Result<Amount, BlockchainError>;
 
     fn currency_in_circulation(&self) -> Result<Amount, BlockchainError>;
@@ -559,21 +559,15 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
 
         if let Some(chance) = stakers.get(&addr) {
             if let Some(staker_info) = self.get_staker(addr.clone())? {
-                if let ValidatorProof::Proof {
-                    vrf_output,
-                    vrf_proof,
-                } = proof
-                {
-                    if Into::<f32>::into(vrf_output.clone()) <= *chance {
-                        let preimage = format!("{}-{}-{}", hex::encode(randomness), epoch, slot);
+                if Into::<f32>::into(proof.vrf_output.clone()) <= *chance {
+                    let preimage = format!("{}-{}-{}", hex::encode(randomness), epoch, slot);
 
-                        return Ok(Vrf::verify(
-                            &staker_info.vrf_pub_key,
-                            preimage.as_bytes(),
-                            &vrf_output,
-                            &vrf_proof,
-                        ));
-                    }
+                    return Ok(Vrf::verify(
+                        &staker_info.vrf_pub_key,
+                        preimage.as_bytes(),
+                        &proof.vrf_output,
+                        &proof.vrf_proof,
+                    ));
                 }
             }
         }
@@ -583,7 +577,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         &self,
         timestamp: u32,
         wallet: &TxBuilder,
-    ) -> Result<ValidatorProof, BlockchainError> {
+    ) -> Result<Option<ValidatorProof>, BlockchainError> {
         let (epoch, slot) = self.epoch_slot(timestamp);
         let randomness = self.epoch_randomness()?;
         let stakers = self.get_stakers()?;
@@ -595,16 +589,13 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         if let Some(chance) = stakers.get(&wallet.get_address()) {
             let (vrf_output, vrf_proof) = wallet.generate_random(randomness, epoch, slot);
             if Into::<f32>::into(vrf_output.clone()) <= *chance {
-                Ok(ValidatorProof::Proof {
+                return Ok(Some(ValidatorProof {
                     vrf_output,
                     vrf_proof,
-                })
-            } else {
-                Ok(ValidatorProof::Unproven)
+                }));
             }
-        } else {
-            Ok(ValidatorProof::Unproven)
         }
+        Ok(None)
     }
 
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError> {

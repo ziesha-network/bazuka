@@ -4,8 +4,7 @@ use crate::blockchain::BlockchainConfig;
 use crate::common::*;
 use crate::core::{
     Amount, Block, ContractId, Header, Money, MpnAddress, ProofOfStake, Ratio, RegularSendEntry,
-    Signature, Token, TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof,
-    ZkHasher,
+    Signature, Token, TokenId, Transaction, TransactionAndDelta, TransactionData, ZkHasher,
 };
 use crate::mpn::circuits::MpnCircuit;
 use crate::mpn::MpnConfig;
@@ -271,7 +270,7 @@ pub fn blockchain_config_template(initial_balances: bool) -> BlockchainConfig {
             proof_of_stake: ProofOfStake {
                 timestamp: CHAIN_START_TIMESTAMP,
                 validator: Default::default(),
-                proof: ValidatorProof::Unproven,
+                proof: None,
             },
         },
         body: vec![
