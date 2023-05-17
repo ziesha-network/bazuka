@@ -148,13 +148,14 @@ impl TxBuilder {
         randomness: <Hasher as Hash>::Output,
         epoch: u32,
         slot: u32,
+        attempt: u32,
     ) -> (
         <Vrf as VerifiableRandomFunction>::Out,
         <Vrf as VerifiableRandomFunction>::Proof,
     ) {
         Vrf::sign(
             &self.vrf_private_key,
-            format!("{}-{}-{}", hex::encode(randomness), epoch, slot).as_bytes(),
+            format!("{}-{}-{}-{}", hex::encode(randomness), epoch, slot, attempt).as_bytes(),
         )
     }
     pub fn register_validator(

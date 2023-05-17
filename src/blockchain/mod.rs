@@ -560,7 +560,13 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         if let Some(chance) = stakers.get(&addr) {
             if let Some(staker_info) = self.get_staker(addr.clone())? {
                 if Into::<f32>::into(proof.vrf_output.clone()) <= *chance {
-                    let preimage = format!("{}-{}-{}", hex::encode(randomness), epoch, slot);
+                    let preimage = format!(
+                        "{}-{}-{}-{}",
+                        hex::encode(randomness),
+                        epoch,
+                        slot,
+                        proof.attempt
+                    );
 
                     return Ok(Vrf::verify(
                         &staker_info.vrf_pub_key,
@@ -578,6 +584,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         timestamp: u32,
         wallet: &TxBuilder,
     ) -> Result<Option<ValidatorProof>, BlockchainError> {
+        const MAX_ATTEMPTS: u32 = 3;
         let (epoch, slot) = self.epoch_slot(timestamp);
         let randomness = self.epoch_randomness()?;
         let stakers = self.get_stakers()?;
@@ -586,13 +593,17 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             .into_iter()
             .map(|(k, v)| (k, (u64::from(v) as f64 / sum_stakes as f64) as f32))
             .collect();
-        if let Some(chance) = stakers.get(&wallet.get_address()) {
-            let (vrf_output, vrf_proof) = wallet.generate_random(randomness, epoch, slot);
-            if Into::<f32>::into(vrf_output.clone()) <= *chance {
-                return Ok(Some(ValidatorProof {
-                    vrf_output,
-                    vrf_proof,
-                }));
+        for attempt in 0..MAX_ATTEMPTS {
+            if let Some(chance) = stakers.get(&wallet.get_address()) {
+                let (vrf_output, vrf_proof) =
+                    wallet.generate_random(randomness, epoch, slot, attempt);
+                if Into::<f32>::into(vrf_output.clone()) <= *chance {
+                    return Ok(Some(ValidatorProof {
+                        attempt,
+                        vrf_output,
+                        vrf_proof,
+                    }));
+                }
             }
         }
         Ok(None)

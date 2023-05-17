@@ -4,6 +4,7 @@ use crate::crypto::{SignatureScheme, VerifiableRandomFunction};
 // A proof that you are the validator for this block
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
 pub struct ValidatorProof<V: VerifiableRandomFunction> {
+    pub attempt: u32,
     pub vrf_output: V::Out,
     pub vrf_proof: V::Proof,
 }

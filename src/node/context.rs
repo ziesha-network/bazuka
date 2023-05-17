@@ -103,7 +103,9 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
                 let (epoch_curr, slot_curr) = self.blockchain.epoch_slot(curr_claim.timestamp);
                 let (epoch_req, slot_req) = self.blockchain.epoch_slot(claim.timestamp);
                 if epoch_curr == epoch_req && slot_curr == slot_req {
-                    return Ok(false);
+                    if claim.proof.attempt >= curr_claim.proof.attempt {
+                        return Ok(false);
+                    }
                 }
             }
             let ts = self.network_timestamp();
