@@ -62,6 +62,7 @@ pub struct MpnWorkPool {
     final_delta: ZkDeltaPairs,
     works: HashMap<usize, MpnWork>,
     solutions: HashMap<usize, MpnSolution>,
+    assignees: HashMap<Address, Vec<usize>>,
 }
 
 impl MpnWorkPool {
@@ -73,11 +74,20 @@ impl MpnWorkPool {
         remaining
     }
     pub fn get_works(&self, address: Address) -> HashMap<usize, MpnWork> {
-        let mut result: HashMap<usize, MpnWork> = self
-            .remaining_works()
-            .into_iter()
-            .filter(|(_, v)| v.worker.address == address)
-            .collect();
+        if let Some(works) = self.assignees.get(&address) {
+            return works
+                .iter()
+                .filter_map(|i| {
+                    if let Some(w) = self.works.get(i) {
+                        Some((*i, w.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+        }
+
+        let mut result: HashMap<usize, MpnWork> = self.remaining_works().into_iter().collect();
 
         if result.is_empty() {
             result = self.remaining_works();
@@ -244,7 +254,6 @@ pub struct MpnWork {
     pub public_inputs: ZkPublicInputs,
     pub data: MpnWorkData,
     pub new_root: ZkCompressedState,
-    pub worker: MpnWorker,
     pub reward: Amount,
 }
 
@@ -341,7 +350,6 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             public_inputs,
             new_root,
             data: MpnWorkData::Deposit(transitions),
-            worker: workers[worker_id].clone(),
             reward: deposit_reward,
         });
         worker_id = (worker_id + 1) % workers.len();
@@ -365,7 +373,6 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             public_inputs,
             new_root,
             data: MpnWorkData::Withdraw(transitions),
-            worker: workers[worker_id].clone(),
             reward: withdraw_reward,
         });
         worker_id = (worker_id + 1) % workers.len();
@@ -390,7 +397,6 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             public_inputs,
             new_root,
             data: MpnWorkData::Update(transitions),
-            worker: workers[worker_id].clone(),
             reward: update_reward,
         });
         worker_id = (worker_id + 1) % workers.len();
@@ -402,6 +408,7 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
         works: works.into_iter().enumerate().collect(),
         final_delta,
         solutions: HashMap::new(),
+        assignees: HashMap::new(),
     })
 }
 
