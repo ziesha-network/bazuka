@@ -15,6 +15,7 @@ use crate::zk::{
     check_proof, MpnAccount, MpnTransaction, ZkCompressedState, ZkDeltaPairs, ZkProof, ZkScalar,
     ZkStateModel, ZkVerifierKey,
 };
+use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use thiserror::Error;
@@ -75,27 +76,34 @@ impl MpnWorkPool {
         }
         remaining
     }
-    pub fn get_works(&self, address: Address) -> HashMap<usize, MpnWork> {
-        if let Some(works) = self.assignees.get(&address) {
-            return works
-                .iter()
-                .filter_map(|i| {
-                    if let Some(w) = self.works.get(i) {
-                        Some((*i, w.clone()))
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-        }
+    pub fn get_works(&mut self, address: Address) -> HashMap<usize, MpnWork> {
+        let selected = if let Some(works) = self.assignees.get(&address) {
+            works.clone()
+        } else {
+            let mut not_assigned: HashMap<usize, MpnWork> =
+                self.remaining_works().into_iter().collect();
+            for wid in self.assignees.values().flatten() {
+                not_assigned.remove(wid);
+            }
 
-        let mut result: HashMap<usize, MpnWork> = self.remaining_works().into_iter().collect();
+            let selected = not_assigned
+                .keys()
+                .cloned()
+                .choose_multiple(&mut rand::thread_rng(), 3);
+            self.assignees.insert(address, selected.clone());
+            selected
+        };
 
-        if result.is_empty() {
-            result = self.remaining_works();
-        }
-
-        result
+        selected
+            .iter()
+            .filter_map(|i| {
+                if let Some(w) = self.works.get(i) {
+                    Some((*i, w.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
     pub fn prove(&mut self, id: usize, prover: &Address, proof: &ZkProof) -> bool {
         if !self.solutions.contains_key(&id) {

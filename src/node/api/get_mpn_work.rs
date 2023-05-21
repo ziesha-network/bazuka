@@ -9,10 +9,10 @@ pub async fn get_mpn_work<K: KvStore, B: Blockchain<K>>(
     context: Arc<RwLock<NodeContext<K, B>>>,
     req: GetMpnWorkRequest,
 ) -> Result<GetMpnWorkResponse, NodeError> {
-    let ctx = context.read().await;
+    let mut ctx = context.write().await;
     let works = ctx
         .mpn_work_pool
-        .as_ref()
+        .as_mut()
         .map(|p| p.get_works(req.address.clone()))
         .unwrap_or_default();
     if !works.is_empty() {
