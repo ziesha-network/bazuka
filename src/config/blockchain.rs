@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 
-const CHAIN_START_TIMESTAMP: u32 = 1678976362;
+const CHAIN_START_TIMESTAMP: u32 = 1684747119;
 
 const MPN_LOG4_TREE_SIZE: u8 = 15;
 const MPN_LOG4_TOKENS_TREE_SIZE: u8 = 3;
@@ -324,7 +324,7 @@ pub fn blockchain_config_template(initial_balances: bool) -> BlockchainConfig {
 
         testnet_height_limit: Some(TESTNET_HEIGHT_LIMIT),
         max_memo_length: 64,
-        slot_duration: 60,
+        slot_duration: 90,
         slot_per_epoch: 10,
         chain_start_timestamp: CHAIN_START_TIMESTAMP,
         check_validator: true,
