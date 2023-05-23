@@ -113,11 +113,15 @@ pub fn apply_block<K: KvStore>(
                 while chain.epoch_slot(head.proof_of_stake.timestamp).0 == tip_epoch
                     && head.number > 0
                 {
-                    let output_hash = head
-                        .proof_of_stake
-                        .proof
-                        .map(|p| Hasher::hash(&Into::<Vec<u8>>::into(p.vrf_output.clone())))
-                        .unwrap_or_default();
+                    // TODO: WAS A TESTNET SECURITY BUG, FIX LATER!
+                    let output_hash = if head.number < 700 {
+                        head.proof_of_stake
+                            .proof
+                            .map(|p| Hasher::hash(&Into::<Vec<u8>>::into(p.vrf_output.clone())))
+                            .unwrap_or_default()
+                    } else {
+                        head.hash()
+                    };
                     let mut preimage: Vec<u8> = new_randomness.to_vec();
                     preimage.extend(output_hash);
                     new_randomness = Hasher::hash(&preimage);
