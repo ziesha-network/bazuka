@@ -11,6 +11,10 @@ pub fn randomness() -> StringKey {
     "RND".into()
 }
 
+pub fn power() -> StringKey {
+    "PWR".into()
+}
+
 pub fn block(index: u64) -> StringKey {
     format!("BLK-{:010}", index).into()
 }

@@ -6,6 +6,7 @@ pub fn apply_block<K: KvStore>(
 ) -> Result<(), BlockchainError> {
     let (ops, _) = chain.isolated(|chain| {
         let curr_height = chain.get_height()?;
+        let mut curr_pow = chain.get_power()?;
 
         if let Some(height_limit) = chain.config.testnet_height_limit {
             if block.header.number >= height_limit {
@@ -26,6 +27,7 @@ pub fn apply_block<K: KvStore>(
         if !is_genesis {
             if chain.config.check_validator {
                 if let Some(proof) = block.header.proof_of_stake.proof.clone() {
+                    curr_pow += 1f64 / ((proof.attempt + 1) as f64);
                     if !chain.is_validator(
                         block.header.proof_of_stake.timestamp,
                         block.header.proof_of_stake.validator.clone(),
@@ -134,6 +136,7 @@ pub fn apply_block<K: KvStore>(
         }
 
         chain.database.update(&[
+            WriteOp::Put(keys::power(), curr_pow.into()),
             WriteOp::Put(keys::height(), (curr_height + 1).into()),
             WriteOp::Put(
                 keys::header(block.header.number),

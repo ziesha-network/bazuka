@@ -61,6 +61,7 @@ pub trait Blockchain<K: KvStore> {
     fn database(&self) -> &K;
     fn database_mut(&mut self) -> &mut K;
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
+    fn get_power(&self) -> Result<f64, BlockchainError>;
     fn get_mpn_account_count(&self) -> Result<u64, BlockchainError>;
     fn get_mpn_account_indices(&self, addr: MpnAddress) -> Result<Vec<u64>, BlockchainError>;
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError>;
@@ -607,6 +608,13 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             }
         }
         Ok(None)
+    }
+
+    fn get_power(&self) -> Result<f64, BlockchainError> {
+        Ok(match self.database.get(keys::power())? {
+            Some(b) => b.try_into()?,
+            None => 0.into(),
+        })
     }
 
     fn get_stake(&self, addr: Address) -> Result<Amount, BlockchainError> {
