@@ -137,6 +137,7 @@ pub fn apply_block<K: KvStore>(
 
         chain.database.update(&[
             WriteOp::Put(keys::power(), curr_pow.into()),
+            WriteOp::Put(keys::power_at(curr_height + 1), curr_pow.into()),
             WriteOp::Put(keys::height(), (curr_height + 1).into()),
             WriteOp::Put(
                 keys::header(block.header.number),

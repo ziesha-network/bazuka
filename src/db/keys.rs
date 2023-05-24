@@ -14,6 +14,9 @@ pub fn randomness() -> StringKey {
 pub fn power() -> StringKey {
     "PWR".into()
 }
+pub fn power_at(index: u64) -> StringKey {
+    format!("PWR-{:010}", index).into()
+}
 
 pub fn block(index: u64) -> StringKey {
     format!("BLK-{:010}", index).into()

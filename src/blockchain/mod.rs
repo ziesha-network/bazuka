@@ -61,6 +61,7 @@ pub trait Blockchain<K: KvStore> {
     fn database(&self) -> &K;
     fn database_mut(&mut self) -> &mut K;
     fn epoch_slot(&self, timestamp: u32) -> (u32, u32);
+    fn get_power_at(&self) -> Result<f64, BlockchainError>;
     fn get_power(&self) -> Result<f64, BlockchainError>;
     fn get_mpn_account_count(&self) -> Result<u64, BlockchainError>;
     fn get_mpn_account_indices(&self, addr: MpnAddress) -> Result<Vec<u64>, BlockchainError>;
@@ -402,7 +403,16 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     }
 
     fn will_extend(&self, from: u64, headers: &[Header]) -> Result<bool, BlockchainError> {
-        if from + headers.len() as u64 <= self.get_height()? {
+        let sum_powers = headers
+            .iter()
+            .map(|h| {
+                h.proof_of_stake
+                    .proof
+                    .map(|p| 1f64 / (p.attemp + 1) as f64)
+                    .unwrap_or(0.)
+            })
+            .sum::<f64>();
+        if from + sum_powers <= self.get_power()? {
             return Ok(false);
         }
 
@@ -612,6 +622,13 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
 
     fn get_power(&self) -> Result<f64, BlockchainError> {
         Ok(match self.database.get(keys::power())? {
+            Some(b) => b.try_into()?,
+            None => 0.into(),
+        })
+    }
+
+    fn get_power_at(&self, index: usize) -> Result<f64, BlockchainError> {
+        Ok(match self.database.get(keys::power_at(index))? {
             Some(b) => b.try_into()?,
             None => 0.into(),
         })

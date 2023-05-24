@@ -11,20 +11,20 @@ pub async fn sync_blocks<K: KvStore, B: Blockchain<K>>(
     let mut sorted_peers = ctx.peer_manager.get_peers();
     drop(ctx);
 
-    sorted_peers.sort_by_key(|p| p.height);
+    sorted_peers.sort_by_key(|p| p.power);
 
     for peer in sorted_peers.iter().rev() {
         let mut net_fail = false;
         let mut chain_fail = false;
         loop {
             let ctx = context.read().await;
-            if peer.height <= ctx.blockchain.get_height()? {
+            if peer.power <= ctx.blockchain.get_power()? {
                 return Ok(());
             }
 
             println!(
-                "Syncing blocks with: {} (Peer height: {})",
-                peer.address, peer.height
+                "Syncing blocks with: {} (Peer height: {}, power: {})",
+                peer.address, peer.height, peer.power
             );
 
             let local_height = ctx.blockchain.get_height()?;
