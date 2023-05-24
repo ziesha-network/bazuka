@@ -44,7 +44,7 @@ pub mod node;
 const DEFAULT_PORT: u16 = 8765;
 const BAZUKA_NOT_INITILIZED: &str = "Bazuka is not initialized";
 
-const CURRENT_NETWORK: &str = "deruny";
+const CURRENT_NETWORK: &str = "deruny-2";
 
 #[cfg(feature = "client")]
 #[derive(Serialize, Deserialize, Clone, Debug)]
