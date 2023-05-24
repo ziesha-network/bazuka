@@ -27,7 +27,7 @@ pub fn apply_block<K: KvStore>(
         if !is_genesis {
             if chain.config.check_validator {
                 if let Some(proof) = block.header.proof_of_stake.proof.clone() {
-                    curr_pow += 1f64 / ((proof.attempt + 1) as f64);
+                    curr_pow += proof.power();
                     if !chain.is_validator(
                         block.header.proof_of_stake.timestamp,
                         block.header.proof_of_stake.validator.clone(),
@@ -136,7 +136,6 @@ pub fn apply_block<K: KvStore>(
         }
 
         chain.database.update(&[
-            WriteOp::Put(keys::power(), curr_pow.into()),
             WriteOp::Put(keys::power_at(curr_height + 1), curr_pow.into()),
             WriteOp::Put(keys::height(), (curr_height + 1).into()),
             WriteOp::Put(

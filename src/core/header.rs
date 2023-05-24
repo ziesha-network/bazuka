@@ -9,6 +9,12 @@ pub struct ValidatorProof<V: VerifiableRandomFunction> {
     pub vrf_proof: V::Proof,
 }
 
+impl<V: VerifiableRandomFunction> ValidatorProof<V> {
+    pub fn power(&self) -> f64 {
+        1f64 / (self.attempt as f64 + 1.)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
 pub struct ProofOfStake<S: SignatureScheme, V: VerifiableRandomFunction> {
     /// public-key of validator

@@ -11,9 +11,6 @@ pub fn randomness() -> StringKey {
     "RND".into()
 }
 
-pub fn power() -> StringKey {
-    "PWR".into()
-}
 pub fn power_at(index: u64) -> StringKey {
     format!("PWR-{:010}", index).into()
 }
