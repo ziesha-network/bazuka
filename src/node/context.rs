@@ -52,9 +52,11 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
     }
     pub fn get_info(&self) -> Result<Option<Peer>, NodeError> {
         let height = self.blockchain.get_height()?;
+        let power = self.blockchain.get_power()?;
         Ok(self.address.map(|address| Peer {
             address,
             height,
+            power,
             pub_key: self.validator_wallet.get_address(),
         }))
     }

@@ -53,6 +53,7 @@ pub struct Peer {
     pub address: PeerAddress,
     pub pub_key: ed25519::PublicKey,
     pub height: u64,
+    pub power: f64,
 }
 
 pub struct NodeRequest {

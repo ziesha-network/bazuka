@@ -27,6 +27,7 @@ pub struct GetStatsResponse {
     pub social_profiles: SocialProfiles,
     pub address: String,
     pub height: u64,
+    pub power: f64,
     pub nodes: usize,
     pub next_reward: Amount,
     pub timestamp: u32,
