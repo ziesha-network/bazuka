@@ -17,6 +17,7 @@ pub async fn get_stats<K: KvStore, B: Blockchain<K>>(
         social_profiles: context.social_profiles.clone(),
         address: context.validator_wallet.get_address().to_string(),
         height: context.blockchain.get_height()?,
+        power: context.blockchain.get_power()?,
         nodes: context.peer_manager.node_count(),
         next_reward: context.blockchain.next_reward()?,
         timestamp: ts,

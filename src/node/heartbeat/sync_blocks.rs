@@ -11,11 +11,8 @@ pub async fn sync_blocks<K: KvStore, B: Blockchain<K>>(
     let mut sorted_peers = ctx.peer_manager.get_peers();
     drop(ctx);
 
-    sorted_peers.sort_by(|a, b| {
-        a.power
-            .partial_cmp(&b.power)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    sorted_peers.retain(|p| !p.power.is_nan());
+    sorted_peers.sort_by(|a, b| a.power.partial_cmp(&b.power).unwrap());
 
     for peer in sorted_peers.iter().rev() {
         let mut net_fail = false;
