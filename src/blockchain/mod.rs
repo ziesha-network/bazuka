@@ -560,7 +560,12 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         addr: Address,
         proof: ValidatorProof,
     ) -> Result<bool, BlockchainError> {
+        let tip_epoch = self.epoch_slot(self.get_tip()?.proof_of_stake.timestamp).0;
         let (epoch, slot) = self.epoch_slot(timestamp);
+        let is_epoch_switch = epoch > tip_epoch;
+        if is_epoch_switch && proof.attempt != 0 {
+            return Ok(false);
+        }
         let randomness = self.epoch_randomness()?;
         let stakers = self.get_stakers()?;
         let sum_stakes = stakers.iter().map(|(_, a)| u64::from(*a)).sum::<u64>();
@@ -597,7 +602,9 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         wallet: &TxBuilder,
     ) -> Result<Option<ValidatorProof>, BlockchainError> {
         const MAX_ATTEMPTS: u32 = 3;
+        let tip_epoch = self.epoch_slot(self.get_tip()?.proof_of_stake.timestamp).0;
         let (epoch, slot) = self.epoch_slot(timestamp);
+        let is_epoch_switch = epoch > tip_epoch;
         let randomness = self.epoch_randomness()?;
         let stakers = self.get_stakers()?;
         let sum_stakes = stakers.iter().map(|(_, a)| u64::from(*a)).sum::<u64>();
@@ -605,7 +612,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
             .into_iter()
             .map(|(k, v)| (k, (u64::from(v) as f64 / sum_stakes as f64) as f32))
             .collect();
-        for attempt in 0..MAX_ATTEMPTS {
+        for attempt in 0..(if is_epoch_switch { 1 } else { MAX_ATTEMPTS }) {
             if let Some(chance) = stakers.get(&wallet.get_address()) {
                 let (vrf_output, vrf_proof) =
                     wallet.generate_random(randomness, epoch, slot, attempt);
