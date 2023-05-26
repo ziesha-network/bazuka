@@ -117,4 +117,8 @@ pub enum BlockchainError {
     StateNotGiven,
     #[error("state invalid")]
     InvalidState,
+    #[error("validator proof not given")]
+    ValidatorProofNotGiven,
+    #[error("epoch randomness can only be changed with vrf-proofs on 0th attempt")]
+    RandomnessChangeNotPermitted,
 }

@@ -36,7 +36,7 @@ pub fn apply_block<K: KvStore>(
                         return Err(BlockchainError::UnelectedValidator);
                     }
                 } else {
-                    return Err(BlockchainError::UnelectedValidator); // TODO: Separate error
+                    return Err(BlockchainError::ValidatorProofNotGiven);
                 }
             }
             // WARN: Sum will be invalid if fees are not in Ziesha
@@ -105,30 +105,24 @@ pub fn apply_block<K: KvStore>(
         }
 
         if curr_height > 0 {
-            let mut new_randomness = chain.epoch_randomness()?;
             let tip_epoch = chain
                 .epoch_slot(chain.get_tip()?.proof_of_stake.timestamp)
                 .0;
             let block_epoch = chain.epoch_slot(block.header.proof_of_stake.timestamp).0;
             if block_epoch > tip_epoch {
-                let mut head = chain.get_tip()?;
-                while chain.epoch_slot(head.proof_of_stake.timestamp).0 == tip_epoch
-                    && head.number > 0
+                // New randomness = H(H(tip) | VRF_out)
+                let new_randomness = if let Some(proof) = block.header.proof_of_stake.proof.clone()
                 {
-                    // TODO: WAS A TESTNET SECURITY BUG, FIX LATER!
-                    let output_hash = if head.number < 700 {
-                        head.proof_of_stake
-                            .proof
-                            .map(|p| Hasher::hash(&Into::<Vec<u8>>::into(p.vrf_output.clone())))
-                            .unwrap_or_default()
-                    } else {
-                        head.hash()
-                    };
-                    let mut preimage: Vec<u8> = new_randomness.to_vec();
-                    preimage.extend(output_hash);
-                    new_randomness = Hasher::hash(&preimage);
-                    head = chain.get_header(head.number - 1)?;
-                }
+                    if proof.attempt != 0 {
+                        return Err(BlockchainError::RandomnessChangeNotPermitted);
+                    }
+                    let mut preimage: Vec<u8> = chain.get_tip()?.hash().to_vec();
+                    preimage.extend(Into::<Vec<u8>>::into(proof.vrf_output.clone()));
+                    Hasher::hash(&preimage)
+                } else {
+                    Default::default()
+                };
+
                 chain
                     .database
                     .update(&[WriteOp::Put(keys::randomness(), new_randomness.into())])?;
