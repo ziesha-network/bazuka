@@ -110,6 +110,9 @@ impl Circuit<BellmanFr> for UpdateCircuit {
             // Sender address should be on curve in case transaction slot is non-empty
             src_addr_wit.assert_on_curve(&mut *cs, &enabled_wit)?;
 
+            let src_checksum_wit =
+                AllocatedPoint::alloc(&mut *cs, || Ok(trans.src_before.checksum))?;
+
             let src_before_balances_hash =
                 AllocatedNum::alloc(&mut *cs, || Ok(trans.src_before_balances_hash.into()))?;
             let dst_before_balances_hash =
@@ -245,6 +248,7 @@ impl Circuit<BellmanFr> for UpdateCircuit {
                     &src_withdraw_nonce_wit.clone().into(),
                     &src_addr_wit.x.clone().into(),
                     &src_addr_wit.y.clone().into(),
+                    &src_checksum_wit.clone().into(),
                     &src_before_balances_hash.clone().into(),
                 ],
             )?;
@@ -323,6 +327,7 @@ impl Circuit<BellmanFr> for UpdateCircuit {
                     &src_withdraw_nonce_wit.clone().into(),
                     &src_addr_wit.x.clone().into(),
                     &src_addr_wit.y.clone().into(),
+                    &src_checksum_wit.clone().into(), // TODO: UPDATE CHECKSUM!
                     &src_balance_final_root,
                 ],
             )?;
@@ -339,6 +344,9 @@ impl Circuit<BellmanFr> for UpdateCircuit {
                 AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.dst_pub_key.0.decompress()))?;
             // Destination address should be on curve in case transaction slot is non-empty
             tx_dst_addr_wit.assert_on_curve(&mut *cs, &enabled_wit)?;
+
+            let dst_checksum_wit =
+                AllocatedNum::alloc(&mut *cs, || Ok(trans.dst_before.CHECKSUM.into()))?;
 
             let tx_dst_index_wit = UnsignedInteger::alloc(
                 &mut *cs,
@@ -362,6 +370,7 @@ impl Circuit<BellmanFr> for UpdateCircuit {
                     &dst_withdraw_nonce_wit.clone().into(),
                     &dst_addr_wit.x.clone().into(),
                     &dst_addr_wit.y.clone().into(),
+                    &dst_checksum_wit.clone().into(),
                     &dst_before_balances_hash.clone().into(),
                 ],
             )?;
@@ -397,6 +406,7 @@ impl Circuit<BellmanFr> for UpdateCircuit {
                     &dst_withdraw_nonce_wit.clone().into(),
                     &tx_dst_addr_wit.x.clone().into(),
                     &tx_dst_addr_wit.y.clone().into(),
+                    &dst_checksum_wit.clone().into(), // TODO: UPDATE CHECKSUM!
                     &dst_balance_final_root,
                 ],
             )?;

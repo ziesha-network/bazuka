@@ -62,6 +62,7 @@ pub struct MpnAccount {
     pub withdraw_nonce: u32, // Increased on MpnWithdrawals
     pub address: jubjub::PointAffine,
     pub tokens: HashMap<u64, Money>,
+    pub checksum: ZkScalar,
 }
 
 impl MpnAccount {
