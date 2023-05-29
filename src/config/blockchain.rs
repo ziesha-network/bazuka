@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 
-const CHAIN_START_TIMESTAMP: u32 = 1684747119;
+const CHAIN_START_TIMESTAMP: u32 = 1685348591;
 
 const MPN_LOG4_TREE_SIZE: u8 = 15;
 const MPN_LOG4_TOKENS_TREE_SIZE: u8 = 3;
@@ -319,7 +319,7 @@ pub fn blockchain_config_template(initial_balances: bool) -> BlockchainConfig {
 
         ziesha_token_id,
         genesis: blk,
-        reward_ratio: 100_000, // 1/100_000 -> 0.01% of Treasury Supply per block
+        reward_ratio: 10_000_000, // 1/10_000_000 -> 0.0001% of Treasury Supply per block
         max_block_size: MB as usize,
 
         testnet_height_limit: Some(TESTNET_HEIGHT_LIMIT),
