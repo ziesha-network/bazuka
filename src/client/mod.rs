@@ -1,3 +1,4 @@
+use crate::blockchain::TransactionMetadata;
 use crate::core::{Address, GeneralTransaction, MpnAddress, Signer, TokenId};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
@@ -405,7 +406,9 @@ impl BazukaClient {
                 format!("http://{}/bincode/transact", self.peer),
                 TransactRequest {
                     tx,
-                    timestamp_commit: None,
+                    meta: Some(TransactionMetadata {
+                        claimed_timestamp: crate::utils::local_timestamp(),
+                    }),
                 },
                 self.limit.clone().unwrap_or_default(),
             )

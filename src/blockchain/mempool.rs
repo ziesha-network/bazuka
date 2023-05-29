@@ -1,20 +1,11 @@
-use super::{Blockchain, BlockchainError, TransactionStats};
+use super::{Blockchain, BlockchainError, TransactionMetadata, TransactionStats};
 use crate::core::{
     Address, Amount, GeneralAddress, GeneralTransaction, MpnDeposit, MpnWithdraw, NonceGroup,
-    Signature, TokenId, TransactionAndDelta,
+    TokenId, TransactionAndDelta,
 };
 use crate::db::KvStore;
 use crate::zk::MpnTransaction;
-use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
-
-// Allow transaction senders to commit on the time they submitted their transaction, as a
-// solution for selecting the next tx from the sender in case there are txs with equal nonces.
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct TimestampCommit {
-    pub timestamp: u32,
-    pub sig: Signature,
-}
 
 trait Nonced {
     fn nonce(&self) -> u32;
@@ -161,6 +152,7 @@ impl Mempool {
         tx: GeneralTransaction,
         is_local: bool,
         now: u32,
+        meta: Option<TransactionMetadata>,
     ) -> Result<(), BlockchainError> {
         let mpn_contract_id = blockchain.config().mpn_config.mpn_contract_id;
 
@@ -200,8 +192,14 @@ impl Mempool {
                     all.reset(tx.nonce());
                 }
                 if let Some((first_tx, stats)) = all.first_tx() {
-                    // TODO: config.replace_tx_threshold instead of 60
-                    if now > stats.first_seen + 60 && first_tx != &tx {
+                    if meta.as_ref().map(|m| m.claimed_timestamp).unwrap_or(0)
+                        > stats
+                            .meta
+                            .as_ref()
+                            .map(|m| m.claimed_timestamp)
+                            .unwrap_or(0)
+                        && first_tx != &tx
+                    {
                         all.reset(tx.nonce());
                     }
                 }
@@ -250,7 +248,7 @@ impl Mempool {
             .or_insert(SingleMempool::new(nonce));
 
         if is_local || all.len() < limit {
-            all.insert(tx.clone(), TransactionStats::new(is_local, now));
+            all.insert(tx.clone(), TransactionStats::new(is_local, now, meta));
         }
         Ok(())
     }

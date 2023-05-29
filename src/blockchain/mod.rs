@@ -32,18 +32,25 @@ pub enum TransactionValidity {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransactionMetadata {
+    pub claimed_timestamp: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionStats {
+    pub meta: Option<TransactionMetadata>,
     pub first_seen: u32,
     pub validity: TransactionValidity,
     pub is_local: bool,
 }
 
 impl TransactionStats {
-    pub fn new(is_local: bool, first_seen: u32) -> Self {
+    pub fn new(is_local: bool, first_seen: u32, meta: Option<TransactionMetadata>) -> Self {
         Self {
             first_seen,
             validity: TransactionValidity::Unknown,
             is_local,
+            meta,
         }
     }
 }

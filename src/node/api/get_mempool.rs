@@ -16,7 +16,7 @@ pub async fn get_mempool<K: KvStore, B: Blockchain<K>>(
         mempool: context
             .mempool
             .all()
-            .filter_map(|(tx, _)| {
+            .filter_map(|(tx, stats)| {
                 // Do not share MPN txs with others! It's a competetion :)
                 if let GeneralTransaction::TransactionAndDelta(tx) = &tx {
                     if let TransactionData::UpdateContract { contract_id, .. } = &tx.tx.data {
@@ -31,7 +31,7 @@ pub async fn get_mempool<K: KvStore, B: Blockchain<K>>(
                     }
                     // TODO: Also apply filter on dst!
                 }
-                Some(tx.clone())
+                Some((tx.clone(), stats.meta.clone()))
             })
             .collect(),
     })

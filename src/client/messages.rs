@@ -1,4 +1,4 @@
-use crate::blockchain::{TimestampCommit, TransactionStats};
+use crate::blockchain::{TransactionMetadata, TransactionStats};
 use crate::core::{
     Address, Amount, Block, GeneralAddress, GeneralTransaction, Header, Money, Signature, Token,
     TransactionAndDelta, Undelegation, ValidatorProof,
@@ -158,7 +158,7 @@ pub struct GetHeadersResponse {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct TransactRequest {
     pub tx: GeneralTransaction,
-    pub timestamp_commit: Option<TimestampCommit>,
+    pub meta: Option<TransactionMetadata>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -179,7 +179,7 @@ pub struct GetMempoolRequest {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct GetMempoolResponse {
-    pub mempool: Vec<GeneralTransaction>,
+    pub mempool: Vec<(GeneralTransaction, Option<TransactionMetadata>)>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -236,7 +236,7 @@ impl TryInto<TransactRequest> for PostJsonMpnTransactionRequest {
     type Error = InputError;
     fn try_into(self) -> Result<TransactRequest, Self::Error> {
         Ok(TransactRequest {
-            timestamp_commit: None,
+            meta: None,
             tx: GeneralTransaction::MpnTransaction(zk::MpnTransaction {
                 nonce: self.tx.nonce,
                 src_pub_key: self
@@ -282,7 +282,7 @@ impl Into<GetJsonMempoolResponse> for GetMempoolResponse {
             updates: self
                 .mempool
                 .into_iter()
-                .filter_map(|t| {
+                .filter_map(|(t, _)| {
                     if let GeneralTransaction::MpnTransaction(tx) = t {
                         Some(tx)
                     } else {

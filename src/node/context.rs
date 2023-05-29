@@ -1,5 +1,5 @@
 use super::{Firewall, NodeError, NodeOptions, OutgoingSender, Peer, PeerAddress, PeerManager};
-use crate::blockchain::{Blockchain, BlockchainError, Mempool};
+use crate::blockchain::{Blockchain, BlockchainError, Mempool, TransactionMetadata};
 use crate::client::messages::{SocialProfiles, ValidatorClaim};
 use crate::core::{Address, Block, GeneralTransaction, TransactionAndDelta};
 use crate::mpn::{MpnWorkPool, MpnWorker};
@@ -76,10 +76,11 @@ impl<K: KvStore, B: Blockchain<K>> NodeContext<K, B> {
         &mut self,
         is_local: bool,
         tx: GeneralTransaction,
+        meta: Option<TransactionMetadata>,
     ) -> Result<(), BlockchainError> {
         let local_ts = self.local_timestamp();
         self.mempool
-            .add_tx(&self.blockchain, tx, is_local, local_ts)?;
+            .add_tx(&self.blockchain, tx, is_local, local_ts, meta)?;
         Ok(())
     }
 

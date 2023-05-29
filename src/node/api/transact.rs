@@ -25,6 +25,6 @@ pub async fn transact<K: KvStore, B: Blockchain<K>>(
     }
 
     let is_local = client.map(|c| c.ip().is_loopback()).unwrap_or(false);
-    ctx.mempool_add_tx(is_local, req.tx)?;
+    ctx.mempool_add_tx(is_local, req.tx, req.meta)?;
     Ok(TransactResponse { error: None })
 }
