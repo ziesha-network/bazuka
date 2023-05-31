@@ -93,6 +93,14 @@ impl FromStr for GeneralAddress {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TransactionKind {
+    TransactionAndDelta,
+    MpnDeposit,
+    MpnTransaction,
+    MpnWithdraw,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NonceGroup {
     TransactionAndDelta(Address),
     MpnDeposit(Address),
@@ -109,6 +117,14 @@ pub enum GeneralTransaction {
 }
 
 impl GeneralTransaction {
+    pub fn kind(&self) -> TransactionKind {
+        match self {
+            Self::TransactionAndDelta(_) => TransactionKind::TransactionAndDelta,
+            Self::MpnDeposit(_) => TransactionKind::MpnDeposit,
+            Self::MpnTransaction(_) => TransactionKind::MpnTransaction,
+            Self::MpnWithdraw(_) => TransactionKind::MpnWithdraw,
+        }
+    }
     pub fn nonce_group(&self) -> NonceGroup {
         match self {
             GeneralTransaction::TransactionAndDelta(tx_delta) => {
@@ -141,6 +157,14 @@ impl GeneralTransaction {
             GeneralTransaction::MpnDeposit(mpn_deposit) => mpn_deposit.payment.nonce,
             GeneralTransaction::MpnTransaction(mpn_tx) => mpn_tx.nonce,
             GeneralTransaction::MpnWithdraw(mpn_withdraw) => mpn_withdraw.zk_nonce,
+        }
+    }
+    pub fn fee(&self) -> Money {
+        match self {
+            GeneralTransaction::TransactionAndDelta(tx_delta) => tx_delta.tx.fee,
+            GeneralTransaction::MpnDeposit(mpn_deposit) => mpn_deposit.payment.fee,
+            GeneralTransaction::MpnTransaction(mpn_tx) => mpn_tx.fee,
+            GeneralTransaction::MpnWithdraw(mpn_withdraw) => mpn_withdraw.payment.fee,
         }
     }
     pub fn sender(&self) -> GeneralAddress {

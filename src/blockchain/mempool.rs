@@ -1,7 +1,7 @@
 use super::{Blockchain, BlockchainError, TransactionMetadata, TransactionStats};
 use crate::core::{
     Address, Amount, GeneralAddress, GeneralTransaction, MpnDeposit, MpnWithdraw, NonceGroup,
-    TokenId, TransactionAndDelta,
+    TokenId, TransactionAndDelta, TransactionKind,
 };
 use crate::db::KvStore;
 use crate::zk::MpnTransaction;
@@ -107,6 +107,7 @@ impl SingleMempool {
 pub struct Mempool {
     min_balance_per_tx: Amount,
     txs: HashMap<NonceGroup, SingleMempool>,
+    min_fees: HashMap<TransactionKind, Amount>,
     rejected: HashMap<GeneralTransaction, TransactionStats>,
 }
 
@@ -115,6 +116,14 @@ impl Mempool {
         Self {
             min_balance_per_tx,
             txs: Default::default(),
+            min_fees: [
+                (TransactionKind::TransactionAndDelta, Amount(0)),
+                (TransactionKind::MpnDeposit, Amount(0)),
+                (TransactionKind::MpnWithdraw, Amount(0)),
+                (TransactionKind::MpnTransaction, Amount(0)),
+            ]
+            .into_iter()
+            .collect(),
             rejected: Default::default(),
         }
     }
@@ -154,6 +163,15 @@ impl Mempool {
         now: u32,
         meta: Option<TransactionMetadata>,
     ) -> Result<(), BlockchainError> {
+        if tx.fee().token_id != TokenId::Ziesha {
+            return Ok(());
+        }
+
+        let min_fee = self.min_fees.get(&tx.kind()).cloned().unwrap_or_default();
+        if tx.fee().amount < min_fee {
+            return Ok(());
+        }
+
         let mpn_contract_id = blockchain.config().mpn_config.mpn_contract_id;
 
         match &tx {
