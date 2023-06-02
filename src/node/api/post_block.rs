@@ -11,21 +11,26 @@ pub async fn post_block<K: KvStore, B: Blockchain<K>>(
 ) -> Result<PostBlockResponse, NodeError> {
     let mut ctx = context.write().await;
     if req.block.header.number == ctx.blockchain.get_height()? {
-        if req
-            .block
-            .header
-            .proof_of_stake
-            .timestamp
-            .saturating_sub(ctx.network_timestamp())
-            > ctx.opts.max_block_time_difference
-        {
-            return Err(NodeError::BlockTimestampInFuture);
+        // Only accept new blocks if validator doesn't have ongoing work!
+        if ctx.mpn_work_pool.is_none() {
+            if req
+                .block
+                .header
+                .proof_of_stake
+                .timestamp
+                .saturating_sub(ctx.network_timestamp())
+                > ctx.opts.max_block_time_difference
+            {
+                return Err(NodeError::BlockTimestampInFuture);
+            }
+            ctx.blockchain
+                .extend(req.block.header.number, &[req.block.clone()])?;
+            ctx.on_update()?;
+            drop(ctx);
+            promote_block(context, req.block).await;
+        } else {
+            log::info!("Syncing ignored! Validator is already producing a block!");
         }
-        ctx.blockchain
-            .extend(req.block.header.number, &[req.block.clone()])?;
-        ctx.on_update()?;
-        drop(ctx);
-        promote_block(context, req.block).await;
     }
     Ok(PostBlockResponse {})
 }

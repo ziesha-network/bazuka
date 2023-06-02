@@ -23,6 +23,13 @@ pub async fn sync_blocks<K: KvStore, B: Blockchain<K>>(
                 return Ok(());
             }
 
+            // Ignore syncing when validator has ongoing work
+            // WARN: This might not be enough, peer might lie about its height
+            if peer.height == ctx.blockchain.get_height()? + 1 && ctx.mpn_work_pool.is_some() {
+                log::info!("Syncing ignored! Validator is already producing a block!");
+                return Ok(());
+            }
+
             println!(
                 "Syncing blocks with: {} (Peer height: {}, power: {})",
                 peer.address, peer.height, peer.power
