@@ -71,6 +71,8 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
             continue;
         };
 
+        let mut isolated = mirror.mirror();
+        let mut isolated_state_size = state_size;
         if (acc.address != Default::default() && tx.zk_address.0.decompress() != acc.address)
             || !tx.verify_calldata::<ZkHasher>()
             || !tx.verify_signature::<ZkHasher>()
@@ -78,7 +80,6 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
             || tx.payment.amount.token_id != acc_token.token_id
             || tx.payment.amount.amount > acc_token.amount
         {
-            println!("{} {}", tx.zk_nonce, acc.withdraw_nonce);
             rejected.push(tx.clone());
             continue;
         } else {
@@ -91,7 +92,7 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
 
             let before_token_hash = updated_acc.tokens_hash::<ZkHasher>(log4_token_tree_size);
             let token_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                &isolated,
                 mpn_contract_id,
                 ZkDataLocator(vec![account_index, 4]),
                 zk_token_index,
@@ -100,16 +101,16 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
 
             updated_acc.tokens.get_mut(&zk_token_index).unwrap().amount -= tx.payment.amount.amount;
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
-                &mut mirror,
+                &mut isolated,
                 mpn_contract_id,
                 account_index,
                 updated_acc.clone(),
-                &mut state_size,
+                &mut isolated_state_size,
             )
             .unwrap();
 
             let fee_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                &isolated,
                 mpn_contract_id,
                 ZkDataLocator(vec![account_index, 4]),
                 zk_fee_token_index,
@@ -137,7 +138,7 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
                 .amount -= tx.payment.fee.amount;
 
             let proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                &isolated,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
                 account_index,
@@ -145,11 +146,11 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
             .unwrap();
 
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
-                &mut mirror,
+                &mut isolated,
                 mpn_contract_id,
                 account_index,
                 updated_acc,
-                &mut state_size,
+                &mut isolated_state_size,
             )
             .unwrap();
 
@@ -168,6 +169,8 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
                 before_token_hash,
             });
             accepted.push(tx);
+            mirror.update(&isolated.to_ops())?;
+            state_size = isolated_state_size;
         }
     }
     let next_state =

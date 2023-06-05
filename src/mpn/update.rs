@@ -103,6 +103,8 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
             continue;
         };
         let dst_token = dst_before.tokens.get(&dst_token_index);
+        let mut isolated = mirror.mirror();
+        let mut isolated_state_size = state_size;
         if tx.nonce != src_before.tx_nonce + 1
             || src_before.address != tx.src_pub_key.decompress()
             || (dst_before.address.is_on_curve()
@@ -115,7 +117,7 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
             continue;
         } else {
             let src_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                &isolated,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
                 src_index,
@@ -130,7 +132,7 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
             };
 
             let src_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                &isolated,
                 mpn_contract_id,
                 ZkDataLocator(vec![src_index, 4]),
                 src_token_index,
@@ -139,11 +141,11 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
 
             src_after.tokens.get_mut(&src_token_index).unwrap().amount -= tx.amount.amount;
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
-                &mut mirror,
+                &mut isolated,
                 mpn_contract_id,
                 src_index,
                 src_after.clone(),
-                &mut state_size,
+                &mut isolated_state_size,
             )
             .unwrap();
 
@@ -161,7 +163,7 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
             }
 
             let src_fee_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                &isolated,
                 mpn_contract_id,
                 ZkDataLocator(vec![src_index, 4]),
                 src_fee_token_index,
@@ -174,23 +176,23 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
                 .unwrap()
                 .amount -= tx.fee.amount;
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
-                &mut mirror,
+                &mut isolated,
                 mpn_contract_id,
                 src_index,
                 src_after,
-                &mut state_size,
+                &mut isolated_state_size,
             )
             .unwrap();
 
             let dst_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                &isolated,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
                 dst_index,
             )
             .unwrap();
             let dst_balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                &isolated,
                 mpn_contract_id,
                 ZkDataLocator(vec![dst_index, 4]),
                 dst_token_index,
@@ -198,7 +200,7 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
             .unwrap();
 
             let dst_before = KvStoreStateManager::<ZkHasher>::get_mpn_account(
-                &mirror,
+                &isolated,
                 mpn_contract_id,
                 dst_index,
             )
@@ -217,11 +219,11 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
                 .or_insert(Money::new(tx.amount.token_id, 0))
                 .amount += tx.amount.amount;
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
-                &mut mirror,
+                &mut isolated,
                 mpn_contract_id,
                 dst_index,
                 dst_after,
-                &mut state_size,
+                &mut isolated_state_size,
             )
             .unwrap();
 
@@ -250,6 +252,8 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
                 dst_index,
             });
             accepted.push(tx);
+            mirror.update(&isolated.to_ops())?;
+            state_size = isolated_state_size;
         }
     }
 

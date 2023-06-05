@@ -71,6 +71,8 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
         };
         let acc_token = acc.tokens.get(&zk_token_index).clone();
 
+        let mut isolated = mirror.mirror();
+        let mut isolated_state_size = state_size;
         if rejected_pub_keys.contains(&src_pub)
             || (acc.address != Default::default() && tx.zk_address.0.decompress() != acc.address)
             || (acc_token.is_some() && acc_token.unwrap().token_id != tx.payment.amount.token_id)
@@ -86,7 +88,7 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
                 rejected_pub_keys.insert(src_pub);
                 continue;
             }
-            mirror.update(&[WriteOp::Put(
+            isolated.update(&[WriteOp::Put(
                 crate::db::keys::account_balance(&src_pub, tx.payment.amount.token_id),
                 (src_amount_bal - tx.payment.amount.amount).into(),
             )])?;
@@ -96,7 +98,7 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
                 rejected_pub_keys.insert(src_pub);
                 continue;
             }
-            mirror.update(&[WriteOp::Put(
+            isolated.update(&[WriteOp::Put(
                 crate::db::keys::account_balance(&src_pub, tx.payment.fee.token_id),
                 (src_fee_bal - tx.payment.fee.amount).into(),
             )])?;
@@ -114,14 +116,14 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
                 .amount += tx.payment.amount.amount;
 
             let balance_proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                &isolated,
                 mpn_contract_id,
                 ZkDataLocator(vec![account_index, 4]),
                 zk_token_index,
             )
             .unwrap();
             let proof = KvStoreStateManager::<ZkHasher>::prove(
-                &mirror,
+                &isolated,
                 mpn_contract_id,
                 ZkDataLocator(vec![]),
                 account_index,
@@ -129,11 +131,11 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
             .unwrap();
 
             KvStoreStateManager::<ZkHasher>::set_mpn_account(
-                &mut mirror,
+                &mut isolated,
                 mpn_contract_id,
                 account_index,
                 updated_acc,
-                &mut state_size,
+                &mut isolated_state_size,
             )
             .unwrap();
 
@@ -152,6 +154,8 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
                 balance_proof,
             });
             accepted.push(tx);
+            mirror.update(&isolated.to_ops())?;
+            state_size = isolated_state_size;
         }
     }
     let next_state =
