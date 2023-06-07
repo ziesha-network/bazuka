@@ -379,7 +379,9 @@ mod tests {
 
         for i in 0..5 {
             let mut mempool = Mempool::new(Amount(1));
-            mempool.add_tx(&chain, dummy_tx(&abc, i), false, 0).unwrap();
+            mempool
+                .add_tx(&chain, dummy_tx(&abc, i), false, 0, None)
+                .unwrap();
 
             let snapshot = mempool.all().collect::<Vec<_>>();
             // Tx is only added if nonce is correct based on its account on the blockchain
@@ -398,31 +400,41 @@ mod tests {
         let other = TxBuilder::new(&Vec::from("DELEGATOR"));
         let mut mempool = Mempool::new(Amount(1));
 
-        mempool.add_tx(&chain, dummy_tx(&abc, 1), false, 0).unwrap();
+        mempool
+            .add_tx(&chain, dummy_tx(&abc, 1), false, 0, None)
+            .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 1);
-        mempool.add_tx(&chain, dummy_tx(&abc, 2), false, 0).unwrap();
+        mempool
+            .add_tx(&chain, dummy_tx(&abc, 2), false, 0, None)
+            .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 2);
-        mempool.add_tx(&chain, dummy_tx(&abc, 4), false, 0).unwrap();
+        mempool
+            .add_tx(&chain, dummy_tx(&abc, 4), false, 0, None)
+            .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 2);
-        mempool.add_tx(&chain, dummy_tx(&abc, 3), false, 0).unwrap();
+        mempool
+            .add_tx(&chain, dummy_tx(&abc, 3), false, 0, None)
+            .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 3);
-        mempool.add_tx(&chain, dummy_tx(&abc, 4), false, 0).unwrap();
+        mempool
+            .add_tx(&chain, dummy_tx(&abc, 4), false, 0, None)
+            .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 4);
 
         mempool
-            .add_tx(&chain, dummy_tx(&other, 10), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 10), false, 0, None)
             .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 4);
         mempool
-            .add_tx(&chain, dummy_tx(&other, 1), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 1), false, 0, None)
             .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 5);
         mempool
-            .add_tx(&chain, dummy_tx(&other, 3), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 3), false, 0, None)
             .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 5);
         mempool
-            .add_tx(&chain, dummy_tx(&other, 2), false, 0)
+            .add_tx(&chain, dummy_tx(&other, 2), false, 0, None)
             .unwrap();
         assert_eq!(mempool.all().collect::<Vec<_>>().len(), 6);
     }

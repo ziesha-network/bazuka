@@ -356,6 +356,7 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             &mut mirror,
             &deposits,
             &mut new_account_indices,
+            true,
         )?;
         log::info!("Made MPN-Deposit block of {} txs.", transitions.len());
         for (i, tx) in transitions.iter().enumerate() {

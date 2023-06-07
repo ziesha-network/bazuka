@@ -38,6 +38,9 @@ pub fn apply_block<K: KvStore>(
                 } else {
                     return Err(BlockchainError::ValidatorProofNotGiven);
                 }
+            } else {
+                // NOTE: THIS ONLY HAPPENS IN TESTS!
+                curr_pow += 1.;
             }
             // WARN: Sum will be invalid if fees are not in Ziesha
             let fee_sum = Amount(
@@ -111,17 +114,14 @@ pub fn apply_block<K: KvStore>(
             let block_epoch = chain.epoch_slot(block.header.proof_of_stake.timestamp).0;
             if block_epoch > tip_epoch {
                 // New randomness = H(H(tip) | VRF_out)
-                let new_randomness = if let Some(proof) = block.header.proof_of_stake.proof.clone()
-                {
+                let mut preimage: Vec<u8> = chain.get_tip()?.hash().to_vec();
+                if let Some(proof) = block.header.proof_of_stake.proof.clone() {
                     if proof.attempt != 0 {
                         return Err(BlockchainError::RandomnessChangeNotPermitted);
                     }
-                    let mut preimage: Vec<u8> = chain.get_tip()?.hash().to_vec();
                     preimage.extend(Into::<Vec<u8>>::into(proof.vrf_output.clone()));
-                    Hasher::hash(&preimage)
-                } else {
-                    Default::default()
-                };
+                }
+                let new_randomness = Hasher::hash(&preimage);
 
                 chain
                     .database

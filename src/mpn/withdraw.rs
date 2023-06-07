@@ -311,7 +311,8 @@ mod tests {
                 conf.log4_deposit_batch_size,
                 &mut db,
                 &[initial_dep],
-                &mut new_account_indices
+                &mut new_account_indices,
+                false
             )
             .unwrap()
             .2

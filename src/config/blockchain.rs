@@ -459,6 +459,7 @@ pub fn get_test_blockchain_config() -> BlockchainConfig {
     conf.chain_start_timestamp = 0;
     conf.check_validator = false;
     conf.slot_duration = 5;
+    conf.reward_ratio = 100_000;
 
     conf.genesis.body[1] = get_test_mpn_contract().tx;
     conf.genesis.body.drain(2..);
