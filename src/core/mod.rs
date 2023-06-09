@@ -108,6 +108,17 @@ pub enum NonceGroup {
     MpnWithdraw(MpnAddress),
 }
 
+impl NonceGroup {
+    pub fn address(&self) -> GeneralAddress {
+        match self {
+            NonceGroup::TransactionAndDelta(addr) => GeneralAddress::ChainAddress(addr.clone()),
+            NonceGroup::MpnDeposit(addr) => GeneralAddress::ChainAddress(addr.clone()),
+            NonceGroup::MpnTransaction(addr) => GeneralAddress::MpnAddress(addr.clone()),
+            NonceGroup::MpnWithdraw(addr) => GeneralAddress::MpnAddress(addr.clone()),
+        }
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum GeneralTransaction {
     TransactionAndDelta(TransactionAndDelta),

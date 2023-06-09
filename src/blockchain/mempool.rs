@@ -39,13 +39,20 @@ impl Nonced for TransactionAndDelta {
 pub struct SingleMempool {
     nonce: u32,
     txs: VecDeque<(GeneralTransaction, TransactionStats)>,
+    last_exec: u32, // Last time a tx from this mempool got executed?
 }
 
 impl SingleMempool {
+    // Long time no execution?
+    fn should_be_banned(&self, now: u32) -> bool {
+        const BAN_THRESHOLD: u32 = 240; // 240 seconds of inactivity
+        !self.txs.is_empty() && now.saturating_sub(self.last_exec) > BAN_THRESHOLD
+    }
     fn new(nonce: u32) -> Self {
         Self {
             nonce,
             txs: Default::default(),
+            last_exec: 0,
         }
     }
     fn len(&self) -> usize {
@@ -72,16 +79,18 @@ impl SingleMempool {
             self.txs.push_back((tx, stats));
         }
     }
-    fn update_nonce(&mut self, nonce: u32) {
+    fn update_nonce(&mut self, nonce: u32, now: u32) {
         while let Some(first_nonce) = self.first_nonce() {
             if first_nonce <= nonce {
                 self.txs.pop_front();
+                self.last_exec = now;
             } else {
                 break;
             }
         }
         if self.first_nonce() != Some(nonce + 1) {
             self.txs.clear();
+            self.last_exec = now;
         }
         self.nonce = nonce;
     }
@@ -106,6 +115,7 @@ impl SingleMempool {
 #[derive(Clone, Debug)]
 pub struct Mempool {
     min_balance_per_tx: Amount,
+    banned: HashMap<GeneralAddress, u32>,
     txs: HashMap<NonceGroup, SingleMempool>,
     min_fees: HashMap<TransactionKind, Amount>,
     rejected: HashMap<GeneralTransaction, TransactionStats>,
@@ -125,20 +135,31 @@ impl Mempool {
             .into_iter()
             .collect(),
             rejected: Default::default(),
+            banned: Default::default(),
         }
     }
 }
 
 impl Mempool {
+    pub fn is_banned(&mut self, addr: GeneralAddress, now: u32) -> bool {
+        if let Some(until) = self.banned.get(&addr) {
+            if now < *until {
+                return true;
+            }
+        }
+        self.banned.remove(&addr);
+        false
+    }
     #[allow(dead_code)]
     pub fn refresh<K: KvStore, B: Blockchain<K>>(
         &mut self,
         blockchain: &B,
-        _local_ts: u32,
+        local_ts: u32,
         _max_time_alive: Option<u32>,
         _max_time_remember: Option<u32>,
     ) -> Result<(), BlockchainError> {
         let mpn_contract_id = blockchain.config().mpn_config.mpn_contract_id;
+        let mut banned_ngs = vec![];
         for (ng, mempool) in self.txs.iter_mut() {
             let nonce = match ng.clone() {
                 NonceGroup::TransactionAndDelta(addr) => blockchain.get_nonce(addr)?,
@@ -148,7 +169,15 @@ impl Mempool {
                 NonceGroup::MpnTransaction(addr) => blockchain.get_mpn_account(addr)?.tx_nonce,
                 NonceGroup::MpnWithdraw(addr) => blockchain.get_mpn_account(addr)?.withdraw_nonce,
             };
-            mempool.update_nonce(nonce);
+            mempool.update_nonce(nonce, local_ts);
+            if mempool.should_be_banned(local_ts) {
+                const BAN_TIME: u32 = 600; // Seconds
+                self.banned.insert(ng.address(), local_ts + BAN_TIME);
+                banned_ngs.push(ng.clone());
+            }
+        }
+        for banned_ng in banned_ngs {
+            self.txs.remove(&banned_ng);
         }
         Ok(())
     }
@@ -163,6 +192,10 @@ impl Mempool {
         now: u32,
         meta: Option<TransactionMetadata>,
     ) -> Result<(), BlockchainError> {
+        if self.is_banned(tx.sender(), now) {
+            return Ok(());
+        }
+
         if tx.fee().token_id != TokenId::Ziesha {
             return Ok(());
         }
@@ -205,7 +238,7 @@ impl Mempool {
             .txs
             .get_mut(&tx.nonce_group())
             .map(|all| {
-                all.update_nonce(nonce);
+                all.update_nonce(nonce, now);
                 if is_local && !all.applicable(&tx) {
                     all.reset(tx.nonce());
                 }
