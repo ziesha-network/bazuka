@@ -96,7 +96,11 @@ pub fn apply_block<K: KvStore>(
         }
 
         // NOTE: Testnet specific code
-        let num_update_batches = if curr_height > 10000 { 1 } else { 4 };
+        let num_update_batches = if curr_height <= 10000 {
+            1
+        } else {
+            chain.config.mpn_config.mpn_num_update_batches
+        };
 
         if !is_genesis
             && (num_mpn_function_calls < num_update_batches
