@@ -309,7 +309,7 @@ pub fn blockchain_config_template(initial_balances: bool) -> BlockchainConfig {
             log4_deposit_batch_size: MPN_LOG4_DEPOSIT_BATCH_SIZE,
             log4_withdraw_batch_size: MPN_LOG4_WITHDRAW_BATCH_SIZE,
             log4_update_batch_size: MPN_LOG4_UPDATE_BATCH_SIZE,
-            mpn_num_update_batches: 1,
+            mpn_num_update_batches: 4,
             mpn_num_deposit_batches: 1,
             mpn_num_withdraw_batches: 1,
             deposit_vk: zk::ZkVerifierKey::Groth16(Box::new(MPN_DEPOSIT_VK.clone())),

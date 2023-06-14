@@ -89,7 +89,7 @@ impl MpnWorkPool {
             let selected = not_assigned
                 .keys()
                 .cloned()
-                .choose_multiple(&mut rand::thread_rng(), 3);
+                .choose_multiple(&mut rand::thread_rng(), 2);
             self.assignees.insert(address, selected.clone());
             selected
         };

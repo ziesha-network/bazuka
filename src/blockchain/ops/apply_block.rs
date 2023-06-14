@@ -95,8 +95,11 @@ pub fn apply_block<K: KvStore>(
             chain.apply_tx(tx, is_genesis)?;
         }
 
+        // NOTE: Testnet specific code
+        let num_update_batches = if curr_height > 10000 { 1 } else { 4 };
+
         if !is_genesis
-            && (num_mpn_function_calls < chain.config.mpn_config.mpn_num_update_batches
+            && (num_mpn_function_calls < num_update_batches
                 || num_mpn_contract_deposits < chain.config.mpn_config.mpn_num_deposit_batches
                 || num_mpn_contract_withdraws < chain.config.mpn_config.mpn_num_withdraw_batches)
         {
