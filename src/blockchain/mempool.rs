@@ -45,7 +45,7 @@ pub struct SingleMempool {
 impl SingleMempool {
     // Long time no execution?
     fn should_be_banned(&self, now: u32) -> bool {
-        const BAN_THRESHOLD: u32 = 240; // 240 seconds of inactivity
+        const BAN_THRESHOLD: u32 = 600; // 10 minutes of inactivity
         !self.txs.is_empty() && now.saturating_sub(self.last_exec) > BAN_THRESHOLD
     }
     fn new(nonce: u32) -> Self {
@@ -171,7 +171,7 @@ impl Mempool {
             };
             mempool.update_nonce(nonce, local_ts);
             if mempool.should_be_banned(local_ts) {
-                const BAN_TIME: u32 = 600; // Seconds
+                const BAN_TIME: u32 = 1200; // 20 minutes ban-time
                 self.banned.insert(ng.address(), local_ts + BAN_TIME);
                 banned_ngs.push(ng.clone());
             }
