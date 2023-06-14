@@ -126,6 +126,8 @@ enum WalletOptions {
         amount: Decimal,
         #[structopt(long, default_value = "0")]
         fee: Decimal,
+        #[structopt(long, default_value = "1")]
+        repeat: usize,
     },
     /// Register your validator
     RegisterValidator {
@@ -511,19 +513,22 @@ pub async fn initialize_cli() {
                 amount,
                 fee,
                 token_id,
+                repeat,
             } => {
-                crate::cli::wallet::send(
-                    memo,
-                    from,
-                    to,
-                    amount,
-                    fee,
-                    token_id,
-                    conf.expect(BAZUKA_NOT_INITILIZED),
-                    wallet.expect(BAZUKA_NOT_INITILIZED),
-                    &wallet_path,
-                )
-                .await;
+                for _ in 0..repeat {
+                    crate::cli::wallet::send(
+                        memo.clone(),
+                        from.clone(),
+                        to.clone(),
+                        amount,
+                        fee,
+                        token_id.clone(),
+                        conf.clone().expect(BAZUKA_NOT_INITILIZED),
+                        wallet.clone().expect(BAZUKA_NOT_INITILIZED),
+                        &wallet_path,
+                    )
+                    .await;
+                }
             }
             WalletOptions::Reset {} => {
                 crate::cli::wallet::reset(wallet.expect(BAZUKA_NOT_INITILIZED), &wallet_path);

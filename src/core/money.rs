@@ -21,6 +21,8 @@ pub enum ParseDecimalError {
     #[error("amount invalid")]
     Invalid,
 }
+
+#[derive(Clone, Copy)]
 pub struct Decimal {
     pub value: u64,
     pub num_decimals: u8,
