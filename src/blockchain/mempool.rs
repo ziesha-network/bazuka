@@ -74,9 +74,12 @@ impl SingleMempool {
             self.nonce + 1 == tx.nonce()
         }
     }
-    fn insert(&mut self, tx: GeneralTransaction, stats: TransactionStats) {
+    fn insert(&mut self, tx: GeneralTransaction, stats: TransactionStats, now: u32) {
         if self.applicable(&tx) {
             self.txs.push_back((tx, stats));
+            if self.last_exec == 0 {
+                self.last_exec = now;
+            }
         }
     }
     fn update_nonce(&mut self, nonce: u32, now: u32) {
@@ -299,7 +302,7 @@ impl Mempool {
             .or_insert(SingleMempool::new(nonce));
 
         if is_local || all.len() < limit {
-            all.insert(tx.clone(), TransactionStats::new(is_local, now, meta));
+            all.insert(tx.clone(), TransactionStats::new(is_local, now, meta), now);
         }
         Ok(())
     }
