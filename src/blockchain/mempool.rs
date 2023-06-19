@@ -5,7 +5,7 @@ use crate::core::{
 };
 use crate::db::KvStore;
 use crate::zk::MpnTransaction;
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 
 trait Nonced {
     fn nonce(&self) -> u32;
@@ -118,6 +118,7 @@ impl SingleMempool {
 #[derive(Clone, Debug)]
 pub struct Mempool {
     min_balance_per_tx: Amount,
+    local_addrs: HashSet<GeneralAddress>,
     banned: HashMap<GeneralAddress, u32>,
     txs: HashMap<NonceGroup, SingleMempool>,
     min_fees: HashMap<TransactionKind, Amount>,
@@ -139,6 +140,7 @@ impl Mempool {
             .collect(),
             rejected: Default::default(),
             banned: Default::default(),
+            local_addrs: Default::default(),
         }
     }
 }
@@ -173,7 +175,7 @@ impl Mempool {
                 NonceGroup::MpnWithdraw(addr) => blockchain.get_mpn_account(addr)?.withdraw_nonce,
             };
             mempool.update_nonce(nonce, local_ts);
-            if mempool.should_be_banned(local_ts) {
+            if !self.local_addrs.contains(&ng.address()) && mempool.should_be_banned(local_ts) {
                 const BAN_TIME: u32 = 1200; // 20 minutes ban-time
                 self.banned.insert(ng.address(), local_ts + BAN_TIME);
                 banned_ngs.push(ng.clone());
@@ -195,7 +197,11 @@ impl Mempool {
         now: u32,
         meta: Option<TransactionMetadata>,
     ) -> Result<(), BlockchainError> {
-        if self.is_banned(tx.sender(), now) {
+        if is_local {
+            self.local_addrs.insert(tx.nonce_group().address());
+        }
+
+        if !is_local && self.is_banned(tx.sender(), now) {
             return Ok(());
         }
 
