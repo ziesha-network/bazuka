@@ -25,7 +25,7 @@ const MPN_LOG4_WITHDRAW_BATCH_SIZE: u8 = 3;
 const MPN_LOG4_UPDATE_BATCH_SIZE: u8 = 4;
 //pub const LOG4_SUPER_UPDATE_BATCH_SIZE: u8 = 5;
 
-const TESTNET_HEIGHT_LIMIT: u64 = 15000;
+const TESTNET_HEIGHT_LIMIT: u64 = 20000;
 
 lazy_static! {
     pub static ref MPN_UPDATE_VK: zk::groth16::Groth16VerifyingKey =
