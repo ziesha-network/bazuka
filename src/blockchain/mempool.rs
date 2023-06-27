@@ -146,6 +146,27 @@ impl Mempool {
 }
 
 impl Mempool {
+    pub fn median_fees(&self) -> HashMap<TransactionKind, Amount> {
+        let mut firsts: HashMap<TransactionKind, Vec<Amount>> = Default::default();
+        for (ng, mempool) in self.txs.iter() {
+            if let Some((tx, _)) = mempool.first_tx() {
+                let fee = tx.fee();
+                if fee.token_id == TokenId::Ziesha {
+                    firsts.entry(ng.kind()).or_default().push(fee.amount);
+                }
+            }
+        }
+        firsts
+            .into_iter()
+            .map(|(k, mut firsts)| {
+                firsts.sort();
+                (
+                    k,
+                    firsts.get(firsts.len() / 2).cloned().unwrap_or(Amount(0)),
+                )
+            })
+            .collect()
+    }
     pub fn is_banned(&mut self, addr: GeneralAddress, now: u32) -> bool {
         if let Some(until) = self.banned.get(&addr) {
             if now < *until {

@@ -117,6 +117,14 @@ impl NonceGroup {
             NonceGroup::MpnWithdraw(addr) => GeneralAddress::MpnAddress(addr.clone()),
         }
     }
+    pub fn kind(&self) -> TransactionKind {
+        match self {
+            Self::TransactionAndDelta(_) => TransactionKind::TransactionAndDelta,
+            Self::MpnDeposit(_) => TransactionKind::MpnDeposit,
+            Self::MpnTransaction(_) => TransactionKind::MpnTransaction,
+            Self::MpnWithdraw(_) => TransactionKind::MpnWithdraw,
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]

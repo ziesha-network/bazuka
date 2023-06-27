@@ -27,5 +27,6 @@ pub async fn get_stats<K: KvStore, B: Blockchain<K>>(
         version: env!("CARGO_PKG_VERSION").into(),
         network: context.network.clone(),
         validator_claim: context.validator_claim.clone(),
+        median_fees: context.mempool.median_fees(),
     })
 }

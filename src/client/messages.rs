@@ -1,7 +1,7 @@
 use crate::blockchain::{TransactionMetadata, TransactionStats};
 use crate::core::{
     Address, Amount, Block, GeneralAddress, GeneralTransaction, Header, Money, Signature, Token,
-    TransactionAndDelta, Undelegation, ValidatorProof,
+    TransactionAndDelta, TransactionKind, Undelegation, ValidatorProof,
 };
 use crate::mpn::MpnWork;
 use crate::zk;
@@ -37,6 +37,7 @@ pub struct GetStatsResponse {
     pub version: String,
     pub network: String,
     pub validator_claim: Option<ValidatorClaim>,
+    pub median_fees: HashMap<TransactionKind, Amount>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
