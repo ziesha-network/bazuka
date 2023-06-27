@@ -97,7 +97,7 @@ pub fn apply_block<K: KvStore>(
 
         // NOTE: Testnet specific code
         let num_update_batches = if curr_height <= 10000 {
-            1
+            std::cmp::min(1, chain.config.mpn_config.mpn_num_update_batches)
         } else {
             chain.config.mpn_config.mpn_num_update_batches
         };
