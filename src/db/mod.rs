@@ -1,6 +1,5 @@
 pub mod keys;
 
-use crate::blockchain::ZkCompressedStateChange;
 use crate::core::{
     hash::Hash, Amount, Block, ContractAccount, ContractId, Delegate, Hasher, Header, Ratio,
     Staker, Token, Undelegation,
@@ -11,7 +10,7 @@ use crate::zk::{
 };
 use db_key::Key;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::ops::Bound;
 use thiserror::Error;
 
@@ -108,8 +107,6 @@ gen_try_into!(
     ZkContract,
     ZkCompressedState,
     Vec<ContractId>,
-    HashMap<ContractId, ContractAccount>,
-    HashMap<ContractId, ZkCompressedStateChange>,
     ZkState,
     ZkStateModel,
     ZkScalar,
@@ -138,8 +135,6 @@ gen_from!(
     ZkContract,
     ZkCompressedState,
     Vec<ContractId>,
-    HashMap<ContractId, ContractAccount>,
-    HashMap<ContractId, ZkCompressedStateChange>,
     &ZkState,
     ZkStateModel,
     ZkScalar,
