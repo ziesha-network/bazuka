@@ -84,7 +84,7 @@ pub async fn send(
                             } else {
                                 wallet.user(0).add_tx(tx.clone().into());
                                 wallet.save(wallet_path).unwrap();
-                                println!("Sent");
+                                println!("Sent!");
                             }
                         }
                         GeneralAddress::MpnAddress(to) => {
@@ -110,9 +110,13 @@ pub async fn send(
                                     token_id: TokenId::Ziesha,
                                 },
                             );
-                            wallet.user(0).add_tx(pay.clone().into());
-                            wallet.save(wallet_path).unwrap();
-                            println!("{:#?}", client.transact(pay.clone().into()).await?);
+                            if let Some(err) = client.transact(pay.clone().into()).await?.error {
+                                println!("Error: {}", err);
+                            } else {
+                                wallet.user(0).add_tx(pay.clone().into());
+                                wallet.save(wallet_path).unwrap();
+                                println!("Sent!");
+                            }
                         }
                     }
                 }
@@ -142,9 +146,14 @@ pub async fn send(
                                 },
                                 to.to_string().parse().unwrap(), // TODO: WTH :D
                             );
-                            wallet.user(0).add_tx(pay.clone().into());
-                            wallet.save(wallet_path).unwrap();
-                            println!("{:#?}", client.transact(pay.clone().into()).await?);
+
+                            if let Some(err) = client.transact(pay.clone().into()).await?.error {
+                                println!("Error: {}", err);
+                            } else {
+                                wallet.user(0).add_tx(pay.clone().into());
+                                wallet.save(wallet_path).unwrap();
+                                println!("Sent!");
+                            }
                         }
 
                         GeneralAddress::MpnAddress(to) => {
@@ -168,9 +177,13 @@ pub async fn send(
                                 },
                                 new_nonce,
                             );
-                            wallet.user(0).add_tx(tx.clone().into());
-                            wallet.save(wallet_path).unwrap();
-                            println!("{:#?}", client.transact(tx.clone().into()).await?);
+                            if let Some(err) = client.transact(tx.clone().into()).await?.error {
+                                println!("Error: {}", err);
+                            } else {
+                                wallet.user(0).add_tx(tx.clone().into());
+                                wallet.save(wallet_path).unwrap();
+                                println!("Sent!");
+                            }
                         }
                     }
                 }
