@@ -283,7 +283,7 @@ async fn run_node<K: KvStore, B: Blockchain<K>>(
     let bootstrap_nodes = bazuka_config.bootstrap.clone();
 
     // (10 request, 100MB) per minute
-    let firewall = Firewall::new(10, 100 * MB);
+    let firewall = Firewall::new(30, 100 * MB);
 
     // Async loop that is responsible for answering external requests and gathering
     // data from external world through a heartbeat loop.
