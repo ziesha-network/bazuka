@@ -5,16 +5,16 @@ pub struct Firewall {
     request_count_last_reset: Timestamp,
     request_count: HashMap<IpAddr, usize>,
 
-    traffic_limit_per_15m: u64,
+    traffic_limit_per_minute: u64,
     traffic_last_reset: Timestamp,
     traffic: HashMap<IpAddr, u64>,
 }
 
 impl Firewall {
-    pub fn new(request_count_limit_per_minute: usize, traffic_limit_per_15m: u64) -> Self {
+    pub fn new(request_count_limit_per_minute: usize, traffic_limit_per_minute: u64) -> Self {
         Self {
             request_count_limit_per_minute,
-            traffic_limit_per_15m,
+            traffic_limit_per_minute,
             request_count_last_reset: 0,
             request_count: HashMap::new(),
             traffic_last_reset: 0,
@@ -27,7 +27,7 @@ impl Firewall {
             self.request_count_last_reset = now;
         }
 
-        if now.saturating_sub(self.traffic_last_reset) > 900 {
+        if now.saturating_sub(self.traffic_last_reset) > 60 {
             self.traffic.clear();
             self.traffic_last_reset = now;
         }
@@ -41,7 +41,7 @@ impl Firewall {
             return true;
         }
 
-        if self.traffic.get(&client.ip()).cloned().unwrap_or(0) > self.traffic_limit_per_15m {
+        if self.traffic.get(&client.ip()).cloned().unwrap_or(0) > self.traffic_limit_per_minute {
             return false;
         }
 
