@@ -6,8 +6,10 @@ use bazuka::{
     client::{BazukaClient, Limit, NodeError},
     common::*,
     config,
-    core::{Decimal, GeneralAddress, Money, NonceGroup, TokenId},
+    core::{Amount, Decimal, GeneralAddress, Money, NonceGroup, TokenId, TransactionKind},
 };
+use colored::Colorize;
+use std::collections::HashMap;
 use tokio::try_join;
 
 pub async fn send(
@@ -44,12 +46,32 @@ pub async fn send(
 
     try_join!(
         async move {
+            let median_fees = client.stats().await?.median_fees;
+            let fee_amount = fee.to_amount(bazuka::config::UNIT_ZEROS);
             let tkn_decimals = client
                 .get_token(tkn)
                 .await?
                 .token
                 .expect("Token not found!")
                 .decimals;
+            fn fee_enough(
+                kind: TransactionKind,
+                median_fees: &HashMap<TransactionKind, Amount>,
+                fee_amount: Amount,
+            ) -> bool {
+                let median_fee = median_fees.get(&kind).cloned().unwrap_or_default();
+                if fee_amount < median_fee {
+                    println!(
+                        "{} Fee is less than median fee of the network: {}{}",
+                        "WARN:".yellow(),
+                        median_fee.display_by_decimals(bazuka::config::UNIT_ZEROS),
+                        bazuka::config::SYMBOL,
+                    );
+                    println!("Cancelling transaction...");
+                    return false;
+                }
+                true
+            }
             match from {
                 GeneralAddress::ChainAddress(from) => {
                     if tx_builder.get_address() != from {
@@ -57,6 +79,13 @@ pub async fn send(
                     }
                     match to {
                         GeneralAddress::ChainAddress(to) => {
+                            if !fee_enough(
+                                TransactionKind::TransactionAndDelta,
+                                &median_fees,
+                                fee_amount,
+                            ) {
+                                return Ok(());
+                            }
                             let curr_nonce =
                                 client.get_account(tx_builder.get_address()).await?.nonce;
                             let new_nonce = wallet
@@ -73,7 +102,7 @@ pub async fn send(
                                     token_id: tkn,
                                 },
                                 Money {
-                                    amount: fee.to_amount(bazuka::config::UNIT_ZEROS),
+                                    amount: fee_amount,
                                     token_id: TokenId::Ziesha,
                                 },
                                 new_nonce,
@@ -88,6 +117,9 @@ pub async fn send(
                             }
                         }
                         GeneralAddress::MpnAddress(to) => {
+                            if !fee_enough(TransactionKind::MpnDeposit, &median_fees, fee_amount) {
+                                return Ok(());
+                            }
                             let curr_nonce = client
                                 .get_account(tx_builder.get_address())
                                 .await?
@@ -106,7 +138,7 @@ pub async fn send(
                                     token_id: tkn,
                                 },
                                 Money {
-                                    amount: fee.to_amount(bazuka::config::UNIT_ZEROS),
+                                    amount: fee_amount,
                                     token_id: TokenId::Ziesha,
                                 },
                             );
@@ -127,6 +159,9 @@ pub async fn send(
                     }
                     match to {
                         GeneralAddress::ChainAddress(to) => {
+                            if !fee_enough(TransactionKind::MpnWithdraw, &median_fees, fee_amount) {
+                                return Ok(());
+                            }
                             let acc = client.get_mpn_account(from.clone()).await?.account;
                             let new_nonce = wallet
                                 .user(0)
@@ -141,7 +176,7 @@ pub async fn send(
                                     token_id: tkn,
                                 },
                                 Money {
-                                    amount: fee.to_amount(bazuka::config::UNIT_ZEROS),
+                                    amount: fee_amount,
                                     token_id: TokenId::Ziesha,
                                 },
                                 to.to_string().parse().unwrap(), // TODO: WTH :D
@@ -157,6 +192,13 @@ pub async fn send(
                         }
 
                         GeneralAddress::MpnAddress(to) => {
+                            if !fee_enough(
+                                TransactionKind::MpnTransaction,
+                                &median_fees,
+                                fee_amount,
+                            ) {
+                                return Ok(());
+                            }
                             if memo.is_some() {
                                 panic!("Cannot assign a memo to a MPN-to-MPN transaction!");
                             }
@@ -172,7 +214,7 @@ pub async fn send(
                                     token_id: tkn,
                                 },
                                 Money {
-                                    amount: fee.to_amount(bazuka::config::UNIT_ZEROS),
+                                    amount: fee_amount,
                                     token_id: TokenId::Ziesha,
                                 },
                                 new_nonce,
