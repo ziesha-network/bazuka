@@ -291,15 +291,30 @@ pub struct RegularSendEntry<S: SignatureScheme> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
-pub struct Token<S: SignatureScheme> {
+pub enum Minter<S: SignatureScheme, H: Hash> {
+    Contract(ContractId<H>),
+    PubKey(S::Pub),
+}
+
+impl<S: SignatureScheme, H: Hash> std::fmt::Display for Minter<S, H> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Contract(cid) => write!(f, "Contract({})", cid),
+            Self::PubKey(pk) => write!(f, "PubKey({})", pk),
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
+pub struct Token<S: SignatureScheme, H: Hash> {
     pub name: String,
     pub symbol: String,
     pub supply: Amount, // 1u64 in case of a NFT
     pub decimals: u8,
-    pub minter: Option<S::Pub>,
+    pub minter: Option<Minter<S, H>>,
 }
 
-impl<S: SignatureScheme> Token<S> {
+impl<S: SignatureScheme, H: Hash> Token<S, H> {
     pub fn validate(&self) -> bool {
         use regex::Regex;
         const MIN_NAME_LEN: usize = 3;
@@ -390,7 +405,7 @@ pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunctio
         delta: Option<ZkDeltaPairs>, // Removable for space efficiency, not considered inside signature!
     },
     CreateToken {
-        token: Token<S>,
+        token: Token<S, H>,
     },
     UpdateToken {
         token_id: TokenId,

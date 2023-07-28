@@ -2,8 +2,8 @@
 use crate::client::{messages::ValidatorClaim, PeerAddress};
 
 use crate::core::{
-    hash::Hash, Address, Amount, ContractDeposit, ContractId, ContractWithdraw, Hasher, Money,
-    MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry, Signature, Signer, Token,
+    hash::Hash, Address, Amount, ContractDeposit, ContractId, ContractWithdraw, Hasher, Minter,
+    Money, MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry, Signature, Signer, Token,
     TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
@@ -229,7 +229,7 @@ impl TxBuilder {
                 token: Token {
                     name,
                     symbol,
-                    minter,
+                    minter: minter.map(|addr| Minter::PubKey(addr)),
                     supply,
                     decimals,
                 },

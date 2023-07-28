@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::core::Minter;
+
 pub fn update_token<K: KvStore>(
     chain: &mut KvStoreChain<K>,
     tx_src: Address,
@@ -8,7 +10,7 @@ pub fn update_token<K: KvStore>(
 ) -> Result<(), BlockchainError> {
     if let Some(mut token) = chain.get_token(*token_id)? {
         if let Some(minter) = token.minter.clone() {
-            if minter == tx_src {
+            if minter == Minter::PubKey(tx_src.clone()) {
                 match update {
                     TokenUpdate::Mint { amount } => {
                         let mut bal = chain.get_balance(tx_src.clone(), *token_id)?;
@@ -26,7 +28,7 @@ pub fn update_token<K: KvStore>(
                         )])?;
                     }
                     TokenUpdate::ChangeMinter { minter } => {
-                        token.minter = Some(minter.clone());
+                        token.minter = Some(Minter::PubKey(minter.clone()));
                         chain
                             .database
                             .update(&[WriteOp::Put(keys::token(token_id), (&token).into())])?;

@@ -51,7 +51,8 @@ pub type Block = blocks::Block<Hasher, Signer, Vrf>;
 pub type TokenId = transaction::TokenId;
 pub type ParseTokenIdError = transaction::ParseTokenIdError;
 pub type TokenUpdate = transaction::TokenUpdate<Signer>;
-pub type Token = transaction::Token<Signer>;
+pub type Minter = transaction::Minter<Signer, Hasher>;
+pub type Token = transaction::Token<Signer, Hasher>;
 
 pub type ProofOfStake = header::ProofOfStake<Signer, Vrf>;
 pub type ContractId = transaction::ContractId<Hasher>;
