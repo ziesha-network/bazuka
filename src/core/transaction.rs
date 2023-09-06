@@ -203,31 +203,31 @@ pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
 pub struct MpnDeposit<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
-    pub zk_address: ZS::Pub,
+    pub mpn_address: ZS::Pub,
     pub payment: ContractDeposit<H, S>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
 pub struct MpnWithdraw<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> {
-    pub zk_address: ZS::Pub,
-    pub zk_nonce: u32,
-    pub zk_sig: ZS::Sig,
+    pub mpn_address: ZS::Pub,
+    pub mpn_withdraw_nonce: u32,
+    pub mpn_sig: ZS::Sig,
     pub payment: ContractWithdraw<H, S>,
 }
 
 impl<H: Hash, S: SignatureScheme, ZS: ZkSignatureScheme> MpnWithdraw<H, S, ZS> {
     pub fn verify_calldata<ZH: ZkHasher>(&self) -> bool {
-        let mut preimage: Vec<ZkScalar> = self.zk_address.clone().into();
-        preimage.push((self.zk_nonce as u64).into());
-        preimage.extend(&self.zk_sig.clone().into());
+        let mut preimage: Vec<ZkScalar> = self.mpn_address.clone().into();
+        preimage.push((self.mpn_withdraw_nonce as u64).into());
+        preimage.extend(&self.mpn_sig.clone().into());
         self.payment.calldata == ZH::hash(&preimage)
     }
     pub fn verify_signature<ZH: ZkHasher>(&self) -> bool {
         let msg = ZH::hash(&[
             self.payment.fingerprint(),
-            ZkScalar::from(self.zk_nonce as u64),
+            ZkScalar::from(self.mpn_withdraw_nonce as u64),
         ]);
-        ZS::verify(&self.zk_address, msg, &self.zk_sig)
+        ZS::verify(&self.mpn_address, msg, &self.mpn_sig)
     }
 }
 

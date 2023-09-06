@@ -99,7 +99,7 @@ impl Circuit<BellmanFr> for DepositCircuit {
 
             // Pub-key only needs to reside on curve if tx is enabled, which is checked in the main loop
             let pub_key =
-                AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.zk_address.0.decompress()))?;
+                AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.mpn_address.0.decompress()))?;
 
             tx_wits.push((
                 Boolean::Is(enabled.clone()),

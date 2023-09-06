@@ -33,7 +33,7 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
         }
 
         let mpn_addr = MpnAddress {
-            pub_key: tx.zk_address.clone(),
+            pub_key: tx.mpn_address.clone(),
         };
         let account_index = if let Some(ind) = db.get_mpn_account_indices(mpn_addr.clone())?.first()
         {
@@ -73,10 +73,10 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
 
         let mut isolated = mirror.mirror();
         let mut isolated_state_size = state_size;
-        if (acc.address != Default::default() && tx.zk_address.0.decompress() != acc.address)
+        if (acc.address != Default::default() && tx.mpn_address.0.decompress() != acc.address)
             || !tx.verify_calldata::<ZkHasher>()
             || !tx.verify_signature::<ZkHasher>()
-            || tx.zk_nonce != acc.withdraw_nonce + 1
+            || tx.mpn_withdraw_nonce != acc.withdraw_nonce + 1
             || tx.payment.amount.token_id != acc_token.token_id
             || tx.payment.amount.amount > acc_token.amount
         {
@@ -84,7 +84,7 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
             continue;
         } else {
             let mut updated_acc = MpnAccount {
-                address: tx.zk_address.0.decompress(),
+                address: tx.mpn_address.0.decompress(),
                 tokens: acc.tokens.clone(),
                 tx_nonce: acc.tx_nonce,
                 withdraw_nonce: acc.withdraw_nonce + 1,
@@ -205,12 +205,12 @@ pub fn withdraw<K: KvStore, B: Blockchain<K>>(
     for (i, trans) in transitions.iter().enumerate() {
         use crate::zk::ZkHasher;
         let calldata = crate::core::ZkHasher::hash(&[
-            ZkScalar::from(trans.tx.zk_address.0.decompress().0),
-            ZkScalar::from(trans.tx.zk_address.0.decompress().1),
-            ZkScalar::from(trans.tx.zk_nonce as u64),
-            ZkScalar::from(trans.tx.zk_sig.r.0),
-            ZkScalar::from(trans.tx.zk_sig.r.1),
-            ZkScalar::from(trans.tx.zk_sig.s),
+            ZkScalar::from(trans.tx.mpn_address.0.decompress().0),
+            ZkScalar::from(trans.tx.mpn_address.0.decompress().1),
+            ZkScalar::from(trans.tx.mpn_withdraw_nonce as u64),
+            ZkScalar::from(trans.tx.mpn_sig.r.0),
+            ZkScalar::from(trans.tx.mpn_sig.r.1),
+            ZkScalar::from(trans.tx.mpn_sig.s),
         ]);
         state_builder
             .batch_set(&ZkDeltaPairs(

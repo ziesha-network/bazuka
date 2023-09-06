@@ -156,7 +156,7 @@ impl GeneralTransaction {
                 pub_key: mpn_tx.src_pub_key.clone(),
             }),
             GeneralTransaction::MpnWithdraw(mpn_withdraw) => NonceGroup::MpnWithdraw(MpnAddress {
-                pub_key: mpn_withdraw.zk_address.clone(),
+                pub_key: mpn_withdraw.mpn_address.clone(),
             }),
         }
     }
@@ -175,7 +175,7 @@ impl GeneralTransaction {
             GeneralTransaction::TransactionAndDelta(tx_delta) => tx_delta.tx.nonce,
             GeneralTransaction::MpnDeposit(mpn_deposit) => mpn_deposit.payment.nonce,
             GeneralTransaction::MpnTransaction(mpn_tx) => mpn_tx.nonce,
-            GeneralTransaction::MpnWithdraw(mpn_withdraw) => mpn_withdraw.zk_nonce,
+            GeneralTransaction::MpnWithdraw(mpn_withdraw) => mpn_withdraw.mpn_withdraw_nonce,
         }
     }
     pub fn fee(&self) -> Money {
@@ -199,7 +199,7 @@ impl GeneralTransaction {
             }),
             GeneralTransaction::MpnWithdraw(mpn_withdraw) => {
                 GeneralAddress::MpnAddress(MpnAddress {
-                    pub_key: mpn_withdraw.zk_address.clone(),
+                    pub_key: mpn_withdraw.mpn_address.clone(),
                 })
             }
         }

@@ -120,10 +120,11 @@ impl Circuit<BellmanFr> for WithdrawCircuit {
 
             // Pub-key only needs to reside on curve if tx is enabled, which is checked in the main loop
             let pub_key =
-                AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.zk_address.0.decompress()))?;
-            let nonce = AllocatedNum::alloc(&mut *cs, || Ok((trans.tx.zk_nonce as u64).into()))?;
-            let sig_r = AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.zk_sig.r))?;
-            let sig_s = AllocatedNum::alloc(&mut *cs, || Ok(trans.tx.zk_sig.s.into()))?;
+                AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.mpn_address.0.decompress()))?;
+            let nonce =
+                AllocatedNum::alloc(&mut *cs, || Ok((trans.tx.mpn_withdraw_nonce as u64).into()))?;
+            let sig_r = AllocatedPoint::alloc(&mut *cs, || Ok(trans.tx.mpn_sig.r))?;
+            let sig_s = AllocatedNum::alloc(&mut *cs, || Ok(trans.tx.mpn_sig.s.into()))?;
 
             tx_wits.push((
                 Boolean::Is(enabled.clone()),

@@ -506,14 +506,14 @@ impl From<&(Address, Amount)> for ExplorerStaker {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerMpnDeposit {
-    pub zk_address: String,
+    pub mpn_address: String,
     pub payment: ExplorerContractDeposit,
 }
 
 impl From<&MpnDeposit> for ExplorerMpnDeposit {
     fn from(obj: &MpnDeposit) -> Self {
         Self {
-            zk_address: obj.zk_address.to_string(),
+            mpn_address: obj.mpn_address.to_string(),
             payment: (&obj.payment).into(),
         }
     }
@@ -521,18 +521,18 @@ impl From<&MpnDeposit> for ExplorerMpnDeposit {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ExplorerMpnWithdraw {
-    pub zk_address: String,
-    pub zk_nonce: u32,
-    pub zk_sig: String,
+    pub mpn_address: String,
+    pub mpn_withdraw_nonce: u32,
+    pub mpn_sig: String,
     pub payment: ExplorerContractWithdraw,
 }
 
 impl From<&MpnWithdraw> for ExplorerMpnWithdraw {
     fn from(obj: &MpnWithdraw) -> Self {
         Self {
-            zk_address: obj.zk_address.to_string(),
-            zk_nonce: obj.zk_nonce,
-            zk_sig: "".into(), // TODO: Convert sig to hex
+            mpn_address: obj.mpn_address.to_string(),
+            mpn_withdraw_nonce: obj.mpn_withdraw_nonce,
+            mpn_sig: "".into(), // TODO: Convert sig to hex
             payment: (&obj.payment).into(),
         }
     }

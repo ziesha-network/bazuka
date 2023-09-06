@@ -38,7 +38,7 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
         }
 
         let mpn_addr = MpnAddress {
-            pub_key: tx.zk_address.clone(),
+            pub_key: tx.mpn_address.clone(),
         };
         let mut new_index = None;
         let account_index = if let Some(ind) = db.get_mpn_account_indices(mpn_addr.clone())?.first()
@@ -75,7 +75,7 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
         let mut isolated = mirror.mirror();
         let mut isolated_state_size = state_size;
         if rejected_pub_keys.contains(&src_pub)
-            || (acc.address != Default::default() && tx.zk_address.0.decompress() != acc.address)
+            || (acc.address != Default::default() && tx.mpn_address.0.decompress() != acc.address)
             || (acc_token.is_some() && acc_token.unwrap().token_id != tx.payment.amount.token_id)
         {
             rejected.push(tx.clone());
@@ -107,7 +107,7 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
             }
 
             let mut updated_acc = MpnAccount {
-                address: tx.zk_address.0.decompress(),
+                address: tx.mpn_address.0.decompress(),
                 tokens: acc.tokens.clone(),
                 withdraw_nonce: acc.withdraw_nonce,
                 tx_nonce: acc.tx_nonce,
@@ -191,8 +191,8 @@ pub fn deposit<K: KvStore, B: Blockchain<K>>(
     for (i, trans) in transitions.iter().enumerate() {
         use crate::zk::ZkHasher;
         let calldata = crate::core::ZkHasher::hash(&[
-            ZkScalar::from(trans.tx.zk_address.0.decompress().0),
-            ZkScalar::from(trans.tx.zk_address.0.decompress().1),
+            ZkScalar::from(trans.tx.mpn_address.0.decompress().0),
+            ZkScalar::from(trans.tx.mpn_address.0.decompress().1),
         ]);
         state_builder
             .batch_set(&ZkDeltaPairs(

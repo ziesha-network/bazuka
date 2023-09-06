@@ -21,7 +21,7 @@ pub struct TxBuilder {
     private_key: <Signer as SignatureScheme>::Priv,
     zk_private_key: <ZkSigner as ZkSignatureScheme>::Priv,
     address: Address,
-    zk_address: <ZkSigner as ZkSignatureScheme>::Pub,
+    mpn_address: <ZkSigner as ZkSignatureScheme>::Pub,
 }
 
 impl TxBuilder {
@@ -33,7 +33,7 @@ impl TxBuilder {
         let (vrf_public_key, vrf_private_key) = Vrf::generate_keys(&mut chacha_rng);
         Self {
             address: pk,
-            zk_address: zk_pk,
+            mpn_address: zk_pk,
             private_key: sk,
             zk_private_key: zk_sk,
             vrf_public_key,
@@ -50,7 +50,7 @@ impl TxBuilder {
         self.vrf_public_key.clone()
     }
     pub fn get_zk_address(&self) -> <ZkSigner as ZkSignatureScheme>::Pub {
-        self.zk_address.clone()
+        self.mpn_address.clone()
     }
     pub fn get_mpn_address(&self) -> MpnAddress {
         MpnAddress {
@@ -353,7 +353,7 @@ impl TxBuilder {
         };
         self.sign_deposit(&mut tx);
         MpnDeposit {
-            zk_address: to.pub_key,
+            mpn_address: to.pub_key,
             payment: tx,
         }
     }
@@ -402,9 +402,9 @@ impl TxBuilder {
             .unwrap();
         tx.calldata = calldata_builder.compress().unwrap().state_hash;
         MpnWithdraw {
-            zk_address: self.get_zk_address(),
-            zk_nonce: nonce,
-            zk_sig: sig,
+            mpn_address: self.get_zk_address(),
+            mpn_withdraw_nonce: nonce,
+            mpn_sig: sig,
             payment: tx,
         }
     }

@@ -19,7 +19,7 @@ impl Nonced for MpnTransaction {
 
 impl Nonced for MpnWithdraw {
     fn nonce(&self) -> u32 {
-        self.zk_nonce
+        self.mpn_withdraw_nonce
     }
 }
 
