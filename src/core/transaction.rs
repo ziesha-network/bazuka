@@ -291,15 +291,16 @@ pub struct RegularSendEntry<S: SignatureScheme> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
-pub struct Token<S: SignatureScheme> {
+pub struct Token {
     pub name: String,
     pub symbol: String,
     pub supply: Amount, // 1u64 in case of a NFT
     pub decimals: u8,
-    pub minter: Option<S::Pub>,
+    pub mint: ZkContract,
+    pub state: Option<ZkDataPairs>, // Removable for space efficiency, not considered inside signature!
 }
 
-impl<S: SignatureScheme> Token<S> {
+impl Token {
     pub fn validate(&self) -> bool {
         use regex::Regex;
         const MIN_NAME_LEN: usize = 3;
@@ -320,9 +321,8 @@ impl<S: SignatureScheme> Token<S> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
-pub enum TokenUpdate<S: SignatureScheme> {
+pub enum TokenUpdate {
     Mint { amount: Amount },
-    ChangeMinter { minter: S::Pub },
 }
 
 #[derive(
@@ -390,11 +390,11 @@ pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunctio
         delta: Option<ZkDeltaPairs>, // Removable for space efficiency, not considered inside signature!
     },
     CreateToken {
-        token: Token<S>,
+        token: Token,
     },
     UpdateToken {
         token_id: TokenId,
-        update: TokenUpdate<S>,
+        update: TokenUpdate,
     },
 }
 
