@@ -7,8 +7,12 @@ pub fn local_timestamp() -> u32 {
         .as_secs() as u32
 }
 
-pub fn median<T: Clone + std::cmp::Ord>(inps: &[T]) -> T {
+pub fn median<T: Clone + std::cmp::Ord>(inps: &[T]) -> Option<T> {
     let mut sorted = inps.to_vec();
     sorted.sort();
-    sorted[sorted.len() / 2].clone()
+    if sorted.len() > 0 {
+        Some(sorted[sorted.len() / 2].clone())
+    } else {
+        None
+    }
 }

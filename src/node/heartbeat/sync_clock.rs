@@ -53,8 +53,9 @@ pub async fn sync_clock<K: KvStore, B: Blockchain<K>>(
             .unzip();
         if !timestamps.is_empty() {
             // Set timestamp_offset according to median timestamp of the network
-            let median_timestamp = utils::median(&timestamps);
-            let median_timestamp_offset = utils::median(&timestamp_offsets);
+            let median_timestamp = utils::median(&timestamps).expect("Timestamp list not empty!");
+            let median_timestamp_offset =
+                utils::median(&timestamp_offsets).expect("Timestamp list not empty!");
             ctx.timestamp_offset = median_timestamp as i32 - utils::local_timestamp() as i32;
             ctx.timestamp_offset -= median_timestamp_offset;
         }
