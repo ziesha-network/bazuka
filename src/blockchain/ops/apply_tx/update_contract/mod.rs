@@ -82,6 +82,9 @@ pub fn update_contract<K: KvStore>(
                 )?;
                 (circuit, aux_data)
             }
+            ContractUpdateData::Mint { amount } => {
+                unimplemented!();
+            }
         };
 
         let mut cont_account = chain.get_contract_account(*contract_id)?;

@@ -19,6 +19,7 @@ impl ZkHasher for SumHasher {
 
 fn empty_contract<H: ZkHasher>(state_model: ZkStateModel) -> ZkContract {
     ZkContract {
+        token: None,
         initial_state: ZkCompressedState::empty::<H>(state_model.clone()).into(),
         state_model: state_model,
         deposit_functions: vec![],

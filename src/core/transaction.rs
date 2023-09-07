@@ -272,6 +272,9 @@ pub enum ContractUpdateData<H: Hash, S: SignatureScheme> {
     FunctionCall {
         fee: Money, // Executor fee
     },
+    Mint {
+        amount: Amount,
+    },
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]

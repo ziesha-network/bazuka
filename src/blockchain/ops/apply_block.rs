@@ -86,6 +86,7 @@ pub fn apply_block<K: KvStore>(
                             ContractUpdateData::FunctionCall { .. } => {
                                 num_mpn_function_calls += 1;
                             }
+                            _ => {}
                         }
                     }
                 }

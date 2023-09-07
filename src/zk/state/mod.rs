@@ -47,6 +47,7 @@ impl<H: ZkHasher> ZkStateBuilder<H> {
         db.update(&[WriteOp::Put(
             keys::contract(&contract_id),
             ZkContract {
+                token: None,
                 initial_state: ZkCompressedState::empty::<H>(state_model.clone()),
                 state_model,
                 deposit_functions: vec![],

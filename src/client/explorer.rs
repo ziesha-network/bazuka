@@ -314,6 +314,9 @@ pub enum ExplorerContractUpdateData {
     FunctionCall {
         fee: ExplorerMoney,
     },
+    Mint {
+        amount: u64,
+    },
 }
 
 impl From<&ContractUpdateData> for ExplorerContractUpdateData {
@@ -326,6 +329,9 @@ impl From<&ContractUpdateData> for ExplorerContractUpdateData {
                 withdraws: withdraws.iter().map(|p| p.into()).collect(),
             },
             ContractUpdateData::FunctionCall { fee } => Self::FunctionCall { fee: (*fee).into() },
+            ContractUpdateData::Mint { amount } => Self::Mint {
+                amount: (*amount).into(),
+            },
         }
     }
 }

@@ -22,6 +22,7 @@ fn test_contract_create_patch() {
     let tx = alice.create_contract(
         "".into(),
         zk::ZkContract {
+            token: None,
             state_model: state_model.clone(),
             initial_state: state_model
                 .compress::<CoreZkHasher>(&full_state.data)

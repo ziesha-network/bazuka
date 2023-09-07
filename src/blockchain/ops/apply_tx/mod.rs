@@ -141,10 +141,19 @@ pub fn apply_tx<K: KvStore>(
                 money,
             } => {
                 let contract_id = ContractId::new(tx);
+                let token_id = {
+                    let tid = TokenId::new(tx);
+                    if tid == chain.config.ziesha_token_id {
+                        TokenId::Ziesha
+                    } else {
+                        tid
+                    }
+                };
                 create_contract::create_contract(
                     chain,
                     tx_src,
                     contract_id,
+                    token_id,
                     contract,
                     state,
                     *money,

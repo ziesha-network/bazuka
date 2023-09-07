@@ -4,12 +4,25 @@ pub fn create_contract<K: KvStore>(
     chain: &mut KvStoreChain<K>,
     tx_src: Address,
     contract_id: ContractId,
+    token_id: TokenId,
     contract: &zk::ZkContract,
     state: &Option<zk::ZkDataPairs>,
     money: Money,
 ) -> Result<(), BlockchainError> {
     if !contract.state_model.is_valid::<CoreZkHasher>() {
         return Err(BlockchainError::InvalidStateModel);
+    }
+    if let Some(token) = &contract.token {
+        if !token.token.validate() {
+            return Err(BlockchainError::TokenBadNameSymbol);
+        }
+        chain.database.update(&[WriteOp::Put(
+            keys::account_balance(&tx_src, token_id),
+            token.token.supply.into(),
+        )])?;
+        chain
+            .database
+            .update(&[WriteOp::Put(keys::token(&token_id), (&token.token).into())])?;
     }
     chain.database.update(&[WriteOp::Put(
         keys::contract(&contract_id),
@@ -77,12 +90,16 @@ mod tests {
             "0001020304050607080900010203040506070809000102030405060708090001"
                 .parse()
                 .unwrap();
+        let token_id: TokenId = "0001020304050607080900010203040506070809000102030405060708090001"
+            .parse()
+            .unwrap();
         let state_model = zk::ZkStateModel::Struct {
             field_types: vec![zk::ZkStateModel::Scalar, zk::ZkStateModel::Scalar],
         };
         let initial_state =
             zk::ZkCompressedState::empty::<crate::core::ZkHasher>(state_model.clone());
         let contract = zk::ZkContract {
+            token: None,
             state_model,
             initial_state: initial_state.clone(),
             deposit_functions: vec![],
@@ -95,6 +112,7 @@ mod tests {
                     chain,
                     abc.get_address(),
                     contract_id,
+                    token_id,
                     &contract,
                     &Some(Default::default()),
                     Money::ziesha(2345),

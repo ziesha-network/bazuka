@@ -112,6 +112,7 @@ fn get_mpn_contract(
     }
 
     let mpn_contract = zk::ZkContract {
+        token: None,
         state_model: mpn_state_model.clone(),
         initial_state: state_builder.compress().unwrap(),
         deposit_functions: vec![zk::ZkMultiInputVerifierKey {

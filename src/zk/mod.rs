@@ -1,4 +1,4 @@
-use crate::core::{hash::Hash, Amount, Hasher, Money, TokenId, ZkHasher as ZkMainHasher};
+use crate::core::{hash::Hash, Amount, Hasher, Money, Token, TokenId, ZkHasher as ZkMainHasher};
 use crate::crypto::{jubjub, ZkSignatureScheme};
 
 use ff::{Field, PrimeField};
@@ -628,12 +628,19 @@ impl MpnTransaction {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ZkTokenContract {
+    pub token: Token,
+    pub mint_functions: Vec<ZkSingleInputVerifierKey>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ZkContract {
     pub initial_state: ZkCompressedState, // 32byte
     pub state_model: ZkStateModel,
     pub deposit_functions: Vec<ZkMultiInputVerifierKey>, // VK f(prev_state, deposit_txs (L1)) -> next_state
     pub withdraw_functions: Vec<ZkMultiInputVerifierKey>, // VK f(prev_state, withdraw_txs (L1)) -> next_state
     pub functions: Vec<ZkSingleInputVerifierKey>,         // Vec<VK> f(prev_state) -> next_state
+    pub token: Option<ZkTokenContract>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
