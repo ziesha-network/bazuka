@@ -1,5 +1,6 @@
 mod deposit;
 mod function_call;
+mod mint;
 mod withdraw;
 
 use super::*;
@@ -83,7 +84,15 @@ pub fn update_contract<K: KvStore>(
                 (circuit, aux_data)
             }
             ContractUpdateData::Mint { amount } => {
-                unimplemented!();
+                let (circuit, aux_data) = mint::mint(
+                    chain,
+                    &contract_id,
+                    &contract,
+                    &update.circuit_id,
+                    amount,
+                    &mut executor_fees,
+                )?;
+                (circuit, aux_data)
             }
         };
 

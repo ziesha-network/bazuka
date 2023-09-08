@@ -121,4 +121,6 @@ pub enum BlockchainError {
     ValidatorProofNotGiven,
     #[error("epoch randomness can only be changed with vrf-proofs on 0th attempt")]
     RandomnessChangeNotPermitted,
+    #[error("contract is not a token")]
+    ContractNotToken,
 }
