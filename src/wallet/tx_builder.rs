@@ -4,7 +4,7 @@ use crate::client::{messages::ValidatorClaim, PeerAddress};
 use crate::core::{
     hash::Hash, Address, Amount, ContractDeposit, ContractId, ContractWithdraw, Hasher, Money,
     MpnAddress, MpnDeposit, MpnWithdraw, Ratio, RegularSendEntry, Signature, Signer, Token,
-    TokenId, Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
+    Transaction, TransactionAndDelta, TransactionData, ValidatorProof, Vrf, ZkSigner,
 };
 use crate::crypto::SignatureScheme;
 use crate::crypto::VerifiableRandomFunction;
@@ -221,18 +221,32 @@ impl TxBuilder {
         minter: Option<Address>,
         fee: Money,
         nonce: u32,
-    ) -> (TransactionAndDelta, TokenId) {
+    ) -> (TransactionAndDelta, ContractId) {
         let mut tx = Transaction {
             memo,
             src: Some(self.get_address()),
-            data: TransactionData::CreateToken {
-                token: Token {
-                    name,
-                    symbol,
-                    minter,
-                    supply,
-                    decimals,
+            data: TransactionData::CreateContract {
+                contract: zk::ZkContract {
+                    token: Some(zk::ZkTokenContract {
+                        token: Token {
+                            name,
+                            symbol,
+                            minter,
+                            supply,
+                            decimals,
+                        },
+                        mint_functions: vec![],
+                    }),
+                    state_model: zk::ZkStateModel::Scalar,
+                    initial_state: zk::ZkCompressedState::empty::<crate::core::ZkHasher>(
+                        zk::ZkStateModel::Scalar,
+                    ),
+                    deposit_functions: vec![],
+                    withdraw_functions: vec![],
+                    functions: vec![],
                 },
+                state: Some(Default::default()),
+                money: Money::ziesha(0),
             },
             nonce,
             fee,
@@ -240,7 +254,7 @@ impl TxBuilder {
         };
         self.sign_tx(&mut tx);
 
-        let token_id = TokenId::new(&tx);
+        let token_id = ContractId::new(&tx);
         (
             TransactionAndDelta {
                 tx,

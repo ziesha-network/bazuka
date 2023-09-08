@@ -30,7 +30,7 @@ fn test_correct_rewards() {
     chain.apply_block(&draft).unwrap();
     assert!(close_enough(
         chain
-            .get_balance(validator.get_address(), TokenId::Ziesha)
+            .get_balance(validator.get_address(), ContractId::Ziesha)
             .unwrap(),
         expected_validator_reward_1
     ));
@@ -52,7 +52,7 @@ fn test_correct_rewards() {
                     delegator_stake,
                     Money {
                         amount: 0.into(),
-                        token_id: TokenId::Ziesha,
+                        token_id: ContractId::Ziesha,
                     },
                     1,
                 ),
@@ -62,7 +62,7 @@ fn test_correct_rewards() {
                     validator_stake,
                     Money {
                         amount: 0.into(),
-                        token_id: TokenId::Ziesha,
+                        token_id: ContractId::Ziesha,
                     },
                     chain.get_nonce(validator.get_address()).unwrap() + 1,
                 ),
@@ -79,13 +79,13 @@ fn test_correct_rewards() {
     let expected_delegator_balance_2 = Amount(10000) - delegator_stake;
     assert!(close_enough(
         chain
-            .get_balance(validator.get_address(), TokenId::Ziesha)
+            .get_balance(validator.get_address(), ContractId::Ziesha)
             .unwrap(),
         expected_validator_balance_2
     ));
     assert!(close_enough(
         chain
-            .get_balance(delegator.get_address(), TokenId::Ziesha)
+            .get_balance(delegator.get_address(), ContractId::Ziesha)
             .unwrap(),
         expected_delegator_balance_2
     ));
@@ -100,7 +100,7 @@ fn test_correct_rewards() {
     chain.apply_block(&draft).unwrap();
     assert!(close_enough(
         chain
-            .get_balance(validator.get_address(), TokenId::Ziesha)
+            .get_balance(validator.get_address(), ContractId::Ziesha)
             .unwrap()
             - expected_validator_balance_2,
         Amount(
@@ -109,7 +109,7 @@ fn test_correct_rewards() {
     ));
     assert!(close_enough(
         chain
-            .get_balance(delegator.get_address(), TokenId::Ziesha)
+            .get_balance(delegator.get_address(), ContractId::Ziesha)
             .unwrap()
             - expected_delegator_balance_2,
         Amount((expected_reward_3 - expected_validator_reward_3).0 * 3 / 5)
@@ -154,7 +154,7 @@ fn test_auto_delegate() {
         + Amount((expected_delegator_reward_before_auto_delegate.0 as f64 * 55.0 / 255.0) as u64);
     assert_eq!(
         chain
-            .get_balance(delegator.get_address(), TokenId::Ziesha)
+            .get_balance(delegator.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(25)
     );
@@ -173,13 +173,13 @@ fn test_auto_delegate() {
     ));
     assert!(close_enough(
         chain
-            .get_balance(validator.get_address(), TokenId::Ziesha)
+            .get_balance(validator.get_address(), ContractId::Ziesha)
             .unwrap(),
         expected_validator_reward
     ));
     assert!(close_enough(
         chain
-            .get_balance(delegator.get_address(), TokenId::Ziesha)
+            .get_balance(delegator.get_address(), ContractId::Ziesha)
             .unwrap(),
         expected_delegator_balance
     ));

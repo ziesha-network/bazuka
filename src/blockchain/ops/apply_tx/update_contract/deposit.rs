@@ -183,7 +183,7 @@ mod tests {
         assert_eq!(
             exec_fees,
             vec![Money {
-                token_id: TokenId::Ziesha,
+                token_id: ContractId::Ziesha,
                 amount: Amount(77)
             }]
         );
@@ -293,7 +293,7 @@ mod tests {
         assert_eq!(
             exec_fees,
             vec![Money {
-                token_id: TokenId::Ziesha,
+                token_id: ContractId::Ziesha,
                 amount: Amount(321)
             }]
         );

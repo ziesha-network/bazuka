@@ -46,7 +46,7 @@ pub fn pay_validator_and_delegators<K: KvStore>(
                         dst: addr.clone(),
                         amount: Money {
                             amount: amnt,
-                            token_id: TokenId::Ziesha,
+                            token_id: ContractId::Ziesha,
                         },
                     }],
                 },
@@ -88,7 +88,7 @@ pub fn pay_validator_and_delegators<K: KvStore>(
             .get_undelegation(key.undelegator.clone(), key.undelegation_id)?
             .ok_or(BlockchainError::Inconsistency)?;
         let new_balance =
-            chain.get_balance(key.undelegator.clone(), TokenId::Ziesha)? + undelegation.amount;
+            chain.get_balance(key.undelegator.clone(), ContractId::Ziesha)? + undelegation.amount;
         chain.database.update(&[
             WriteOp::Remove(
                 keys::UndelegationDbKey {
@@ -98,7 +98,7 @@ pub fn pay_validator_and_delegators<K: KvStore>(
                 .into(),
             ),
             WriteOp::Put(
-                keys::account_balance(&key.undelegator, TokenId::Ziesha),
+                keys::account_balance(&key.undelegator, ContractId::Ziesha),
                 new_balance.into(),
             ),
         ])?;

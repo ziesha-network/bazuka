@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::client::{BazukaClient, Limit, NodeError};
 use bazuka::common::*;
-use bazuka::core::{Decimal, Money, NonceGroup, TokenId};
+use bazuka::core::{ContractId, Decimal, Money, NonceGroup};
 use bazuka::wallet::WalletCollection;
 use tokio::try_join;
 
@@ -43,7 +43,7 @@ pub async fn new_token(
                 mintable.then(|| tx_builder.get_address()),
                 Money {
                     amount: fee.to_amount(bazuka::config::UNIT_ZEROS),
-                    token_id: TokenId::Ziesha,
+                    token_id: ContractId::Ziesha,
                 },
                 new_nonce,
             );

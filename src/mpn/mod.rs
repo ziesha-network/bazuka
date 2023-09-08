@@ -6,7 +6,7 @@ pub mod withdraw;
 use crate::blockchain::{Blockchain, BlockchainError};
 use crate::core::{
     hash::Hash, Address, Amount, ContractId, ContractUpdate, ContractUpdateData, Hasher, Money,
-    MpnAddress, MpnDeposit, MpnWithdraw, Signature, TokenId, Transaction, TransactionAndDelta,
+    MpnAddress, MpnDeposit, MpnWithdraw, Signature, Transaction, TransactionAndDelta,
     TransactionData,
 };
 use crate::db::{KvStore, KvStoreError, WriteOp};
@@ -153,7 +153,9 @@ impl MpnWorkPool {
                         prover: self.solutions[&i].prover.clone(),
                     },
                     MpnWorkData::Update(trans) => {
-                        assert!(trans.iter().all(|t| t.tx.fee.token_id == TokenId::Ziesha));
+                        assert!(trans
+                            .iter()
+                            .all(|t| t.tx.fee.token_id == ContractId::Ziesha));
                         let fee_sum = trans
                             .iter()
                             .map(|t| Into::<u64>::into(t.tx.fee.amount))
@@ -161,7 +163,7 @@ impl MpnWorkPool {
                         ContractUpdate {
                             data: ContractUpdateData::FunctionCall {
                                 fee: Money {
-                                    token_id: TokenId::Ziesha,
+                                    token_id: ContractId::Ziesha,
                                     amount: fee_sum.into(),
                                 },
                             },
@@ -326,9 +328,10 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
         - config.mpn_num_update_batches as u64 * u64::from(update_reward))
     .into();
 
-    let validator_balance = db.get_balance(validator_tx_builder.get_address(), TokenId::Ziesha)?;
+    let validator_balance =
+        db.get_balance(validator_tx_builder.get_address(), ContractId::Ziesha)?;
     mirror.database_mut().update(&[WriteOp::Put(
-        crate::db::keys::account_balance(&validator_tx_builder.get_address(), TokenId::Ziesha),
+        crate::db::keys::account_balance(&validator_tx_builder.get_address(), ContractId::Ziesha),
         (validator_balance + remaining_reward).into(),
     )])?;
 
@@ -340,7 +343,7 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             validator_tx_builder.get_mpn_address(),
             validator_tx_builder_deposit_nonce + 1,
             Money {
-                token_id: TokenId::Ziesha,
+                token_id: ContractId::Ziesha,
                 amount: remaining_reward,
             },
             Money::ziesha(0),
@@ -394,7 +397,7 @@ pub fn prepare_works<K: KvStore, B: Blockchain<K>>(
             config.log4_tree_size,
             config.log4_token_tree_size,
             config.log4_update_batch_size,
-            TokenId::Ziesha,
+            ContractId::Ziesha,
             &mut mirror,
             &updates,
             &mut new_account_indices,

@@ -8,7 +8,7 @@ pub fn select_transactions<K: KvStore>(
 ) -> Result<Vec<TransactionAndDelta>, BlockchainError> {
     let mut sorted = txs
         .iter()
-        .filter(|t| t.tx.fee.token_id == TokenId::Ziesha)
+        .filter(|t| t.tx.fee.token_id == ContractId::Ziesha)
         .cloned()
         .collect::<Vec<_>>();
     // WARN: Sort will be invalid if not all fees are specified in Ziesha

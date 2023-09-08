@@ -1,6 +1,6 @@
 use super::*;
 use crate::blockchain::{Blockchain, BlockchainError};
-use crate::core::{ContractId, TokenId, ZkHasher};
+use crate::core::{ContractId, ZkHasher};
 use crate::db::{keys, KvStore, WriteOp};
 use crate::zk::{KvStoreStateManager, ZkCompressedState, ZkDataLocator, ZkScalar};
 use rayon::prelude::*;
@@ -10,7 +10,7 @@ pub fn update<K: KvStore, B: Blockchain<K>>(
     mpn_log4_account_capacity: u8,
     log4_token_tree_size: u8,
     log4_batch_size: u8,
-    fee_token: TokenId,
+    fee_token: ContractId,
     db: &mut B,
     txs: &[MpnTransaction],
     new_account_indices: &mut HashMap<MpnAddress, u64>,

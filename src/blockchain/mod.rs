@@ -9,9 +9,9 @@ mod ops;
 use crate::core::{
     hash::Hash, Address, Amount, Block, ContractAccount, ContractDeposit, ContractId,
     ContractUpdate, ContractUpdateData, ContractWithdraw, Delegate, Hasher, Header, Money,
-    MpnAddress, ProofOfStake, Ratio, RegularSendEntry, Signature, Staker, Token, TokenId,
-    TokenUpdate, Transaction, TransactionAndDelta, TransactionData, Undelegation, UndelegationId,
-    ValidatorProof, Vrf, ZkHasher as CoreZkHasher,
+    MpnAddress, ProofOfStake, Ratio, RegularSendEntry, Signature, Staker, Token, Transaction,
+    TransactionAndDelta, TransactionData, Undelegation, UndelegationId, ValidatorProof, Vrf,
+    ZkHasher as CoreZkHasher,
 };
 use crate::crypto::VerifiableRandomFunction;
 use crate::db::{keys, KvStore, RamMirrorKvStore, WriteOp};
@@ -108,13 +108,13 @@ pub trait Blockchain<K: KvStore> {
 
     fn db_checksum(&self) -> Result<String, BlockchainError>;
 
-    fn get_token(&self, token_id: TokenId) -> Result<Option<Token>, BlockchainError>;
+    fn get_token(&self, token_id: ContractId) -> Result<Option<Token>, BlockchainError>;
 
-    fn get_balance(&self, addr: Address, token_id: TokenId) -> Result<Amount, BlockchainError>;
+    fn get_balance(&self, addr: Address, token_id: ContractId) -> Result<Amount, BlockchainError>;
     fn get_contract_balance(
         &self,
         contract_id: ContractId,
-        token_id: TokenId,
+        token_id: ContractId,
     ) -> Result<Amount, BlockchainError>;
     fn get_delegate(
         &self,
@@ -307,7 +307,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
     fn get_contract_balance(
         &self,
         contract_id: ContractId,
-        token_id: TokenId,
+        token_id: ContractId,
     ) -> Result<Amount, BlockchainError> {
         Ok(
             match self
@@ -320,14 +320,14 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         )
     }
 
-    fn get_token(&self, token_id: TokenId) -> Result<Option<Token>, BlockchainError> {
+    fn get_token(&self, token_id: ContractId) -> Result<Option<Token>, BlockchainError> {
         Ok(match self.database.get(keys::token(&token_id))? {
             Some(b) => Some(b.try_into()?),
             None => None,
         })
     }
 
-    fn get_balance(&self, addr: Address, token_id: TokenId) -> Result<Amount, BlockchainError> {
+    fn get_balance(&self, addr: Address, token_id: ContractId) -> Result<Amount, BlockchainError> {
         Ok(
             match self.database.get(keys::account_balance(&addr, token_id))? {
                 Some(b) => b.try_into()?,
@@ -500,7 +500,7 @@ impl<K: KvStore> Blockchain<K> for KvStoreChain<K> {
         Ok(blks)
     }
     fn next_reward(&self) -> Result<Amount, BlockchainError> {
-        let supply = self.get_balance(Default::default(), TokenId::Ziesha)?;
+        let supply = self.get_balance(Default::default(), ContractId::Ziesha)?;
         Ok(supply / self.config.reward_ratio)
     }
     fn draft_block(

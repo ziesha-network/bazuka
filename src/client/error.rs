@@ -39,7 +39,7 @@ pub enum NodeError {
     #[error("cannot parse account address: {0}")]
     GeneralParseAddressError(#[from] crate::core::ParseGeneralAddressError),
     #[error("cannot parse general address: {0}")]
-    TokenIdParseError(#[from] crate::core::ParseTokenIdError),
+    ContractIdParseError(#[from] crate::core::ParseContractIdError),
     #[error("timeout reached: {0}")]
     TimeoutError(#[from] tokio::time::error::Elapsed),
     #[error("http body size limit error")]

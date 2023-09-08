@@ -6,7 +6,7 @@ use bazuka::{
     client::{BazukaClient, Limit, NodeError},
     common::*,
     config,
-    core::{Amount, Decimal, GeneralAddress, Money, NonceGroup, TokenId, TransactionKind},
+    core::{Amount, ContractId, Decimal, GeneralAddress, Money, NonceGroup, TransactionKind},
 };
 use colored::Colorize;
 use std::collections::HashMap;
@@ -18,7 +18,7 @@ pub async fn send(
     to: GeneralAddress,
     amount: Decimal,
     fee: Decimal,
-    token_id: Option<TokenId>,
+    token_id: Option<ContractId>,
     conf: BazukaConfig,
     mut wallet: WalletCollection,
     wallet_path: &PathBuf,
@@ -41,7 +41,7 @@ pub async fn send(
             token_id
         }
     } else {
-        TokenId::Ziesha
+        ContractId::Ziesha
     };
 
     try_join!(
@@ -103,7 +103,7 @@ pub async fn send(
                                 },
                                 Money {
                                     amount: fee_amount,
-                                    token_id: TokenId::Ziesha,
+                                    token_id: ContractId::Ziesha,
                                 },
                                 new_nonce,
                             );
@@ -139,7 +139,7 @@ pub async fn send(
                                 },
                                 Money {
                                     amount: fee_amount,
-                                    token_id: TokenId::Ziesha,
+                                    token_id: ContractId::Ziesha,
                                 },
                             );
                             if let Some(err) = client.transact(pay.clone().into()).await?.error {
@@ -177,7 +177,7 @@ pub async fn send(
                                 },
                                 Money {
                                     amount: fee_amount,
-                                    token_id: TokenId::Ziesha,
+                                    token_id: ContractId::Ziesha,
                                 },
                                 to.to_string().parse().unwrap(), // TODO: WTH :D
                             );
@@ -215,7 +215,7 @@ pub async fn send(
                                 },
                                 Money {
                                     amount: fee_amount,
-                                    token_id: TokenId::Ziesha,
+                                    token_id: ContractId::Ziesha,
                                 },
                                 new_nonce,
                             );

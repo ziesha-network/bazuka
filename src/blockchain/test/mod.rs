@@ -286,7 +286,7 @@ fn test_merkle_root_check() {
     fork1.apply_block(&blk1).unwrap();
     assert_eq!(
         fork1
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(9700)
     );
@@ -294,7 +294,7 @@ fn test_merkle_root_check() {
     fork2.apply_block(&blk2).unwrap();
     assert_eq!(
         fork2
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(9700)
     );
@@ -327,13 +327,13 @@ fn test_txs_cant_be_duplicated() {
     // Alice: 10000 Bob: 0
     assert_eq!(
         chain
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(10000)
     );
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(0)
     );
@@ -357,13 +357,13 @@ fn test_txs_cant_be_duplicated() {
         .unwrap();
     assert_eq!(
         chain
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(7000)
     );
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(2700)
     );
@@ -379,13 +379,13 @@ fn test_txs_cant_be_duplicated() {
         .unwrap();
     assert_eq!(
         chain
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(7000)
     );
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(2700)
     );
@@ -409,13 +409,13 @@ fn test_txs_cant_be_duplicated() {
         .unwrap();
     assert_eq!(
         chain
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(4000)
     );
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(5400)
     );
@@ -438,13 +438,13 @@ fn test_insufficient_balance_is_handled() {
     // Alice: 10000 Bob: 0
     assert_eq!(
         chain
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(10000)
     );
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(0)
     );
@@ -477,7 +477,7 @@ fn test_insufficient_balance_is_handled() {
         .unwrap();
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(0)
     );
@@ -533,7 +533,7 @@ fn test_cant_apply_unsigned_tx() {
         .unwrap();
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(0)
     );
@@ -595,7 +595,7 @@ fn test_cant_apply_invalid_signed_tx() {
         .unwrap();
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(0)
     );
@@ -618,13 +618,13 @@ fn test_balances_are_correct_after_tx() {
     // Alice: 10000 Bob: 0
     assert_eq!(
         chain
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(10000)
     );
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(0)
     );
@@ -651,13 +651,13 @@ fn test_balances_are_correct_after_tx() {
         .unwrap();
     assert_eq!(
         chain
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(7000)
     );
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(2700)
     );
@@ -684,13 +684,13 @@ fn test_balances_are_correct_after_tx() {
         .unwrap();
     assert_eq!(
         chain
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(7000)
     );
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(2700)
     );
@@ -717,13 +717,13 @@ fn test_balances_are_correct_after_tx() {
         .unwrap();
     assert_eq!(
         chain
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(9600)
     );
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(0)
     );
@@ -750,13 +750,13 @@ fn test_balances_are_correct_after_tx() {
         .unwrap();
     assert_eq!(
         chain
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(9400)
     );
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(0)
     );
@@ -783,13 +783,13 @@ fn test_balances_are_correct_after_tx() {
         .unwrap();
     assert_eq!(
         chain
-            .get_balance(alice.get_address(), TokenId::Ziesha)
+            .get_balance(alice.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(0)
     );
     assert_eq!(
         chain
-            .get_balance(bob.get_address(), TokenId::Ziesha)
+            .get_balance(bob.get_address(), ContractId::Ziesha)
             .unwrap(),
         Amount(0)
     );
@@ -940,10 +940,10 @@ fn test_chain_should_draft_all_valid_transactions() {
     assert_eq!(2, draft.body.len());
 
     let account1 = chain
-        .get_balance(wallet1.get_address(), TokenId::Ziesha)
+        .get_balance(wallet1.get_address(), ContractId::Ziesha)
         .unwrap();
     let account2 = chain
-        .get_balance(wallet2.get_address(), TokenId::Ziesha)
+        .get_balance(wallet2.get_address(), ContractId::Ziesha)
         .unwrap();
     assert_eq!(Amount(10_000_000 - 7000), account1);
     assert_eq!(Amount(7000), account2);
@@ -1050,7 +1050,7 @@ fn test_chain_should_rollback_applied_block() {
 
     let nonce = chain.get_nonce(wallet2.get_address()).unwrap();
     let balance = chain
-        .get_balance(wallet2.get_address(), TokenId::Ziesha)
+        .get_balance(wallet2.get_address(), ContractId::Ziesha)
         .unwrap();
     assert_eq!(Amount(1_000_000), balance);
     assert_eq!(0, nonce);

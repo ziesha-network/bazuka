@@ -4,7 +4,7 @@ pub fn create_contract<K: KvStore>(
     chain: &mut KvStoreChain<K>,
     tx_src: Address,
     contract_id: ContractId,
-    token_id: TokenId,
+    token_id: ContractId,
     contract: &zk::ZkContract,
     state: &Option<zk::ZkDataPairs>,
     money: Money,
@@ -90,9 +90,10 @@ mod tests {
             "0001020304050607080900010203040506070809000102030405060708090001"
                 .parse()
                 .unwrap();
-        let token_id: TokenId = "0001020304050607080900010203040506070809000102030405060708090001"
-            .parse()
-            .unwrap();
+        let token_id: ContractId =
+            "0001020304050607080900010203040506070809000102030405060708090001"
+                .parse()
+                .unwrap();
         let state_model = zk::ZkStateModel::Struct {
             field_types: vec![zk::ZkStateModel::Scalar, zk::ZkStateModel::Scalar],
         };

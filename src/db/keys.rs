@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::{Address, ContractId, MpnAddress, TokenId, UndelegationId};
+use crate::core::{Address, ContractId, MpnAddress, UndelegationId};
 use crate::zk::ZkDataLocator;
 use thiserror::Error;
 
@@ -255,7 +255,7 @@ pub fn delegate(delegator: &Address, delegatee: &Address) -> StringKey {
     format!("DEL-{}-{}", delegator, delegatee).into()
 }
 
-pub fn account_balance(address: &Address, token_id: TokenId) -> StringKey {
+pub fn account_balance(address: &Address, token_id: ContractId) -> StringKey {
     format!("ACB-{}-{}", address, token_id).into()
 }
 
@@ -263,7 +263,7 @@ pub fn contract_account(contract_id: &ContractId) -> StringKey {
     format!("CAC-{}", contract_id).into()
 }
 
-pub fn contract_balance(contract_id: &ContractId, token_id: TokenId) -> StringKey {
+pub fn contract_balance(contract_id: &ContractId, token_id: ContractId) -> StringKey {
     format!("CAB-{}-{}", contract_id, token_id).into()
 }
 
@@ -271,7 +271,7 @@ pub fn contract(contract_id: &ContractId) -> StringKey {
     format!("CON-{}", contract_id).into()
 }
 
-pub fn token(token_id: &TokenId) -> StringKey {
+pub fn token(token_id: &ContractId) -> StringKey {
     format!("TKN-{}", token_id).into()
 }
 

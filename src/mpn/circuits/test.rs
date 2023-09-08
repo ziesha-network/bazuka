@@ -1,5 +1,5 @@
 use super::*;
-use crate::core::{ContractDeposit, ContractWithdraw, Money, TokenId, ZkHasher as CoreZkHasher};
+use crate::core::{ContractDeposit, ContractId, ContractWithdraw, Money, ZkHasher as CoreZkHasher};
 use crate::zk::{
     StateManagerError, ZkDataLocator, ZkDeltaPairs, ZkScalar, ZkStateBuilder, ZkStateModel,
 };
@@ -126,7 +126,7 @@ fn test_empty_update_circuit() {
         state: ZkScalar::from(123),
         aux_data: aux,
         next_state: ZkScalar::from(123),
-        fee_token: TokenId::Ziesha,
+        fee_token: ContractId::Ziesha,
 
         transitions: vec![UpdateTransition::null(3, 3); 4],
     };

@@ -4,7 +4,7 @@ use crate::blockchain::BlockchainConfig;
 use crate::common::*;
 use crate::core::{
     Amount, Block, ContractId, Header, Money, MpnAddress, ProofOfStake, Ratio, RegularSendEntry,
-    Signature, Token, TokenId, Transaction, TransactionAndDelta, TransactionData, ZkHasher,
+    Signature, Token, Transaction, TransactionAndDelta, TransactionData, ZkHasher,
 };
 use crate::mpn::circuits::MpnCircuit;
 use crate::mpn::MpnConfig;
@@ -80,7 +80,7 @@ fn get_mpn_contract(
         );
         data.0.insert(
             zk::ZkDataLocator(vec![i as u64, 4, 0, 0]),
-            zk::ZkScalar::from(TokenId::Ziesha),
+            zk::ZkScalar::from(ContractId::Ziesha),
         );
         data.0.insert(
             zk::ZkDataLocator(vec![i as u64, 4, 0, 1]),
@@ -99,7 +99,7 @@ fn get_mpn_contract(
                     ),
                     (
                         zk::ZkDataLocator(vec![i as u64, 4, 0, 0]),
-                        Some(zk::ZkScalar::from(TokenId::Ziesha)),
+                        Some(zk::ZkScalar::from(ContractId::Ziesha)),
                     ),
                     (
                         zk::ZkDataLocator(vec![i as u64, 4, 0, 1]),
@@ -195,14 +195,26 @@ fn get_ziesha_token_creation_tx() -> Transaction {
     Transaction {
         memo: "Happy Birthday Ziesha!".into(),
         src: None,
-        data: TransactionData::CreateToken {
-            token: Token {
-                name: "Ziesha".into(),
-                symbol: "ZSH".into(),
-                supply: Amount(2_000_000_000_u64 * UNIT),
-                decimals: UNIT_ZEROS,
-                minter: None,
+        data: TransactionData::CreateContract {
+            contract: zk::ZkContract {
+                token: Some(zk::ZkTokenContract {
+                    token: Token {
+                        name: "Ziesha".into(),
+                        symbol: "ZSH".into(),
+                        supply: Amount(2_000_000_000_u64 * UNIT),
+                        decimals: UNIT_ZEROS,
+                        minter: None,
+                    },
+                    mint_functions: vec![],
+                }),
+                state_model: zk::ZkStateModel::Scalar,
+                initial_state: zk::ZkCompressedState::empty::<ZkHasher>(zk::ZkStateModel::Scalar),
+                deposit_functions: vec![],
+                withdraw_functions: vec![],
+                functions: vec![],
             },
+            state: Some(Default::default()),
+            money: Money::ziesha(0),
         },
         nonce: 0,
         fee: Money::ziesha(0),
@@ -230,7 +242,7 @@ pub fn blockchain_config_template(initial_balances: bool) -> BlockchainConfig {
     let mpn_contract_id = ContractId::new(&mpn_tx_delta.tx);
 
     let ziesha_token_creation_tx = get_ziesha_token_creation_tx();
-    let ziesha_token_id = TokenId::new(&ziesha_token_creation_tx);
+    let ziesha_token_id = ContractId::new(&ziesha_token_creation_tx);
 
     let create_staker = Transaction {
         memo: "Very first staker created!".into(),
@@ -290,7 +302,7 @@ pub fn blockchain_config_template(initial_balances: bool) -> BlockchainConfig {
                 entries: vec![RegularSendEntry {
                     dst,
                     amount: Money {
-                        token_id: TokenId::Ziesha,
+                        token_id: ContractId::Ziesha,
                         amount: amnt,
                     },
                 }],

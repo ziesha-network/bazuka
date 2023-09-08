@@ -3,7 +3,7 @@ use bazuka::blockchain::Blockchain;
 use bazuka::db::KvStore;
 use bazuka::{
     blockchain::KvStoreChain,
-    core::{Amount, TokenId},
+    core::{Amount, ContractId},
     db::ReadOnlyLevelDbKvStore,
 };
 use colored::Colorize;
@@ -30,7 +30,7 @@ pub fn health_check(conf: &BazukaConfig) {
     let mut sum_mpn: Amount = 0.into();
     for mpn_acc in chain.get_mpn_accounts(0, acc_count as usize).unwrap() {
         for money in mpn_acc.1.tokens.values() {
-            if money.token_id == TokenId::Ziesha {
+            if money.token_id == ContractId::Ziesha {
                 sum_mpn += money.amount;
             }
         }
@@ -40,7 +40,7 @@ pub fn health_check(conf: &BazukaConfig) {
 
     let mpn_contract_balance_check = sum_mpn
         == chain
-            .get_contract_balance(mpn_contract_id, TokenId::Ziesha)
+            .get_contract_balance(mpn_contract_id, ContractId::Ziesha)
             .unwrap();
     let currency_in_circulation_check =
         chain.currency_in_circulation().unwrap() == expected_currency_in_circulation;

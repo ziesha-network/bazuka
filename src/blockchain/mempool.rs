@@ -1,7 +1,7 @@
 use super::{Blockchain, BlockchainError, TransactionMetadata, TransactionStats};
 use crate::core::{
-    Address, Amount, GeneralAddress, GeneralTransaction, MpnDeposit, MpnWithdraw, NonceGroup,
-    TokenId, TransactionAndDelta, TransactionKind,
+    Address, Amount, ContractId, GeneralAddress, GeneralTransaction, MpnDeposit, MpnWithdraw,
+    NonceGroup, TransactionAndDelta, TransactionKind,
 };
 use crate::db::KvStore;
 use crate::zk::MpnTransaction;
@@ -151,7 +151,7 @@ impl Mempool {
         for (ng, mempool) in self.txs.iter() {
             if let Some((tx, _)) = mempool.first_tx() {
                 let fee = tx.fee();
-                if fee.token_id == TokenId::Ziesha {
+                if fee.token_id == ContractId::Ziesha {
                     firsts.entry(ng.kind()).or_default().push(fee.amount);
                 }
             }
@@ -226,7 +226,7 @@ impl Mempool {
             return Ok(());
         }
 
-        if tx.fee().token_id != TokenId::Ziesha {
+        if tx.fee().token_id != ContractId::Ziesha {
             return Ok(());
         }
 
@@ -297,13 +297,15 @@ impl Mempool {
         }
 
         let ziesha_balance = match tx.sender() {
-            GeneralAddress::ChainAddress(addr) => blockchain.get_balance(addr, TokenId::Ziesha)?,
+            GeneralAddress::ChainAddress(addr) => {
+                blockchain.get_balance(addr, ContractId::Ziesha)?
+            }
             GeneralAddress::MpnAddress(mpn_addr) => {
                 let acc = blockchain.get_mpn_account(mpn_addr)?;
                 acc.tokens
                     .get(&0)
                     .map(|m| {
-                        if m.token_id == TokenId::Ziesha {
+                        if m.token_id == ContractId::Ziesha {
                             m.amount
                         } else {
                             0.into()
