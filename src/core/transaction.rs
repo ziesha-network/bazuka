@@ -51,70 +51,37 @@ impl<H: Hash> FromStr for UndelegationId<H> {
     }
 }
 
-#[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    PartialEq,
-    Debug,
-    Clone,
-    Copy,
-    Eq,
-    std::hash::Hash,
-    Default,
-)]
-pub struct ContractId<H: Hash>(H::Output);
-
 #[derive(Error, Debug)]
 pub enum ParseContractIdError {
     #[error("contract-id invalid")]
     Invalid,
 }
 
-impl<H: Hash> ContractId<H> {
-    pub fn new<S: SignatureScheme, V: VerifiableRandomFunction>(tx: &Transaction<H, S, V>) -> Self {
-        Self(tx.hash())
-    }
-}
-
-impl<H: Hash> std::fmt::Display for ContractId<H> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", hex::encode(self.0))
-    }
-}
-
-#[derive(Error, Debug)]
-pub enum ParseTokenIdError {
-    #[error("token-id invalid")]
-    Invalid,
-}
-
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug, Clone, Copy, Hash, Eq)]
-pub enum TokenId {
-    Null,
+pub enum ContractId<H: Hash> {
+    Null(std::marker::PhantomData<H>),
     Ziesha,
     Custom(ZkScalar),
 }
-impl Default for TokenId {
+impl<H: Hash> Default for ContractId<H> {
     fn default() -> Self {
-        Self::Null
+        Self::Null(std::marker::PhantomData)
     }
 }
-impl TokenId {
-    pub fn new<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction>(
-        tx: &Transaction<H, S, V>,
-    ) -> Self {
+impl<H: Hash> ContractId<H> {
+    pub fn new<S: SignatureScheme, V: VerifiableRandomFunction>(tx: &Transaction<H, S, V>) -> Self {
         Self::Custom(crate::zk::hash_to_scalar(&bincode::serialize(&tx).unwrap()))
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct Money {
-    pub token_id: TokenId,
+pub struct Money<H: Hash> {
+    pub token_id: ContractId<H>,
     pub amount: Amount,
 }
 
-impl Money {
-    pub fn new(token_id: TokenId, amount: u64) -> Self {
+impl<H: Hash> Money<H> {
+    pub fn new(token_id: ContractId<H>, amount: u64) -> Self {
         Self {
             token_id,
             amount: Amount(amount),
@@ -122,16 +89,16 @@ impl Money {
     }
     pub fn ziesha(amount: u64) -> Self {
         Self {
-            token_id: TokenId::Ziesha,
+            token_id: ContractId::Ziesha,
             amount: Amount(amount),
         }
     }
 }
 
-impl From<ZkScalar> for TokenId {
+impl<H: Hash> From<ZkScalar> for ContractId<H> {
     fn from(val: ZkScalar) -> Self {
         if val == ZkScalar::ZERO {
-            Self::Null
+            Self::Null(std::marker::PhantomData)
         } else if val == ZkScalar::ONE {
             Self::Ziesha
         } else {
@@ -140,24 +107,24 @@ impl From<ZkScalar> for TokenId {
     }
 }
 
-impl std::fmt::Display for TokenId {
+impl<H: Hash> std::fmt::Display for ContractId<H> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            TokenId::Null => {
+            ContractId::Null(_) => {
                 write!(f, "Null")
             }
-            TokenId::Ziesha => {
+            ContractId::Ziesha => {
                 write!(f, "Ziesha")
             }
-            TokenId::Custom(id) => {
+            ContractId::Custom(id) => {
                 write!(f, "{}", id)
             }
         }
     }
 }
 
-impl FromStr for TokenId {
-    type Err = ParseTokenIdError;
+impl<H: Hash> FromStr for ContractId<H> {
+    type Err = ParseContractIdError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s == "Ziesha" {
             Ok(Self::Ziesha)
@@ -168,15 +135,6 @@ impl FromStr for TokenId {
     }
 }
 
-impl<H: Hash> FromStr for ContractId<H> {
-    type Err = ParseContractIdError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let bytes = hex::decode(s).map_err(|_| ParseContractIdError::Invalid)?;
-        let hash_output = H::Output::try_from(bytes).map_err(|_| ParseContractIdError::Invalid)?;
-        Ok(Self(hash_output))
-    }
-}
-
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
     pub memo: String,
@@ -184,8 +142,8 @@ pub struct ContractDeposit<H: Hash, S: SignatureScheme> {
     pub deposit_circuit_id: u32,
     pub calldata: ZkScalar,
     pub src: S::Pub,
-    pub amount: Money,
-    pub fee: Money,
+    pub amount: Money<H>,
+    pub fee: Money<H>,
     pub nonce: u32,
     pub sig: Option<S::Sig>,
 }
@@ -197,8 +155,8 @@ pub struct ContractWithdraw<H: Hash, S: SignatureScheme> {
     pub withdraw_circuit_id: u32,
     pub calldata: ZkScalar,
     pub dst: S::Pub,
-    pub amount: Money, // Amount sent from contract to dst
-    pub fee: Money,    // Executor fee, paid by contract
+    pub amount: Money<H>, // Amount sent from contract to dst
+    pub fee: Money<H>,    // Executor fee, paid by contract
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, Default)]
@@ -270,7 +228,7 @@ pub enum ContractUpdateData<H: Hash, S: SignatureScheme> {
     },
     // Proof for FunctionCallCircuits[function_id](curr_state, next_state)
     FunctionCall {
-        fee: Money, // Executor fee
+        fee: Money<H>, // Executor fee
     },
     Mint {
         amount: Amount,
@@ -288,9 +246,9 @@ pub struct ContractUpdate<H: Hash, S: SignatureScheme> {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
-pub struct RegularSendEntry<S: SignatureScheme> {
+pub struct RegularSendEntry<H: Hash, S: SignatureScheme> {
     pub dst: S::Pub,
-    pub amount: Money,
+    pub amount: Money<H>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
@@ -320,12 +278,6 @@ impl<S: SignatureScheme> Token<S> {
             && RE_NAME.is_match(&self.name)
             && RE_SYMBOL.is_match(&self.symbol)
     }
-}
-
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
-pub enum TokenUpdate<S: SignatureScheme> {
-    Mint { amount: Amount },
-    ChangeMinter { minter: S::Pub },
 }
 
 #[derive(
@@ -377,13 +329,13 @@ pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunctio
         ratio: Ratio,
     },
     RegularSend {
-        entries: Vec<RegularSendEntry<S>>,
+        entries: Vec<RegularSendEntry<H, S>>,
     },
     // Create a Zero-Contract. The creator can consider multiple ways (Circuits) of updating
     // the state. But there should be only one circuit for entering and exiting the contract.
     CreateContract {
         contract: ZkContract,
-        money: Money,
+        money: Money<H>,
         state: Option<ZkDataPairs>, // Removable for space efficiency, not considered inside signature!
     },
     // Collection of contract updates
@@ -392,13 +344,6 @@ pub enum TransactionData<H: Hash, S: SignatureScheme, V: VerifiableRandomFunctio
         updates: Vec<ContractUpdate<H, S>>,
         delta: Option<ZkDeltaPairs>, // Removable for space efficiency, not considered inside signature!
     },
-    CreateToken {
-        token: Token<S>,
-    },
-    UpdateToken {
-        token_id: TokenId,
-        update: TokenUpdate<S>,
-    },
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -406,7 +351,7 @@ pub struct Transaction<H: Hash, S: SignatureScheme, V: VerifiableRandomFunction>
     pub src: Option<S::Pub>, // None is reward treasury!
     pub nonce: u32,
     pub data: TransactionData<H, S, V>,
-    pub fee: Money,
+    pub fee: Money<H>,
     pub memo: String,
     pub sig: Signature<S>,
 }

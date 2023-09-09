@@ -1,4 +1,4 @@
-use crate::core::{Address, Block, Ratio, TokenId};
+use crate::core::{Address, Block, ContractId, Ratio};
 use crate::mpn::MpnConfig;
 use std::collections::HashSet;
 
@@ -8,7 +8,7 @@ pub struct BlockchainConfig {
     pub genesis: Block,
     pub reward_ratio: u64,
     pub max_block_size: usize,
-    pub ziesha_token_id: TokenId,
+    pub ziesha_token_id: ContractId,
     pub mpn_config: MpnConfig,
     pub testnet_height_limit: Option<u64>,
     pub max_memo_length: usize,

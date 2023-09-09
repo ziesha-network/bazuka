@@ -169,12 +169,12 @@ mod tests {
                 Amount(9800).into(),
             ),
             WriteOp::Put(
-                "CAB-9e438ff7c98bb11eeab8d5220268904df386cdae241f4207cda54b8f87bc0f87-Ziesha"
+                "CAB-0x069c7585c9cd138dd714b36716efdff2257e536b3360da2aad96c35c9c46bd5e-Ziesha"
                     .into(),
                 Amount(123).into(),
             ),
             WriteOp::Put(
-                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-9e438ff7c98bb11eeab8d5220268904df386cdae241f4207cda54b8f87bc0f87".into(),
+                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-0x069c7585c9cd138dd714b36716efdff2257e536b3360da2aad96c35c9c46bd5e".into(),
                 1u32.into(),
             ),
         ];
@@ -183,7 +183,7 @@ mod tests {
         assert_eq!(
             exec_fees,
             vec![Money {
-                token_id: TokenId::Ziesha,
+                token_id: ContractId::Ziesha,
                 amount: Amount(77)
             }]
         );
@@ -269,7 +269,7 @@ mod tests {
 
         let expected_ops = vec![
             WriteOp::Put(
-                "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-0x5bfa932c150df0af24346419d31b61dab0747d78fa1b46e97f838927423c99f4"
+                "ACB-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-0x08bfdbe1dd6e8f02bbca1e930981ae9dfff03238721e58e8007049f861b30496"
                     .into(),
                 Amount(90000).into(),
             ),
@@ -279,12 +279,12 @@ mod tests {
                 Amount(9679).into(),
             ),
             WriteOp::Put(
-                "CAB-9e438ff7c98bb11eeab8d5220268904df386cdae241f4207cda54b8f87bc0f87-0x5bfa932c150df0af24346419d31b61dab0747d78fa1b46e97f838927423c99f4"
+                "CAB-0x069c7585c9cd138dd714b36716efdff2257e536b3360da2aad96c35c9c46bd5e-0x08bfdbe1dd6e8f02bbca1e930981ae9dfff03238721e58e8007049f861b30496"
                     .into(),
                 Amount(10000).into(),
             ),
             WriteOp::Put(
-                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-9e438ff7c98bb11eeab8d5220268904df386cdae241f4207cda54b8f87bc0f87".into(),
+                "DNC-ed8c19c6a4cf1460e961f7bae8eea54d437b9edac27cbeb09be32ae367adf9098a-0x069c7585c9cd138dd714b36716efdff2257e536b3360da2aad96c35c9c46bd5e".into(),
                 1u32.into(),
             ),
         ];
@@ -293,7 +293,7 @@ mod tests {
         assert_eq!(
             exec_fees,
             vec![Money {
-                token_id: TokenId::Ziesha,
+                token_id: ContractId::Ziesha,
                 amount: Amount(321)
             }]
         );

@@ -1,7 +1,7 @@
 use super::messages::{GetBalanceRequest, GetBalanceResponse};
 use super::{NodeContext, NodeError};
 use crate::blockchain::Blockchain;
-use crate::core::TokenId;
+use crate::core::ContractId;
 use crate::db::KvStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -11,7 +11,7 @@ pub async fn get_balance<K: KvStore, B: Blockchain<K>>(
     req: GetBalanceRequest,
 ) -> Result<GetBalanceResponse, NodeError> {
     let context = context.read().await;
-    let token_id: TokenId = req.token_id.parse()?;
+    let token_id: ContractId = req.token_id.parse()?;
     let tkn = context
         .blockchain
         .get_token(token_id)?
@@ -71,8 +71,8 @@ mod tests {
         .await;
         assert!(matches!(
             resp,
-            Err(NodeError::TokenIdParseError(
-                crate::core::ParseTokenIdError::Invalid
+            Err(NodeError::ContractIdParseError(
+                crate::core::ParseContractIdError::Invalid
             ))
         ));
     }

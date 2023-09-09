@@ -297,7 +297,7 @@ mod tests {
             1,
             Money {
                 amount: Amount(10056),
-                token_id: TokenId::Custom(123.into()),
+                token_id: ContractId::Custom(123.into()),
             },
             Money::ziesha(0),
         );
@@ -326,11 +326,11 @@ mod tests {
             1,
             Money {
                 amount: Amount(30),
-                token_id: TokenId::Custom(123.into()),
+                token_id: ContractId::Custom(123.into()),
             },
             Money {
                 amount: Amount(26),
-                token_id: TokenId::Custom(123.into()),
+                token_id: ContractId::Custom(123.into()),
             },
             abc.get_address(),
         );

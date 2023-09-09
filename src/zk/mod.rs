@@ -1,4 +1,4 @@
-use crate::core::{hash::Hash, Amount, Hasher, Money, Token, TokenId, ZkHasher as ZkMainHasher};
+use crate::core::{hash::Hash, Amount, ContractId, Hasher, Money, Token, ZkHasher as ZkMainHasher};
 use crate::crypto::{jubjub, ZkSignatureScheme};
 
 use ff::{Field, PrimeField};
@@ -95,7 +95,7 @@ impl MpnAccount {
     pub fn find_token_index(
         &self,
         log4_token_capacity: u8,
-        token_id: TokenId,
+        token_id: ContractId,
         empty_allowed: bool,
     ) -> Option<u64> {
         for (ind, money) in self.tokens.iter() {
@@ -277,12 +277,12 @@ impl From<Amount> for ZkScalar {
     }
 }
 
-impl From<TokenId> for ZkScalar {
-    fn from(m: TokenId) -> Self {
+impl From<ContractId> for ZkScalar {
+    fn from(m: ContractId) -> Self {
         match m {
-            TokenId::Null => Self::ZERO,
-            TokenId::Ziesha => Self::ONE,
-            TokenId::Custom(id) => id,
+            ContractId::Null(_) => Self::ZERO,
+            ContractId::Ziesha => Self::ONE,
+            ContractId::Custom(id) => id,
         }
     }
 }

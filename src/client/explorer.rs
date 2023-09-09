@@ -1,7 +1,7 @@
 use crate::core::{
     Address, Amount, Block, ContractDeposit, ContractUpdate, ContractUpdateData, ContractWithdraw,
-    GeneralTransaction, Header, Money, MpnDeposit, MpnWithdraw, ProofOfStake, Token, TokenUpdate,
-    Transaction, TransactionData,
+    GeneralTransaction, Header, Money, MpnDeposit, MpnWithdraw, ProofOfStake, Token, Transaction,
+    TransactionData,
 };
 use crate::crypto::jubjub::*;
 use crate::zk::{
@@ -284,26 +284,6 @@ impl From<&ZkProof> for ExplorerZkProof {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum ExplorerTokenUpdate {
-    Mint { amount: u64 },
-    ChangeMinter { minter: String },
-}
-
-impl From<&TokenUpdate> for ExplorerTokenUpdate {
-    fn from(obj: &TokenUpdate) -> Self {
-        match obj {
-            TokenUpdate::Mint { amount } => Self::Mint {
-                amount: (*amount).into(),
-            },
-            TokenUpdate::ChangeMinter { minter } => Self::ChangeMinter {
-                minter: minter.to_string(),
-            },
-        }
-    }
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde(tag = "type")]
 pub enum ExplorerContractUpdateData {
     Deposit {
         deposits: Vec<ExplorerContractDeposit>,
@@ -391,13 +371,6 @@ pub enum ExplorerTransactionData {
         updates: Vec<ExplorerContractUpdate>,
         delta: Option<ExplorerDeltaPairs>,
     },
-    CreateToken {
-        token: ExplorerToken,
-    },
-    UpdateToken {
-        token_id: String,
-        update: ExplorerTokenUpdate,
-    },
 }
 
 impl From<&TransactionData> for ExplorerTransactionData {
@@ -445,13 +418,6 @@ impl From<&TransactionData> for ExplorerTransactionData {
                 contract_id: contract_id.to_string(),
                 updates: updates.iter().map(|u| u.into()).collect(),
                 delta: delta.as_ref().map(|d| d.into()),
-            },
-            TransactionData::CreateToken { token } => Self::CreateToken {
-                token: token.into(),
-            },
-            TransactionData::UpdateToken { token_id, update } => Self::UpdateToken {
-                token_id: token_id.to_string(),
-                update: update.into(),
             },
         }
     }

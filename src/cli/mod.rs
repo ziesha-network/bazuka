@@ -16,7 +16,7 @@ use {
 use {
     bazuka::client::{NodeError, PeerAddress},
     bazuka::config,
-    bazuka::core::{Address, Decimal, GeneralAddress, TokenId},
+    bazuka::core::{Address, ContractId, Decimal, GeneralAddress},
     bazuka::mpn::MpnWorker,
     bazuka::wallet::WalletCollection,
     serde::{Deserialize, Serialize},
@@ -93,7 +93,7 @@ enum WalletOptions {
     /// Add a new token to the wallet
     AddToken {
         #[structopt(long)]
-        id: TokenId,
+        id: ContractId,
     },
     /// Creates a new token
     NewToken {
@@ -121,7 +121,7 @@ enum WalletOptions {
         #[structopt(long)]
         to: GeneralAddress,
         #[structopt(long)]
-        token_id: Option<TokenId>,
+        token_id: Option<ContractId>,
         #[structopt(long)]
         amount: Decimal,
         #[structopt(long, default_value = "0")]

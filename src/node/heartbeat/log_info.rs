@@ -19,11 +19,11 @@ pub async fn log_info<K: KvStore, B: Blockchain<K>>(
     let wallet_addr = ctx.validator_wallet.get_address();
     let tkn = ctx
         .blockchain
-        .get_token(crate::core::TokenId::Ziesha)?
+        .get_token(crate::core::ContractId::Ziesha)?
         .unwrap();
     let balance = ctx
         .blockchain
-        .get_balance(wallet_addr, crate::core::TokenId::Ziesha)?;
+        .get_balance(wallet_addr, crate::core::ContractId::Ziesha)?;
     inf.push(("Balance", balance.display_by_decimals(tkn.decimals)));
 
     println!(

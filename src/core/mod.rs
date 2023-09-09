@@ -13,7 +13,9 @@ use thiserror::Error;
 
 pub use money::Amount;
 pub use money::Decimal;
-pub use transaction::{Money, Ratio};
+pub use transaction::Ratio;
+
+pub type Money = transaction::Money<Hasher>;
 
 pub type Hasher = hash::Sha3Hasher;
 pub type Signer = crypto::ed25519::Ed25519<Hasher>;
@@ -32,7 +34,7 @@ pub type Undelegation = address::Undelegation;
 pub type Signature = address::Signature<Signer>;
 pub type Transaction = transaction::Transaction<Hasher, Signer, Vrf>;
 pub type TransactionData = transaction::TransactionData<Hasher, Signer, Vrf>;
-pub type RegularSendEntry = transaction::RegularSendEntry<Signer>;
+pub type RegularSendEntry = transaction::RegularSendEntry<Hasher, Signer>;
 pub type ContractAccount = transaction::ContractAccount;
 pub type ContractUpdate = transaction::ContractUpdate<Hasher, Signer>;
 pub type ContractUpdateData = transaction::ContractUpdateData<Hasher, Signer>;
@@ -48,13 +50,11 @@ pub type MpnTransaction = zk::MpnTransaction;
 pub type Header = header::Header<Hasher, Signer, Vrf>;
 pub type ValidatorProof = header::ValidatorProof<Vrf>;
 pub type Block = blocks::Block<Hasher, Signer, Vrf>;
-pub type TokenId = transaction::TokenId;
-pub type ParseTokenIdError = transaction::ParseTokenIdError;
-pub type TokenUpdate = transaction::TokenUpdate<Signer>;
 pub type Token = transaction::Token<Signer>;
 
 pub type ProofOfStake = header::ProofOfStake<Signer, Vrf>;
 pub type ContractId = transaction::ContractId<Hasher>;
+pub type ParseContractIdError = transaction::ParseContractIdError;
 
 pub type TransactionAndDelta = transaction::TransactionAndDelta<Hasher, Signer, Vrf>;
 

@@ -4,7 +4,7 @@ use tokio::try_join;
 use crate::cli::{BazukaConfig, CURRENT_NETWORK};
 use bazuka::client::{BazukaClient, Limit, NodeError};
 use bazuka::common::*;
-use bazuka::core::{Address, Decimal, Money, NonceGroup, Ratio, TokenId};
+use bazuka::core::{Address, ContractId, Decimal, Money, NonceGroup, Ratio};
 use bazuka::wallet::WalletCollection;
 
 pub async fn auto_delegate(
@@ -37,7 +37,7 @@ pub async fn auto_delegate(
                 ratio,
                 Money {
                     amount: fee.to_amount(bazuka::config::UNIT_ZEROS),
-                    token_id: TokenId::Ziesha,
+                    token_id: ContractId::Ziesha,
                 },
                 new_nonce,
             );

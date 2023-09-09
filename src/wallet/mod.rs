@@ -1,7 +1,7 @@
 mod tx_builder;
 pub use tx_builder::TxBuilder;
 
-use crate::core::{GeneralTransaction, NonceGroup, TokenId};
+use crate::core::{ContractId, GeneralTransaction, NonceGroup};
 
 use bip39::Mnemonic;
 use rand_core_mnemonic::{CryptoRng, RngCore};
@@ -89,7 +89,7 @@ impl WalletCollection {
 pub struct Wallet {
     pub mnemonic: Mnemonic,
     pub wallet_type: WalletType,
-    pub tokens: Vec<TokenId>,
+    pub tokens: Vec<ContractId>,
     pub txs: HashMap<NonceGroup, Vec<GeneralTransaction>>,
 }
 
@@ -97,7 +97,7 @@ impl Wallet {
     pub fn new(wallet_type: WalletType, mnemonic: Mnemonic) -> Self {
         Self {
             txs: HashMap::new(),
-            tokens: vec![TokenId::Ziesha],
+            tokens: vec![ContractId::Ziesha],
             wallet_type,
             mnemonic,
         }
@@ -108,12 +108,12 @@ impl Wallet {
     pub fn tx_builder(&self) -> TxBuilder {
         TxBuilder::new(&self.seed())
     }
-    pub fn add_token(&mut self, token_id: TokenId) {
+    pub fn add_token(&mut self, token_id: ContractId) {
         if !self.tokens.contains(&token_id) {
             self.tokens.push(token_id);
         }
     }
-    pub fn get_tokens(&self) -> &[TokenId] {
+    pub fn get_tokens(&self) -> &[ContractId] {
         &self.tokens
     }
     pub fn reset(&mut self) {

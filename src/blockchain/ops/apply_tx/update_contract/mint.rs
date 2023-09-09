@@ -8,20 +8,21 @@ pub fn mint<K: KvStore>(
     amount: &Amount,
     executor_fees: &mut Vec<Money>,
 ) -> Result<(zk::ZkVerifierKey, zk::ZkCompressedState), BlockchainError> {
-    if let Some(token) = &contract.token {
-        /*let mut bal = chain.get_contract_balance(contract_id.clone(), *token_id)?;
+    if let Some(mut token) = contract.token.clone() {
+        let mut bal = chain.get_contract_balance(contract_id.clone(), *contract_id)?;
         if bal + *amount < bal || token.token.supply + *amount < token.token.supply {
             return Err(BlockchainError::TokenSupplyOverflow);
         }
         bal += *amount;
-        token.supply += *amount;
-        chain
-            .database
-            .update(&[WriteOp::Put(keys::token(token_id), (&token).into())])?;
+        token.token.supply += *amount;
         chain.database.update(&[WriteOp::Put(
-            keys::account_balance(&tx_src, *token_id),
+            keys::token(contract_id),
+            (&token.token).into(),
+        )])?;
+        chain.database.update(&[WriteOp::Put(
+            keys::contract_balance(contract_id, *contract_id),
             bal.into(),
-        )])?;*/
+        )])?;
 
         let func = token
             .mint_functions
@@ -33,6 +34,12 @@ pub fn mint<K: KvStore>(
             [(zk::ZkDataLocator(vec![]), Some((*amount).into()))].into(),
         ))?;
         let aux_data = state_builder.compress()?;
+
+        executor_fees.push(Money {
+            token_id: contract_id.clone(),
+            amount: *amount,
+        });
+
         Ok((circuit.clone(), aux_data))
     } else {
         Err(BlockchainError::ContractNotToken)

@@ -1,12 +1,10 @@
 mod auto_delegate;
 mod create_contract;
-mod create_token;
 mod delegate;
 mod regular_send;
 mod undelegate;
 mod update_contract;
 mod update_staker;
-mod update_token;
 
 use super::*;
 
@@ -67,7 +65,7 @@ pub fn apply_tx<K: KvStore>(
             return Err(BlockchainError::IllegalTreasuryAccess);
         }
 
-        if tx.fee.token_id != TokenId::Ziesha {
+        if tx.fee.token_id != ContractId::Ziesha {
             return Err(BlockchainError::OnlyZieshaFeesAccepted);
         }
 
@@ -118,20 +116,6 @@ pub fn apply_tx<K: KvStore>(
                 let undelegation_id = UndelegationId::new(tx);
                 undelegate::undelegate(chain, undelegation_id, tx_src, *amount, from.clone())?;
             }
-            TransactionData::CreateToken { token } => {
-                let token_id = {
-                    let tid = TokenId::new(tx);
-                    if tid == chain.config.ziesha_token_id {
-                        TokenId::Ziesha
-                    } else {
-                        tid
-                    }
-                };
-                create_token::create_token(chain, tx_src, token_id, token)?;
-            }
-            TransactionData::UpdateToken { token_id, update } => {
-                update_token::update_token(chain, tx_src, token_id, update)?;
-            }
             TransactionData::RegularSend { entries } => {
                 regular_send::regular_send(chain, tx_src, entries)?;
             }
@@ -140,11 +124,10 @@ pub fn apply_tx<K: KvStore>(
                 state,
                 money,
             } => {
-                let contract_id = ContractId::new(tx);
-                let token_id = {
-                    let tid = TokenId::new(tx);
+                let contract_id = {
+                    let tid = ContractId::new(tx);
                     if tid == chain.config.ziesha_token_id {
-                        TokenId::Ziesha
+                        ContractId::Ziesha
                     } else {
                         tid
                     }
@@ -153,7 +136,6 @@ pub fn apply_tx<K: KvStore>(
                     chain,
                     tx_src,
                     contract_id,
-                    token_id,
                     contract,
                     state,
                     *money,

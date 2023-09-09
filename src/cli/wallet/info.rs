@@ -5,7 +5,7 @@ use bazuka::client::{Limit, NodeError};
 use bazuka::common::*;
 use bazuka::core::{MpnAddress, NonceGroup};
 use bazuka::wallet::WalletCollection;
-use bazuka::{client::BazukaClient, core::TokenId};
+use bazuka::{client::BazukaClient, core::ContractId};
 use colored::Colorize;
 use std::collections::HashMap;
 
@@ -32,7 +32,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                 );
 
                 let validator_ziesha = client
-                    .get_balance(val_tx_builder.get_address(), TokenId::Ziesha)
+                    .get_balance(val_tx_builder.get_address(), ContractId::Ziesha)
                     .await?
                     .balance;
                 println!(
@@ -54,7 +54,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                     .tokens
                     .get(&0)
                     .map(|tkn| {
-                        if tkn.token_id == TokenId::Ziesha {
+                        if tkn.token_id == ContractId::Ziesha {
                             tkn.amount
                         } else {
                             0.into()
@@ -133,7 +133,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                             format!("<{}>:", inf.name).bright_yellow(),
                             inf.balance
                                 .display_by_decimals(tokens.get(id).unwrap().decimals),
-                            if *id == TokenId::Ziesha {
+                            if *id == ContractId::Ziesha {
                                 bazuka::config::SYMBOL.to_string()
                             } else {
                                 format!(" {} (Token-Id: {})", inf.symbol, id)
@@ -237,7 +237,7 @@ pub async fn info(conf: BazukaConfig, mut wallet: WalletCollection, validator: b
                                         .as_ref()
                                         .map(|t| money.amount.display_by_decimals(t.decimals))
                                         .unwrap_or("N/A".to_string()),
-                                    if money.token_id == TokenId::Ziesha {
+                                    if money.token_id == ContractId::Ziesha {
                                         bazuka::config::SYMBOL.to_string()
                                     } else {
                                         format!(" {}", inf.symbol)

@@ -6,13 +6,13 @@ pub fn delegate<K: KvStore>(
     amount: Amount,
     to: Address,
 ) -> Result<(), BlockchainError> {
-    let mut src_bal = chain.get_balance(tx_src.clone(), TokenId::Ziesha)?;
+    let mut src_bal = chain.get_balance(tx_src.clone(), ContractId::Ziesha)?;
     if src_bal < amount {
         return Err(BlockchainError::BalanceInsufficient);
     }
     src_bal -= amount;
     chain.database.update(&[WriteOp::Put(
-        keys::account_balance(&tx_src, TokenId::Ziesha),
+        keys::account_balance(&tx_src, ContractId::Ziesha),
         src_bal.into(),
     )])?;
 
@@ -210,7 +210,7 @@ mod tests {
             &[RegularSendEntry {
                 dst: src.clone(),
                 amount: Money {
-                    token_id: TokenId::Ziesha,
+                    token_id: ContractId::Ziesha,
                     amount: Amount(100),
                 },
             }],

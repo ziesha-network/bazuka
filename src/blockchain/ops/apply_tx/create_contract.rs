@@ -4,7 +4,6 @@ pub fn create_contract<K: KvStore>(
     chain: &mut KvStoreChain<K>,
     tx_src: Address,
     contract_id: ContractId,
-    token_id: TokenId,
     contract: &zk::ZkContract,
     state: &Option<zk::ZkDataPairs>,
     money: Money,
@@ -17,12 +16,13 @@ pub fn create_contract<K: KvStore>(
             return Err(BlockchainError::TokenBadNameSymbol);
         }
         chain.database.update(&[WriteOp::Put(
-            keys::account_balance(&tx_src, token_id),
+            keys::account_balance(&tx_src, contract_id),
             token.token.supply.into(),
         )])?;
-        chain
-            .database
-            .update(&[WriteOp::Put(keys::token(&token_id), (&token.token).into())])?;
+        chain.database.update(&[WriteOp::Put(
+            keys::token(&contract_id),
+            (&token.token).into(),
+        )])?;
     }
     chain.database.update(&[WriteOp::Put(
         keys::contract(&contract_id),
@@ -87,12 +87,9 @@ mod tests {
         )
         .unwrap();
         let contract_id: ContractId =
-            "0001020304050607080900010203040506070809000102030405060708090001"
+            "0x0001020304050607080900010203040506070809000102030405060708090001"
                 .parse()
                 .unwrap();
-        let token_id: TokenId = "0001020304050607080900010203040506070809000102030405060708090001"
-            .parse()
-            .unwrap();
         let state_model = zk::ZkStateModel::Struct {
             field_types: vec![zk::ZkStateModel::Scalar, zk::ZkStateModel::Scalar],
         };
@@ -112,7 +109,6 @@ mod tests {
                     chain,
                     abc.get_address(),
                     contract_id,
-                    token_id,
                     &contract,
                     &Some(Default::default()),
                     Money::ziesha(2345),
@@ -127,12 +123,12 @@ mod tests {
                 7655u64.into(),
             ),
             WriteOp::Put(
-                "CAB-0001020304050607080900010203040506070809000102030405060708090001-Ziesha"
+                "CAB-0x0001020304050607080900010203040506070809000102030405060708090001-Ziesha"
                     .into(),
                 2345u64.into(),
             ),
             WriteOp::Put(
-                "CAC-0001020304050607080900010203040506070809000102030405060708090001".into(),
+                "CAC-0x0001020304050607080900010203040506070809000102030405060708090001".into(),
                 ContractAccount {
                     height: 1,
                     compressed_state: initial_state.clone(),
@@ -140,15 +136,15 @@ mod tests {
                 .into(),
             ),
             WriteOp::Put(
-                "CON-0001020304050607080900010203040506070809000102030405060708090001".into(),
+                "CON-0x0001020304050607080900010203040506070809000102030405060708090001".into(),
                 contract.into(),
             ),
             WriteOp::Put(
-                "S-0001020304050607080900010203040506070809000102030405060708090001-HGT".into(),
+                "S-0x0001020304050607080900010203040506070809000102030405060708090001-HGT".into(),
                 1u64.into(),
             ),
             WriteOp::Put(
-                "S-0001020304050607080900010203040506070809000102030405060708090001-RT".into(),
+                "S-0x0001020304050607080900010203040506070809000102030405060708090001-RT".into(),
                 initial_state.into(),
             ),
         ];

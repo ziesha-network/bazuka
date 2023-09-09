@@ -40,7 +40,7 @@ pub struct ZkStateBuilder<H: ZkHasher> {
 impl<H: ZkHasher> ZkStateBuilder<H> {
     pub fn new(state_model: ZkStateModel) -> Self {
         let contract_id = ContractId::from_str(
-            "0000000000000000000000000000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
         )
         .unwrap();
         let mut db = RamKvStore::new();

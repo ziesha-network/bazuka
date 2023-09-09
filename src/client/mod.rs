@@ -1,5 +1,5 @@
 use crate::blockchain::TransactionMetadata;
-use crate::core::{Address, GeneralTransaction, MpnAddress, Signer, TokenId};
+use crate::core::{Address, ContractId, GeneralTransaction, MpnAddress, Signer};
 use crate::crypto::ed25519;
 use crate::crypto::SignatureScheme;
 use crate::zk::ZkProof;
@@ -359,7 +359,7 @@ impl BazukaClient {
     pub async fn get_balance(
         &self,
         address: Address,
-        token_id: TokenId,
+        token_id: ContractId,
     ) -> Result<GetBalanceResponse, NodeError> {
         self.sender
             .json_get::<GetBalanceRequest, GetBalanceResponse>(
@@ -373,7 +373,7 @@ impl BazukaClient {
             .await
     }
 
-    pub async fn get_token(&self, token_id: TokenId) -> Result<GetTokenInfoResponse, NodeError> {
+    pub async fn get_token(&self, token_id: ContractId) -> Result<GetTokenInfoResponse, NodeError> {
         self.sender
             .json_get::<GetTokenInfoRequest, GetTokenInfoResponse>(
                 format!("http://{}/token", self.peer),

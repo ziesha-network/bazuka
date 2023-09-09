@@ -1,6 +1,6 @@
 use super::{MpnCircuit, UpdateTransition};
 
-use crate::core::TokenId;
+use crate::core::ContractId;
 use crate::zk::groth16::gadgets::{
     common, common::Number, common::UnsignedInteger, eddsa, eddsa::AllocatedPoint, merkle,
     poseidon, BellmanFr,
@@ -16,12 +16,12 @@ pub struct UpdateCircuit {
     pub log4_token_tree_size: u8,
     pub log4_update_batch_size: u8,
 
-    pub commitment: ZkScalar, // Public
-    pub height: u64,          // Public
-    pub state: ZkScalar,      // Public
-    pub aux_data: ZkScalar,   // Public
-    pub next_state: ZkScalar, // Public
-    pub fee_token: TokenId,   // Private
+    pub commitment: ZkScalar,  // Public
+    pub height: u64,           // Public
+    pub state: ZkScalar,       // Public
+    pub aux_data: ZkScalar,    // Public
+    pub next_state: ZkScalar,  // Public
+    pub fee_token: ContractId, // Private
 
     pub transitions: Vec<UpdateTransition>, // Secret :)
 }

@@ -75,7 +75,7 @@ fn test_state_manager_scalar() -> Result<(), StateManagerError> {
     let mut db = RamKvStore::new();
 
     let c0 =
-        ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
+        ContractId::from_str("0x0000000000000000000000000000000000000000000000000000000000000000")
             .unwrap();
 
     db.update(&[WriteOp::Put(
@@ -102,7 +102,7 @@ fn test_state_manager_struct() -> Result<(), StateManagerError> {
     let mut db = RamKvStore::new();
 
     let c0 =
-        ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
+        ContractId::from_str("0x0000000000000000000000000000000000000000000000000000000000000000")
             .unwrap();
 
     db.update(&[WriteOp::Put(
@@ -179,7 +179,7 @@ fn test_state_manager_list() -> Result<(), StateManagerError> {
     let mut db = RamKvStore::new();
 
     let c0 =
-        ContractId::from_str("0000000000000000000000000000000000000000000000000000000000000000")
+        ContractId::from_str("0x0000000000000000000000000000000000000000000000000000000000000000")
             .unwrap();
 
     let mut roots = Vec::new();
