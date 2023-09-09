@@ -20,6 +20,11 @@ impl Clone for PrivateKey {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PublicKey(pub ed25519_dalek::PublicKey);
+impl PublicKey {
+    pub fn to_bytes(&self) -> [u8; 32] {
+        self.0.to_bytes()
+    }
+}
 impl PartialEq<PublicKey> for PublicKey {
     fn eq(&self, other: &Self) -> bool {
         self.0.to_bytes() == other.0.to_bytes()
