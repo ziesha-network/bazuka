@@ -28,14 +28,6 @@ impl UnsignedInteger {
     pub fn num_bits(&self) -> usize {
         self.bits.len()
     }
-    pub fn extract_bits(&self, count: usize) -> Self {
-        let mut num = Number::zero();
-        let bits = self.bits[..count].iter().cloned().collect::<Vec<_>>();
-        for b in bits.iter() {
-            num = num + Number::from(b.clone());
-        }
-        Self { num, bits }
-    }
     pub fn alloc<CS: ConstraintSystem<BellmanFr>>(
         cs: &mut CS,
         val: ZkScalar,
