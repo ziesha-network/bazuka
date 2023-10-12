@@ -10,9 +10,25 @@ fn put_in_teleport_tree<K: KvStore>(
     dst: Address,
     money: Money,
 ) -> Result<(), BlockchainError> {
+    let cont_id = chain.config().teleport_contract_id.clone();
     let as_scalar =
-        ZkScalar::from_str_vartime(&BigUint::from_bytes_le(&dst.to_bytes()[..31]).to_string());
-    let commitment = CoreZkHasher::hash(&[money.token_id.into(), money.amount.into()]);
+        ZkScalar::from_str_vartime(&BigUint::from_bytes_le(&dst.to_bytes()[..31]).to_string())
+            .unwrap();
+    let height = zk::KvStoreStateManager::<CoreZkHasher>::height_of(&chain.database, cont_id)?;
+    let salt = ZkScalar::from(0);
+    let commitment = CoreZkHasher::hash(&[money.token_id.into(), money.amount.into(), salt]);
+    zk::KvStoreStateManager::<CoreZkHasher>::update_contract(
+        &mut chain.database,
+        cont_id,
+        &zk::ZkDeltaPairs(
+            [
+                (zk::ZkDataLocator(vec![height as u64, 0]), Some(as_scalar)),
+                (zk::ZkDataLocator(vec![height as u64, 1]), Some(commitment)),
+            ]
+            .into(),
+        ),
+        height + 1,
+    )?;
     Ok(())
 }
 

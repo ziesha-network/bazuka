@@ -17,4 +17,6 @@ pub struct BlockchainConfig {
     pub chain_start_timestamp: u32,
     pub check_validator: bool,
     pub max_validator_commission: Ratio,
+    pub teleport_log4_tree_size: u8,
+    pub teleport_contract_id: ContractId,
 }

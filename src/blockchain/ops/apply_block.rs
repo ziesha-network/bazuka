@@ -16,6 +16,33 @@ pub fn apply_block<K: KvStore>(
 
         let is_genesis = block.header.number == 0;
 
+        if is_genesis {
+            let teleport_state_model = zk::ZkStateModel::List {
+                item_type: Box::new(zk::ZkStateModel::Struct {
+                    field_types: vec![
+                        zk::ZkStateModel::Scalar, // Address
+                        zk::ZkStateModel::Scalar, // Commitment
+                    ],
+                }),
+                log4_size: chain.config().teleport_log4_tree_size,
+            };
+            let teleport_contract = zk::ZkContract {
+                token: None,
+                initial_state: zk::ZkCompressedState::empty::<CoreZkHasher>(
+                    teleport_state_model.clone(),
+                )
+                .into(),
+                state_model: teleport_state_model,
+                deposit_functions: vec![],
+                withdraw_functions: vec![],
+                functions: vec![],
+            };
+            chain.database.update(&[WriteOp::Put(
+                keys::contract(&chain.config().teleport_contract_id),
+                teleport_contract.into(),
+            )])?;
+        }
+
         if curr_height > 0 {
             if block.merkle_tree().root() != block.header.block_root {
                 return Err(BlockchainError::InvalidMerkleRoot);

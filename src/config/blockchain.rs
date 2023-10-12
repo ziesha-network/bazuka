@@ -12,6 +12,7 @@ use crate::wallet::TxBuilder;
 use crate::zk;
 
 use std::collections::HashMap;
+use std::str::FromStr;
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
@@ -342,6 +343,12 @@ pub fn blockchain_config_template(initial_balances: bool) -> BlockchainConfig {
         chain_start_timestamp: CHAIN_START_TIMESTAMP,
         check_validator: true,
         max_validator_commission: Ratio(26), // 26 / 255 ~= 10%
+
+        teleport_log4_tree_size: 10,
+        teleport_contract_id: ContractId::from_str(
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap(),
     }
 }
 
