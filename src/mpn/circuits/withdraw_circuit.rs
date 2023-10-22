@@ -241,6 +241,8 @@ impl Circuit<BellmanFr> for WithdrawCircuit {
             let src_addr_wit = AllocatedPoint::alloc(&mut *cs, || Ok(trans.before.address))?;
             src_addr_wit.assert_on_curve(&mut *cs, &enabled_wit)?;
 
+            let src_checksum_wit = AllocatedPoint::alloc(&mut *cs, || Ok(trans.before.checksum))?;
+
             let src_balances_before_token_hash_wit =
                 AllocatedNum::alloc(&mut *cs, || Ok(trans.before_token_hash.into()))?;
 
@@ -348,6 +350,7 @@ impl Circuit<BellmanFr> for WithdrawCircuit {
                     &src_withdraw_nonce_wit.clone().into(),
                     &src_addr_wit.x.clone().into(),
                     &src_addr_wit.y.clone().into(),
+                    &src_checksum_wit.clone().into(),
                     &src_balances_before_token_hash_wit.clone().into(),
                 ],
             )?;
@@ -392,6 +395,7 @@ impl Circuit<BellmanFr> for WithdrawCircuit {
                         + Number::constant::<CS>(BellmanFr::one())),
                     &tx_pub_key_wit.x.clone().into(),
                     &tx_pub_key_wit.y.clone().into(),
+                    &src_checksum_wit.clone().into(), // TODO: NEW CHECKSUM!
                     &balance_final_root,
                 ],
             )?;

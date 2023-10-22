@@ -163,6 +163,8 @@ impl Circuit<BellmanFr> for DepositCircuit {
             let src_balances_hash_wit =
                 AllocatedNum::alloc(&mut *cs, || Ok(trans.before_balances_hash.into()))?;
 
+            let src_checksum_wit = AllocatedNum::alloc(&mut *cs, || Ok(trans.checksum.into()))?;
+
             let src_token_id_wit = AllocatedNum::alloc(&mut *cs, || {
                 Ok(Into::<ZkScalar>::into(trans.before_balance.token_id).into())
             })?;
@@ -206,6 +208,7 @@ impl Circuit<BellmanFr> for DepositCircuit {
                     &src_withdraw_nonce_wit.clone().into(),
                     &src_addr_wit.x.clone().into(),
                     &src_addr_wit.y.clone().into(),
+                    &src_checksum_wit.clone().into(),
                     &src_balances_hash_wit.clone().into(),
                 ],
             )?;
@@ -272,6 +275,7 @@ impl Circuit<BellmanFr> for DepositCircuit {
                     &src_withdraw_nonce_wit.clone().into(),
                     &tx_pub_key_wit.x.clone().into(),
                     &tx_pub_key_wit.y.clone().into(),
+                    &src_checksum_wit.clone().into(), // TODO: NEW CHECKSUM!
                     &new_balances_hash_wit,
                 ],
             )?;
